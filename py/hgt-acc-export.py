@@ -3,6 +3,7 @@ from time import sleep
 from selenium import webdriver
 import traceback
 import os
+import shutil
 
 
 # file "acc-data" rows format:
@@ -19,9 +20,13 @@ mysql_conn = pymysql.connect(host= '127.0.0.1', port= 3306, user= 'root', passwo
 def main():
     if os.path.exists("acc-data"):
         os.remove("acc-data")
+    if os.path.exists("D:/acc-data"):
+        os.remove("D:/acc-data")
+        
     cursor = mysql_conn.cursor()
-    sql = "select _day, _code, _zj, _cgsl, _per, _zsz from _hgt_acc where _day >= {} into outfile 'D:/vscode/py/acc-data' ".format(20210701)
+    sql = "select _day, _code, _zj, _cgsl, _per, _zsz from _hgt_acc where _day >= {} into outfile 'D:/acc-data' ".format(20210701)
     cursor.execute(sql)
+    shutil.move("D:/acc-data", "acc-data")
     
 try:
     main()
