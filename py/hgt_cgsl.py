@@ -133,8 +133,8 @@ def main():
     ut = int(time.time() - st) # second
     mysql_conn.close()
     browser.quit()
-    print('Use Time: {}h  {}m  {}s'.format(ut // 3600, ut // 60, ut % 60))
-    input('Press Enter Key To Exit')
+    # print('Use Time: {}h  {}m  {}s'.format(ut // 3600, ut // 60, ut % 60))
+    # input('Press Enter Key To Exit')
 
 main()
 
