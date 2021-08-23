@@ -24,7 +24,7 @@ def main():
         os.remove("D:/acc-data")
         
     cursor = mysql_conn.cursor()
-    sql = "select _day, _code, _zj, _cgsl, _per, _zsz from _hgt_acc where _day >= {} into outfile 'D:/acc-data' ".format(20210701)
+    sql = "select _day, _code, _zj, _cgsl, _per, _zsz from _hgt_acc where _day >= {} into outfile 'D:/acc-data' ".format(20210801)
     cursor.execute(sql)
     shutil.move("D:/acc-data", "acc-data")
     
