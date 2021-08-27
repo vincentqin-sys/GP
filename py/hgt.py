@@ -88,10 +88,10 @@ def load_top10_one_table(browser, divId, day):
     div = browser.find_element_by_id(divId)
     table = div.find_element_by_class_name('dataview-body').find_element_by_xpath('.//table')
     headElems = table.find_elements_by_xpath('.//thead/tr/th')
-    if headElems[1].get_attribute('data-field') != 'scode' or \
-                headElems[2].get_attribute('data-field') != 'sname' or  \
-                headElems[6].get_attribute('data-field') != 'jme' or  headElems[7].get_attribute('data-field') != 'mre' or \
-                headElems[8].get_attribute('data-field') != 'mce' or  headElems[9].get_attribute('data-field') != 'cje'  :
+    if headElems[1].get_attribute('data-field') != 'SECURITY_CODE' or \
+                headElems[2].get_attribute('data-field') != 'SECURITY_NAME' or  \
+                headElems[6].get_attribute('data-field') != 'NET_BUY_AMT' or  headElems[7].get_attribute('data-field') != 'BUY_AMT' or \
+                headElems[8].get_attribute('data-field') != 'SELL_AMT' or  headElems[9].get_attribute('data-field') != 'DEAL_AMT'  :
         print('Web page changed, update program first...')
         return False
     data = []
