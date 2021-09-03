@@ -29,15 +29,18 @@ def load_code_cgsl(code):
     table = div.find_element_by_tag_name('table')
     trHead = table.find_elements_by_xpath('.//thead/tr/th')
     # check head column
-    if trHead[0].find_element_by_xpath('.//div').text.find('持股日期') == -1 or \
-        trHead[2].get_attribute('data-field') != 'CLOSEPRICE' or \
-        trHead[4].find_element_by_xpath('.//div').text.find('持股数量') == -1 or \
-        trHead[6].find_element_by_xpath('.//div').text.find('持股数量占A股百分比(%)') == -1 :
+    if trHead[0].get_attribute('data-field') != 'TRADE_DATE' or \
+        trHead[2].get_attribute('data-field') != 'CLOSE_PRICE' or \
+        trHead[4].get_attribute('data-field') != 'HOLD_SHARES' or \
+        trHead[6].get_attribute('data-field') != 'A_SHARES_RATIO' :
             print('Web page change, update program first...')
             return False
 
     data = []
     trData = table.find_elements_by_xpath('.//tbody/tr')
+    if len(trData) < 2:
+        # no data
+        return data;
     for tr in trData:
         tds = tr.find_elements_by_xpath('.//td')
         day = tds[0].text
