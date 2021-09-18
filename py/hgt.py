@@ -10,8 +10,8 @@ options = webdriver.ChromeOptions()
 # options.add_argument("--user-data-dir=C:\\Users\\ROG\\AppData\\Local\\Google\\Chrome\\User Data")
 
 # options.add_argument('-headless')
-options.add_argument('--no-sandbox')
-options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36')
+# options.add_argument('--no-sandbox')
+# options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36')
 
 browser = webdriver.Chrome( options = options)
 # 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
