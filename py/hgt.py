@@ -6,6 +6,7 @@ import traceback
 # chrome.exe --remote-debugging-port=9998 --user-data-dir="D://download/chrome"
 
 options = webdriver.ChromeOptions()
+options.add_experimental_option('excludeSwitches', ['enable-logging'])
 # options.add_experimental_option("debuggerAddress", "127.0.0.1:9998")
 # options.add_argument("--user-data-dir=C:\\Users\\ROG\\AppData\\Local\\Google\\Chrome\\User Data")
 
