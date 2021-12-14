@@ -92,19 +92,23 @@ def load_gj_table():
     trs = table.find_elements_by_xpath('.//tbody/tr')
     data = []
     for tr in trs:
-        row = {}
-        tds = tr.find_elements_by_xpath('.//td')
-        row['code'] = tds[1].find_element_by_xpath('.//a').text
-        row['name'] = tds[2].find_element_by_xpath('.//a').text
-        row['zj'] = tds[11].find_element_by_xpath('.//span').text
-        sz = tds[7].text
-        if sz[-1:] != '亿' :
-            continue
-        sz = float(sz[0: -1])
-        bl = float(tds[8].text[0:-1])
-        row['zsz'] = int(sz * 100 / bl) # 总市值. 亿
-        
-        data.append(row)
+        try:
+            row = {}
+            tds = tr.find_elements_by_xpath('.//td')
+            row['code'] = tds[1].find_element_by_xpath('.//a').text
+            row['name'] = tds[2].find_element_by_xpath('.//a').text
+            row['zj'] = tds[11].find_element_by_xpath('.//span').text
+            sz = tds[7].text
+            if sz[-1:] != '亿' :
+                continue
+            sz = float(sz[0: -1])
+            bl = float(tds[8].text[0:-1])
+            row['zsz'] = int(sz * 100 / bl) # 总市值. 亿
+            
+            data.append(row)
+        except Exception as e:
+            print('Error: ', e);
+            pass
     return data
 
 
