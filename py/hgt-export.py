@@ -24,7 +24,7 @@ def main():
         os.remove("D:/hgt-data")
         
     cursor = mysql_conn.cursor()
-    sql = "select _day, _code, _jme, _mrje, _mcje, _cjje from _hgt where _day >= {} into outfile 'D:/hgt-data' ".format(20211105)
+    sql = "select _day, _code, _jme, _mrje, _mcje, _cjje from _hgt where _day >= {} into outfile 'D:/hgt-data' ".format(20220120)
     cursor.execute(sql)
     shutil.move("D:/hgt-data", "hgt-data")
     
