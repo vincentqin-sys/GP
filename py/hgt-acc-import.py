@@ -25,7 +25,7 @@ def mergeItem(items, cursor):
     if len(res) == 0:
         sql = 'insert into _hgt_acc (_code, _day, _zj, _cgsl, _per, _zsz) values ("{0}", {1}, {2}, {3}, {4}, {5}) '.format(items[1], items[0], items[2], items[3], items[4], items[5])
         cursor.execute(sql)
-        print(sql)
+        #print(sql)
         return 1
        
     zj = res[0][1] if int(items[2]) == 0 else int(items[2])
@@ -35,7 +35,7 @@ def mergeItem(items, cursor):
     if zj == res[0][1] and cgsl == res[0][2] and per == res[0][3] and zsz == res[0][4]:
         return 2
     sql = 'update _hgt_acc set _zj = {}, _cgsl = {}, _per = {}, _zsz = {} where _id = {}'.format(zj, cgsl, per, zsz, res[0][0])
-    print(sql)
+    #print(sql)
     cursor.execute(sql)
     return 3
 
