@@ -21,3 +21,5 @@ void CalcHgtAccZJ(float *out, int len);
 void GetHgtAccCgsl(float *out, int len);
 
 void GetHgtAccPer(float *out, int len);
+
+void CalcCaoDie(float *out, int len, float *bbi, float *downBoll);

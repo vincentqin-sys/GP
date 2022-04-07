@@ -347,3 +347,7 @@ void GetHgtAccPer(float *out, int len) {
 		out[begin + j] = p->per;
 	}
 }
+
+void CalcCaoDie(float *out, int len, float *bbi, float *downBoll) {
+	
+}

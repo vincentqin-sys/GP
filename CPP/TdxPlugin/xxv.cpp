@@ -1,6 +1,7 @@
 #include "mysql.h"
+#include <stdio.h>
 
-int D__main(int argc, char **argv) {
+int main(int argc, char **argv) {
 	Mysql db;
 	db.connect("tdx_f10");
 	Statement *stmt2 = db.prepare("select _day, _jme, _cjje from _hgt where _code = ? order by _day asc");
@@ -21,6 +22,7 @@ int D__main(int argc, char **argv) {
 		int day = stmt2->getInt(0);
 		int jme = stmt2->getInt(1);
 		int cjje = stmt2->getInt(2);
+		printf("%d %d %d\n", day, jme, cjje);
 	}
 
 	return 0;
