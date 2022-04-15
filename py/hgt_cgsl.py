@@ -129,8 +129,8 @@ def main():
     for r in res:
         code = r[0]
         zsz = r[1]
-        if zsz > 350 or zsz == 0: #总市值大于350亿
-            needLoadCodes.append(code)
+        #if zsz > 350 or zsz == 0: #总市值大于350亿
+        needLoadCodes.append(code)
 
     st = time.time()
     load_all_codes()
