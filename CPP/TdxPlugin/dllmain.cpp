@@ -65,6 +65,54 @@ void TH_NUM_REF(int len, float* out, float* ids, float* code, float* c) {
 	GetThNum((int)code[len - 1], out, len);
 }
 
+static FILE *file = NULL;
+void TH_DOWNLOAD_REF(int len, float *out, float *fcmd, float *val, float *c)
+{
+	int cmd = (int)fcmd[0];
+	if (cmd == 1) {
+		int code = (int)val[0];
+		// begin
+		char path[512];
+		int zq = (int)c[0];
+		sprintf(path, "%s\\%06d-%d", DLL_PATH, code, zq);
+		file = fopen(path, "wb");
+		return;
+	}
+	if (file == NULL) {
+		return;
+	}
+	if (cmd == 2)
+	{
+		// end
+		fclose(file);
+		file = NULL;
+		return;
+	} 
+
+	fprintf(file, "%d %d\n", cmd, len);
+	char *pp = (char *)malloc(4096);
+	char *p = pp;
+	*p = 0;
+	char tmp[50];
+	for (int i = 0; i < len; ++i)
+	{
+		if (val[i] < -0x7ffffff) {
+			val[i] = 0;
+		}
+		sprintf(tmp, "%.3f ", val[i]);
+		strcat(p, tmp);
+		p += strlen(tmp);
+		if (i > 0 && (i % 200 == 0)) {
+			fwrite(pp, 1, p - pp, file);
+			p = pp;
+			*p = 0;
+		}
+	}
+	fwrite(pp, 1, p - pp, file);
+	fwrite("\n", 1, 1, file);
+	free(pp);
+}
+
 //------------------------------------------------------------------------------
 PluginTCalcFuncInfo g_CalcFuncSets[] = {
 	{1, (pPluginFUNC) & BeginLock_REF},
@@ -75,6 +123,7 @@ PluginTCalcFuncInfo g_CalcFuncSets[] = {
 	{125, (pPluginFUNC) & THBJ_PM_REF},
 	{126, (pPluginFUNC) & TH_NUM_REF},
 
+	{130, (pPluginFUNC) & TH_DOWNLOAD_REF},
 	{0, NULL},
 };
 

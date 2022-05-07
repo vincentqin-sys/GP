@@ -24,6 +24,6 @@ int main(int argc, char **argv) {
 		int cjje = stmt2->getInt(2);
 		printf("%d %d %d\n", day, jme, cjje);
 	}
-
+	getchar();
 	return 0;
 }
