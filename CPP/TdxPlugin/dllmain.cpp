@@ -113,17 +113,51 @@ void TH_DOWNLOAD_REF(int len, float *out, float *fcmd, float *val, float *c)
 	free(pp);
 }
 
-//------------------------------------------------------------------------------
+void TH_MAX_MIN_REF(int len, float *out, float *fcmd, float *val, float *c)
+{
+	//OpenIO();
+	int cmd = (int)fcmd[len - 1];
+	if (cmd == 1)
+	{ // get max val
+		float m = -3.4e+38F;
+		for (int i = 0; i < len; ++i)
+		{
+			if (val[i] > m)
+				m = val[i];
+		}
+		for (int i = 0; i < len; ++i)
+		{
+			out[i] = m;
+		}
+		return;
+	}
+	if (cmd == 2) { // get min val
+		float m = 3.4e+38F;
+		for (int i = 0; i < len; ++i)
+		{
+			if (val[i] < m)
+				m = val[i];
+		}
+		for (int i = 0; i < len; ++i)
+		{
+			out[i] = m;
+		}
+		return;
+	}
+}
+	//------------------------------------------------------------------------------
 PluginTCalcFuncInfo g_CalcFuncSets[] = {
-	{1, (pPluginFUNC) & BeginLock_REF},
-	{2, (pPluginFUNC) & EndLock_REF},
+	{1, (pPluginFUNC)&BeginLock_REF},
+	{2, (pPluginFUNC)&EndLock_REF},
 
-	{120, (pPluginFUNC) & TdxZJ_REF},
-	{122, (pPluginFUNC) & STRING_REF},
-	{125, (pPluginFUNC) & THBJ_PM_REF},
-	{126, (pPluginFUNC) & TH_NUM_REF},
+	{120, (pPluginFUNC)&TdxZJ_REF},
+	{122, (pPluginFUNC)&STRING_REF},
+	{125, (pPluginFUNC)&THBJ_PM_REF},
+	{126, (pPluginFUNC)&TH_NUM_REF},
 
-	{130, (pPluginFUNC) & TH_DOWNLOAD_REF},
+	{130, (pPluginFUNC)&TH_DOWNLOAD_REF},
+
+	{500, (pPluginFUNC)&TH_MAX_MIN_REF},
 	{0, NULL},
 };
 

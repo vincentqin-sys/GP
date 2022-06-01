@@ -279,7 +279,7 @@ def main():
     
 
 main()
-    
+
 mysql_conn.close()
 input('Press Enter Key To Exit')
 browser.quit()
