@@ -17,14 +17,14 @@ def readData():
     return data
 
 mysql_conn = pymysql.connect(host= '127.0.0.1', port= 3306, user= 'root', password= 'root', db= 'tdx_f10')
+cursor = mysql_conn.cursor()
 
-def mergeItem(items, cursor):
+def mergeItem(items, orgData):
     if items[5] == '\\N':
         items[5] = 0
-    sql = 'select count(*) from _hgt where _code = "{0}" and _day = {1} '.format(items[1], items[0])
-    cursor.execute(sql)
-    res = cursor.fetchall()
-    if res[0][0] != 0:
+    res = findInOrgData(items[0], items[1], orgData)
+    
+    if res is not None:
         # alreay exists
         return 2
     
@@ -32,17 +32,37 @@ def mergeItem(items, cursor):
     cursor.execute(sql)
     print(sql)
     return 1
+    
+def findInOrgData(day, code, orgData):
+    key = str(day) + '_' + code
+    d = orgData.get(key, None)
+    return d
+    
+def getOrgData(firstDay):
+    sql = f'select _day, _code, _jme, _mrje, _mcje, _cjje from _hgt where _day >= {firstDay}'
+    cursor.execute(sql)
+    orgData = cursor.fetchall()
+    orgDataMap = {}
+    for row in orgData:
+        key = str(row[0]) + '_' + row[1]
+        orgDataMap[key] = row
+    return orgDataMap
 
 def main():
-    cursor = mysql_conn.cursor()
     rows = readData()
     insertNum = 0
     exitsNum = 0
+    
+    if len(rows) == 0:
+        return
+    firstDay = rows[0].split('\t')[0]
+    orgData = getOrgData(firstDay)
+    
     for i in rows:
         items = i.strip().split('\t')
         if len(items) != 6:
             continue
-        status = mergeItem(items, cursor)
+        status = mergeItem(items, orgData)
         insertNum += 1 if status == 1 else 0
         exitsNum += 1 if status == 2 else 0
         an = insertNum + exitsNum
