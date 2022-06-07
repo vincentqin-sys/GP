@@ -16,17 +16,18 @@ import shutil
 
 mysql_conn = pymysql.connect(host= '127.0.0.1', port= 3306, user= 'root', password= 'root', db= 'tdx_f10')
 
+FILE_NAME = 'data-acc'
 
 def main():
-    if os.path.exists("acc-data"):
-        os.remove("acc-data")
-    if os.path.exists("D:/acc-data"):
-        os.remove("D:/acc-data")
+    if os.path.exists(FILE_NAME):
+        os.remove(FILE_NAME)
+    curPath = os.path.dirname(__file__)
+    filePath = curPath + '\\' +  FILE_NAME
+    filePath = filePath.replace('\\', '/')
 
     cursor = mysql_conn.cursor()
-    sql = "select _day, _code, _zj, _cgsl, _per, _zsz from _hgt_acc where _day >= {} into outfile 'D:/acc-data' ".format(20220101)
+    sql = "select _day, _code, _zj, _cgsl, _per, _zsz from _hgt_acc where _day >= {} into outfile '{}' ".format(20220101, filePath)
     cursor.execute(sql)
-    shutil.move("D:/acc-data", "acc-data")
     
 try:
     main()

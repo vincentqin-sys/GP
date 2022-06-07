@@ -6,7 +6,7 @@ import os
 import shutil
 
 
-# file "hgt-data" rows format:
+# file FILE_NAME rows format:
 # 日期  代码  净买  买入  卖出  成交
 #_day, _code, _jme, _mrje, _mcje, _cjje , split by \t
 
@@ -16,17 +16,19 @@ import shutil
 
 mysql_conn = pymysql.connect(host= '127.0.0.1', port= 3306, user= 'root', password= 'root', db= 'tdx_f10')
 
+FILE_NAME = 'data-hgt'
 
 def main():
-    if os.path.exists("hgt-data"):
-        os.remove("hgt-data")
-    if os.path.exists("D:/hgt-data"):
-        os.remove("D:/hgt-data")
-        
+    if os.path.exists(FILE_NAME):
+        os.remove(FILE_NAME)
+    curPath = os.path.dirname(__file__)
+    filePath = curPath + '\\' +  FILE_NAME
+    filePath = filePath.replace('\\', '/')
+    
     cursor = mysql_conn.cursor()
-    sql = "select _day, _code, _jme, _mrje, _mcje, _cjje from _hgt where _day >= {} into outfile 'D:/hgt-data' ".format(20220120)
+    sql = "select _day, _code, _jme, _mrje, _mcje, _cjje from _hgt where _day >= {} into outfile '{}' ".format(20220120, filePath)
+    
     cursor.execute(sql)
-    shutil.move("D:/hgt-data", "hgt-data")
     
 try:
     main()
