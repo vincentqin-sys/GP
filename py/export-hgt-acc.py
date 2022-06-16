@@ -35,6 +35,7 @@ except Exception as e:
     traceback.print_exc()
 
 mysql_conn.close()
-input('Press Enter To Exit')
+print('Export End, Exit')
+sleep(1)
 
 
