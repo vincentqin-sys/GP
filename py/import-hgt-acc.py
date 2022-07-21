@@ -11,7 +11,7 @@ import traceback
 #select _day _code, _zj, _cgsl, _per, _zsz from _hgt_acc into outfile 'D:/vscode/py/acc-data';
 
 def readData():
-    f = open('acc-data', 'r')
+    f = open('data-acc', 'r')
     data = f.readlines()
     f.close()
     return data

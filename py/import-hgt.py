@@ -11,7 +11,7 @@ import traceback
 #select _day, _code, _jme, _mrje, _mcje, _cjje from _hgt into outfile 'D:/hgt-data';
 
 def readData():
-    f = open('hgt-data', 'r')
+    f = open('data-hgt', 'r')
     data = f.readlines()
     f.close()
     return data
