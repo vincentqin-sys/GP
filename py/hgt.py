@@ -263,7 +263,7 @@ def main():
         return
     
     days = queryCodeDays(lastDays[2])
-    if days == False or len(days) == 0:
+    if days == False:
         return
     
     dataHGT = []
@@ -277,6 +277,11 @@ def main():
         print('   ', i)
     saveMysql([], [], dataHGT)
     
+    if len(days) == 0:
+        ld = str(lastDays[2])
+        #ld = ld[0:4] + '-' + ld[4:6] + '-' + ld[6:]
+        url = 'http://data.eastmoney.com/hsgt/top10/{}.html'.format(ld)
+        browser.get(url)
 
 main()
 

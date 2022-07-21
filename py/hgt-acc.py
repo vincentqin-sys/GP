@@ -120,7 +120,7 @@ def main():
     # 沪深港通持股 估计
     browser.get('http://data.eastmoney.com/hsgtcg/list.html')
     # sleep(10)
-    input('Press Enter key to Load Day')
+    # input('Press Enter key to Load Day')
     day = browser.find_element_by_class_name('title').find_element_by_tag_name('span').text[1: -1]
     print('Fetch acc day:', day)
     dayi = day.replace('-', '')
