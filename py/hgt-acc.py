@@ -7,6 +7,7 @@ options = webdriver.ChromeOptions()
 options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
 browser = webdriver.Chrome( options = options)
+# browser.implicitly_wait(30)  # 隐性等待，最长等30秒
 # open mysql
 mysql_conn = pymysql.connect(host= '127.0.0.1', port= 3306, user= 'root', password= 'root', db= 'tdx_f10')
 
@@ -112,7 +113,7 @@ def load_gj_table():
     return data
 
 
-def main():
+def main(auto):
     lastDay = queryLastDay()
     if lastDay == False:
         return
@@ -127,17 +128,32 @@ def main():
     if len(dayi) != 8:
         input('Load day error.')
         return
+        
+    sleep(3)
+    #input('Press Enter key to Load Current Page')
+    data_1_day = load_gj_table()
+    #for i in data_1_day:
+    #    print(i)
+    saveMysql(data_1_day, dayi)
+    
+    # 
+    szOpt = browser.find_element_by_xpath('//th[@data-field="ADD_MARKET_CAP"]/div')
+    print('szOpt = ', szOpt)
+    browser.execute_script("arguments[0].click();", szOpt)
+    sleep(3)
+    data_1_day = load_gj_table()
+    #for i in data_1_day:
+    #    print(i)
+    saveMysql(data_1_day, dayi)
+    
+    mysql_conn.close()
+    if not auto:
+        input('Press Enter To Exit')
+    browser.quit()
+    
+if __name__ == '__main__':
+    main(False)
 
-    while True:
-        input('Press Enter key to Load Current Page')
-        data_1_day = load_gj_table()
-        #for i in data_1_day:
-        #    print(i)
-        saveMysql(data_1_day, dayi)
-
-main()
-mysql_conn.close()
-
-# browser.quit()
+# 
 # input('Press Any Key To Exit')
 

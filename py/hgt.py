@@ -238,7 +238,7 @@ def queryCodeDays(lastDay):
         print('DB query days error: ', str(e))
     return False
 
-def main():
+def main(auto):
     lastDays = queryLastDay()
     if lastDays == False:
         return
@@ -276,19 +276,19 @@ def main():
     for i in dataHGT:
         print('   ', i)
     saveMysql([], [], dataHGT)
+    mysql_conn.close()
     
-    if len(days) == 0:
+    if (not auto) and (len(days) == 0):
         ld = str(lastDays[2])
         #ld = ld[0:4] + '-' + ld[4:6] + '-' + ld[6:]
         url = 'http://data.eastmoney.com/hsgt/top10/{}.html'.format(ld)
         browser.get(url)
+    if not auto:
+        input('Press Enter Key To Exit')
+    
+    browser.quit()
 
-main()
-
-mysql_conn.close()
-input('Press Enter Key To Exit')
-browser.quit()
-
-
-
+if __name__ == '__main__':
+    main(False)
+    
 
