@@ -23,10 +23,10 @@
         {
 			"matches": ["http://data.10jqka.com.cn/market/longhu/*"],
             "run_at": "document_idle",
-            "js": ["jquery-3.6.min.js", "longhu.js"],
+            "js": ["jquery-3.6.min.js", "longhu-content.js"],
 			"all_frames" : true
 		}
     ],
 
-	"web_accessible_resources": []
+	"web_accessible_resources": ["longhu.js"]
 }

@@ -1,4 +1,4 @@
-var youZi = {
+var youZiML = {
 	"华鑫证券有限责任公司上海红宝石路证券营业部" :  "炒股养家",
 	"中国银河证券股份有限公司绍兴证券营业部" : "赵老哥",
 	"申银万国上海陆家嘴营业部"  : "徐翔",
@@ -24,28 +24,32 @@ function resoleYouZi() {
 	let style = ' style="background: #22b935; color: #fff; " ';
 	// $('.m-table.m-table-nosort.mt10')
 	$('.tl.rel').each(function() {
-		let name = $(this).children().attr('title');
-		if (youZi[name]) {
-			$(this).append($('<span + ' + style + '> [' + youZi[name] + '] <span>'));
+		let name = $(this).children().attr('title').trim();
+		if (youZiML[name]) {
+			$(this).append($('<span + ' + style + '> [' + youZiML[name] + '] <span>'));
+		} else if (name.indexOf('拉萨') > 0) {
+			$(this).append($('<span + ' + style + '> [T] <span>'));
 		}
 	});
 }
 
-setTimeout(function() {
-	resoleYouZi();
-}, 1500);
-
-
-/*
-function bindGPList() {
-	$('.leftcol .twrap tr').each(function() {
-		$(this).click(function() {
-			setTimeout(resoleYouZi, 1500);
-		});
+function bindDayChange() {
+	$('iframe').each(function() {
+		if ($(this).attr('src') != "http://data.10jqka.com.cn/js/My97DatePicker/My97DatePicker.htm")
+			return;
+		DC = this.contentWindow.day_Click;
+		console.log(DC);
+		this.contentWindow.day_Click = function(F, B, _, D, C, A) {
+			DC(F, B, _, D, C, A);
+			setTimeout(function() {
+				resoleYouZi();
+			}, 2000);
+		};
 	});
 }
 
-$('.table-tab:eq(0) > a').click(function() {
-	bindGPList();
-});
-*/
+setTimeout(function() {
+	bindDayChange();
+	resoleYouZi();
+}, 2000);
+
