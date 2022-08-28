@@ -68,13 +68,15 @@ void TH_NUM_REF(int len, float* out, float* ids, float* code, float* c) {
 static FILE *file = NULL;
 void TH_DOWNLOAD_REF(int len, float *out, float *fcmd, float *val, float *c)
 {
+	// OpenIO();
 	int cmd = (int)fcmd[0];
 	if (cmd == 1) {
 		int code = (int)val[0];
 		// begin
 		char path[512];
 		int zq = (int)c[0];
-		sprintf(path, "%s\\%06d-%d", DLL_PATH, code, zq);
+		sprintf(path, "%s%06d-%d", DLL_PATH, code, zq);
+		printf("open data file: %s \n", path);
 		file = fopen(path, "wb");
 		return;
 	}
