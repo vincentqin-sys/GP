@@ -33,6 +33,7 @@ function resoleYouZi() {
 			$(this).append($('<span + ' + style + '> [T] <span>'));
 		}
 	});
+	fetchLHB();
 }
 
 function bindDayChange() {

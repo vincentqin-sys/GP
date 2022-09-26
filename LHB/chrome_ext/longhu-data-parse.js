@@ -67,4 +67,7 @@ function fetchLHB() {
 	dd.data = codeInfos;
 	let txt = JSON.stringify(dd);
 	console.log(txt);
+	window.postMessage({cmd: 'LONGHU_DATA_LIST', data: dd}, window.location.href);
 }
+
+fetchLHB();

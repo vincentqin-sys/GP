@@ -1,5 +1,5 @@
 {
-    "manifest_version": 2,
+    "manifest_version": 3,
     "name": "GP-LongHu",
     "version": "1.0",
 
@@ -14,6 +14,12 @@
 		"nativeMessaging",
 		"declarativeNetRequest", "declarativeNetRequestFeedback"
 	],
+	
+	"declarative_net_request": {
+		"rule_resources": [
+			{"id": "ruleset_1", "enabled": true,  "path": "rules_1.json"}
+		]
+	},
 	
 	"background": {
 		"scripts": ["jquery-3.6.min.js", "bg.js"],
