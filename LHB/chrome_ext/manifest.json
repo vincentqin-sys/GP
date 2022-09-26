@@ -28,5 +28,5 @@
 		}
     ],
 
-	"web_accessible_resources": ["longhu.js"]
+	"web_accessible_resources": ["longhu-name-parse.js", "longhu-data-parse.js"]
 }
