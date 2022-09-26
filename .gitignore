@@ -33,4 +33,5 @@
 *.exe
 *.out
 *.app
+__pycache__
 build
