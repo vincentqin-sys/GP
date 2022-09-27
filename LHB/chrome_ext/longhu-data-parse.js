@@ -7,6 +7,8 @@ function initCodeInfos() {
 		let item = {};
 		item.tag = tdArr.eq(0).text().trim();
 		item.code = tdArr.eq(1).text().trim();
+		if (item.code.charAt(0) != '0' && item.code.charAt(0) != '3' && item.code.charAt(0) != '6')
+			continue;
 		let a = tdArr.eq(2).children('a');
 		item.name = a.text().trim();
 		item.rid = a.attr('rid');
@@ -52,7 +54,11 @@ function initDetailInfo() {
 		}
 		// console.log(detail);
 		let code = findCodeInfoByRid(detail.rid);
-		code.detail = detail;
+		if (! code) {
+			console.log('Error: ', detail, codeInfos);
+		} else {
+			code.detail = detail;
+		}
 	}
 
 }
