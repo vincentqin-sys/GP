@@ -19,13 +19,13 @@ function showTip(data) {
 	let ds = 5000;
 	if (data['status'] == 'OK') {
 		color = '#33ff33';
-		ds = 2000;
+		ds = 1500;
 	} else if (data['status'] == 'Exists') {
 		color = '#ffff33';
-		ds = 2000;
+		ds = 1500;
 	}
 	
-	let html = $('<div style="position:fixed;  background-color:' + color + ';z-order: 8888; right: 0px; top: 0px; width: 400px; height: 100px; font-size: 20px; " > </div>');
+	let html = $('<div style="position:fixed;  background-color:' + color + ';z-index: 99999; right: 0px; top: 0px; width: 400px; height: 100px; font-size: 20px; " > </div>');
 	html.append(data['day'] + '<br/> Status: ' + data['status'] + '<br/>' + 'Msg: ' + data['msg']);
 	$(document.body).append(html);
 	html.delay(ds).hide('fast');
