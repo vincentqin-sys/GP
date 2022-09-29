@@ -7,6 +7,7 @@ class ZTZB(pw.Model):
     code = pw.CharField()
     day = pw.IntegerField()
     tag = pw.CharField() # 'ZT' or 'ZB'
+    drzf = pw.FloatField(column_name = '当日涨幅')
     zfc_1 = pw.FloatField(column_name = '1日收盘涨幅')
     zfh_1 = pw.FloatField(column_name = '1日最高涨幅')
     dnb = pw.IntegerField(column_name = '第几板')
@@ -47,6 +48,8 @@ def getCode(absPath):
     return None
     
 def save(info):
+    if info['day'] < 20210901: # ingore old data
+        return
     k = f'{info["code"]}-{info["day"]}'
     v = DB_CACHE.get(k, None)
     if not v:
@@ -55,6 +58,7 @@ def save(info):
     if v.complete or info['complete'] == 0:
         return
     v.complete = info['complete']
+    v.drzf = info['drzf']
     v.zfc_1 = info['zfc_1']
     v.zfh_1 = info['zfh_1']
     v.dnb = info['dnb']
@@ -64,8 +68,8 @@ def findDnb(code, day):
     k = f'{code}-{day}'
     v = DB_CACHE.get(k, None)
     if not v:
-        return 0;
-    return 0 if v.tag == 'ZB' else v.dnb
+        return (0, None);
+    return (v.dnb, v.tag)
 
 count = 0
     
@@ -89,19 +93,20 @@ def loadOneFile(absPath):
     for i in range(1, len(datas)):
         zt = isZTOrZB(code, datas[i - 1], datas[i])
         if not zt:
-            dnbList.append(0)
+            dnbList.append((0, None,))
             continue
         count += 1
         print('[%05d]'%count, zt, code, datas[i][0])
-        if zt == 'ZT':
-            dnb = dnbList[i - 1] + 1
+        if dnbList[i - 1][1] == 'ZT':
+            dnb = dnbList[i - 1][0] + 1
         else:
-            dnb = 0
-        dnbList.append(dnb)
-        info = {"code" : code, 'day': datas[i][0], 'tag': zt, 'dnb': dnb, 'complete': 0, 'zfc_1': 0, 'zfh_1': 0}
+            dnb = 1
+        dnbList.append((dnb, zt))
+        drzf = (datas[i][4] - datas[i - 1][4]) * 100 / datas[i - 1][4]
+        info = {"code" : code, 'day': datas[i][0], 'tag': zt, 'drzf': drzf, 'dnb': dnb, 'complete': 0, 'zfc_1': 0, 'zfh_1': 0}
         if i < len(datas) - 1:
-            zfc_1 = (datas[i + 1][4] - datas[i][4]) * 100 / datas[i][4];
-            zfh_1 = (datas[i + 1][2] - datas[i][4]) * 100 / datas[i][4];
+            zfc_1 = (datas[i + 1][4] - datas[i][4]) * 100 / datas[i][4]
+            zfh_1 = (datas[i + 1][2] - datas[i][4]) * 100 / datas[i][4]
             info['zfc_1'] = zfc_1
             info['zfh_1'] = zfh_1
             info['complete'] = 1
@@ -119,10 +124,10 @@ def loadDirFiles(basePath):
         f = os.path.join(bp, g)
         loadOneFile(f)
     
-
-BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
-BASE_PATH2 = r'D:\Program Files (x86)\new_tdx\vipdoc'
-loadDirFiles(BASE_PATH2)
-#loadOneFile(BASE_PATH + r'\sz\lday\sz003027.day')
+if __name__ == '__main__':
+    BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
+    BASE_PATH2 = r'D:\Program Files (x86)\new_tdx\vipdoc'
+    loadDirFiles(BASE_PATH2)
+    #loadOneFile(BASE_PATH + r'\sz\lday\sz003027.day')
 
 
