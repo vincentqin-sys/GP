@@ -1,5 +1,5 @@
 from flask import Flask, url_for, views, abort, make_response, request
-import flask
+import flask, peewee
 from flask_cors import CORS 
 import json
 import traceback
@@ -66,6 +66,32 @@ def writeLHBDataList():
         traceback.print_exc()
         m = {"status": "Fail", "msg": str(e)}
         return json.dumps(m)
+        
+@app.route('/getLHBInfo', methods = ['POST'])
+def getLHBInfo():
+    params = request.data
+    params = json.loads(params)
+    cs = mcore.db.cursor()
+    cs.execute(params['sql'])
+    data = cs.fetchall()
+    txt = json.dumps(data, ensure_ascii = False) # ensure_ascii = False
+    cs.close()
+    return txt
+    
+@app.route('/getZTZBInfo', methods = ['POST'])
+def getZTZBInfo():
+    zdb = peewee.SqliteDatabase('../ZT/ZT.db')
+    cs = zdb.cursor()
+    params = request.data
+    params = json.loads(params)
+    cs.execute(params['sql'])
+    data = cs.fetchall()
+    txt = json.dumps(data, ensure_ascii = False) # ensure_ascii = False
+    cs.close()
+    zdb.close()
+    return txt
+    
+    
     
 """
 @app.before_request

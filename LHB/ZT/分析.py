@@ -82,12 +82,9 @@ def fenxiByDay(day, lianBan):
     
 """
 # 月份
-for i in range(9, 0, -1):    
-    print(f'20220{i} -->')
-    fenxiByMonth(20220001 + i * 100, 20220031 + i * 100, 2)
-for i in range(12, 8, -1):
-    print(f'20210{i} -->')
-    fenxiByMonth(20210001 + i * 100, 20210031 + i * 100, 2)
+lianBan = 2
+print(f'202209 -->')
+fenxiByMonth(20220901, 20220931, 2)
 """
 
 # 日
