@@ -134,8 +134,9 @@ def loadDirFiles(basePath):
 if __name__ == '__main__':
     BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
     BASE_PATH2 = r'D:\Program Files (x86)\new_tdx\vipdoc'
+    #loadOneFile(BASE_PATH2 + r'\sh\lday\sh600006.day')
+
     loadDirFiles(BASE_PATH2)
     db.close()
-    #loadOneFile(BASE_PATH + r'\sz\lday\sz003027.day')
 
 
