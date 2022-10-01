@@ -1,18 +1,22 @@
 import os, struct
 import peewee as pw
 
-db = pw.SqliteDatabase('ZT.db-1')
+db = pw.SqliteDatabase('ZT.db')
 
 class ZTZB(pw.Model):
     code = pw.CharField()
     day = pw.IntegerField()
     tag = pw.CharField() # 'ZT' or 'ZB'
     drzf = pw.FloatField(column_name = '当日涨幅')
-    zfc_1 = pw.FloatField(column_name = '1日收盘涨幅')
-    zfh_1 = pw.FloatField(column_name = '1日最高涨幅')
+    zfc_1 = pw.FloatField(column_name = '次日收盘涨幅', default = 0)
+    zfh_1 = pw.FloatField(column_name = '次日最高涨幅', default = 0)
     dnb = pw.IntegerField(column_name = '第几板')
-    complete = pw.IntegerField(default = 0) # 数据是否完整
+    next_day = pw.IntegerField(default = 0, column_name = '下一日期' )  # 下一日期
+    complete = pw.IntegerField(default = 0) #  上面几列数据是否完整
     
+    zfh_m30 = pw.FloatField(column_name = '次日30分钟内最高涨幅', default = 0)
+    zfavg_m30 = pw.FloatField(column_name = '次日30分钟内平均涨幅', default = 0)  # 每5分钟收盘价平均值
+    complete_m30 = pw.IntegerField(default = 0) #  上面两列数据是否完整
     class Meta:
         database = db
     
@@ -62,6 +66,7 @@ def save(info):
     v.zfc_1 = info['zfc_1']
     v.zfh_1 = info['zfh_1']
     v.dnb = info['dnb']
+    v.next_day = info['next_day']
     v.save()
     
 def findDnb(code, day):
@@ -107,8 +112,10 @@ def loadOneFile(absPath):
         if i < len(datas) - 1:
             zfc_1 = (datas[i + 1][4] - datas[i][4]) * 100 / datas[i][4]
             zfh_1 = (datas[i + 1][2] - datas[i][4]) * 100 / datas[i][4]
+            next_day = datas[i + 1][0]
             info['zfc_1'] = zfc_1
             info['zfh_1'] = zfh_1
+            info['next_day'] = next_day
             info['complete'] = 1
         save(info)
 
@@ -128,6 +135,7 @@ if __name__ == '__main__':
     BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
     BASE_PATH2 = r'D:\Program Files (x86)\new_tdx\vipdoc'
     loadDirFiles(BASE_PATH2)
+    db.close()
     #loadOneFile(BASE_PATH + r'\sz\lday\sz003027.day')
 
 
