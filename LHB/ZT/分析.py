@@ -19,7 +19,7 @@ def fenxiByMonth(dayBegin, dayEnd, lianBan):
     nums = []
     params = [(-25, 0), (0, 1), (1, 2), (2, 3), (3,4), (4,5), (5,6), (6,7), (7,8), (8,9), (9,10), (10,25)]
     for p in params:
-        cursor.execute('select count(*) from ztzb where day >= ? and day <= ? and 第几板 = ? and complete = 1 and tag == "ZT" and `1日最高涨幅` >= ? and  `1日最高涨幅` < ? ', (dayBegin, dayEnd, lianBan, *p))
+        cursor.execute('select count(*) from ztzb where day >= ? and day <= ? and 第几板 = ? and complete = 1 and tag == "ZT" and `次日最高涨幅` >= ? and  `次日最高涨幅` < ? ', (dayBegin, dayEnd, lianBan, *p))
         data = cursor.fetchone()
         nums.append(data[0])
     print('ShangBan:')
@@ -29,7 +29,7 @@ def fenxiByMonth(dayBegin, dayEnd, lianBan):
     nums = []
     params = [(-25, 0), (0, 1), (1, 2), (2, 3), (3,4), (4,5), (5,6), (6,7), (7,8), (8,9), (9,10), (10,25)]
     for p in params:
-        cursor.execute('select count(*) from ztzb where day >= ? and day <= ? and 第几板 = ? and complete = 1 and tag == "ZB" and `1日最高涨幅` >= ? and  `1日最高涨幅` < ? ', (dayBegin, dayEnd, lianBan, *p))
+        cursor.execute('select count(*) from ztzb where day >= ? and day <= ? and 第几板 = ? and complete = 1 and tag == "ZB" and `次日最高涨幅` >= ? and  `次日最高涨幅` < ? ', (dayBegin, dayEnd, lianBan, *p))
         data = cursor.fetchone()
         nums.append(data[0])
     print('ZaBan:')
@@ -45,14 +45,19 @@ def fenxiByDay(day, lianBan):
         return
     ztNum = data[0]
     nums.append(data[0]) # 上板量
-    cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and tag = "ZT" and `1日最高涨幅` >= 0 ', (day, lianBan))
+    cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and tag = "ZT" and `次日最高涨幅` >= 0 ', (day, lianBan))
     data = cursor.fetchone()
-    nums.append(data[0]) # 上涨量
-    nums.append(data[0]/ztNum) # 上涨比率
-    cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and tag = "ZT" and `1日最高涨幅` < 0 ', (day, lianBan))
+    nums.append(data[0]) # 上涨量-全日
+    
+    cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and tag = "ZT" and `次日30分钟内最高涨幅` > 0 ', (day, lianBan))
+    data = cursor.fetchone()
+    nums.append(data[0]) # 上涨量-前30分钟
+    
+    # nums.append(data[0]/ztNum) # 上涨比率
+    cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and tag = "ZT" and `次日最高涨幅` < 0 ', (day, lianBan))
     data = cursor.fetchone()
     nums.append(data[0]) # 下跌量
-    nums.append(data[0]/ztNum) # 下跌比率
+    # nums.append(data[0]/ztNum) # 下跌比率
     
     ## ZB
     zbNum = 0
@@ -60,14 +65,14 @@ def fenxiByDay(day, lianBan):
     data = cursor.fetchone()
     zbNum = data[0]
     nums.append(data[0]) # 炸板量
-    cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and tag = "ZB" and `1日最高涨幅` >= 0 ', (day, lianBan))
+    cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and tag = "ZB" and `次日最高涨幅` > 0 ', (day, lianBan))
     data = cursor.fetchone()
     nums.append(data[0]) # 上涨量
-    nums.append(data[0] / zbNum if zbNum > 0 else 0) # 上涨比率
-    cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and tag = "ZB" and `1日最高涨幅` < 0 ', (day, lianBan))
+    # nums.append(data[0] / zbNum if zbNum > 0 else 0) # 上涨比率
+    cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and tag = "ZB" and `次日最高涨幅` < 0 ', (day, lianBan))
     data = cursor.fetchone()
     nums.append(data[0]) # 下跌量
-    nums.append(data[0] / zbNum if zbNum > 0 else 0) # 下跌比率
+    # nums.append(data[0] / zbNum if zbNum > 0 else 0) # 下跌比率
     
     cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1', (day, lianBan))
     data = cursor.fetchone()
@@ -89,7 +94,7 @@ fenxiByMonth(20220901, 20220931, 2)
 
 # 日
 lianBan = 2
-cursor.execute('select distinct(day) as dd from ztzb where 第几板 = ? and complete = 1 and day >= ? order by dd desc ', (lianBan, 20220925))
+cursor.execute('select distinct(day) as dd from ztzb where 第几板 = ? and complete = 1 and complete_m30 == 1 and day >= ? order by dd desc ', (lianBan, 20220925))
 data = cursor.fetchall()
 for d in data:
     fenxiByDay(d[0], lianBan)
