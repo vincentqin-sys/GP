@@ -23,7 +23,8 @@ def fenxiByMonth(dayBegin, dayEnd, lianBan, colCndName):
         data = cursor.fetchone()
         nums.append(data[0])
     print('ShangBan:')
-    [ print(n, end = ' ') for n in nums ]
+    for n in nums:
+        print(n, end = '\t') 
     print(countZT)
     
     nums = []
@@ -33,10 +34,11 @@ def fenxiByMonth(dayBegin, dayEnd, lianBan, colCndName):
         data = cursor.fetchone()
         nums.append(data[0])
     print('ZaBan:')
-    [ print(n, end = ' ') for n in nums ]
+    for n in nums:
+        print(n, end = '\t')
     print(countZB)
     
-def fenxiByDay(day, lianBan, colCndName):
+def fenxiByDay(day, lianBan):
     nums = []
     ## ZT
     cursor.execute('select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and complete_m30 = 1 and tag = "ZT" ', (day, lianBan))
@@ -46,14 +48,17 @@ def fenxiByDay(day, lianBan, colCndName):
     ztNum = data[0]
     nums.append(data[0]) # 上板量
 
-    cursor.execute(f'select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and complete_m30 = 1 and tag = "ZT" and {colCndName} >= 0 ', (day, lianBan))
+    cursor.execute(f'select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and complete_m30 = 1 and tag = "ZT" and 次日最高涨幅 > 0 ', (day, lianBan))
     data = cursor.fetchone()
-    nums.append(data[0]) # 上涨量
+    szNum = data[0]
+    nums.append(data[0]) # 上涨量-全日
     nums.append(data[0]/ztNum) # 上涨比率
-    cursor.execute(f'select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and complete_m30 = 1 and tag = "ZT" and {colCndName} < 0 ', (day, lianBan))
+    
+    cursor.execute(f'select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and complete_m30 = 1 and tag = "ZT" and 次日30分钟内最高涨幅 > 0 ', (day, lianBan))
     data = cursor.fetchone()
-    nums.append(data[0]) # 下跌量
-    # nums.append(data[0]/ztNum) # 下跌比率
+    szNum30 = data[0]
+    nums.append(data[0]) # 上涨量-前30分钟
+    nums.append(data[0]/ztNum) # 上涨比率
     
     ## ZB
     zbNum = 0
@@ -61,41 +66,48 @@ def fenxiByDay(day, lianBan, colCndName):
     data = cursor.fetchone()
     zbNum = data[0]
     nums.append(data[0]) # 炸板量
-    cursor.execute(f'select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and complete_m30 = 1 and tag = "ZB" and {colCndName} >= 0 ', (day, lianBan))
+    cursor.execute(f'select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and complete_m30 = 1 and tag = "ZB" and 次日最高涨幅 > 0 ', (day, lianBan))
     data = cursor.fetchone()
-    nums.append(data[0]) # 上涨量
+    szNum += data[0]
+    nums.append(data[0]) # 上涨量-全日
     nums.append(data[0] / zbNum if zbNum > 0 else 0) # 上涨比率
-    cursor.execute(f'select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and complete_m30 = 1 and tag = "ZB" and {colCndName} < 0 ', (day, lianBan))
+    cursor.execute(f'select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and complete_m30 = 1 and tag = "ZB" and 次日30分钟内最高涨幅 > 0 ', (day, lianBan))
     data = cursor.fetchone()
-    nums.append(data[0]) # 下跌量
-    # nums.append(data[0] / zbNum if zbNum > 0 else 0) # 下跌比率
+    szNum30 += data[0]
+    nums.append(data[0]) # 上涨量-前30分钟
+    nums.append(data[0] / zbNum if zbNum > 0 else 0) # 上涨比率
     
     cursor.execute(f'select count(*) from ztzb where day = ? and 第几板 = ? and complete = 1 and complete_m30 = 1', (day, lianBan))
     data = cursor.fetchone()
     zNum = data[0]
     nums.append(zNum) # 总量
     nums.append(zbNum / zNum) # 炸板率
-    print(day, end = ' ')
-    [print(n, end=' ') for n in nums]
+    nums.append(szNum / zNum) # 上涨率
+    nums.append(szNum30 / zNum) # 上涨率-30分钟
+    print(day, end = '\t')
+    for n in nums:
+        print(n, end='\t')
     print('')
 
 
 
+""" 
+# 按月份统计
+yymm = 202207
+lianBan = 2  #第几板
 colCndName = '次日30分钟内平均涨幅' #  次日最高涨幅  次日30分钟内最高涨幅  次日30分钟内平均涨幅
-lianBan = 1
-
-#""" 
-# 月份
-print(f'202208 -->')
-fenxiByMonth(20220801, 20220831, lianBan, colCndName)
-#"""
-
+print(f'{yymm} -->')
+fenxiByMonth(yymm * 100 + 1, yymm * 100 + 31, lianBan, colCndName)
 """
-# 日
-cursor.execute('select distinct(day) as dd from ztzb where 第几板 = ? and complete = 1  and complete_m30 = 1 and day >= ? order by dd desc ', (lianBan, 20220925))
+
+#"""
+# 按日统计
+minDay = 20210901
+lianBan = 1  #第几板
+cursor.execute('select distinct(day) as dd from ztzb where 第几板 = ? and complete = 1  and complete_m30 = 1 and day >= ? order by dd desc ', (lianBan, minDay))
 data = cursor.fetchall()
 for d in data:
-    fenxiByDay(d[0], lianBan, colCndName)
+    fenxiByDay(d[0], lianBan)
 
-"""
+#"""
 
