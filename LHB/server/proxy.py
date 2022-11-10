@@ -1,6 +1,5 @@
-import requests, json
+import requests, json, flask
 import mviews, orm, mcore
-import json
 
 # 修改同花顺软件中的龙虎榜页面信息，添加营业部的注释信息
 # fiddler AutoResponder
@@ -8,8 +7,8 @@ import json
 # http://localhost:8050/proxy?code=$1&date=$2
 
 def proxy():
-    code = request.args.get('code')
-    date = request.args.get('date')
+    code = flask.request.args.get('code')
+    date = flask.request.args.get('date')
     url = f'http://news.10jqka.com.cn/data/api/lhcjmxgg/code/{code}/date/{date}?v=vv'
     print(url)
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'}
@@ -40,6 +39,12 @@ def proxy():
         rv = f'{k}  <span style="color:#f22; background-color:#aaa;" > {v} <span> '
         orgText = orgText.replace(k, rv)
     orgText = orgText.replace('width="350"', '')
+    info = f"<a class='dc-more' href = 'http://page2.tdx.com.cn:7615/site/tdxsj/html/tdxsj_lhbd_ggxq.html?back=tdxsj_lhbd,%E9%BE%99%E8%99%8E%E6%A6%9C%E4%B8%AA%E8%82%A1,{code}' target='_blank' style='color:#FFFFFF;'> 打开通达信龙虎榜&gt;&gt; </a>"
+    idx = orgText.find('<a class="dc-more"')
+    if idx > 0:
+        endIdx = orgText.find('</a>', idx) + 4
+        sub = orgText[idx : endIdx]
+        orgText = orgText.replace(sub, info)
     return orgText
     
 
