@@ -22,5 +22,19 @@ class LHB(mcore.BaseModel):
     mcje = pw.FloatField() # 买出金额 (万元)
     detail = pw.CharField()
 
+# 游资营业部介绍
+class YouZi(mcore.BaseModel):
+    yyb = pw.CharField()  # 营业部
+    yybDesc = pw.CharField() # 名称介绍
+    
+    @staticmethod
+    def saveInfo(yyb, yybDesc):
+        val = YouZi.get_or_none(YouZi.yyb == yyb)
+        if not val:
+            YouZi.create(yyb = yyb, yybDesc = yybDesc)
+        else:
+            if val.yybDesc != yybDesc:
+                print(f'Error YouZi info: find {yyb} in db is {val.yybDesc}, but not is {yybDesc} ')
+    
 def init():
-    mcore.db.create_tables([LHB])
+    mcore.db.create_tables([LHB, YouZi])

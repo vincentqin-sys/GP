@@ -3,6 +3,7 @@ import flask, peewee
 from flask_cors import CORS 
 import json
 import traceback
+import requests, json
 
 import mviews, orm, mcore
 
@@ -92,7 +93,43 @@ def getZTZBInfo():
     return txt
     
     
+@app.route('/proxy', methods = ['GET', 'POST'])
+def proxy():
+    code = request.args.get('code')
+    date = request.args.get('date')
+    url = f'http://news.10jqka.com.cn/data/api/lhcjmxgg/code/{code}/date/{date}?v=vv'
+    print(url)
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'}
+    orgRes = requests.get(url, headers = headers)
+    orgText = orgRes.text #str(orgRes.content, 'gbk')
     
+    params = '{' + f'"Params":["1","{code}","{date}"]' + '}'
+    res = requests.post('http://page2.tdx.com.cn:7615/TQLEX?Entry=CWServ.tdxsj_lhbd_ggxq', data = params)
+    val = json.loads(res.text)
+    if val.get('ErrorCode') != 0:
+        return orgRes.text
+    names = {}
+
+    for it in val['ResultSets']:
+        colNames = it['ColName']
+        content = it['Content']
+        if ('T008' not in colNames) or ('bq1' not in colNames):
+            continue
+        keyIdx = colNames.index('T008')
+        valIdx = colNames.index('bq1')
+        for c in content:
+            if c[valIdx]:
+                names[c[keyIdx]] = c[valIdx]
+    #print(names)
+    for k in names:
+        v = names[k]
+        orm.YouZi.saveInfo(k, v)
+        rv = f'{k}  <span style="color:#f22; background-color:#aaa;" > {v} <span> '
+        orgText = orgText.replace(k, rv)
+    orgText = orgText.replace('width="350"', '')
+    return orgText
+    
+
 """
 @app.before_request
 def _open_db(*args):
