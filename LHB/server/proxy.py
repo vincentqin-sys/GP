@@ -1,6 +1,7 @@
 import requests, json
 import mviews, orm, mcore
 import json
+import flask
 
 # 修改同花顺软件中的龙虎榜页面信息，添加营业部的注释信息
 # fiddler AutoResponder
@@ -8,8 +9,8 @@ import json
 # http://localhost:8050/proxy?code=$1&date=$2
 
 def proxy():
-    code = request.args.get('code')
-    date = request.args.get('date')
+    code = flask.request.args.get('code')
+    date = flask.request.args.get('date')
     url = f'http://news.10jqka.com.cn/data/api/lhcjmxgg/code/{code}/date/{date}?v=vv'
     print(url)
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'}
