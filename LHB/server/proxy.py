@@ -1,7 +1,5 @@
-import requests, json
+import requests, json, flask
 import mviews, orm, mcore
-import json
-import flask
 
 # 修改同花顺软件中的龙虎榜页面信息，添加营业部的注释信息
 # fiddler AutoResponder
@@ -41,6 +39,12 @@ def proxy():
         rv = f'{k}  <span style="color:#f22; background-color:#aaa;" > {v} <span> '
         orgText = orgText.replace(k, rv)
     orgText = orgText.replace('width="350"', '')
+    info = f"<a class='dc-more' href = 'http://page2.tdx.com.cn:7615/site/tdxsj/html/tdxsj_lhbd_ggxq.html?back=tdxsj_lhbd,%E9%BE%99%E8%99%8E%E6%A6%9C%E4%B8%AA%E8%82%A1,{code}' target='_blank' style='color:#FFFFFF;'> 打开通达信龙虎榜&gt;&gt; </a>"
+    idx = orgText.find('<a class="dc-more"')
+    if idx > 0:
+        endIdx = orgText.find('</a>', idx) + 4
+        sub = orgText[idx : endIdx]
+        orgText = orgText.replace(sub, info)
     return orgText
     
 
