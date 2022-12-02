@@ -1,4 +1,5 @@
 import peewee as pw
+import threading
 import requests, json, flask
 import datetime, time
 import mcore, orm
@@ -103,7 +104,21 @@ def loadTdxLHB():
             time.sleep(12.35)
         dayFrom = dayFrom + delta
 
+
+def run():
+    time.sleep(10)
+    while True:
+        loadTdxLHB()
+        time.sleep(3600)
+
+def autoLoadTdxLHB():
+    th = threading.Thread(target = run)
+    th.start()
+    pass
+
 if __name__ == '__main__':
     orm.init()
     loadTdxLHB()
+    
+
 

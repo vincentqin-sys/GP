@@ -35,7 +35,7 @@ def toJE(s):
     return float(s)
     
 
-@app.route('/writeLHBDataList', methods = ['POST'])
+@app.route('/writeThsLHBDataList', methods = ['POST'])
 def writeLHBDataList():
     try:
         params = request.data
