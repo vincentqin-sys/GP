@@ -5,7 +5,7 @@ import json
 import traceback
 import requests, json
 
-import mviews, orm, mcore, proxy
+import mviews, orm, mcore, proxy, tdx_lhb
 
 app = Flask(__name__, static_folder='ui/static', template_folder='ui/templates')
 
@@ -61,7 +61,7 @@ def writeLHBDataList():
             it['jme'] = toJE(it['jme'])
             it['mrje'] = (it['cjje'] + it['jme']) / 2
             it['mcje'] = (it['cjje'] - it['jme']) / 2
-            orm.LHB.create(**it)
+            orm.ThsLHB.create(**it)
         return '{"status": "OK", "msg" : "success"}'
     except Exception as e:
         traceback.print_exc()
@@ -93,7 +93,17 @@ def getZTZBInfo():
     return txt
     
 
+doingTag = False
 
+@app.route('/fetchTdxLHB', methods = ['GET'])
+def fetchTdxLHB():
+    global doingTag
+    if doingTag:
+        return
+    doingTag = True
+    tdx_lhb.loadTdxLHB()
+    doingTag = False
+    
 
 """
 @app.before_request

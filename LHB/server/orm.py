@@ -8,7 +8,8 @@ class User(mcore.BaseModel):
 class Dept(mcore.BaseModel):
     name = pw.CharField()
 
-class LHB(mcore.BaseModel):
+# 同花顺龙虎榜
+class ThsLHB(mcore.BaseModel):
     day = pw.CharField()
     tag = pw.CharField()
     code = pw.CharField()
@@ -35,6 +36,26 @@ class YouZi(mcore.BaseModel):
         else:
             if val.yybDesc != yybDesc:
                 print(f'Error YouZi info: find {yyb} in db is {val.yybDesc}, but not is {yybDesc} ')
+
+# 通达信龙虎榜
+class TdxLHB(mcore.BaseModel):
+    day = pw.CharField(column_name = '日期' )
+    code = pw.CharField()
+    name = pw.CharField()
+    title = pw.CharField(column_name = '上榜类型' )
+    price = pw.FloatField(column_name = '收盘价' )
+    zd = pw.FloatField(column_name = '涨跌幅' )
+    vol = pw.FloatField(column_name = '成交量' ) # 万股
+    cjje = pw.FloatField(column_name = '成交额' ) # 万元
+    
+    mrje = pw.FloatField(column_name = '买入金额' ) #  (万元)
+    mrjeRate = pw.FloatField(column_name = '买入金额_占比' ) #  (占总成交比例%)
+    mcje = pw.FloatField(column_name = '买出金额' ) #  (万元)
+    mcjeRate = pw.FloatField(column_name = '买出金额_占比' ) #  (占总成交比例%)
+    jme = pw.FloatField(column_name = '净买额' ) #  (万元)
+    detail = pw.CharField(column_name = '成交明细' )
+    famous = pw.CharField(column_name = '知名游资' )
+    
     
 def init():
-    mcore.db.create_tables([LHB, YouZi])
+    mcore.db.create_tables([ThsLHB, YouZi, TdxLHB])
