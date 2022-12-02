@@ -97,7 +97,8 @@ def loadTdxLHB():
     delta = datetime.timedelta(days=1)
     while dayFrom  < now:
         if dayFrom >= minDay and dayFrom <= maxDay:
-            print('Skip ' + str(dayFrom))
+            #print('Skip ' + str(dayFrom))
+            pass
         else:
             print('Load day ' + str(dayFrom))
             loadOneDayLHB(dayFrom.strftime('%Y-%m-%d'))

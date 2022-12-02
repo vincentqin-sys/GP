@@ -121,5 +121,5 @@ mviews.init(app)
 orm.init()
 
 proxy.init(app)
-
+tdx_lhb.autoLoadTdxLHB()
 app.run(host = '0.0.0.0', port=8050, debug=True)
