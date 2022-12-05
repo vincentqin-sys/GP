@@ -43,6 +43,7 @@ def loadOneGP(code, day, name):
                 'detail': [], 'mrje': 0, 'mrjeRate': 0, 'mcje': 0, 'mcjeRate': 0, 'jme': 0, 'famous': ''}
     infos = rs['ResultSets'][1]
     infosCnt = infos['Content']
+    idx = 0
     for it in infosCnt:
         vv = {'yz': it[2], 'mrje': it[3], 'mcje': it[4], 'jme': it[5], 'yzDesc': it[12]}
         vv['mrje'] = vv['mrje'] if vv['mrje'] else 0
@@ -55,6 +56,9 @@ def loadOneGP(code, day, name):
         result['detail'].append(vv)
         if vv['yzDesc'] not in result['famous']:
             result['famous'] = result['famous'] + vv['yzDesc'] + '; '
+        if idx == 4:
+            result['famous'] = result['famous'] + ' // '
+        idx += 1
     result['mrjeRate'] = result['mrje'] * 100 / result['cjje']
     result['mcjeRate'] = result['mcje'] * 100 / result['cjje']
     result['detail'] = json.dumps(result['detail'], ensure_ascii = False)
