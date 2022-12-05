@@ -1,7 +1,7 @@
 from flask import Flask, url_for, views, abort, make_response, request
 import flask, peewee
 from flask_cors import CORS 
-import json
+import json, os
 import traceback
 import requests, json
 
@@ -36,7 +36,7 @@ def toJE(s):
     
 
 @app.route('/writeThsLHBDataList', methods = ['POST'])
-def writeLHBDataList():
+def writeThsLHBDataList():
     try:
         params = request.data
         params = json.loads(params)
@@ -117,9 +117,10 @@ def _close_db(*args):
         mcore.db.close()
 """
 
-mviews.init(app)
-orm.init()
-
-proxy.init(app)
-tdx_lhb.autoLoadTdxLHB()
+if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    mviews.init(app)
+    orm.init()
+    proxy.init(app)
+    tdx_lhb.autoLoadTdxLHB()
+    
 app.run(host = '0.0.0.0', port=8050, debug=True)

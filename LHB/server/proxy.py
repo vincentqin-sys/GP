@@ -49,4 +49,5 @@ def proxy():
     
 
 def init(app):
+    print('call prox init')
     app.add_url_rule('/proxy',  endpoint='proxy', view_func = proxy, methods = ['GET', 'POST'])

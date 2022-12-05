@@ -81,8 +81,9 @@ def loadOneDayLHB(day):
     print(f'Success insert  {len(result)} rows for day {day}')
     return True
 
-
+runLock = threading.RLock()
 def loadTdxLHB():
+    runLock.acquire()
     dayFrom = datetime.datetime(2022, 1, 4)
     cursor = mcore.db.cursor()
     rs = cursor.execute('select min(日期), max(日期) from tdxlhb').fetchall()
@@ -104,19 +105,30 @@ def loadTdxLHB():
             loadOneDayLHB(dayFrom.strftime('%Y-%m-%d'))
             time.sleep(12.35)
         dayFrom = dayFrom + delta
-
+    runLock.release()
 
 def run():
     time.sleep(10)
+    th = threading.currentThread()
+    print('in thread run', th.getName(), th.ident)
     while True:
         loadTdxLHB()
         time.sleep(3600)
 
+flagAuto = False
+lock = threading.RLock()
 def autoLoadTdxLHB():
+    th = threading.currentThread()
+    print('in thread run: ', th.getName(), th.ident, '[auto]')
+    lock.acquire()
+    global flagAuto
+    if flagAuto:
+        return
+    flagAuto = True
     th = threading.Thread(target = run)
     th.start()
-    pass
-
+    lock.release()
+    
 if __name__ == '__main__':
     orm.init()
     loadTdxLHB()
