@@ -91,9 +91,25 @@ void TH_DOWNLOAD_REF(int len, float *out, float *fcmd, float *val, float *ftype)
 		int code = (int)val[0];
 		// begin
 		char path[512];
-		int zq = (int)ftype[0];
+		int zq = code % 100;
+		code = code / 100;
 		sprintf(path, "%s%06d-%d", DLL_PATH, code, zq);
-		printf("open data file: %s \n", path);
+		printf("data file: %s \n", path);
+		FILE *ef = fopen(path, "rb");
+		if (ef != NULL) {
+			// exists file
+			int oldDate = 0;
+			fread(&oldDate, sizeof(int), 1, ef);
+			fclose(ef);
+			int newDate = (int)ftype[0];
+			printf("old-date=%d  new-date: %d \n", oldDate, newDate);
+			if (oldDate <= newDate)
+			{
+				file = NULL;
+				return;
+			}
+		}
+
 		file = fopen(path, "wb");
 		itemNum = 0;
 		return;
