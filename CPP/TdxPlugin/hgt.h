@@ -23,3 +23,5 @@ void GetHgtAccCgsl(float *out, int len);
 void GetHgtAccPer(float *out, int len);
 
 void CalcCaoDie(float *out, int len, float *bbi, float *downBoll);
+
+void GetJGD(int len, float *out, float *fcmd, float *val, float *c);

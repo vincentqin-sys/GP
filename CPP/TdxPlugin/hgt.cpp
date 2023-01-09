@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <stdio.h>
 #include "mysql.h"
+#include "comm.h"
 #define _MAX(a, b) (a > b ? a : b)
 #define _ABS(a) (a > 0 ? a : -a)
 
@@ -350,4 +351,55 @@ void GetHgtAccPer(float *out, int len) {
 
 void CalcCaoDie(float *out, int len, float *bbi, float *downBoll) {
 	
+}
+
+void GetJGD(int len, float *out, float *code, float *b, float *c)
+{
+	OpenIO();
+	static Statement *jgdStmt = NULL;
+	InitMysql();
+	memset(out, 0, sizeof(float) * len);
+	if (jgdStmt == NULL) {
+		jgdStmt = db.prepare("select _day, _bs, _price from jgd where _code = ? order by _day desc");
+		jgdStmt->setBindCapacity(48, 256);
+	}
+	char scode[8] = {0};
+	float icode = *code;
+	sprintf(scode, "%06d", int(*code));
+	printf("code = %s  \n", scode);
+
+	jgdStmt->reset();
+	jgdStmt->setStringParam(0, scode);
+	jgdStmt->bindParams();
+	jgdStmt->setResult(0, Statement::CT_INT, 4);
+	jgdStmt->setResult(1, Statement::CT_STRING, 8);
+	jgdStmt->setResult(2, Statement::CT_DOUBLE, 8);
+	jgdStmt->bindResult();
+	jgdStmt->exec();
+	jgdStmt->storeResult();
+
+	int idx = 0;
+	while (jgdStmt->fetch())
+	{
+		float day = (float)jgdStmt->getInt(0);
+		char bs = *jgdStmt->getString(1);
+		float fBS = 0;
+		float price = (float)jgdStmt->getDouble(2);
+
+		if (bs == 'b' || bs == 'B')
+		{
+			fBS = 1;
+		}
+		else if (bs == 'S' || bs == 's')
+		{
+			fBS = 2;
+		}
+
+		out[len - 1 - idx] = day;
+		out[len - 2 - idx] = fBS;
+		out[len - 3 - idx] = price;
+
+		printf("%f %f %f \n", day, fBS, price);
+		idx += 3;
+	}
 }

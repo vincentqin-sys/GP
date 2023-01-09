@@ -82,34 +82,36 @@ def loadOneDayLHB(day):
         for batch in pw.chunked(result, 10):
             dd = orm.TdxLHB.insert_many(batch)
             dd.execute()
-    print(f'Success insert  {len(result)} rows for day {day}')
+    if len(result) > 0:
+        print(f'Success insert  {len(result)} rows for day {day}')
     return True
 
 runLock = threading.RLock()
 def loadTdxLHB():
-    runLock.acquire()
-    dayFrom = datetime.datetime(2022, 1, 4)
+    dayFrom = datetime.date(2022, 1, 4)
     cursor = mcore.db.cursor()
     rs = cursor.execute('select min(日期), max(日期) from tdxlhb').fetchall()
     if len(rs) > 0:
-        minDay = datetime.datetime.strptime(rs[0][0], '%Y-%m-%d')
-        maxDay = datetime.datetime.strptime(rs[0][1], '%Y-%m-%d')
+        minDay = datetime.datetime.strptime(rs[0][0], '%Y-%m-%d').date()
+        maxDay = datetime.datetime.strptime(rs[0][1], '%Y-%m-%d').date()
     else:
-        minDay = datetime.datetime(2022, 1, 1)
-        maxDay = datetime.datetime(2022, 1, 1)
+        minDay = datetime.date(2022, 1, 1)
+        maxDay = datetime.date(2022, 1, 1)
 
-    now = datetime.datetime.now()
+    today = datetime.date.today()
     delta = datetime.timedelta(days=1)
-    while dayFrom  < now:
+    while dayFrom  <= today:
+        if dayFrom.isoweekday() >= 6:
+            dayFrom = dayFrom + delta
+            continue
         if dayFrom >= minDay and dayFrom <= maxDay:
             #print('Skip ' + str(dayFrom))
             pass
         else:
-            print('Load day ' + str(dayFrom))
+            #print('Load day ' + str(dayFrom))
             loadOneDayLHB(dayFrom.strftime('%Y-%m-%d'))
-            time.sleep(12.35)
+            time.sleep(12)
         dayFrom = dayFrom + delta
-    runLock.release()
 
 def run():
     time.sleep(10)
@@ -117,7 +119,7 @@ def run():
     print('in thread run', th.getName(), th.ident)
     while True:
         loadTdxLHB()
-        time.sleep(3600)
+        time.sleep(3600 * 6)
 
 flagAuto = False
 lock = threading.RLock()

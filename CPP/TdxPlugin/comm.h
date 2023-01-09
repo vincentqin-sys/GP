@@ -47,9 +47,4 @@ int GetLastTradeDay();
 
 int GetTradeDayBetween(int beginDay, int endDay);
 
-
-
-
-
-
-
+void OpenIO();

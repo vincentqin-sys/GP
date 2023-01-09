@@ -66,53 +66,96 @@ void TH_NUM_REF(int len, float* out, float* ids, float* code, float* c) {
 }
 
 static FILE *file = NULL;
-void TH_DOWNLOAD_REF(int len, float *out, float *fcmd, float *val, float *c)
+void TH_DOWNLOAD_REF(int len, float *out, float *fcmd, float *val, float *ftype)
 {
-	// OpenIO();
+	static void *buffers[50] = {NULL};
+	const size_t BUFF_SIZE = 300 * 50 * (4 * 16);
+	static int itemNum = 0;
+	static int maxCmd = 0;
+
+	OpenIO();
+	for (int i = 0; i < sizeof(buffers) / sizeof(void *); ++i)
+	{
+		if (buffers[i] == NULL) {
+			buffers[i] = malloc(BUFF_SIZE);
+		}
+	}
+	
 	int cmd = (int)fcmd[0];
-	if (cmd == 1) {
+	int type = (int)ftype[0]; // 1: int 2:float
+	if (cmd >= 0 && cmd < 100 && maxCmd < cmd) {
+		maxCmd = cmd;
+	}
+	if (cmd == 1000)
+	{
 		int code = (int)val[0];
 		// begin
 		char path[512];
-		int zq = (int)c[0];
+		int zq = (int)ftype[0];
 		sprintf(path, "%s%06d-%d", DLL_PATH, code, zq);
 		printf("open data file: %s \n", path);
 		file = fopen(path, "wb");
+		itemNum = 0;
 		return;
 	}
 	if (file == NULL) {
 		return;
 	}
-	if (cmd == 2)
+	if (cmd == 2000)
 	{
 		// end
+		maxCmd += 1;
+		// printf("maxCmd=%d  itemNum=%d \n", maxCmd, itemNum);
+		int LN = 4096 / (maxCmd * 4);
+		unsigned int *tmp = (unsigned int *)malloc(4 * maxCmd * LN);
+		int loopTimes = itemNum / LN + 1;
+		int curIdx = 0, maxItemNum = itemNum * maxCmd;
+		for (int lp = 0; lp < loopTimes && curIdx < maxItemNum; ++lp)
+		{
+			int tmpLen = 0;
+			for (int i = 0; i < LN && curIdx < maxItemNum; ++i)
+			{
+				for (int j = 0; j < maxCmd && curIdx < maxItemNum; ++j)
+				{
+					unsigned int *bp = (unsigned int *)buffers[j];
+					int idx = i + lp * LN;
+					// printf("tmpLen=%d, idx=%d fmcd=%d  val=%d \n", tmpLen, idx, j, bp[idx]);
+					tmp[tmpLen++] = bp[idx];
+					++curIdx;
+				}
+			}
+			fwrite(tmp, 4, tmpLen, file);
+		}
 		fclose(file);
 		file = NULL;
+		maxCmd = 0;
 		return;
-	} 
-
-	fprintf(file, "%d %d\n", cmd, len);
-	char *pp = (char *)malloc(4096);
-	char *p = pp;
-	*p = 0;
-	char tmp[50];
-	for (int i = 0; i < len; ++i)
-	{
-		if (val[i] < -0x7ffffff) {
-			val[i] = 0;
-		}
-		sprintf(tmp, "%.3f ", val[i]);
-		strcat(p, tmp);
-		p += strlen(tmp);
-		if (i > 0 && (i % 200 == 0)) {
-			fwrite(pp, 1, p - pp, file);
-			p = pp;
-			*p = 0;
-		}
 	}
-	fwrite(pp, 1, p - pp, file);
-	fwrite("\n", 1, 1, file);
-	free(pp);
+
+	if (cmd == 0) {
+		// is date
+		itemNum = len;
+		printf("Download start day: %d \n ", (int)val[0] + 19000000);
+	}
+
+	void *p = buffers[cmd];
+	if (len < itemNum) {
+		memset(buffers[cmd], 0, 4 * itemNum - len);
+		p = (char *)buffers[cmd] + (itemNum - len) * 4;
+	}
+
+	if (type == 1) { // int
+		int *pi = (int *)p;
+		for (int i = 0; i < len; ++i) {
+			pi[i] = (int)val[i];
+			if (val[i] - pi[i] >= 0.5) {
+				++pi[i];
+			}
+			//printf("%d %f \n", pi[i], val[i]);
+		}
+	} else if (type == 2) { // float
+		memcpy(p, val, sizeof(float) * len);
+	}
 }
 
 void TH_MAX_MIN_REF(int len, float *out, float *fcmd, float *val, float *c)
@@ -147,7 +190,12 @@ void TH_MAX_MIN_REF(int len, float *out, float *fcmd, float *val, float *c)
 		return;
 	}
 }
-	//------------------------------------------------------------------------------
+
+void JGD_REF(int len, float *out, float *fcmd, float *val, float *c) {
+	GetJGD(len, out, fcmd, val, c);
+}
+
+//------------------------------------------------------------------------------
 PluginTCalcFuncInfo g_CalcFuncSets[] = {
 	{1, (pPluginFUNC)&BeginLock_REF},
 	{2, (pPluginFUNC)&EndLock_REF},
@@ -158,6 +206,8 @@ PluginTCalcFuncInfo g_CalcFuncSets[] = {
 	{126, (pPluginFUNC)&TH_NUM_REF},
 
 	{130, (pPluginFUNC)&TH_DOWNLOAD_REF},
+
+	{200, (pPluginFUNC)&JGD_REF},
 
 	{500, (pPluginFUNC)&TH_MAX_MIN_REF},
 	{0, NULL},
