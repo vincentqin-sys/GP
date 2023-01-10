@@ -1,0 +1,1 @@
+copy ..\build\Debug\tdxpluginvs.dll  .

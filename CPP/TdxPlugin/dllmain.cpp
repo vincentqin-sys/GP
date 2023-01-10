@@ -91,8 +91,8 @@ void TH_DOWNLOAD_REF(int len, float *out, float *fcmd, float *val, float *ftype)
 		int code = (int)val[0];
 		// begin
 		char path[512];
-		int zq = code % 100;
-		code = code / 100;
+		int zq = code % 10;
+		code = code / 10;
 		sprintf(path, "%s%06d-%d", DLL_PATH, code, zq);
 		printf("data file: %s \n", path);
 		FILE *ef = fopen(path, "rb");
