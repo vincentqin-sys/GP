@@ -73,7 +73,7 @@ void TH_DOWNLOAD_REF(int len, float *out, float *fcmd, float *val, float *ftype)
 	static int itemNum = 0;
 	static int maxCmd = 0;
 
-	OpenIO();
+	// OpenIO();
 	for (int i = 0; i < sizeof(buffers) / sizeof(void *); ++i)
 	{
 		if (buffers[i] == NULL) {
@@ -93,7 +93,7 @@ void TH_DOWNLOAD_REF(int len, float *out, float *fcmd, float *val, float *ftype)
 		char path[512];
 		int zq = code % 10;
 		code = code / 10;
-		sprintf(path, "%s%06d-%d", DLL_PATH, code, zq);
+		sprintf(path, "%scache/%06d-%d", DLL_PATH, code, zq);
 		printf("data file: %s \n", path);
 		FILE *ef = fopen(path, "rb");
 		if (ef != NULL) {
@@ -102,7 +102,7 @@ void TH_DOWNLOAD_REF(int len, float *out, float *fcmd, float *val, float *ftype)
 			fread(&oldDate, sizeof(int), 1, ef);
 			fclose(ef);
 			int newDate = (int)ftype[0];
-			printf("old-date=%d  new-date: %d \n", oldDate, newDate);
+			printf("old-date=%d  new-date: %d \n", oldDate + 19000000, newDate + 19000000);
 			if (oldDate <= newDate)
 			{
 				file = NULL;

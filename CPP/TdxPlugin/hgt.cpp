@@ -355,7 +355,7 @@ void CalcCaoDie(float *out, int len, float *bbi, float *downBoll) {
 
 void GetJGD(int len, float *out, float *code, float *b, float *c)
 {
-	OpenIO();
+	// OpenIO();
 	static Statement *jgdStmt = NULL;
 	InitMysql();
 	memset(out, 0, sizeof(float) * len);
