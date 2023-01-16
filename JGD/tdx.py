@@ -18,10 +18,11 @@ class JGD(pw.Model):
 JGD.create_table()
 
 # code = 600256  period = 'day' or 'week'
+# fuQuan = FQ or CQ
 # return [ (date, open, high, low, close, amount, vol, BBI, MA5, 换手率, 0, 0), ... ]
-def read_code_File(code : str, period : str):
+def read_code_File(code : str, period : str, fuQuan : str):
     #base = 'D:/Program Files/new_tdx2/T0002/dlls/'
-    base = 'D:/Program Files (x86)/new_tdx/T0002/dlls/cache/'
+    base = f'D:/Program Files (x86)/new_tdx/T0002/dlls/cache-{fuQuan}/'
     path = base + code
     dd = 1
     if period == 'week':
@@ -41,9 +42,9 @@ def read_code_File(code : str, period : str):
     return items
 
 # period = 'day' or 'week'
-def load_code(code : str, day : int, period : str, maxNum: int = 100 ):
-    print('load_code:', code, day, period, maxNum)
-    datas = read_code_File(code, period)
+def load_code(code : str, day : int, period : str, fuQuan : str, maxNum: int = 100 ):
+    print('load_code:', code, day, period, fuQuan, maxNum)
+    datas = read_code_File(code, period, fuQuan)
     if len(datas) > 0:
         print('load code:', code, period, len(datas), datas[0][0])
     idx = 0

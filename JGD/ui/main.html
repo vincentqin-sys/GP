@@ -69,6 +69,7 @@
     <div style="padding-left: 70px;">
         <button onclick="changePeriod('day')" class="period"> 日线 </button> &nbsp; <button onclick="changePeriod('week')" class="period"> 周线 </button>
         <button onclick="zoom('+')" class="zoom"> + </button> &nbsp; <button onclick="zoom('-')" class="zoom"> - </button>
+        &nbsp;&nbsp;&nbsp;<button onclick="changeFuQuan(this)" > 复权 </button>
     </div>
 
     <div id="chart" width="1300" height="900" style="float:left;" style="overflow: hidden;">
@@ -115,6 +116,7 @@
 
 <script>
     PERIOD = 'day';
+    fuQuan = 'FQ'; // FQ  CQ
     jgdArr = [];
     dataArr = [];
     curJGD = null;
@@ -129,6 +131,19 @@
     }
     function getCurJGD() {
         return curJGD;
+    }
+    function changeFuQuan(obj) {
+        if (! getCurJGD()) {
+            return;
+        }
+        if (fuQuan == 'FQ') {
+            obj.innerText = '不复权';
+            fuQuan = 'CQ';
+        } else {
+            obj.innerText = '复权';
+            fuQuan = 'FQ';
+        }
+        load(curJGD.code, curJGD.buyDay, getPeriod());
     }
     function zoom(op) {
         if (! curJGD) {
@@ -155,8 +170,8 @@
 <script>
     function load(code, day, period) {
         let mm = MAX_K_NUM_MAP[K_WIDTH];
-        let url = 'http://localhost:8055/load_code?code=' + code + '&day=' + day + "&period=" + period + "&maxNum=" + mm;
-        // console.log(url);
+        let url = 'http://localhost:8055/load_code?code=' + code + '&day=' + day + "&period=" + period + "&maxNum=" + mm + '&fuQuan=' + fuQuan;
+        console.log(url);
         $.get(url, function (data) {
             PERIOD = period;
             dataArr = JSON.parse(data);

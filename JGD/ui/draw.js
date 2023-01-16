@@ -223,6 +223,15 @@ function drawBezier(attr, color, lineWidth) {
 
 //绘制k形图
 function drawKBar(mouseMove) {
+    if (! getCurJGD()) {
+        return;
+    }
+    ctx.beginPath();
+    ctx.textAlign = 'left';
+    ctx.fillText(getCurJGD().code, originX + 5, 20); // 文字
+    ctx.closePath();
+    
+
     drawBezier('ma5', "rgb(255, 255, 0)", 1);
     drawBezier('bbi', "rgb(238, 0, 238)", 2);
 

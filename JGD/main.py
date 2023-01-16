@@ -26,8 +26,9 @@ def load_code():
     code = request.args.get('code')
     day = int(request.args.get('day'))
     period = request.args.get('period')
+    fuQuan = request.args.get('fuQuan')
     maxNum = int(request.args.get('maxNum'))
-    data = tdx.load_code(code, day, period, maxNum)
+    data = tdx.load_code(code, day, period, fuQuan, maxNum)
     txt = json.dumps(data, ensure_ascii = False)
     return txt
 
