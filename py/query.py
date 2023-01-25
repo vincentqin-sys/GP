@@ -1,7 +1,7 @@
 import os
 import io
 import sys
-import pymysql
+import sqlite3
 from time import sleep
 from selenium import webdriver
 import traceback
@@ -9,12 +9,12 @@ import traceback
 DAY = '20210401'
 
 # open mysql
-mysql_conn = pymysql.connect(host= '127.0.0.1', port= 3306, user= 'root', password= 'root', db= 'tdx_f10')
+db = sqlite3.connect(host= '127.0.0.1', port= 3306, user= 'root', password= 'root', db= 'tdx_f10')
 f = open('d.txt', 'w')
 
 def queryHgt():
-    cursor = mysql_conn.cursor()
-    sql = 'select _hgt._code, count(*) cc from _hgt  where _hgt._day >= {}  group by _hgt._code order by cc desc'.format(DAY)
+    cursor = db.cursor()
+    sql = 'select hgt.code, count(*) cc from hgt  where hgt.day >= {}  group by hgt.code order by cc desc'.format(DAY)
     
     cursor.execute(sql)
     res = cursor.fetchall()
@@ -27,8 +27,8 @@ def queryHgt():
         
 
 def queryHgtAcc():
-    cursor = mysql_conn.cursor()
-    sql = 'select _code, count(*) cc from _hgt_acc  where _day >= {} and _zj != 0 group by _code order by cc desc limit 100'.format(DAY)
+    cursor = db.cursor()
+    sql = 'select code, count(*) cc from hgtacc  where day >= {} and zj != 0 group by code order by cc desc limit 100'.format(DAY)
     
     cursor.execute(sql)
     res = cursor.fetchall()
@@ -52,5 +52,5 @@ except Exception as e:
     traceback.print_exc()
 
 f.close()
-mysql_conn.close()
+db.close()
 input('End....')
