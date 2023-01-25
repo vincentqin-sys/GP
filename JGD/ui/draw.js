@@ -228,7 +228,7 @@ function drawKBar(mouseMove) {
     }
     ctx.beginPath();
     ctx.textAlign = 'left';
-    ctx.fillText(getCurJGD().code, originX + 5, 20); // 文字
+    ctx.fillText(getCurJGD().name, originX + 5, 20); // 文字
     ctx.closePath();
     
 

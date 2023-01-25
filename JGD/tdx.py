@@ -14,15 +14,31 @@ class JGD(pw.Model):
     class Meta:
         database = db
         table_name = '交割单'
+
+class ZTDT(pw.Model):
+    code = pw.CharField(max_length=6)
+    name = pw.CharField(max_length=20, null=True)
+    day = pw.IntegerField(null=True)
+    lianBan = pw.IntegerField(null=True)
+    tag = pw.CharField(null=True) # ZT or DT or ZTZB
+    remark = pw.CharField(null=True)
+    
+    class Meta:
+        database = db
+        table_name = '涨跌停'
     
 JGD.create_table()
+ZTDT.create_table()
 
 # code = 600256  period = 'day' or 'week'
-# fuQuan = FQ or CQ
+# fuQuan = FQ or CQ or LASTEST
 # return [ (date, open, high, low, close, amount, vol, BBI, MA5, 换手率, 0, 0), ... ]
 def read_code_File(code : str, period : str, fuQuan : str):
     #base = 'D:/Program Files/new_tdx2/T0002/dlls/'
-    base = f'D:/Program Files (x86)/new_tdx/T0002/dlls/cache-{fuQuan}/'
+    if 'LASTEST' == fuQuan:
+        base = base = f'D:/Program Files (x86)/new_tdx/T0002/dlls/cache/'
+    else:
+        base = f'D:/Program Files (x86)/new_tdx/T0002/dlls/cache-{fuQuan}/'
     path = base + code
     dd = 1
     if period == 'week':
@@ -42,6 +58,7 @@ def read_code_File(code : str, period : str, fuQuan : str):
     return items
 
 # period = 'day' or 'week'
+# fuQuan = 'FQ' or 'CQ' or 'LASTEST'
 def load_code(code : str, day : int, period : str, fuQuan : str, maxNum: int = 100 ):
     print('load_code:', code, day, period, fuQuan, maxNum)
     datas = read_code_File(code, period, fuQuan)

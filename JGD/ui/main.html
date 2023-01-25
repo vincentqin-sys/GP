@@ -115,8 +115,11 @@
 </body>
 
 <script>
-    PERIOD = 'day';
-    fuQuan = 'FQ'; // FQ  CQ
+    ctrlParams = {
+        period : 'day',
+        fuQuan : 'FQ', // FQ  CQ LASTEST
+        loadKMaxNum: 180,
+    };
     jgdArr = [];
     dataArr = [];
     curJGD = null;
@@ -127,7 +130,7 @@
         return curJGD ? curJGD.code : '';
     }
     function getPeriod() {
-        return PERIOD;
+        return ctrlParams.period;
     }
     function getCurJGD() {
         return curJGD;
@@ -136,12 +139,16 @@
         if (! getCurJGD()) {
             return;
         }
+        let fuQuan = ctrlParams.fuQuan;
         if (fuQuan == 'FQ') {
             obj.innerText = '不复权';
-            fuQuan = 'CQ';
+            ctrlParams.fuQuan = 'CQ';
+        } else if (fuQuan == 'CQ') {
+            obj.innerText = '最新';
+            ctrlParams.fuQuan = 'LASTEST';
         } else {
             obj.innerText = '复权';
-            fuQuan = 'FQ';
+            ctrlParams.fuQuan = 'FQ';
         }
         load(curJGD.code, curJGD.buyDay, getPeriod());
     }
@@ -170,10 +177,10 @@
 <script>
     function load(code, day, period) {
         let mm = MAX_K_NUM_MAP[K_WIDTH];
-        let url = 'http://localhost:8055/load_code?code=' + code + '&day=' + day + "&period=" + period + "&maxNum=" + mm + '&fuQuan=' + fuQuan;
+        let url = 'http://localhost:8055/load_code?code=' + code + '&day=' + day + "&period=" + period + "&maxNum=" + mm + '&fuQuan=' + ctrlParams.fuQuan;
         console.log(url);
         $.get(url, function (data) {
-            PERIOD = period;
+            ctrlParams.period = period;
             dataArr = JSON.parse(data);
             let ps = $('.period').removeClass('sel');
             if (period == 'day') {
