@@ -4,11 +4,13 @@
 #include <stdio.h>
 #include "mysql.h"
 #include "comm.h"
+#include "sqlite/sqlite3.h"
 #define _MAX(a, b) (a > b ? a : b)
 #define _ABS(a) (a > 0 ? a : -a)
 
-Mysql db;
-Statement *stmt2, *stmtacc;
+// Mysql db;
+sqlite3 *db;
+sqlite3_stmt *stmt2, *stmtacc;
 
 enum ID_PARAM {
 	IP_CODE, IP_CDD, IP_DD, IP_ZD, IP_XD, IP_JME, IP_CJJE, IP_NUM
@@ -27,17 +29,17 @@ struct HGT_ACC {
 	float per; // 持股占比
 };
 
-const int MAX_DAYS_LEN = 20000;
+const int MAXDAYS_LEN = 20000;
 
 int params[IP_NUM];
-int days[MAX_DAYS_LEN];
+int days[MAXDAYS_LEN];
 int daysLen;
 int zjMax;
-HGT hgt[MAX_DAYS_LEN];
+HGT hgt[MAXDAYS_LEN];
 int hgtLen;
 bool isZS; // zhi shu ?
 
-HGT_ACC hgtAcc[MAX_DAYS_LEN];
+HGT_ACC hgtAcc[MAXDAYS_LEN];
 int hgtAccLen;
 
 BOOL needQuery;
@@ -45,11 +47,12 @@ BOOL needQuery;
 void InitMysql() {
 	if (stmt2 != 0 && stmtacc != 0)
 		return;
-	db.connect("tdx_f10");
-	stmt2 = db.prepare("select _day, _jme, _mrje, _mcje , _cjje from _hgt where _code = ? order by _day asc");
-	stmtacc = db.prepare("select _day, _zj, _cgsl, _per from _hgt_acc where _code = ? order by _day asc");
-	if (stmt2) stmt2->setBindCapacity(48, 256);
-	if (stmtacc) stmtacc->setBindCapacity(48, 256);
+	int status = sqlite3_open("D:/vscode/GP/db/HGT.db", &db);
+	if (status != SQLITE_OK) {
+		printf("Open HGT sqlite db Fail %d \n", status);
+	}
+	status = sqlite3_prepare_v2(db, "select day, jme, mrje, mcje , cjje from hgt where code = ? order by day asc", -1, &stmt2, NULL);
+	status = sqlite3_prepare_v2(db, "select day, zj, cgsl, per from hgtacc where code = ? order by day asc", -1, &stmtacc, NULL);
 }
 
 void InitZJParam(int id, int val) {
@@ -84,54 +87,36 @@ void QueryResult() {
 	char code[8];
 	sprintf(code, "%06d", params[IP_CODE]);
 	isZS = (params[IP_CODE] == 999999) || (params[IP_CODE] == 399001) || (params[IP_CODE] == 399006);
+	if (isZS) {
+		strcpy(code, "HGTALL");
+	}
 	memset(hgt, 0, sizeof hgt);
 	memset(hgtAcc, 0, sizeof(hgtAcc));
+
+	sqlite3_reset(stmt2);
+	sqlite3_bind_text(stmt2, 0, code, strlen(code), NULL);
+	// ;
 	
-	stmt2->reset();
-	stmt2->setStringParam(0, code);
-	stmt2->bindParams();
-	stmt2->setResult(0, Statement::CT_INT);
-	stmt2->setResult(1, Statement::CT_INT);
-	stmt2->setResult(2, Statement::CT_INT);
-	stmt2->setResult(3, Statement::CT_INT);
-	stmt2->setResult(4, Statement::CT_INT);
-	stmt2->bindResult();
-	stmt2->exec();
-	stmt2->storeResult();
-	int rc = stmt2->getRowsCount();
-	for (int i = 0; i < rc - MAX_DL; ++i) {
-		stmt2->fetch();
-	}
-	while (stmt2->fetch()) {
+	while (sqlite3_step(stmt2) == SQLITE_ROW) {
 		HGT *p = &hgt[hgtLen];
-		p->day = stmt2->getInt(0);
-		p->jme = stmt2->getInt(1);
-		p->mrje = stmt2->getInt(2);
-		p->mcje = stmt2->getInt(3);
-		p->cjje = stmt2->getInt(4);
+		p->day = sqlite3_column_int(stmt2, 0);
+		p->jme = sqlite3_column_int(stmt2, 1);
+		p->mrje = sqlite3_column_int(stmt2, 2);
+		p->mcje = sqlite3_column_int(stmt2, 3);
+		p->cjje = sqlite3_column_int(stmt2, 4);
 		++hgtLen;
 	}
 
-	stmtacc->reset();
-	stmtacc->setStringParam(0, code);
-	stmtacc->bindParams();
-	stmtacc->setResult(0, Statement::CT_INT);
-	stmtacc->setResult(1, Statement::CT_INT);
-	stmtacc->setResult(2, Statement::CT_INT);
-	stmtacc->setResult(3, Statement::CT_DOUBLE);
-	stmtacc->bindResult();
-	stmtacc->exec();
-	stmtacc->storeResult();
-	rc = stmtacc->getRowsCount();
-	for (int i = 0; i < rc - MAX_DL; ++i) {
-		stmtacc->fetch();
-	}
-	while (stmtacc->fetch()) {
+	sqlite3_reset(stmtacc);
+	sqlite3_bind_text(stmtacc, 0, code, strlen(code), NULL);
+
+	while (sqlite3_step(stmtacc) == SQLITE_ROW)
+	{
 		HGT_ACC *p = &hgtAcc[hgtAccLen];
-		p->day = stmtacc->getInt(0);
-		p->zj = stmtacc->getInt(1);
-		p->cgsl = stmtacc->getInt(2);
-		p->per = stmtacc->getDouble(3);
+		p->day = sqlite3_column_int(stmtacc, 0);
+		p->zj = sqlite3_column_int(stmtacc, 1);
+		p->cgsl = sqlite3_column_int(stmtacc, 2);
+		p->per = (float)sqlite3_column_double(stmtacc,30);
 		++hgtAccLen;
 	}
 }
@@ -197,13 +182,14 @@ void GetZJMax(float *out, int len) {
 }
 
 void GetThbjPM(int code, float *out, int len) {
+	/*
 	static Statement *stmt;
 	InitMysql();
 
 	out[len - 1] = out[len - 2] = out[len - 3] = out[len - 4] = 0;
 	
 	if (stmt == NULL) {
-		stmt = db.prepare("select _day, _jrl_pm from _thbj where _code = ? order by _day asc ");
+		stmt = db.prepare("select day, _jrl_pm from _thbj where _code = ? order by day asc ");
 		if (stmt == NULL) {
 			return;
 		}
@@ -227,9 +213,11 @@ void GetThbjPM(int code, float *out, int len) {
 		out[len - 1 - i] = pm;
 		++i;
 	}
+	*/
 }
 
 void GetThNum( int code, float *out, int len ) {
+	/*
 	static Statement *stmt1, *stmt2;
 	InitMysql();
 
@@ -281,6 +269,7 @@ void GetThNum( int code, float *out, int len ) {
 	}
 	int num = stmt2->getInt(0);
 	out[len - 1] = num;
+	*/
 }
 
 void CalcHgtAccZJ(float *out, int len) {
@@ -356,11 +345,12 @@ void CalcCaoDie(float *out, int len, float *bbi, float *downBoll) {
 void GetJGD(int len, float *out, float *code, float *b, float *c)
 {
 	// OpenIO();
-	static Statement *jgdStmt = NULL;
+	/**
+		static Statement *jgdStmt = NULL;
 	InitMysql();
 	memset(out, 0, sizeof(float) * len);
 	if (jgdStmt == NULL) {
-		jgdStmt = db.prepare("select _day, _bs, _price from jgd where _code = ? order by _day desc");
+		jgdStmt = db.prepare("select day, _bs, _price from jgd where _code = ? order by day desc");
 		jgdStmt->setBindCapacity(48, 256);
 	}
 	char scode[8] = {0};
@@ -402,4 +392,5 @@ void GetJGD(int len, float *out, float *code, float *b, float *c)
 		printf("%f %f %f \n", day, fBS, price);
 		idx += 3;
 	}
+	*/
 }

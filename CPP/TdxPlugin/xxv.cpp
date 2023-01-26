@@ -15,6 +15,7 @@ char *gbk2utf8(char *gbk) {
 }
 
 int main(int argc, char **argv) {
+	/*
 	Mysql db;
 	ResultSet *rs;
 	db.connect("tdx_f10");
@@ -37,6 +38,6 @@ int main(int argc, char **argv) {
 	}
 	fclose(file);
 	db.close();
-
+	*/
 	return 0;
 }
