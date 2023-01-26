@@ -2,55 +2,63 @@ import os
 import io
 import sys
 import sqlite3
-from time import sleep
-from selenium import webdriver
 import traceback
 
-DAY = '20210401'
+DAY = '20221001'
 
 # open mysql
-db = sqlite3.connect(host= '127.0.0.1', port= 3306, user= 'root', password= 'root', db= 'tdx_f10')
-f = open('d.txt', 'w')
+db = sqlite3.connect(r'D:\vscode\GP\db\HGT.db')
 
-def queryHgt():
+def query_hgt_count(maxNum = 20):
     cursor = db.cursor()
-    sql = 'select hgt.code, count(*) cc from hgt  where hgt.day >= {}  group by hgt.code order by cc desc'.format(DAY)
+    sql = f'select hgt.code, count(*) cc from hgt  where hgt.day >= {DAY}  group by hgt.code order by cc desc limit {maxNum}'
     
     cursor.execute(sql)
     res = cursor.fetchall()
-    idx = 0
-    for r in res:
-        idx += 1
-        print(idx, r)
-        #t = '1' if r[0][0:1] == '6' else '0'
-        f.write(r[0] + '\n')
+    print(f'[HGT前十]按数量统计前{maxNum}：')
+    print('序号\t代码\t数量')
+    for idx, r in enumerate(res):
+        print(idx + 1, r[0], r[1], sep='\t')
+    cursor.close()
         
-
-def queryHgtAcc():
+def query_hgt_jme(maxNum = 20):
     cursor = db.cursor()
-    sql = 'select code, count(*) cc from hgtacc  where day >= {} and zj != 0 group by code order by cc desc limit 100'.format(DAY)
+    sql = f'select hgt.code, sum(jme) as _jme from hgt  where hgt.day >= {DAY}  group by hgt.code order by _jme desc limit {maxNum}'
     
     cursor.execute(sql)
     res = cursor.fetchall()
-    idx = 0
-    for r in res:
-        idx += 1
-        print(idx, r)
-        #t = '1' if r[0][0:1] == '6' else '0'
-        f.write(r[0] + '\n')
-
+    print(f'[HGT前十]按买入金额统计前{maxNum}：')
+    print('序号\t代码\t金额')
+    for idx, r in enumerate(res):
+        jme = r[1] / 10000
+        jme = '%.1f亿' % jme
+        print(idx + 1, r[0], jme, sep='\t')
+    cursor.close()
         
+def query_hgtacc_jme(maxNum = 20):
+    cursor = db.cursor()
+    sql = f'select code, sum(zj) as _jme from hgtacc  where day >= {DAY}  group by code order by _jme desc limit {maxNum}'
+    
+    cursor.execute(sql)
+    res = cursor.fetchall()
+    print(f'[HGT估计]按买入金额统计前{maxNum}：')
+    print('序号\t代码\t金额')
+    for idx, r in enumerate(res):
+        jme = r[1] / 10000
+        jme = '%.1f亿' % jme
+        print(idx + 1, r[0], jme, sep='\t')
+    cursor.close()
+    
 try:
-    print('----Show HGT Begin ----')
-    queryHgt()
-    print('----Show HGT End ------')
-    print('\n\n')
-    print('----Show HGT-Acc Begin ----')
-    queryHgtAcc()
-    print('----Show HGT-Acc End ------')
+    query_hgt_count()
+    print('-------------\n')
+    query_hgt_jme()
+    print('-------------\n')
+    query_hgtacc_jme()
+    print('-------------\n')
+    
 except Exception as e:
     traceback.print_exc()
 
-f.close()
 db.close()
 input('End....')
