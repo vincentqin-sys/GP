@@ -1,7 +1,7 @@
 import os, struct
 import peewee as pw
 
-db = pw.SqliteDatabase('ZT.db')
+db = pw.SqliteDatabase('D:/vscode/GP/db/ZT.db')
 
 class ZTZB(pw.Model):
     code = pw.CharField()

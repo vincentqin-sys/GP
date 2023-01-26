@@ -3,7 +3,7 @@ from flask import render_template, request, jsonify, Blueprint, url_for, g
 from flask.views import MethodView, View
 import peewee as pw
 
-db = pw.SqliteDatabase('LHB.db')
+db = pw.SqliteDatabase('D:/vscode/GP/db/LHB.db')
 # proxy = pw.DatabaseProxy()
 # proxy.initialize(db)
 

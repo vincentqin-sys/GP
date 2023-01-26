@@ -1,40 +1,55 @@
-import sqlite3
+import sqlite3, os
 from time import sleep
 from selenium import webdriver
 import traceback
 
 # chrome.exe --remote-debugging-port=9998 --user-data-dir="D://download/chrome"
 
-options = webdriver.ChromeOptions()
-options.add_experimental_option('excludeSwitches', ['enable-logging'])
-# options.add_experimental_option("debuggerAddress", "127.0.0.1:9998")
-# options.add_argument("--user-data-dir=C:\\Users\\ROG\\AppData\\Local\\Google\\Chrome\\User Data")
+_browser = None
+_db = None
 
-# options.add_argument('-headless')
-# options.add_argument('--no-sandbox')
-# options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36')
+def get_browser():
+    global _browser
+    if _browser:
+        return _browser
+    
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    # options.add_experimental_option("debuggerAddress", "127.0.0.1:9998")
+    # options.add_argument("--user-data-dir=C:\\Users\\ROG\\AppData\\Local\\Google\\Chrome\\User Data")
 
-browser = webdriver.Chrome( options = options)
+    # options.add_argument('-headless')
+    # options.add_argument('--no-sandbox')
+    # options.add_argument('user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36')
+
+    _browser = webdriver.Chrome( options = options)
+    return _browser
+    
+def get_db():
+    global _db
+    if _db:
+        return _db
+    _db = sqlite3.connect('D:/vscode/GP/db/HGT.db')
+    return _db
+    
 # 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
 
 """
 with open('stealth.min.js') as f:
     js = f.read()
-    browser.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+    get_browser().execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
     "source": js
     })
 """
 
-db = sqlite3.connect('hgt.db')
-
 # 加载指数数据 北向资金流入
 def load_zs_data(lastDay) :
     url = 'https://data.eastmoney.com/hsgtcg/gzcglist.html'
-    browser.get(url)
+    get_browser().get(url)
     sleep(3) # 2 second
-    # browser.find_element_by_id('page-50').click()
+    # get_browser().find_element_by_id('page-50').click()
     # sleep(1)
-    table = browser.find_element_by_css_selector('.dataview-body > table')
+    table = get_browser().find_element_by_css_selector('.dataview-body > table')
     headElems = table.find_elements_by_xpath('.//thead/tr/th')
     if headElems[0].text != '日期' or  headElems[2].text != '北向资金今日增持估计' or  headElems[6].text != '市值':
         print('ZS Web page changed, update program first... ', url)
@@ -84,7 +99,7 @@ def load_top10_body(table, data, lastDay):
     return True
 
 def load_top10_one_table(browser, divId, day):
-    div = browser.find_element_by_id(divId)
+    div = get_browser().find_element_by_id(divId)
     table = div.find_element_by_class_name('dataview-body').find_element_by_xpath('.//table')
     headElems = table.find_elements_by_xpath('.//thead/tr/th')
     if headElems[1].get_attribute('data-field') != 'SECURITY_CODE' or \
@@ -118,7 +133,7 @@ def load_top10_data(day) :
     day = str(day)
     day = day[0:4] + '-' + day[4:6] + '-' + day[6:]
     url = 'http://data.eastmoney.com/hsgt/top10/{}.html'.format(day)
-    browser.get(url)
+    get_browser().get(url)
     sleep(3) # 3 second
     
     data = []
@@ -171,23 +186,23 @@ def formatDBData(p):
 
 def saveDB(data):
     try:
-        cursor = db.cursor()
+        cursor = get_db().cursor()
 
         formatDBData(data)
         for v in data:
             sql = 'insert into hgt (code, day, jme, mrje, mcje, cjje) values ("{0}", {1}, {2}, {3}, {4}, {5}) '.format(v['code'], v['day'], v['jme'], (v['mrje']), (v['mcje']), v['cjje'])
             print(sql)
             cursor.execute(sql)
-        db.commit()
+        get_db().commit()
         return True
     except Exception as e:
         print('DB save error: ', str(e))
         traceback.print_exc()
-        db.rollback()
+        get_db().rollback()
         return False
 
 def queryLastDay():
-    cursor = db.cursor()
+    cursor = get_db().cursor()
     sql = 'select max(day) from hgt where code = "HGTALL" '
     cursor.execute(sql)
     res = cursor.fetchone()
@@ -206,13 +221,13 @@ def queryLastDay():
     print('GP last day: ', lastDay)
     
     return [zsLastDay, lastDay]
-    #db.commit()
+    #get_db().commit()
     print('DB query error: ', str(e))
     
 
 def queryCodeDays(lastDay):
     lastDay = lastDay[0:4] + lastDay[5:7] + lastDay[8:]
-    cursor = db.cursor()
+    cursor = get_db().cursor()
     sql = 'select day from hgt  where code = "HGTALL" and day > {} order by day asc'.format(lastDay)
     print(sql)
     cursor.execute(sql)
@@ -250,17 +265,17 @@ def main(auto):
         for i in dataHGT:
             print('   ', i)
         saveDB(dataHGT)
-    db.close()
+    get_db().close()
     
     if (not auto) and (len(days) == 0):
         ld = str(lastDays[2])
         #ld = ld[0:4] + '-' + ld[4:6] + '-' + ld[6:]
         url = 'http://data.eastmoney.com/hsgt/top10/{}.html'.format(ld)
-        browser.get(url)
+        get_browser().get(url)
     if not auto:
         input('Press Enter Key To Exit')
     
-    browser.quit()
+    get_browser().quit()
 
 if __name__ == '__main__':
     main(True)

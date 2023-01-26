@@ -117,10 +117,14 @@ def _close_db(*args):
         mcore.db.close()
 """
 
-if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-    mviews.init(app)
-    orm.init()
-    proxy.init(app)
-    tdx_lhb.autoLoadTdxLHB()
+def startup():
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        mviews.init(app)
+        orm.init()
+        proxy.init(app)
+        tdx_lhb.autoLoadTdxLHB()
+    app.run(host = '0.0.0.0', port=8050, debug=True)
     
-app.run(host = '0.0.0.0', port=8050, debug=True)
+    
+if __name__ == '__main__':
+    startup()

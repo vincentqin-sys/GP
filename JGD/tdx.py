@@ -1,6 +1,6 @@
 import struct, peewee as pw
 
-db = pw.SqliteDatabase('JGD.db') #交割单
+db = pw.SqliteDatabase('D:/vscode/GP/db/JGD.db') #交割单
 
 class JGD(pw.Model):
     code = pw.CharField(max_length=6)

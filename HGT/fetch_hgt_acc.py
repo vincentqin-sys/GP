@@ -3,13 +3,27 @@ from time import sleep
 from selenium import webdriver
 import traceback
 
-options = webdriver.ChromeOptions()
-options.add_experimental_option('excludeSwitches', ['enable-logging'])
+_browser = None
+_db = None
 
-browser = webdriver.Chrome( options = options)
-# browser.implicitly_wait(30)  # 隐性等待，最长等30秒
-# open mysql
-db = sqlite3.connect('hgt.db')
+def get_browser():
+    global _browser
+    if _browser:
+        return _browser
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
+    _browser = webdriver.Chrome( options = options)
+    return _browser
+    # get_browser().implicitly_wait(30)  # 隐性等待，最长等30秒
+    # open mysql
+    
+def get_db():
+    global _db
+    if _db:
+        return _db
+    _db = sqlite3.connect('D:/vscode/GP/db/HGT.db')
+    return _db
 
 def formatMoney(text):
     lastChar = text[-1:]
@@ -22,7 +36,7 @@ def formatMoney(text):
     return int(money)
 
 def alreadyExists(code, day):
-    cursor = db.cursor()
+    cursor = get_db().cursor()
     sql = 'select id, zj from hgtacc where code = "{0}" and day = {1} '.format(code, day)
     cursor.execute(sql)
     res = cursor.fetchall()
@@ -34,7 +48,7 @@ def alreadyExists(code, day):
     return res[0][0]
 
 def existsCode(code):
-    cursor = db.cursor()
+    cursor = get_db().cursor()
     sql = 'select count(*) from hgtacc where code = "{0}"  '.format(code)
     cursor.execute(sql)
     res = cursor.fetchall()
@@ -43,7 +57,7 @@ def existsCode(code):
 
 def saveMysql(data, day):
     num = 0
-    cursor = db.cursor()
+    cursor = get_db().cursor()
     for v in data:
         # skip not exists code
         #if (not existsCode(v['code'])) and (v['zsz'] < 800): # 总市值小于 800 亿
@@ -61,11 +75,11 @@ def saveMysql(data, day):
         num += 1
         cursor.execute(sql)
 
-    db.commit()
+    get_db().commit()
     return True
 
 def queryLastDay():
-    cursor = db.cursor()
+    cursor = get_db().cursor()
     sql = 'select max(day) from hgtacc'
     cursor.execute(sql)
     res = cursor.fetchall()
@@ -76,7 +90,7 @@ def queryLastDay():
 
 
 def load_gj_table():
-    div = browser.find_element_by_class_name('dataview-body')
+    div = get_browser().find_element_by_class_name('dataview-body')
     table = div.find_element_by_tag_name('table')
     trs = table.find_elements_by_xpath('.//tbody/tr')
     data = []
@@ -103,10 +117,10 @@ def main(auto):
         return
 
     # 沪深港通持股 估计
-    browser.get('http://data.eastmoney.com/hsgtcg/list.html')
+    get_browser().get('http://data.eastmoney.com/hsgtcg/list.html')
     # sleep(10)
     # input('Press Enter key to Load Day')
-    day = browser.find_element_by_class_name('title').find_element_by_tag_name('span').text[1: -1]
+    day = get_browser().find_element_by_class_name('title').find_element_by_tag_name('span').text[1: -1]
     print('Fetch acc day:', day)
     dayi = day.replace('-', '')
     if len(dayi) != 8:
@@ -121,19 +135,19 @@ def main(auto):
     saveMysql(data_1_day, dayi)
     
     # 
-    szOpt = browser.find_element_by_xpath('//th[@data-field="ADD_MARKET_CAP"]/div')
+    szOpt = get_browser().find_element_by_xpath('//th[@data-field="ADD_MARKET_CAP"]/div')
     print('szOpt = ', szOpt)
-    browser.execute_script("arguments[0].click();", szOpt)
+    get_browser().execute_script("arguments[0].click();", szOpt)
     sleep(3)
     data_1_day = load_gj_table()
     #for i in data_1_day:
     #    print(i)
     saveMysql(data_1_day, dayi)
     
-    db.close()
+    get_db().close()
     if not auto:
         input('Press Enter To Exit')
-    browser.quit()
+    get_browser().quit()
     
 if __name__ == '__main__':
     main(True)
