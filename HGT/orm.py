@@ -1,7 +1,7 @@
 import os, struct
 import peewee as pw
 
-db = pw.SqliteDatabase('hgt.db')
+db = pw.SqliteDatabase('D:/vscode/GP/db/HGT.db')
 
 #沪股通十大成交金额
 class HGT(pw.Model):
@@ -27,6 +27,13 @@ class HGTAcc(pw.Model):
     class Meta:
         database = db
 
+#股票基本情况（通达信数据）
+class TdxGPInfo(pw.Model):
+    code = pw.CharField() #  股票代码
+    name =  pw.CharField(null=True) #股票名称
+    hy = pw.CharField(null=True) #所属生业
+    class Meta:
+        database = db
 
 
-db.create_tables([HGT, HGTAcc])
+db.create_tables([HGT, HGTAcc, TdxGPInfo])
