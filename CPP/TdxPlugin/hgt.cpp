@@ -2,13 +2,11 @@
 #include "dll.h"
 #include <windows.h>
 #include <stdio.h>
-#include "mysql.h"
 #include "comm.h"
 #include "sqlite/sqlite3.h"
 #define _MAX(a, b) (a > b ? a : b)
 #define _ABS(a) (a > 0 ? a : -a)
 
-// Mysql db;
 sqlite3 *db;
 sqlite3_stmt *stmt2, *stmtacc;
 
@@ -45,6 +43,7 @@ int hgtAccLen;
 BOOL needQuery;
 
 void InitMysql() {
+// 	OpenIO();
 	if (stmt2 != 0 && stmtacc != 0)
 		return;
 	int status = sqlite3_open("D:/vscode/GP/db/HGT.db", &db);
@@ -53,6 +52,7 @@ void InitMysql() {
 	}
 	status = sqlite3_prepare_v2(db, "select day, jme, mrje, mcje , cjje from hgt where code = ? order by day asc", -1, &stmt2, NULL);
 	status = sqlite3_prepare_v2(db, "select day, zj, cgsl, per from hgtacc where code = ? order by day asc", -1, &stmtacc, NULL);
+	printf("stmt2= %p  stmtcc=%p \n", stmt2, stmtacc);
 }
 
 void InitZJParam(int id, int val) {
@@ -78,12 +78,12 @@ void InitZJParamDate(float* ds, int len) {
 void QueryResult() {
 	InitMysql();
 	//printf("QueryResult IN need:%d stmt=%p \n", needQuery, stmt);
-	if (! needQuery) return;
+	if (! needQuery)
+		return;
 	hgtLen = 0;
 	hgtAccLen = 0;
 	if (stmt2 == 0 || stmtacc == 0)
 		return;
-	int MAX_DL = sizeof(days)/sizeof(int);
 	char code[8];
 	sprintf(code, "%06d", params[IP_CODE]);
 	isZS = (params[IP_CODE] == 999999) || (params[IP_CODE] == 399001) || (params[IP_CODE] == 399006);
@@ -94,7 +94,8 @@ void QueryResult() {
 	memset(hgtAcc, 0, sizeof(hgtAcc));
 
 	sqlite3_reset(stmt2);
-	sqlite3_bind_text(stmt2, 0, code, strlen(code), NULL);
+	sqlite3_clear_bindings(stmt2);
+	sqlite3_bind_text(stmt2, 1, code, strlen(code), SQLITE_STATIC);
 	// ;
 	
 	while (sqlite3_step(stmt2) == SQLITE_ROW) {
@@ -108,10 +109,15 @@ void QueryResult() {
 	}
 
 	sqlite3_reset(stmtacc);
-	sqlite3_bind_text(stmtacc, 0, code, strlen(code), NULL);
+	sqlite3_clear_bindings(stmtacc);
+	sqlite3_bind_text(stmtacc, 1, code, strlen(code), SQLITE_STATIC);
 
-	while (sqlite3_step(stmtacc) == SQLITE_ROW)
+	while (true)
 	{
+		int status = sqlite3_step(stmtacc);
+		if (status != SQLITE_ROW) {
+			break;
+		}
 		HGT_ACC *p = &hgtAcc[hgtAccLen];
 		p->day = sqlite3_column_int(stmtacc, 0);
 		p->zj = sqlite3_column_int(stmtacc, 1);
@@ -119,6 +125,7 @@ void QueryResult() {
 		p->per = (float)sqlite3_column_double(stmtacc,30);
 		++hgtAccLen;
 	}
+	printf("query hgtAccLen=%d hgtLen=%d \n", hgtAcc, hgtLen);
 }
 
 inline int FindDay(int day, int from) {
