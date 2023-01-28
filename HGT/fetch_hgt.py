@@ -30,8 +30,15 @@ def get_db():
     if _db:
         return _db
     _db = sqlite3.connect('D:/vscode/GP/db/HGT.db')
+    #print('Create fetch_hgt._db = ', id(_db), _db)
     return _db
-    
+
+def close_db():
+    global _db
+    if _db:
+        _db.close()
+        _db = None
+
 # 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
 
 """
@@ -238,43 +245,45 @@ def queryCodeDays(lastDay):
     return data
 
 def main(auto):
-    lastDays = queryLastDay()
-    if lastDays == False:
-        return
+    try:
+        lastDays = queryLastDay()
+        if lastDays == False:
+            return
 
-    dataZS = load_zs_data(lastDays[0])
-    if dataZS == False :
-        print('Load ZS fail')
-        return
-    print('ZS --> ', len(dataZS))
-    for i in dataZS:
-        print('   ', i)
-
-    if saveDB(dataZS) == False:
-        return
-    
-    days = queryCodeDays(lastDays[1])
-    if days == False:
-        return
-    
-    for day in days:
-        dataHGT = load_top10_data(day)
-        if not dataHGT:
-            continue
-        print('HGT --> ', len(dataHGT))
-        for i in dataHGT:
+        dataZS = load_zs_data(lastDays[0])
+        if dataZS == False :
+            print('Load ZS fail')
+            return
+        print('ZS --> ', len(dataZS))
+        for i in dataZS:
             print('   ', i)
-        saveDB(dataHGT)
-    get_db().close()
-    
-    if (not auto) and (len(days) == 0):
-        ld = str(lastDays[2])
-        #ld = ld[0:4] + '-' + ld[4:6] + '-' + ld[6:]
-        url = 'http://data.eastmoney.com/hsgt/top10/{}.html'.format(ld)
-        get_browser().get(url)
-    if not auto:
-        input('Press Enter Key To Exit')
-    
+
+        if saveDB(dataZS) == False:
+            return
+        
+        days = queryCodeDays(lastDays[1])
+        if days == False:
+            return
+        
+        for day in days:
+            dataHGT = load_top10_data(day)
+            if not dataHGT:
+                continue
+            print('HGT --> ', len(dataHGT))
+            for i in dataHGT:
+                print('   ', i)
+            saveDB(dataHGT)
+        close_db()
+        
+        if (not auto) and (len(days) == 0):
+            ld = str(lastDays[2])
+            #ld = ld[0:4] + '-' + ld[4:6] + '-' + ld[6:]
+            url = 'http://data.eastmoney.com/hsgt/top10/{}.html'.format(ld)
+            get_browser().get(url)
+        if not auto:
+            input('Press Enter Key To Exit')
+    except:
+        traceback.print_exc()
     get_browser().quit()
 
 if __name__ == '__main__':

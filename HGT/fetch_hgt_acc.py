@@ -23,7 +23,14 @@ def get_db():
     if _db:
         return _db
     _db = sqlite3.connect('D:/vscode/GP/db/HGT.db')
+    #print('Create fetch_hgtacc._db = ', id(_db), _db)
     return _db
+
+def close_db():
+    global _db
+    if _db:
+        _db.close()
+        _db = None
 
 def formatMoney(text):
     lastChar = text[-1:]
@@ -112,41 +119,44 @@ def load_gj_table():
 
 
 def main(auto):
-    lastDay = queryLastDay()
-    if lastDay == False:
-        return
+    try:
+        lastDay = queryLastDay()
+        if lastDay == False:
+            return
 
-    # 沪深港通持股 估计
-    get_browser().get('http://data.eastmoney.com/hsgtcg/list.html')
-    # sleep(10)
-    # input('Press Enter key to Load Day')
-    day = get_browser().find_element_by_class_name('title').find_element_by_tag_name('span').text[1: -1]
-    print('Fetch acc day:', day)
-    dayi = day.replace('-', '')
-    if len(dayi) != 8:
-        input('Load day error.')
-        return
+        # 沪深港通持股 估计
+        get_browser().get('http://data.eastmoney.com/hsgtcg/list.html')
+        # sleep(10)
+        # input('Press Enter key to Load Day')
+        day = get_browser().find_element_by_class_name('title').find_element_by_tag_name('span').text[1: -1]
+        print('Fetch acc day:', day)
+        dayi = day.replace('-', '')
+        if len(dayi) != 8:
+            input('Load day error.')
+            return
+            
+        sleep(3)
+        #input('Press Enter key to Load Current Page')
+        data_1_day = load_gj_table()
+        for i in data_1_day:
+            print(i)
+        saveMysql(data_1_day, dayi)
         
-    sleep(3)
-    #input('Press Enter key to Load Current Page')
-    data_1_day = load_gj_table()
-    for i in data_1_day:
-        print(i)
-    saveMysql(data_1_day, dayi)
-    
-    # 
-    szOpt = get_browser().find_element_by_xpath('//th[@data-field="ADD_MARKET_CAP"]/div')
-    print('szOpt = ', szOpt)
-    get_browser().execute_script("arguments[0].click();", szOpt)
-    sleep(3)
-    data_1_day = load_gj_table()
-    #for i in data_1_day:
-    #    print(i)
-    saveMysql(data_1_day, dayi)
-    
-    get_db().close()
-    if not auto:
-        input('Press Enter To Exit')
+        # 
+        szOpt = get_browser().find_element_by_xpath('//th[@data-field="ADD_MARKET_CAP"]/div')
+        #print('szOpt = ', szOpt)
+        get_browser().execute_script("arguments[0].click();", szOpt)
+        sleep(3)
+        data_1_day = load_gj_table()
+        #for i in data_1_day:
+        #    print(i)
+        saveMysql(data_1_day, dayi)
+        
+        close_db()
+        if not auto:
+            input('Press Enter To Exit')
+    except:
+        traceback.print_exc()
     get_browser().quit()
     
 if __name__ == '__main__':
