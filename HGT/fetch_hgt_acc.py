@@ -76,14 +76,14 @@ def saveMysql(data, day):
         #if (not existsCode(v['code'])) and (v['zsz'] < 800): # 总市值小于 800 亿
         #    print('    skip {}'.format(v))
         #   continue
-        id = alreadyExists(v['code'], day)
-        if id == -1:
+        id_ = alreadyExists(v['code'], day)
+        if id_ == -1:
             print('    exists {}'.format(v))
             continue
-        elif id == 0:
+        elif id_ == 0:
             sql = 'insert into hgtacc (day, code, zj, zsz) values ({0}, "{1}", {2}, {3}) '.format( day, v['code'], formatMoney(v['zj']), v['zsz'])
         else:
-            sql = 'update hgtacc set zj = {}, zsz = {} where id = {}'.format(formatMoney(v['zj']), v['zsz'], id)
+            sql = 'update hgtacc set zj = {}, zsz = {} where id = {}'.format(formatMoney(v['zj']), v['zsz'], id_)
         print('[{}] update {}'.format(num, v))
         num += 1
         cursor.execute(sql)
