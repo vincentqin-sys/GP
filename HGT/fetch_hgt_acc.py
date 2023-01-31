@@ -18,6 +18,12 @@ def get_browser():
     # get_browser().implicitly_wait(30)  # 隐性等待，最长等30秒
     # open mysql
     
+def quit_brower():
+    global _browser
+    if _browser:
+        _browser.quit()
+        _browser = None
+        
 def get_db():
     global _db
     if _db:
@@ -157,7 +163,7 @@ def main(auto):
             input('Press Enter To Exit')
     except:
         traceback.print_exc()
-    get_browser().quit()
+    quit_brower()
     
 if __name__ == '__main__':
     main(True)

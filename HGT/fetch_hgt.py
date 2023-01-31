@@ -25,6 +25,12 @@ def get_browser():
     _browser = webdriver.Chrome( options = options)
     return _browser
     
+def quit_brower():
+    global _browser
+    if _browser:
+        _browser.quit()
+        _browser = None
+    
 def get_db():
     global _db
     if _db:
@@ -284,7 +290,7 @@ def main(auto):
             input('Press Enter Key To Exit')
     except:
         traceback.print_exc()
-    get_browser().quit()
+    quit_brower()
 
 if __name__ == '__main__':
     main(True)
