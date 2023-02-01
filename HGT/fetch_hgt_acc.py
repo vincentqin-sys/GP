@@ -5,6 +5,7 @@ import traceback
 
 _browser = None
 _db = None
+_lastDay = None
 
 def get_browser():
     global _browser
@@ -125,10 +126,9 @@ def load_gj_table():
 
 
 def main(auto):
+    global _lastDay
     try:
-        lastDay = queryLastDay()
-        if lastDay == False:
-            return
+        _lastDay = queryLastDay()
 
         # 沪深港通持股 估计
         get_browser().get('http://data.eastmoney.com/hsgtcg/list.html')
@@ -139,6 +139,8 @@ def main(auto):
         dayi = day.replace('-', '')
         if len(dayi) != 8:
             input('Load day error.')
+            return
+        if _lastDay == dayi:
             return
             
         sleep(3)

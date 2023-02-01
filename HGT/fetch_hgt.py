@@ -111,7 +111,7 @@ def load_top10_body(table, data, lastDay):
         data.append(item)
     return True
 
-def load_top10_one_table(browser, divId, day):
+def load_top10_one_table(divId, day):
     div = get_browser().find_element_by_id(divId)
     table = div.find_element_by_class_name('dataview-body').find_element_by_xpath('.//table')
     headElems = table.find_elements_by_xpath('.//thead/tr/th')
@@ -150,8 +150,8 @@ def load_top10_data(day) :
     sleep(3) # 3 second
     
     data = []
-    hgt = load_top10_one_table(browser, 'dataview_hgt', day)
-    sgt = load_top10_one_table(browser, 'dataview_sgt', day)
+    hgt = load_top10_one_table('dataview_hgt', day)
+    sgt = load_top10_one_table('dataview_sgt', day)
     
     if hgt == False or sgt == False:
         return False
