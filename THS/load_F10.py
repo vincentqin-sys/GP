@@ -35,12 +35,15 @@ def toInt(s):
     return int(ss)
 
 #-----------------------机构持仓---------------------------------
-# 机构持仓 加载   code = '002762',  name = '金发拉比'
-def loadJGCC(code, name):
+# 机构持仓 加载  
+def loadJGCC(code):
     f = open(BASE_PATH + code + '主力持仓', 'r', encoding= 'utf8')
     txt = f.read()
     f.close()
     js = json.loads(txt)
+    
+    obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == code)
+    name = obj.name if obj else None
 
     if ('status_code' not in js) or (js['status_code'] != 0 or ('data' not in js)):
         print('Load Error: ', '主力持仓', code, name)
@@ -177,7 +180,6 @@ def loadHYDB(code):
         print('Load Error: 行业对比 ', code, '未找到二级、二级行业数据')
         raise Exception()
     
-    
 #-------------------------股东---------------------------------
 def loadGD(code):
     f = open(BASE_PATH + code + '股东研究', 'r', encoding= 'gbk')
@@ -212,55 +214,91 @@ def saveGD(gd : dict):
     else:
         orm.THS_GD.create(**gd)
 
+#------------------------最新动态---------------------------------
+def loadNewest(code):
+    f = open(BASE_PATH + code + '最新动态', 'r', encoding= 'gbk')
+    txt = f.read()
+    f.close()
+    tag = '<title>'
+    pos = txt.index(tag)
+    pos += len(tag)
+    title = txt[pos : pos + 20]
+    idx = title.index('(')
+    name = title[0 : idx]
+    code = title[idx + 1 : idx + 7]
+    print('Load 最新动态：', code, name)
+    obj = {'code' : code, 'name': name}
+    saveNewest(obj)
+    return obj
+    
+def saveNewest(gd : dict):
+    obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == gd['code'])
+    if (obj):
+        obj.__data__.update(gd)
+        obj.save()
+    else:
+        orm.THS_Newest.create(**gd)
+        
+#------------------------概念题材---------------------------------
+def loadGNTC(code):
+    f = open(BASE_PATH + code + '概念题材', 'r', encoding= 'gbk')
+    txt = f.read()
+    f.close()
+    tag = '<title>'
+    pos = txt.index(tag)
+    pos += len(tag)
+    title = txt[pos : pos + 20]
+    idx = title.index('(')
+    name = title[0 : idx]
+    code = title[idx + 1 : idx + 7]
+    print('Load 概念题材：', code, name)
+    obj = {'code' : code, 'name': name}
+    saveGNTC(obj)
+    return obj
+    
+def saveGNTC(gd : dict):
+    obj = orm.THS_GNTC.get_or_none(orm.THS_GNTC.code == gd['code'])
+    if (obj):
+        obj.__data__.update(gd)
+        obj.save()
+    else:
+        orm.THS_GNTC.create(**gd)
+        
+#---------------------------------------------------------------------
+        
 #---------------------------------------------------------------------
 #info = loadHYDB('002762')
 #gd = loadGD('002762')
 #loadJGCC('002762', info['name'])
 
-def listFiles():
+def listFiles(tag = None):
     fs = os.listdir(BASE_PATH)
     fs = sorted(fs)
-    idx = 0
-    newFs = []
-    while idx + 2 < len(fs):
-        code1 = fs[idx][0 : 6]
-        code2 = fs[idx + 1][0 : 6]
-        code3 = fs[idx + 2][0 : 6]
-        
-        cc = (code1, fs[idx][6:], fs[idx + 1][6:], fs[idx + 2][6:])
-        if (code1 != code2) or (code1 != code3) or ('主力持仓' not in cc) or ('股东研究' not in cc) or ('行业地位' not in cc):
-            print('listFiles Error: ', code1, '不完整', fs[idx : idx + 3])
-            raise Exception()
-        
-        idx += 3
-        newFs.append(code1)
-    return newFs
-
-
-
-
-def loadOneAll(code):
-    obj = orm.THS_GD.get_or_none(orm.THS_GD.code == code)
-    if not obj:
-        gd = loadGD(code)
-    else:
-        gd = obj.__data__
-        print('Load 股东研究 Exists')
-    name = gd['name']
-
-    obj = orm.THS_HYDB.get_or_none(orm.THS_HYDB.code == code)
-    if not obj:
-        loadHYDB(code)
-    else:
-        print('Load 行业对比 Exists')
-
-    obj = orm.THS_JGCC.get_or_none(orm.THS_JGCC.code == code)
-    if not obj:
-        loadJGCC(code, name)
-    else:
-        print('Load 机构持仓 Exists')
-
-    print('--------')
+    if not tag:
+        return fs
+    ff = lambda n : tag in n
+    return filter(ff, fs)
+    
+def loadOneFile(fileName):
+    code = fileName[0 : 6]
+    tag = fileName[6 : ]
+    
+    if tag == '股东研究':
+        obj = orm.THS_GD.get_or_none(orm.THS_GD.code == code)
+        if not obj:
+            gd = loadGD(code)
+    elif tag == '行业对比':
+        obj = orm.THS_HYDB.get_or_none(orm.THS_HYDB.code == code)
+        if not obj:
+            loadHYDB(code)
+    elif tag == '主力持仓':
+        obj = orm.THS_JGCC.get_or_none(orm.THS_JGCC.code == code)
+        if not obj:
+            loadJGCC(code)
+    elif tag == '最新动态':
+        obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == code)
+        if not obj:
+            loadNewest(code)
 
 
 fs = listFiles()

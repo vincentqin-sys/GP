@@ -70,5 +70,19 @@ class THS_GD(pw.Model):
     class Meta:
         database = db
         table_name = '股东'
+        
+# 同花顺--最新动态
+class THS_Newest(pw.Model):
+    code = pw.CharField() #股票代码
+    name = pw.CharField() #股票名称
+    #公司亮点
+    
 
-db.create_tables([THS_JGCC, THS_HYDB, THS_GD])
+# 同花顺--概念题材
+class THS_GNTC(pw.Model):
+    code = pw.CharField() #股票代码
+    name = pw.CharField() #股票名称
+    gn = pw.CharField(null=True) # 常规概念，每概概念之间用/分隔
+
+    
+db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC])
