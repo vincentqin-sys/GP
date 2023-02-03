@@ -301,10 +301,10 @@ def loadOneFile(fileName):
             loadNewest(code)
 
 
-fs = listFiles()
-for idx, code in enumerate(fs):
+fs = listFiles('最新动态')
+for idx, fn in enumerate(fs):
     try:
         print('[%04d]' % (idx + 1))
-        loadOneAll(code)
+        loadOneFile(fn)
     except:
-        print('Load Exception: ', code)
+        print('Load Exception: ', fn)
