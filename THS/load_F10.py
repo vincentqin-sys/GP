@@ -259,17 +259,25 @@ def loadGNTC(code):
         print('Load 概念题材：', code, name, '未找到题材概标识')
         raise Exception()
     tab = tbs[0] # 常规概念 table
-    hds = tab.find_elements_by_xpath('.//thead/tr/td')
+    hds = tab.thead.tr.find_all('th')
+    hdsNum = len(hds)
     if hds[1].text != '概念名称':
         print('Load 概念题材：', code, name, '表格发生变更')
         raise Exception()
-    trs = tab.find_elements_by_xpath('.//tbody/tr')
+    trs = tab.tbody.find_all('tr')
     gn = []
     for tr in trs:
-        tds = tr.find_elements_by_xpath('.//td')
-        gn.append(tds[1].text.strip())
-    #saveGNTC(obj)
-    print('Load 概念题材：', code, name, gn)
+        tds = tr.find_all('td')
+        if len(tds) == hdsNum: # 只有与表格标题相同列数的才是概念
+            gn.append(tds[1].text.strip())
+    
+    if len(gn) == 0:
+        print('Load 概念题材：', code, name, '未找到相关的概念')
+        raise Exception()
+    
+    obj['gn'] = '/'.join(gn)
+    saveGNTC(obj)
+    print('Load 概念题材：', obj)
     
     
 def saveGNTC(gd : dict):
@@ -320,14 +328,16 @@ def loadOneFile(fileName):
         if not obj:
             loadGNTC(code)
 
+
 """
-fs = listFiles()
-for idx, code in enumerate(fs):
+fs = listFiles('概念题材')
+for idx, fn in enumerate(fs):
     try:
         print('[%04d]' % (idx + 1))
-        loadOneAll(code)
+        loadOneFile(fn)
     except:
         print('Load Exception: ', code)
 """
 
 loadOneFile('600252概念题材')
+
