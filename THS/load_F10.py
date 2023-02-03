@@ -251,10 +251,26 @@ def loadGNTC(code):
     idx = title.index('(')
     name = title[0 : idx]
     code = title[idx + 1 : idx + 7]
-    print('Load 概念题材：', code, name)
     obj = {'code' : code, 'name': name}
-    saveGNTC(obj)
-    return obj
+    
+    soup = BeautifulSoup(txt, 'html5lib')
+    tbs = soup.select('table.gnContent')
+    if len(tbs) == 0:
+        print('Load 概念题材：', code, name, '未找到题材概标识')
+        raise Exception()
+    tab = tbs[0] # 常规概念 table
+    hds = tab.find_elements_by_xpath('.//thead/tr/td')
+    if hds[1].text != '概念名称':
+        print('Load 概念题材：', code, name, '表格发生变更')
+        raise Exception()
+    trs = tab.find_elements_by_xpath('.//tbody/tr')
+    gn = []
+    for tr in trs:
+        tds = tr.find_elements_by_xpath('.//td')
+        gn.append(tds[1].text.strip())
+    #saveGNTC(obj)
+    print('Load 概念题材：', code, name, gn)
+    
     
 def saveGNTC(gd : dict):
     obj = orm.THS_GNTC.get_or_none(orm.THS_GNTC.code == gd['code'])
@@ -299,8 +315,12 @@ def loadOneFile(fileName):
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == code)
         if not obj:
             loadNewest(code)
+    elif tag == '概念题材':
+        obj = orm.THS_GNTC.get_or_none(orm.THS_GNTC.code == code)
+        if not obj:
+            loadGNTC(code)
 
-
+"""
 fs = listFiles()
 for idx, code in enumerate(fs):
     try:
@@ -308,3 +328,6 @@ for idx, code in enumerate(fs):
         loadOneAll(code)
     except:
         print('Load Exception: ', code)
+"""
+
+loadOneFile('600252概念题材')
