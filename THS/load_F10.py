@@ -291,10 +291,6 @@ def saveGNTC(gd : dict):
 #---------------------------------------------------------------------
         
 #---------------------------------------------------------------------
-#info = loadHYDB('002762')
-#gd = loadGD('002762')
-#loadJGCC('002762', info['name'])
-
 def listFiles(tag = None):
     fs = os.listdir(BASE_PATH)
     fs = sorted(fs)
@@ -329,15 +325,14 @@ def loadOneFile(fileName):
             loadGNTC(code)
 
 
-"""
+#"""
 fs = listFiles('概念题材')
 for idx, fn in enumerate(fs):
     try:
         print('[%04d]' % (idx + 1))
         loadOneFile(fn)
     except:
-        print('Load Exception: ', code)
-"""
+        print('Load Exception: ', fn)
+#"""
 
-loadOneFile('600252概念题材')
 

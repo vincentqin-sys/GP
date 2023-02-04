@@ -28,7 +28,7 @@ def downloadFull(num = 4900):
             time.sleep(WAIT_TIME)
     
     
-for i in range(4900):
+for i in range(4400):
     time.sleep(WAIT_TIME)
     print(i)
     clickNext()
