@@ -91,5 +91,6 @@ class THS_GNTC(pw.Model):
         database = db
         table_name = '概念题材'
 
-    
+
+
 db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC])

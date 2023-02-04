@@ -82,4 +82,4 @@ def queryManyFlatFullInfo(codes):
     return rs    
     
 # queryByGN(('数字经济', '信创'), 'AND')
-flatFullInfo(queryFullInfo('600536'))
+#flatFullInfo(queryFullInfo('600536'))
