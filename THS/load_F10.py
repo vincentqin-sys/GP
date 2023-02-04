@@ -304,7 +304,7 @@ def loadOneFile(fileName):
 fs = listFiles('概念题材')
 for idx, fn in enumerate(fs):
     try:
-        print('[%04d]' % (idx + 1))
+        #print('[%04d]' % (idx + 1))
         loadOneFile(fn)
     except:
         print('Load Exception: ', fn)
