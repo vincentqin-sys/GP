@@ -34,6 +34,14 @@ def toInt(s):
         return 0
     return int(ss)
 
+def saveDB(ormCls, zlcq : dict):
+    obj = ormCls.get_or_none(ormCls.code == zlcq['code'])
+    if (obj):
+        obj.__data__.update(**zlcq)
+        obj.save()
+    else:
+        ormCls.create(**zlcq)
+
 #-----------------------机构持仓---------------------------------
 # 机构持仓 加载  
 def loadJGCC(code):
@@ -69,16 +77,8 @@ def loadJGCC(code):
         rs['change' + k] = None
         idx += 1
     # print(rs)
-    saveZLCQ(rs)
+    saveDB(orm.THS_JGCC, rs)
     print('Load 机构持仓: ', code, name)
-
-def saveZLCQ(zlcq : dict):
-    obj = orm.THS_JGCC.get_or_none(orm.THS_JGCC.code == zlcq['code'])
-    if (obj):
-        obj.__data__.update(**zlcq)
-        obj.save()
-    else:
-        orm.THS_JGCC.create(**zlcq)
 
 #------------------------行业对比-(排名)--------------------------------
 def sortHYDB_PM(txt, cols):
@@ -203,16 +203,8 @@ def loadGD(code):
     code = title[idx + 1 : idx + 7]
     print('Load 股东研究：', code, name, '前十大流通股东点比', rate)
     obj = {'code' : code, 'name': name, 'ltgdTop10Rate' : rate}
-    saveGD(obj)
+    saveDB(orm.THS_GD, obj)
     return obj
-
-def saveGD(gd : dict):
-    obj = orm.THS_GD.get_or_none(orm.THS_GD.code == gd['code'])
-    if (obj):
-        obj.__data__.update(gd)
-        obj.save()
-    else:
-        orm.THS_GD.create(**gd)
 
 #------------------------最新动态---------------------------------
 def loadNewest(code):
@@ -228,16 +220,8 @@ def loadNewest(code):
     code = title[idx + 1 : idx + 7]
     print('Load 最新动态：', code, name)
     obj = {'code' : code, 'name': name}
-    saveNewest(obj)
+    saveDB(orm.THS_Newest, obj)
     return obj
-    
-def saveNewest(gd : dict):
-    obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == gd['code'])
-    if (obj):
-        obj.__data__.update(gd)
-        obj.save()
-    else:
-        orm.THS_Newest.create(**gd)
         
 #------------------------概念题材---------------------------------
 def loadGNTC(code):
@@ -276,18 +260,9 @@ def loadGNTC(code):
         raise Exception()
     
     obj['gn'] = '/'.join(gn)
-    saveGNTC(obj)
+    saveDB(orm.THS_GNTC, obj)
     print('Load 概念题材：', obj)
-    
-    
-def saveGNTC(gd : dict):
-    obj = orm.THS_GNTC.get_or_none(orm.THS_GNTC.code == gd['code'])
-    if (obj):
-        obj.__data__.update(gd)
-        obj.save()
-    else:
-        orm.THS_GNTC.create(**gd)
-        
+
 #---------------------------------------------------------------------
         
 #---------------------------------------------------------------------
