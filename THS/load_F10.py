@@ -284,31 +284,21 @@ def listFiles(tag = None):
     ff = lambda n : tag in n
     return filter(ff, fs)
     
-def loadOneFile(fileName):
+def loadOneFile(fileName, forceLoad = False):
     code = fileName[0 : 6]
     tag = fileName[6 : ]
+    ops = {'股东研究': (orm.THS_GD, loadGD), '行业对比':(orm.THS_HYDB, loadHYDB), 
+            '主力持仓':(orm.THS_JGCC, loadJGCC), '最新动态':(orm.THS_Newest, loadNewest), 
+            '概念题材':(orm.THS_GNTC, loadGNTC)}
     
-    if tag == '股东研究':
-        obj = orm.THS_GD.get_or_none(orm.THS_GD.code == code)
-        if not obj:
-            gd = loadGD(code)
-    elif tag == '行业对比':
-        obj = orm.THS_HYDB.get_or_none(orm.THS_HYDB.code == code)
-        if not obj:
-            loadHYDB(code)
-    elif tag == '主力持仓':
-        obj = orm.THS_JGCC.get_or_none(orm.THS_JGCC.code == code)
-        if not obj:
-            loadJGCC(code)
-    elif tag == '最新动态':
-        obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == code)
-        if not obj:
-            loadNewest(code)
-    elif tag == '概念题材':
-        obj = orm.THS_GNTC.get_or_none(orm.THS_GNTC.code == code)
-        if not obj:
-            loadGNTC(code)
-
+    opCls, opFun = ops[tag]
+    load = forceLoad
+    if (not forceLoad):
+        obj = opCls.get_or_none(opCls.code == code)
+        load = not obj
+    if load:
+        opFun(code)
+    
 
 #"""
 fs = listFiles('最新动态')
