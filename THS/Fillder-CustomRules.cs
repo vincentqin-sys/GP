@@ -274,7 +274,7 @@ class Handlers
         // modify by Me 2023.02.01
         var url : System.String = oSession.fullUrl;
         if (sFile == null) {
-            // sFile = new System.IO.StreamWriter("D:\\VSCode\\THS\\log-b.txt");
+            //sFile = new System.IO.StreamWriter("D:\\VSCode\\THS\\log-1.txt");
         }
         
         var demon : System.String = "http://basic.10jqka.com.cn/";
@@ -282,11 +282,9 @@ class Handlers
             return;
         }
         url = url.Substring(demon.Length);
-        if (url.Length < 10) {
+        if (url.Length < 6) {
             return;
         }
-        // sFile.WriteLine(url);
-        // sFile.Flush();
         
         var code : System.String = "";
         var tag : System.String = "";
@@ -307,16 +305,18 @@ class Handlers
                     return;
                 }
             }
-        
+        	
             url = url.Substring(6);
             // sub path
 			if (url == "/") {
 				tag = "最新动态";
-			} else if (url == "/field.html") {   // 行业地位
+			} else if (url == "/field.html") {
                 tag = "行业地位";
-            } else if (url == "/holder.html") { // 股东研究
+            } else if (url == "/holder.html") {
                 tag = "股东研究";
-            }
+			} else if (url == "/concept.html") {
+				tag = "概念题材";
+			}
         }
         if (code != "" && tag != "") {
             oSession.utilDecodeResponse();

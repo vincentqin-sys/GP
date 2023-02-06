@@ -220,6 +220,16 @@ def loadNewest(code):
     code = title[idx + 1 : idx + 7]
     print('Load 最新动态：', code, name)
     obj = {'code' : code, 'name': name}
+    tag = '总市值：'
+    pos = txt.index(tag) + len(tag)
+    zszTxt = txt[pos : pos + 100]
+    if 'stockzsz' not in zszTxt:
+        print('Load 最新动态：Not find stockzsz')
+        raise Exception()
+    pos = zszTxt.index('stockzsz') + len('stockzsz')
+    zszTxt = zszTxt[pos : ]
+    zsz = toInt(zszTxt)
+    obj['zsz'] = zsz
     saveDB(orm.THS_Newest, obj)
     return obj
         
@@ -301,7 +311,7 @@ def loadOneFile(fileName):
 
 
 #"""
-fs = listFiles('概念题材')
+fs = listFiles('最新动态')
 for idx, fn in enumerate(fs):
     try:
         #print('[%04d]' % (idx + 1))

@@ -75,6 +75,7 @@ class THS_GD(pw.Model):
 class THS_Newest(pw.Model):
     code = pw.CharField() #股票代码
     name = pw.CharField() #股票名称
+    zsz = pw.IntegerField() #总市值 （亿元）
     #公司亮点
     class Meta:
         database = db

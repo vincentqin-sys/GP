@@ -23,7 +23,7 @@ def queryByGN(gns, conditionType = None):
             cnd = cnd | c
 
     q = THS_GNTC.select().where(cnd)
-    print(q.sql())
+    #print(q.sql())
     rs = [it for it in q]
     #for i, r in enumerate(rs):
     #    print(i, r.code, r.name)
@@ -53,7 +53,7 @@ def _mergeInfo(target, ormObj, prefix = None):
         if k == 'id':
             continue
         if (k == 'code') or (k == 'name'):
-            target[k] = data[k];
+            target[k] = data[k]
         else:
             target[prefix + '-' + k] = data[k]
 
@@ -78,7 +78,11 @@ def queryManyFullInfo(codes):
 def queryManyFlatFullInfo(codes):
     rs = []
     for code in codes:
-        rs.append(flatFullInfo(queryFullInfo(code)))
+        info = queryFullInfo(code)
+        if not info:
+            continue
+        flatInfo = flatFullInfo(info)
+        rs.append(flatInfo)
     return rs    
     
 # queryByGN(('数字经济', '信创'), 'AND')
