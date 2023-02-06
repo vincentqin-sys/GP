@@ -1,5 +1,7 @@
 from orm import *
 from peewee import Expression
+import pyperclip
+# pip install pyperclip
 
 # 按题材概念查找
 # gns: 多个或单个概念
@@ -65,7 +67,7 @@ def flatFullInfo(info):
     _mergeInfo(rs, info['THS_JGCC'])
     _mergeInfo(rs, info['THS_HYDB_2'], 'THS_HYDB_2')
     _mergeInfo(rs, info['THS_HYDB_3'], 'THS_HYDB_3')
-    print(rs)
+    #print(rs)
     return rs
     
 #查询指字的股票代码的详细信息
@@ -87,3 +89,53 @@ def queryManyFlatFullInfo(codes):
     
 # queryByGN(('数字经济', '信创'), 'AND')
 #flatFullInfo(queryFullInfo('600536'))
+
+def calcZhPMTag(info):
+    def getTag(v):
+        if (v < 0.2): return '优秀'
+        if (v < 0.4): return '良好'
+        if (v < 0.6): return '一般'
+        if (v < 0.8): return '较差'
+        return '垃圾'
+        
+    if info.get('THS_HYDB_2-zhPM') and info.get('THS_HYDB_2-hyTotal'):
+        info['THS_HYDB_2-zhPM-Tag'] = getTag(info.get('THS_HYDB_2-zhPM') / info.get('THS_HYDB_2-hyTotal'))
+    if info.get('THS_HYDB_3-zhPM') and info.get('THS_HYDB_3-hyTotal'):
+        info['THS_HYDB_3-zhPM-Tag'] = getTag(info.get('THS_HYDB_3-zhPM') / info.get('THS_HYDB_3-hyTotal'))
+    
+
+#打印并复制信息到剪贴板
+def printCodeInfo(code):
+    code = int(code)
+    code = "%06d" % code
+    info = queryFullInfo(code)
+    info = flatFullInfo(info)
+    print('\n', code, info['name'])
+    zb = ''
+    if not info.get('THS_JGCC-totalRate1'):
+        zb = '--'
+    elif info['THS_JGCC-totalRate1'] < 1:
+        zb = '不足1'
+    else:
+        zb = int(info['THS_JGCC-totalRate1'])
+    calcZhPMTag(info)
+    jg = "机构: %d家, 持仓%s%%" % (info['THS_JGCC-orgNum1'], zb)
+    xy = ''
+    if info.get('THS_HYDB_2-zhPM'):
+        xy += '  二级 ' + str(info.get('THS_HYDB_2-zhPM')) + '/' + str(info.get('THS_HYDB_2-hyTotal')) + f'[{info.get("THS_HYDB_2-zhPM-Tag")}]' + '\n'
+    if info.get('THS_HYDB_3-zhPM'):
+        xy += '  三级 ' + str(info.get('THS_HYDB_3-zhPM')) + '/' + str(info.get('THS_HYDB_3-hyTotal')) + f'[{info.get("THS_HYDB_3-zhPM-Tag")}]'
+    if xy:
+        xy = '行业排名: \n' + xy
+    txt = jg + '\n' + xy
+    pyperclip.copy(txt)
+    print(txt, '\n')
+    
+def printCodeInfoLoop():
+    while True:
+        code = input('Input Code:')
+        printCodeInfo(code)
+
+if __name__ == '__main__':
+    printCodeInfoLoop()
+    

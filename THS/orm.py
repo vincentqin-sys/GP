@@ -10,7 +10,7 @@ class THS_JGCC(pw.Model):
     name = pw.CharField() #股票名称
 
     date1 = pw.CharField(null=True) # 日期(年报、季报、中报等)
-    orgNum1 = pw.IntegerField(null=True)
+    orgNum1 = pw.IntegerField(null=True) # 机构数量
     totalRate1 = pw.FloatField(null=True) #持仓比例
     change1 = pw.IntegerField(null=True) #较上期变化 (万股)
 
