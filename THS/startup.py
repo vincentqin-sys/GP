@@ -19,7 +19,7 @@ def myselect():
 def queryByCodes(codes): # codes = 'code, code....' 股票代码
     cs = codes.split(',')
     data = query.queryManyFlatFullInfo(cs)
-    print('queryByCodes=', data, cs)
+    #print('queryByCodes=', data, cs)
     return json.dumps(data, ensure_ascii=False)
     
 @app.route('/queryByGN/<cndType>/<gns>', methods = ['GET'])
@@ -28,7 +28,7 @@ def queryByGN(gns, cndType): # gns = 'gn, gn....' 概念  cndType='AND' | 'OR'
     data = query.queryByGN(cs, cndType)
     codes = (d.code for d in data)
     rs = query.queryManyFlatFullInfo(codes)
-    print('queryByGN=', rs, data)
+    #print('queryByGN=', rs, data)
     return json.dumps(rs, ensure_ascii=False)
 
 print(__name__)
