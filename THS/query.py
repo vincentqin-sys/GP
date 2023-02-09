@@ -1,6 +1,8 @@
 from orm import *
 from peewee import Expression
 import pyperclip
+import os, sys, platform
+import win32api, win32gui, win32clipboard 
 # pip install pyperclip
 
 # 按题材概念查找
@@ -30,7 +32,15 @@ def queryByGN(gns, conditionType = None):
     #for i, r in enumerate(rs):
     #    print(i, r.code, r.name)
     return rs
-    
+
+#按行业名称查找    
+def queryByHY(hyName):
+    q = THS_HYDB.select(THS_HYDB.code.distinct()).where(THS_HYDB.hyName.contains(hyName))
+    print(q.sql())
+    rs = [it for it in q]
+    print(rs)
+    return rs
+
 #查询指字的股票代码的详细信息 
 # return a dict of : {THS_Newest:最新动态、THS_GNTC:概念题材、THS_GD:股东、THS_JGCC:机构持仓、THS_HYDB_2:行业对比(二级)、THS_HYDB_3:行业对比(三级)}
 def queryFullInfo(code):
@@ -128,13 +138,31 @@ def printCodeInfo(code):
     if xy:
         xy = '行业排名: \n' + xy
     txt = jg + '\n' + xy
-    pyperclip.copy(txt)
+    copyToClipboard(txt)
     print(txt, '\n')
     
 def printCodeInfoLoop():
     while True:
         code = input('Input Code:')
         printCodeInfo(code)
+
+def copyToClipboard(txt : str):
+    if 'Windows-10' not in platform.platform():
+        pyperclip.copy(txt)
+        return
+    txt = txt.replace('机构', "Org")
+    txt = txt.replace("持仓", "Rate ")
+    txt = txt.replace("二级", "Level-2")
+    txt = txt.replace("三级", "Level-3")
+    txt = txt.replace("行业排名", "Ranking")
+    txt = txt.replace("家", "")
+    txt = txt.replace("优秀", "Very Good")
+    txt = txt.replace("良好", "Good")
+    txt = txt.replace("一般", "Ordinary")
+    txt = txt.replace("较差", "Bad")
+    txt = txt.replace("垃圾", "Very Bad")
+    pyperclip.copy(txt)
+    #print(txt)
 
 if __name__ == '__main__':
     printCodeInfoLoop()

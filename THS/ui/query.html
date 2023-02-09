@@ -22,6 +22,7 @@
 			<el-option value="CODE" label="按代码查询">  </el-option>
 			<el-option value="GN_AND" label="按概念查询(AND)">  </el-option>
 			<el-option value="GN_OR" label="按概念查询(OR)"> </el-option>
+			<el-option value="HY" label="按行业查询"> </el-option>
 			<el-option value="MY_SELECT" label="我的自选股"> </el-option>
 		</el-select> 
 		<el-input v-model='inputVal' type='textarea' autosize style='width:400px'> </el-input> (多个以,分隔)
@@ -95,6 +96,15 @@
 						return;
 					}
 					axios.get('/queryByGN/OR/' + v.inputVal).then(function(resp) {
+						v.doPG(resp.data);
+						v.datas = resp.data;
+						console.log(resp.data);
+					});
+				} else if (v.opVal == 'HY') {
+					if (!v.inputVal) {
+						return;
+					}
+					axios.get('/queryByHY/' + v.inputVal).then(function (resp) {
 						v.doPG(resp.data);
 						v.datas = resp.data;
 						console.log(resp.data);

@@ -31,6 +31,14 @@ def queryByGN(gns, cndType): # gns = 'gn, gn....' 概念  cndType='AND' | 'OR'
     #print('queryByGN=', rs, data)
     return json.dumps(rs, ensure_ascii=False)
 
+@app.route('/queryByHY/<hyName>', methods = ['GET'])
+def queryByHY(hyName): # gns = 'gn, gn....' 概念  cndType='AND' | 'OR'
+    data = query.queryByHY(hyName)
+    codes = (d.code for d in data)
+    rs = query.queryManyFlatFullInfo(codes)
+    #print('queryByGN=', rs, data)
+    return json.dumps(rs, ensure_ascii=False)
+
 print(__name__)
 
 if __name__ == '__main__':
