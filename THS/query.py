@@ -138,13 +138,17 @@ def printCodeInfo(code):
     if xy:
         xy = '行业排名: \n' + xy
     txt = jg + '\n' + xy
-    copyToClipboard(txt)
+    pyperclip.copy(txt)
+    #copyToClipboard(txt)
     print(txt, '\n')
     
 def printCodeInfoLoop():
     while True:
-        code = input('Input Code:')
-        printCodeInfo(code)
+        try:
+            code = input('Input Code:')
+            printCodeInfo(code)
+        except:
+            pass
 
 def copyToClipboard(txt : str):
     if 'Windows-10' not in platform.platform():
@@ -165,5 +169,7 @@ def copyToClipboard(txt : str):
     #print(txt)
 
 if __name__ == '__main__':
+    #奇怪的问题 win10:
+    # 在复制到剪贴板上前(或在程序运行前)，必须先打开输入法，并设置到中文输入，不然粘贴时就是乱码
     printCodeInfoLoop()
     
