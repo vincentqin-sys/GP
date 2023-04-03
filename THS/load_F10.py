@@ -218,18 +218,29 @@ def loadNewest(code):
     idx = title.index('(')
     name = title[0 : idx]
     code = title[idx + 1 : idx + 7]
-    print('Load 最新动态：', code, name)
     obj = {'code' : code, 'name': name}
+
     tag = '总市值：'
     pos = txt.index(tag) + len(tag)
     zszTxt = txt[pos : pos + 100]
     if 'stockzsz' not in zszTxt:
-        print('Load 最新动态：Not find stockzsz')
+        print('Load 最新动态: Not find stockzsz')
         raise Exception()
     pos = zszTxt.index('stockzsz') + len('stockzsz')
     zszTxt = zszTxt[pos : ]
     zsz = toInt(zszTxt)
     obj['zsz'] = zsz
+
+    idx = txt.find('公司亮点：')
+    if idx < 0:
+        print('Load 最新动态: Not find 公司亮点')
+        raise Exception()
+    idx = txt.find('title="', idx) + 7
+    idx2 = txt.find('"', idx)
+    liangDian = txt[idx : idx2]
+    obj['liangDian'] = liangDian
+    
+    print('Load 最新动态：', obj)
     saveDB(orm.THS_Newest, obj)
     return obj
         
@@ -300,14 +311,18 @@ def loadOneFile(fileName, forceLoad = False):
         opFun(code)
     
 
+
 #"""
 fs = listFiles('最新动态')
 for idx, fn in enumerate(fs):
+    loadOneFile(fn)
     try:
         #print('[%04d]' % (idx + 1))
-        loadOneFile(fn)
+        # loadOneFile(fn)
+        pass
     except:
         print('Load Exception: ', fn)
+        raise Exception()
 #"""
 
 

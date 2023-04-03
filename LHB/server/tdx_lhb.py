@@ -64,6 +64,9 @@ def loadOneGP(code, day, name):
     result['detail'] = json.dumps(result['detail'], ensure_ascii = False)
     result['jme'] = result['mrje'] - result['mcje']
     #print(result['detail'])
+    names = ('vol', 'cjje', 'mrje', 'mrjeRate', 'mcje', 'mcjeRate', 'jme')
+    for n in names:
+        result[n] = int(result[n])
     return result
 
 # yyyy-mm-dd
