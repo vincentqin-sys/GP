@@ -45,14 +45,14 @@ class TdxLHB(mcore.BaseModel):
     title = pw.CharField(column_name = '上榜类型' )
     price = pw.FloatField(column_name = '收盘价' )
     zd = pw.FloatField(column_name = '涨跌幅' )
-    vol = pw.FloatField(column_name = '成交量' ) # 万股
-    cjje = pw.FloatField(column_name = '成交额' ) # 万元
+    vol = pw.IntegerField(column_name = '成交量' ) # 万股
+    cjje = pw.IntegerField(column_name = '成交额' ) # 万元
     
-    mrje = pw.FloatField(column_name = '买入金额' ) #  (万元)
-    mrjeRate = pw.FloatField(column_name = '买入金额_占比' ) #  (占总成交比例%)
-    mcje = pw.FloatField(column_name = '买出金额' ) #  (万元)
-    mcjeRate = pw.FloatField(column_name = '买出金额_占比' ) #  (占总成交比例%)
-    jme = pw.FloatField(column_name = '净买额' ) #  (万元)
+    mrje = pw.IntegerField(column_name = '买入金额' ) #  (万元)
+    mrjeRate = pw.IntegerField(column_name = '买入金额_占比' ) #  (占总成交比例%)
+    mcje = pw.IntegerField(column_name = '卖出金额' ) #  (万元)
+    mcjeRate = pw.IntegerField(column_name = '卖出金额_占比' ) #  (占总成交比例%)
+    jme = pw.IntegerField(column_name = '净买额' ) #  (万元)
     detail = pw.CharField(column_name = '成交明细' )
     famous = pw.CharField(column_name = '知名游资' )
     
