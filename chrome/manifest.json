@@ -22,9 +22,9 @@
 	
     "content_scripts": [
         {
-			"matches": ["http://data.10jqka.com.cn/market/longhu/*"],
+			"matches": ["http://www.iwencai.com/unifiedwap/result*"],
             "run_at": "document_idle",
-            "js": ["jquery-3.6.min.js"],
+            "js": ["iwencai-result.js"],
 			"all_frames" : true
 		}
     ],
