@@ -1,0 +1,33 @@
+{
+    "manifest_version": 2,
+    "name": "GP",
+    "version": "1.0",
+
+    "description": "GP",
+
+	"permissions": [
+		"http://www.iwencai.com/*",
+		"tabs",
+		"webRequest",
+		"webRequestBlocking",
+		"storage",
+		"nativeMessaging",
+		"declarativeNetRequest", "declarativeNetRequestFeedback"
+	],
+	
+	"background": {
+		"scripts": ["jquery-3.6.min.js", "bg.js"],
+		"persistent": true
+	},
+	
+    "content_scripts": [
+        {
+			"matches": ["http://data.10jqka.com.cn/market/longhu/*"],
+            "run_at": "document_idle",
+            "js": ["jquery-3.6.min.js"],
+			"all_frames" : true
+		}
+    ],
+
+	"web_accessible_resources": []
+}
