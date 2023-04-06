@@ -35,13 +35,24 @@ function loadHotPage(trs) {
             loadHotPageError();
             return;
         }
-        let obj = {code : tds[2].innerText, name: tds[3].innerText, hotVal : tds[6].innerText, hotOrder : tds[7].innerText};
-        obj.hotVal = parseInt(obj.hotVal);
+        let obj = { code: tds[2].innerText, name: tds[3].innerText, hotValue : tds[6].innerText, hotOrder : tds[7].innerText};
+        obj.hotValue = parseInt(obj.hotValue);
         obj.hotOrder = parseInt(obj.hotOrder);
         vals.push(obj);
         console.log(obj);
     }
-    let msg = {cmd: 'SET_HOT_INFO', data : {hotDay: hotDay, hotInfo : vals} };
+    
+    let ct = new Date();
+    let hotTime = '';
+    if (ct.getHours() < 10)
+        hotTime += '0';
+    hotTime += ct.getHours();
+    hotTime += ':';
+    if (ct.getMinutes() < 10)
+        hotTime += '0';
+    hotTime += ct.getMinutes();
+
+    let msg = { cmd: 'SET_HOT_INFO', data: { hotDay: hotDay, hotTime: hotTime, hotInfo : vals} };
 
     chrome.runtime.sendMessage( msg
 		// function(response) {

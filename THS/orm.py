@@ -92,6 +92,18 @@ class THS_GNTC(pw.Model):
         database = db
         table_name = '概念题材'
 
+# 同花顺--个股热度排名
+class THS_Hot(pw.Model):
+    day = pw.CharField(column_name = '日期' ) # 刷新日期
+    time = pw.CharField(column_name = '时间' ) # 刷新时间  HH:MM
+    code = pw.CharField() #股票代码
+    name = pw.CharField() #股票名称
+    hotValue = pw.IntegerField(column_name = '热度值_万' ) #
+    hotOrder = pw.IntegerField(column_name = '热度排名' ) #
+
+    class Meta:
+        database = db
+        table_name = '个股热度排名'
 
 
-db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC])
+db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC, THS_Hot])
