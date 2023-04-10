@@ -53,17 +53,31 @@ function setHotInfo(data) {
     } catch (e) {}
     proc_info.hotWindowId = 0;
     proc_info.hotLastOpenTabTime = Date.now();
+    sendHotInfoToServer(data);
+}
+
+function deepCopy(obj) {
+    let _obj = Array.isArray(obj) ? [] : {};
+    for (let i in obj) {
+        _obj[i] = (typeof obj[i] === 'object') ? deepCopy(obj[i]) : obj[i];
+    }
+    return _obj;
+}
+
+function sendHotInfoToServer(data) {
     // save to server http://localhost:8071/saveHot
+    // data = deepCopy(data);
     $.ajax({
         url: 'http://localhost:8071/saveHot',
         method: 'POST',
-        dataType : 'json',
+        dataType: 'json',
+        contentType : 'application/json',
         data: JSON.stringify(data),
         success: function (res) {
-            console.log('Send hot info to server success: ', res);
+            console.log('Send hot info to server success: ', data);
         },
         error: function (res) {
-            console.log('Send hot info to server Fail: ', res);
+            console.log('Send hot info to server Fail: ', data);
         }
     });
 }
@@ -95,4 +109,4 @@ function hot_run() {
 
 
 
-setInterval(hot_run, 1000 * 60 * 5);
+setInterval(hot_run, 1000 * 60 * 1);

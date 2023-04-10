@@ -101,6 +101,7 @@ if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
     pass
 
 def startup():
+    print('Start Server JGD at port 8055 ')
     app.run(host = '0.0.0.0', port=8055, debug=True)
 
 if __name__ == '__main__':

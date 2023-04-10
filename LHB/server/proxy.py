@@ -10,7 +10,7 @@ def proxy():
     code = flask.request.args.get('code')
     date = flask.request.args.get('date')
     url = f'http://news.10jqka.com.cn/data/api/lhcjmxgg/code/{code}/date/{date}?v=vv'
-    print(url)
+    #print(url)
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'}
     orgRes = requests.get(url, headers = headers)
     orgText = orgRes.text #str(orgRes.content, 'gbk')

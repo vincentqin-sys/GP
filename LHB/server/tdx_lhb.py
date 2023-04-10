@@ -73,7 +73,7 @@ def loadOneGP(code, day, name):
 def loadOneDayLHB(day):
     cc = orm.TdxLHB.select().where(orm.TdxLHB.day == day).count()
     if cc > 0:
-        print(f'Alreay Exists:  {day} exsits {cc} rows')
+        #print(f'Alreay Exists:  {day} exsits {cc} rows')
         return True
 
     result = []
