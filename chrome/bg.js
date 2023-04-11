@@ -33,7 +33,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         if (sender && sender.tab && sender.tab.windowId == proc_info.hotWindowId) {
             setHotInfo(data);
         }
-	}
+    } else if (cmd == 'LOG') {
+        console.log('Receive message', data);
+    }
 	
 	if (sendResponse) {
 		sendResponse('OK');
@@ -74,32 +76,34 @@ function sendHotInfoToServer(data) {
         contentType : 'application/json',
         data: JSON.stringify(data),
         success: function (res) {
-            console.log('Send hot info to server success: ', data);
+            console.log('Success: Send hot info to server success ', res, data);
         },
         error: function (res) {
-            console.log('Send hot info to server Fail: ', data);
+            console.log('Fail: Send hot info to server fail ', data);
         }
     });
 }
 
 // 热股排名
-function hot_run() {
-    let dt = new Date();
-    let week = dt.getDay();
-    if (week == 0 || week == 6) {
-        // 周六 周日
-        return;
-    }
-    let hour = dt.getHours();
-    if (hour < 9 || hour >= 16) {
-        return;
+function hot_run(force) {
+    if (! force) {
+        let dt = new Date();
+        let week = dt.getDay();
+        if (week == 0 || week == 6) {
+            // 周六 周日
+            return;
+        }
+        let hour = dt.getHours();
+        if (hour < 9 || hour >= 16) {
+            return;
+        }
+
+        if ((Date.now() - proc_info.hotLastOpenTabTime) / 1000 / 60 < 30) { // 30 minutes
+            return;
+        }
     }
 
-    if ((Date.now() - proc_info.hotLastOpenTabTime) / 1000 / 60 < 30) { // 30 minutes
-        return;
-    }
-
-    let url = 'http://www.iwencai.com/unifiedwap/result?w=%E4%B8%AA%E8%82%A1%E7%83%AD%E5%BA%A6%E6%8E%92%E5%90%8D%3C%3D100%E4%B8%94%E4%B8%AA%E8%82%A1%E7%83%AD%E5%BA%A6%E4%BB%8E%E5%A4%A7%E5%88%B0%E5%B0%8F%E6%8E%92%E5%90%8D&querytype=stock';
+    let url = 'http://www.iwencai.com/unifiedwap/result?w=%E4%B8%AA%E8%82%A1%E7%83%AD%E5%BA%A6%E6%8E%92%E5%90%8D%3C%3D200%E4%B8%94%E4%B8%AA%E8%82%A1%E7%83%AD%E5%BA%A6%E4%BB%8E%E5%A4%A7%E5%88%B0%E5%B0%8F%E6%8E%92%E5%90%8D&querytype=stock';
     chrome.windows.create({url : url, type : 'panel'}, function(window) {
             // callback
             proc_info.hotWindowId = window.id;

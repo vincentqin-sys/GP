@@ -7,6 +7,7 @@
 
 	"permissions": [
 		"http://www.iwencai.com/*",
+		"http://upass.iwencai.com/*",
 		"tabs",
 		"webRequest",
 		"webRequestBlocking",
@@ -24,10 +25,20 @@
         {
 			"matches": ["http://www.iwencai.com/unifiedwap/result*"],
             "run_at": "document_idle",
-            "js": ["iwencai-result.js"],
+            "js": ["thread.js", "iwencai-hot-page.js"],
 			"all_frames" : true
+		},
+		{
+			"matches": [
+				"http://upass.iwencai.com/login*"
+			],
+			"run_at": "document_idle",
+			"js": [
+				"iwencai-hot-login-page.js"
+			],
+			"all_frames": true
 		}
     ],
 
-	"web_accessible_resources": []
+	"web_accessible_resources": ["ajax-hook.js", "iwencai-hot-inject.js"]
 }

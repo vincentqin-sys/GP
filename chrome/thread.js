@@ -1,6 +1,6 @@
-function Task(name, delay) {
+function Task(name, delay, exec) {
 	// overwrite this function
-	this.exec = function (resolve, reject) { };
+	this.exec = exec || function (resolve, reject) { };
 	this.name = name;
 	this.delay = delay || 0;
 }
@@ -38,7 +38,7 @@ Thread.prototype._run = function() {
 	let topTask = this.tasks[0];
 	let diffTime = Date.now() - this.curTaskBeginTime;
 	if (diffTime < topTask.delay) {
-		console.log('Wait...');
+		// console.log('Wait...');
 		// wait
 		return;
 	}
@@ -50,7 +50,8 @@ Thread.prototype._run = function() {
 	function _reject_() {
 		thiz._reject();
 	}
-	this.curTask.exec(_resolve_, _reject_);
+	console.log('Thread.run ', this.curTask);
+	this.curTask.exec(this.curTask, _resolve_, _reject_);
 }
 
 Thread.prototype._resolve = function() {
