@@ -1,6 +1,7 @@
 proc_info = {
     hotWindowId: 0,
-    hotLastOpenTabTime: 0,
+    lastOpenHotPageTime: 0,
+    lastOpenHotPageTimeForSave: 0,
     needSave: false,
     hotInfos : [],
 };
@@ -55,11 +56,11 @@ function setHotInfo(data) {
 
     let curDate = formatDate(new Date());
     let needSaveToServer = (curDate == data.hotDay && proc_info.needSave);
+    proc_info.needSave = false;
     if (needSaveToServer) {
         proc_info.hotInfos.push(data);
         sendHotInfoToServer(data);
     }
-    proc_info.needSave = false;
 }
 
 function deepCopy(obj) {
@@ -90,15 +91,18 @@ function sendHotInfoToServer(data) {
 
 // 热股排名
 function hot_run() {
+    if (proc_info.hotWindowId) {
+        return;
+    }
     let ft = formatTime(new Date());
-    let jtTime = (ft >= '09:30' && ft < '11:45') || (ft >= '13:00' && ft < '15:15');
+    let jtTime = (ft >= '09:30' && ft < '11:35') || (ft >= '13:00' && ft < '15:05');
 
     if (jtTime) {
-        if ((Date.now() - proc_info.hotLastOpenTabTime) / 1000 / 60 >= 15) { // 15 minutes
+        if ((Date.now() - proc_info.lastOpenHotPageTimeForSave) / 1000 / 60 >= 15) { // 15 minutes
             openHotPage(true);
         }
     } else {
-        if ((Date.now() - proc_info.hotLastOpenTabTime) / 1000 / 60 >= 30) { // 30 minutes
+        if ((Date.now() - proc_info.lastOpenHotPageTime) / 1000 / 60 >= 30) { // 30 minutes, used for keep logined state
             openHotPage(false);
         }
     }
@@ -110,10 +114,13 @@ function openHotPage(needSave) {
         // callback
         proc_info.hotWindowId = window.id;
         proc_info.needSave = needSave;
-        proc_info.hotLastOpenTabTime = Date.now();
+        proc_info.lastOpenHotPageTime = Date.now();
+        if (needSave) {
+            proc_info.lastOpenHotPageTimeForSave = Date.now();
+        }
     });
 }
 
 
 
-setInterval(hot_run, 1000 * 60 * 1);
+setInterval(hot_run, 1000 * 20); // 20 seconds
