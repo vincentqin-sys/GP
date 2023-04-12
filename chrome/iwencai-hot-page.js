@@ -46,7 +46,7 @@ function loadHotPage(trs) {
     return vals;
 }
 
-function getPageData(task, resolve, reject) {
+function getPageData(task, resolve) {
     let tbs = document.querySelectorAll('table');
     let cntTable = tbs[1];
     let trs = cntTable.querySelectorAll('tr');
@@ -61,7 +61,7 @@ function getPageData(task, resolve, reject) {
     resolve();
 }
 
-function gotoPage(task, resolve, reject) {
+function gotoPage(task, resolve) {
     let pageIdx = task.pageIdx;
     let pi = document.querySelectorAll('.pager .page-item > a');
     let a = pi[pageIdx];
@@ -70,7 +70,7 @@ function gotoPage(task, resolve, reject) {
     resolve();
 }
 
-function sendPageData(task, resolve, reject) {
+function sendPageData(task, resolve) {
     console.log('sendPageData: ', pageInfo.hotPageDatas);
     let ct = new Date();
     let hotTime = '';
@@ -93,7 +93,7 @@ function sendPageData(task, resolve, reject) {
     resolve();
 }
 
-function getPageInfo(task, resolve, reject) {
+function getPageInfo(task, resolve) {
     let ops = document.querySelectorAll('.drop-down-box > span');
     let txt = ops[0].innerText;
     pageInfo.perpage = parseInt(txt.substring(2));
@@ -102,20 +102,19 @@ function getPageInfo(task, resolve, reject) {
     getLoginInfo();
     console.log('getPageInfo: ', pageInfo);
 
-    for (let i = 0; i < pageInfo.pageCount; ++i) {
-        if (i > 0) {
-            let w2 = new Task('gotoPage', 1000, gotoPage);
-            w2.pageIdx = i;
-            workThread.addTask(w2);
-        }
+    for (let i = 1; i < pageInfo.pageCount && pageInfo.isLogined; ++i) {
+        let w2 = new Task('gotoPage', 1000, gotoPage);
+        w2.pageIdx = i;
+        workThread.addTask(w2);
         
-        let w1 = new Task('getPageData', (i == 0 ? 1000 : 8000), getPageData);
+        let w1 = new Task('getPageData', 8000, getPageData);
         w1.startOrder = i * pageInfo.perpage + 1;
         workThread.addTask(w1);
-
-        if (! pageInfo.isLogined) {
-            break;
-        }
+    }
+    if (! pageInfo.isLogined) {
+        // wait 120 secods , for user login
+        let we = new Task('wait', 120 * 1000, function (task, resolve, reject) { resolve(); });
+        workThread.addTask(we);
     }
     let wx = new Task('sendPageData', 0, sendPageData);
     workThread.addTask(wx);
@@ -152,5 +151,11 @@ var pageInfo = {
 if (decodeURI(window.location.href).indexOf('个股热度排名') > 0) {
     let w1 = new Task('getPageInfo', 8000, getPageInfo);
     workThread.addTask(w1);
+
+    // first page
+    let w2 = new Task('getPageData', 1000, getPageData);
+    w2.startOrder = 1;
+    workThread.addTask(w2);
+
     workThread.start();
 }

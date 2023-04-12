@@ -1,6 +1,6 @@
 function Task(name, delay, exec) {
 	// overwrite this function
-	this.exec = exec || function (resolve, reject) { };
+	this.exec = exec || function (task, resolve) { resolve(); };
 	this.name = name;
 	this.delay = delay || 0;
 }
@@ -47,22 +47,13 @@ Thread.prototype._run = function() {
 	function _resolve_() {
 		thiz._resolve();
 	}
-	function _reject_() {
-		thiz._reject();
-	}
 	console.log('Thread.run ', this.curTask);
-	this.curTask.exec(this.curTask, _resolve_, _reject_);
+	this.curTask.exec(this.curTask, _resolve_);
 }
 
 Thread.prototype._resolve = function() {
 	this.curTask = null;
 	this.curTaskBeginTime = Date.now();
-}
-
-Thread.prototype._reject = function() {
-	this.curTask = null;
-	this.curTaskBeginTime = Date.now();
-	this.tasks.splice(0, this.tasks.length);
 }
 
 Thread.prototype.stop = function() {
@@ -76,5 +67,9 @@ Thread.prototype.stop = function() {
 // when finish call resolve() or reject()
 Thread.prototype.addTask = function(task) {
 	this.tasks.push(task);
+}
+
+Thread.prototype.insertTask = function (idx, task) {
+	this.tasks.splice(idx, 0, task);
 }
 
