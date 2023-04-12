@@ -6,3 +6,5 @@ unameInput.value = 'mx_642978864';
 
 let passwdInput = document.querySelector('#passwd');
 passwdInput.value = 'gaoyan2012';
+
+unameInput.focus();

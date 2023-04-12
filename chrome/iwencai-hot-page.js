@@ -109,7 +109,7 @@ function getPageInfo(task, resolve, reject) {
             workThread.addTask(w2);
         }
         
-        let w1 = new Task('getPageData', (i == 0 ? 1000 : 5000), getPageData);
+        let w1 = new Task('getPageData', (i == 0 ? 1000 : 8000), getPageData);
         w1.startOrder = i * pageInfo.perpage + 1;
         workThread.addTask(w1);
 
@@ -150,7 +150,7 @@ var pageInfo = {
 
 // 热股排名页面
 if (decodeURI(window.location.href).indexOf('个股热度排名') > 0) {
-    let w1 = new Task('getPageInfo', 5000, getPageInfo);
+    let w1 = new Task('getPageInfo', 8000, getPageInfo);
     workThread.addTask(w1);
     workThread.start();
 }
