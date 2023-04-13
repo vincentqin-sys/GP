@@ -25,7 +25,7 @@
         {
 			"matches": ["http://www.iwencai.com/unifiedwap/result*"],
             "run_at": "document_idle",
-            "js": ["thread.js", "iwencai-hot-page.js"],
+            "js": ["jquery-3.6.min.js", "thread.js", "iwencai-hot-page.js"],
 			"all_frames" : true
 		},
 		{

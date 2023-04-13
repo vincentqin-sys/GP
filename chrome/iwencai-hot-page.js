@@ -1,12 +1,12 @@
 console.log('Load Chrome Extension ..');
 
 function loadHotPageError() {
-    let ul = document.querySelectorAll('ul.iwc-table-header-ul');
-    let li = document.createElement("li");
+    let div = document.querySelector('.xuangu-count-line');
+    let li = document.createElement("div");
     li.style.color = 'green';
     let newContent = document.createTextNode("源代码已发生变更");
     li.appendChild(newContent);
-    ul.appendChild(li);
+    div.appendChild(li);
 }
 
 function loadHotPage(trs) {
@@ -47,9 +47,8 @@ function loadHotPage(trs) {
 }
 
 function getPageData(task, resolve) {
-    let tbs = document.querySelectorAll('table');
-    let cntTable = tbs[1];
-    let trs = cntTable.querySelectorAll('tr');
+    let tb = document.querySelector('.iwc-table-content .iwc-table-scroll table');
+    let trs = tb.querySelectorAll('tr');
     let datas = loadHotPage(trs);
 
     if (datas[0].hotOrder == task.startOrder) {
@@ -93,30 +92,30 @@ function sendPageData(task, resolve) {
     resolve();
 }
 
-function getPageInfo(task, resolve) {
+function initPageInfo(task, resolve) {
     let ops = document.querySelectorAll('.drop-down-box > span');
     let txt = ops[0].innerText;
     pageInfo.perpage = parseInt(txt.substring(2));
     pageInfo.pageCount = document.querySelectorAll('.pager .page-item').length;
 
     getLoginInfo();
-    console.log('getPageInfo: ', pageInfo);
+    console.log('initPageInfo: ', pageInfo);
 
     for (let i = 1; i < pageInfo.pageCount && pageInfo.isLogined; ++i) {
-        let w2 = new Task('gotoPage', 1000, gotoPage);
+        let w2 = new Task('Goto Page', 1000, gotoPage);
         w2.pageIdx = i;
         workThread.addTask(w2);
         
-        let w1 = new Task('getPageData', 8000, getPageData);
+        let w1 = new Task('Get Page Data', 8000, getPageData);
         w1.startOrder = i * pageInfo.perpage + 1;
         workThread.addTask(w1);
     }
     if (! pageInfo.isLogined) {
         // wait 120 secods , for user login
-        let we = new Task('wait', 120 * 1000, function (task, resolve, reject) { resolve(); });
+        let we = new Task('wait', 120 * 1000, function (task, resolve) { resolve(); });
         workThread.addTask(we);
     }
-    let wx = new Task('sendPageData', 0, sendPageData);
+    let wx = new Task('Send Page Data', 0, sendPageData);
     workThread.addTask(wx);
 
     resolve();
@@ -144,18 +143,112 @@ var pageInfo = {
     pageCount: 0,
     perpage: 0,
     hotPageDatas: [],
-    isLogined : false,
+    isLogined: false,
+
+    klineCode: '',
+    klineSelectDay : '',
+    klineHotInfo : null, // server hot data of select code
 };
+
+
+function buildKlineUI() {
+    document.querySelector('.condition-list').style.display = 'none';
+    // '#xuangu-table-popup > .popup_main_box'
+    let kline = $('#klinePopup');
+    kline.css('float', 'left');
+    let hots = $('<div id = "kline_hots_info" style="float: left; width: 400px; height: 590px; border: solid 1px #000; overflow: auto;" > </div>');
+    kline.after(hots);
+    kline.after('<div id="kline_hots_tip" style="float: left; width: 100px; height:590px; background-color: #ccc;" > </div>');
+
+    setInterval(listenKlineDOM, 100);
+}
+
+function updateKlineUI() {
+    $('#kline_hots_info').empty();
+    let tab = $('<table style="text-align:center; " > </table>');
+    tab.append('<tr> <th style="width:80px;" >日期 </th>  <th style="width:100px;">时间 </th> <th  style="width:100px;"> 热度值(万) </th> <th style="width:100px;"> 热度排名 </th> </tr>');
+    let lastDay = '';
+    for (let d in pageInfo.klineHotInfo) {
+        let tr = $('<tr />');
+        let v = pageInfo.klineHotInfo[d];
+        if (v.day != lastDay) {
+            tr.append('<td>' + v.day + '</td>');
+            tr.css('border-top', 'solid #ccc 1px');
+        } else {
+            tr.append('<td> </td>');
+        }
+        lastDay = v.day;
+        tr.append('<td>' + v.time + '</td>');
+        tr.append('<td>' + v.hotValue + '</td>');
+        tr.append('<td>' + v.hotOrder + '</td>');
+        tab.append(tr);
+    }
+    $('#kline_hots_info').append(tab);
+}
+
+function markKlineHotDay(oldDay, newDay) {
+    if (! pageInfo.klineHotInfo) {
+        return;
+    }
+    let newIdx = -1, oldIdx = -1;
+    for (let i = 0; i < pageInfo.klineHotInfo.length; i++) {
+        let d = pageInfo.klineHotInfo[i];
+        if (d.day == newDay && newIdx == -1) {
+            newIdx = i;
+        } else if (d.day == oldDay && oldIdx == -1) {
+            oldIdx = i;
+        }
+    }
+    if (oldIdx >= 0) {
+        let dx = $('#kline_hots_info tr:eq(' + (oldIdx + 1) + ') td:eq(0)');
+        dx.css('color', '#000');
+    }
+    if (newIdx >= 0) {
+        let dx = $('#kline_hots_info tr:eq(' + (newIdx + 1) + ') td:eq(0)');
+        dx.css('color', 'red' );
+    }
+}
+
+function listenKlineDOM() {
+    let code = $('#klinePopup .code').text();
+    if (code != '' && code != pageInfo.klineCode) {
+        pageInfo.klineCode = code;
+        $('#kline_hots_info').empty();
+        pageInfo.klineHotInfo = null;
+        // download
+        $.get('http://localhost:8071/getHot/' + code, function (result) {
+            pageInfo.klineHotInfo = result;
+            console.log('Get Server Hot: ', result);
+            updateKlineUI();
+        });
+        return;
+    }
+
+    let selectDay = $('#klinePopup .d3charts-tooltip').text().substring(0, 10); // yyyy-MM-dd
+    if (selectDay != pageInfo.klineSelectDay) {
+        let oldDay = pageInfo.klineSelectDay;
+        pageInfo.klineSelectDay = selectDay;
+        markKlineHotDay(oldDay, selectDay);
+    }
+}
+
+
 
 // 热股排名页面
 if (decodeURI(window.location.href).indexOf('个股热度排名') > 0) {
-    let w1 = new Task('getPageInfo', 8000, getPageInfo);
-    workThread.addTask(w1);
 
-    // first page
-    let w2 = new Task('getPageData', 1000, getPageData);
-    w2.startOrder = 1;
-    workThread.addTask(w2);
+    // open from bg extention
+    if (decodeURI(window.location.href.indexOf('mytag=bg')) > 0) {
+        let w1 = new Task('Init Page Info', 8000, initPageInfo);
+        workThread.addTask(w1);
 
-    workThread.start();
+        // first page
+        let w2 = new Task('Get Page Data', 1000, getPageData);
+        w2.startOrder = 1;
+        workThread.addTask(w2);
+
+        workThread.start();
+    } else {
+        setTimeout(buildKlineUI, 8000);
+    }
 }

@@ -60,6 +60,12 @@ def saveHot(): # 热点股票信息
             orm.THS_Hot.insert_many(hotInfos[i : i + 20]).execute()
     return {"status": "OK"}
 
+@app.route('/getHot/<code>', methods = ['GET'])
+def getHot(code): # 热点股票信息
+    datas = orm.THS_Hot.select().where(orm.THS_Hot.code == code)
+    nd = [d.__data__ for d in datas]
+    return nd
+
 if __name__ == '__main__':
     print('----- Start Server THS at port 8071 -----')
     app.run(host = '0.0.0.0', port=8071) #, debug=True 
