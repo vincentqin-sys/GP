@@ -190,13 +190,16 @@ function markKlineHotDay(oldDay, newDay) {
     if (! pageInfo.klineHotInfo) {
         return;
     }
-    let newIdx = -1, oldIdx = -1;
+    let newIdx = -1, oldIdx = -1, lastNewIdx = -1;
     for (let i = 0; i < pageInfo.klineHotInfo.length; i++) {
         let d = pageInfo.klineHotInfo[i];
         if (d.day == newDay && newIdx == -1) {
             newIdx = i;
         } else if (d.day == oldDay && oldIdx == -1) {
             oldIdx = i;
+        }
+        if (d.day == newDay) {
+            lastNewIdx = i;
         }
     }
     if (oldIdx >= 0) {
@@ -207,6 +210,15 @@ function markKlineHotDay(oldDay, newDay) {
         let dx = $('#kline_hots_info tr:eq(' + (newIdx + 1) + ') td:eq(0)');
         dx.css('color', 'red' );
     }
+
+    if (newIdx < 0 || lastNewIdx < 0) {
+        return;
+    }
+
+    let lineHeight = $('#kline_hots_info tr:eq(1)').height();
+    let startY = lineHeight * newIdx;
+    let endY = lineHeight * (lastNewIdx + 1);
+    
 }
 
 function listenKlineDOM() {
