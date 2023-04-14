@@ -5,11 +5,13 @@ import orm
 THS_TOP_HWND = None
 THS_MAIN_HWND = None
 
-def getChildWindow(hwnd, ctrlID):
+def getChildindowByTitle(hwnd, title):
+
+
+def enumMainWindow(hwnd):
     child = win.GetWindow(hwnd, 5) # GW_CHILD
-    if win.GetDlgCtrlID(child) == ctrlID:
-        return child
     while child:
+        if win.IsWindowVisible(child)
         child = win.GetWindow(child, 2) # GW_HWNDNEXT
         if win.GetDlgCtrlID(child) == ctrlID:
             return child
@@ -17,7 +19,9 @@ def getChildWindow(hwnd, ctrlID):
 
 # 当前显示的窗口是否是K线图
 def isInKlineWindow():
-    return '技术分析' in win.GetWindowText(THS_TOP_HWND)
+    if '技术分析' not in win.GetWindowText(THS_TOP_HWND):
+        return False
+    return win.IsWindowVisible(THS_TOP_HWND)
 
 # 查找股票代码
 def findCode():
@@ -48,7 +52,8 @@ def init():
     
     global THS_MAIN_HWND, THS_TOP_HWND
     win.EnumWindows(callback, None)
-    THS_MAIN_HWND = getChildWindow(THS_TOP_HWND, 0xE900)
+    # THS_MAIN_HWND = getChildWindow(THS_TOP_HWND, 0xE900)
+    THS_MAIN_HWND =  win.FindWindowEx(THS_TOP_HWND, None, 'AfxFrameOrView100s', None)
     print('THS_TOP_HWND = %#X' % THS_TOP_HWND)
     print('THS_MAIN_HWND = %#X' % THS_MAIN_HWND)
 
@@ -184,18 +189,25 @@ curCode = None
 def work():
     global curCode
     while True:
-        time.sleep(0.3)
+        time.sleep(0.5)
         nowCode = findCode()
         if curCode == nowCode:
             continue
-        ds = orm.THS_Hot.select(orm.THS_Hot.day, orm.THS_Hot.time, orm.THS_Hot.hotOrder, orm.THS_Hot.hotValue).where(orm.THS_Hot.code == nowCode)
+        ds = orm.THS_Hot.select().where(orm.THS_Hot.code == nowCode)
         hts = [d.__data__ for d in ds]
-        print(hts)
-        hotWindow.updateData(hts)
+        if len(hts) > 0:
+            print('Load ', hts[0]['name'], ' Number:', len(hts))
+        else:
+            print('Load ', nowCode , ' not find in DB')
         curCode = nowCode
+        hotWindow.updateData(hts)
 
 if __name__ == '__main__':
     init()
+
+    findCode()
+    input()
+
     hotWindow.createHotWindow()
     threading.Thread(target = work).start()
     win.PumpMessages()
