@@ -4,18 +4,23 @@ import orm
 
 THS_TOP_HWND = None
 THS_MAIN_HWND = None
+THS_LEVEL2_CODE_HWND = None
 
-def getChildindowByTitle(hwnd, title):
+def enumLevel2_Window(hwnd):
+    pass
 
-
-def enumMainWindow(hwnd):
-    child = win.GetWindow(hwnd, 5) # GW_CHILD
+def findLevel2CodeWnd(hwnd):
+    global THS_LEVEL2_CODE_HWND
+    child = win.GetWindow(hwnd, win32con.GW_CHILD)
     while child:
-        if win.IsWindowVisible(child)
-        child = win.GetWindow(child, 2) # GW_HWNDNEXT
-        if win.GetDlgCtrlID(child) == ctrlID:
-            return child
-    return None
+        title = win.GetWindowText(child)
+        if win.IsWindowVisible(child) and title and ('逐笔成交--' in title):
+            THS_LEVEL2_CODE_HWND = child
+            break
+        enumMainWindow(child)
+        if THS_LEVEL2_CODE_HWND:
+            break
+        child = win.GetWindow(child, win32con.GW_HWNDNEXT)
 
 # 当前显示的窗口是否是K线图
 def isInKlineWindow():
@@ -25,20 +30,17 @@ def isInKlineWindow():
 
 # 查找股票代码
 def findCode():
-    global THS_MAIN_HWND, THS_TOP_HWND
+    global THS_MAIN_HWND, THS_TOP_HWND, THS_LEVEL2_CODE_HWND
     if not isInKlineWindow():
         print('Not in KLine Window')
         return None
     # 逐笔成交明细 Level-2
-    detailHWND = getChildWindow(THS_MAIN_HWND, 0x1C5E7DB0)
-    # print('detailHWND : %#X' % detailHWND)
-    first = win.GetWindow(detailHWND, 5) # GW_CHILD
-    second = win.GetWindow(first, 2) # GW_HWNDNEXT
-    codeInfo = win.GetWindowText(second)
+    if not win.IsWindowVisible(THS_LEVEL2_CODE_HWND):
+        findLevel2CodeWnd(THS_MAIN_HWND)
+    title = win.GetWindowText(THS_LEVEL2_CODE_HWND) or ''
     code = ''
-    if '逐笔成交--' in codeInfo:
-        code = codeInfo[6 : 12]
-    # print('codeInfo =', codeInfo, 'code = ', code)
+    if '逐笔成交--' in title:
+        code = title[6 : 12]
     return code
 
 
