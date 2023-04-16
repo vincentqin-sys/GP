@@ -17,7 +17,7 @@ def findLevel2CodeWnd(hwnd):
         if win.IsWindowVisible(child) and title and ('逐笔成交--' in title):
             THS_LEVEL2_CODE_HWND = child
             break
-        enumMainWindow(child)
+        findLevel2CodeWnd(child)
         if THS_LEVEL2_CODE_HWND:
             break
         child = win.GetWindow(child, win32con.GW_HWNDNEXT)
@@ -36,7 +36,9 @@ def findCode():
         return None
     # 逐笔成交明细 Level-2
     if not win.IsWindowVisible(THS_LEVEL2_CODE_HWND):
+        THS_LEVEL2_CODE_HWND = None
         findLevel2CodeWnd(THS_MAIN_HWND)
+        #print('THS_LEVEL2_CODE_HWND = %#X' % THS_LEVEL2_CODE_HWND)
     title = win.GetWindowText(THS_LEVEL2_CODE_HWND) or ''
     code = ''
     if '逐笔成交--' in title:
@@ -103,10 +105,6 @@ class HotWindow:
         a.lfFaceName = '新宋体'
         font = win.CreateFontIndirect(a)
         win.SelectObject(hdc, font)
-
-        pen = win.CreatePen(1, 1, 0xff0000)
-        win.SelectObject(hdc, pen)
-        # win.Rectangle(hdc, 20, 50, 500, 100)
         
         if self.maxMode:
             self.drawMaxMode(hdc)
@@ -115,7 +113,7 @@ class HotWindow:
 
         win.EndPaint(hwnd, ps)
         win.DeleteObject(font)
-        print('WM_PAINT')
+        # print('WM_PAINT')
 
     def drawMaxMode(self, hdc):
         if not self.data or len(self.data) == 0:
@@ -129,26 +127,38 @@ class HotWindow:
     def drawOneDayHot(self, hdc, x, data): # data = [ {day:'', time:'', hotValue:xx, hotOrder: '' }, ... ]
         if not data or len(data) == 0:
             return
+        pen = win.CreatePen(win32con.PS_DASH, 1, 0xff0000)
+        pen2 = win.CreatePen(win32con.PS_DOT, 1, 0x00ffff)
         y = 0
         WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 15
         title = data[0]['day']
         win.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
+        isDrawSplit = False
         for d in data:
             y += HEIGHT
             row = '%s  %3d万  %3d' % (d['time'], d['hotValue'], d['hotOrder'])
             win.DrawText(hdc, row, len(row), (x, y, x + WIDTH, y + HEIGHT), win32con.DT_CENTER)
+            if d['time'] >= '13:00' and (not isDrawSplit):
+                isDrawSplit = True
+                win.SelectObject(hdc, pen2)
+                win.MoveToEx(hdc, x + 5, y - 2)
+                win.LineTo(hdc, x + WIDTH - 5, y - 2)
+        win.SelectObject(hdc, pen)
         win.MoveToEx(hdc, x + WIDTH, 0)
         win.LineTo(hdc, x + WIDTH, self.rect[3])
+        win.DeleteObject(pen)
+        win.DeleteObject(pen2)
 
     def drawMinMode(self, hdc):
-        title = '【我的热点】 双击最大化'
+        title = '【我的热点】\n\n双击最大化'
         rr = win.GetClientRect(self.wnd)
-        print(rr)
+        win.FillRect(hdc, win.GetClientRect(self.wnd), win32con.COLOR_WINDOWFRAME)  # background black
+        win.SetTextColor(hdc, 0x0000ff)
         win.DrawText(hdc, title, len(title), rr, win32con.DT_CENTER | win32con.DT_VCENTER)
 
     def changeMode(self):
         if self.maxMode:
-            WIDTH, HEIGHT = 150, 30
+            WIDTH, HEIGHT = 150, 50
             y = self.rect[1] + self.rect[3] - HEIGHT
             win.SetWindowPos(self.wnd, 0, 0, y, WIDTH, HEIGHT, 0)
         else:
@@ -206,10 +216,6 @@ def work():
 
 if __name__ == '__main__':
     init()
-
-    findCode()
-    input()
-
     hotWindow.createHotWindow()
     threading.Thread(target = work).start()
     win.PumpMessages()
