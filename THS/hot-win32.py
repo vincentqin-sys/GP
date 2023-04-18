@@ -1,10 +1,13 @@
-import win32gui as win, win32con , win32api # pip install pywin32
-import threading, time
+import win32gui as win, win32con , win32api, win32ui # pip install pywin32
+import threading, time, datetime
+from PIL import Image
+import ddddocr
 import orm
 
 THS_TOP_HWND = None
 THS_MAIN_HWND = None
 THS_LEVEL2_CODE_HWND = None
+THS_SELECT_DAY_HWND = None
 
 def enumLevel2_Window(hwnd):
     pass
@@ -22,6 +25,18 @@ def findLevel2CodeWnd(hwnd):
             break
         child = win.GetWindow(child, win32con.GW_HWNDNEXT)
 
+def findSelectDayWnd():
+    global THS_MAIN_HWND
+    child = win.GetWindow(THS_MAIN_HWND, win32con.GW_CHILD)
+    while child:
+        if win.GetClassName(child) == '#32770':
+            left, top, right, bottom = win.GetClientRect(child)
+            w, h = right - left, bottom - top
+            if h / 3 > w:
+                return child
+        child = win.GetWindow(child, win32con.GW_HWNDNEXT)
+    return None
+
 # 当前显示的窗口是否是K线图
 def isInKlineWindow():
     if '技术分析' not in win.GetWindowText(THS_TOP_HWND):
@@ -32,7 +47,7 @@ def isInKlineWindow():
 def findCode():
     global THS_MAIN_HWND, THS_TOP_HWND, THS_LEVEL2_CODE_HWND
     if not isInKlineWindow():
-        print('Not in KLine Window')
+        #print('Not in KLine Window')
         return None
     # 逐笔成交明细 Level-2
     if not win.IsWindowVisible(THS_LEVEL2_CODE_HWND):
@@ -45,6 +60,53 @@ def findCode():
         code = title[6 : 12]
     return code
 
+def findSelectDay():
+    pass
+
+ocr = ddddocr.DdddOcr()
+
+def getSelectDay():
+    global THS_SELECT_DAY_HWND, ocr
+    if not win.IsWindowVisible(THS_SELECT_DAY_HWND):
+        return None
+    dc = win.GetWindowDC(THS_SELECT_DAY_HWND)
+    #mdc = win.CreateCompatibleDC(dc)
+    mfcDC = win32ui.CreateDCFromHandle(dc)
+    saveDC = mfcDC.CreateCompatibleDC()
+    saveBitMap = win32ui.CreateBitmap()
+    saveBitMap.CreateCompatibleBitmap(mfcDC, 50, 20) # image size 50 x 20
+    saveDC.SelectObject(saveBitMap)
+
+    # copy year bmp
+    srcPos = (14, 20)
+    srcSize = (30, 17)
+    saveDC.BitBlt((0, 0), srcSize, mfcDC, srcPos, win32con.SRCCOPY)
+    #saveBitMap.SaveBitmapFile(saveDC, 'SD.bmp')
+    bmpinfo = saveBitMap.GetInfo()
+    bmpstr = saveBitMap.GetBitmapBits(True)
+    im_PIL = Image.frombuffer('RGB',(bmpinfo['bmWidth'], 17), bmpstr, 'raw', 'BGRX', 0, 1) # bmpinfo['bmHeight']
+
+    selYear = ocr.classification(im_PIL)
+    # print('selYear=', selYear)
+    
+    # copy day bmp
+    srcPos = (14, 38)
+    saveDC.BitBlt((0, 0), srcSize, mfcDC, srcPos, win32con.SRCCOPY)
+    bmpinfo = saveBitMap.GetInfo()
+    bmpstr = saveBitMap.GetBitmapBits(True)
+    im_PIL = Image.frombuffer('RGB',(bmpinfo['bmWidth'], 17), bmpstr, 'raw', 'BGRX', 0, 1) 
+    selDay = ocr.classification(im_PIL)
+    # print('selDay=', selDay)
+    # im_PIL.show()
+
+    # destory
+    win.DeleteObject(saveBitMap.GetHandle())
+    saveDC.DeleteDC()
+    mfcDC.DeleteDC()
+    win.ReleaseDC(THS_SELECT_DAY_HWND, dc)
+
+    return selYear + '-' + selDay[0 : 2] + '-' + selDay[2 : ]
+
 
 def init():
     def callback(hwnd, lparam):
@@ -54,12 +116,15 @@ def init():
             THS_TOP_HWND = hwnd
         return True
     
-    global THS_MAIN_HWND, THS_TOP_HWND
+    global THS_MAIN_HWND, THS_TOP_HWND, THS_SELECT_DAY_HWND
     win.EnumWindows(callback, None)
     # THS_MAIN_HWND = getChildWindow(THS_TOP_HWND, 0xE900)
     THS_MAIN_HWND =  win.FindWindowEx(THS_TOP_HWND, None, 'AfxFrameOrView100s', None)
+    THS_SELECT_DAY_HWND = findSelectDayWnd()
     print('THS_TOP_HWND = %#X' % THS_TOP_HWND)
     print('THS_MAIN_HWND = %#X' % THS_MAIN_HWND)
+    print('THS_SELECT_DAY_HWND = %#X' % THS_SELECT_DAY_HWND)
+
 
 #-------------------hot  window ------------
 class HotWindow:
@@ -71,6 +136,7 @@ class HotWindow:
         self.rect = None  # 窗口大小 (x, y, w, h)
         self.maxMode = True #  是否是最大化的窗口
         self.data = None
+        self.selectDay = ''
 
     def createHotWindow(self):
         global THS_TOP_HWND, THS_MAIN_HWND
@@ -96,9 +162,10 @@ class HotWindow:
     
     def drawHotWin(self, hwnd):
         hdc, ps = win.BeginPaint(hwnd)
-        win.FillRect(hdc, win.GetClientRect(hwnd), 9)  # background black
+        bk = win.CreateSolidBrush(0xffffff)
+        win.FillRect(hdc, win.GetClientRect(hwnd), bk)
         win.SetBkMode(hdc, win32con.TRANSPARENT)
-        win.SetTextColor(hdc, 0xc0c0c0)
+        win.SetTextColor(hdc, 0x0)
 
         a = win.LOGFONT()
         a.lfHeight = 12
@@ -127,12 +194,21 @@ class HotWindow:
     def drawOneDayHot(self, hdc, x, data): # data = [ {day:'', time:'', hotValue:xx, hotOrder: '' }, ... ]
         if not data or len(data) == 0:
             return
-        pen = win.CreatePen(win32con.PS_DASH, 1, 0xff0000)
-        pen2 = win.CreatePen(win32con.PS_DOT, 1, 0x00ffff)
+        pen = win.CreatePen(win32con.PS_DASH, 1, 0xff0000) # day split vertical line
+        pen2 = win.CreatePen(win32con.PS_DOT, 1, 0x0000ff) # split one day hor-line
         y = 0
         WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 15
-        title = data[0]['day']
+        day = data[0]['day']
+        ds = time.strptime(day, '%Y-%m-%d')
+        wd = datetime.date(ds[0], ds[1], ds[2]).isoweekday()
+        WDS = '一二三四五六日'
+        title = day + ' ' + WDS[wd - 1]
+        sdc = 0
+        if day == self.selectDay:
+            sdc = win.SaveDC(hdc)
+            win.SetTextColor(hdc, 0xEE00EE)
         win.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
+        
         isDrawSplit = False
         for d in data:
             y += HEIGHT
@@ -148,6 +224,8 @@ class HotWindow:
         win.LineTo(hdc, x + WIDTH, self.rect[3])
         win.DeleteObject(pen)
         win.DeleteObject(pen2)
+        if day == self.selectDay:
+            win.RestoreDC(hdc, sdc)
 
     def drawMinMode(self, hdc):
         title = '【我的热点】\n\n双击最大化'
@@ -167,6 +245,7 @@ class HotWindow:
         win.InvalidateRect(self.wnd, None, True)
 
     def updateData(self, data):
+        self.selectDay = None
         lastDay = None
         newDs = None
         rs = []
@@ -177,6 +256,12 @@ class HotWindow:
                 rs.append(newDs)
             newDs.append(d)
         self.data = rs
+        win.InvalidateRect(self.wnd, None, True)
+
+    def updateSelectDay(self, newDay):
+        if not newDay or self.selectDay == newDay:
+            return
+        self.selectDay = newDay
         win.InvalidateRect(self.wnd, None, True)
 
 def hotWinProc(hwnd, msg, wparam, lparam):
@@ -198,21 +283,27 @@ def hotWinProc(hwnd, msg, wparam, lparam):
 hotWindow = HotWindow()
 curCode = None
 
+def work_updateCode(nowCode):
+    global curCode
+    ds = orm.THS_Hot.select().where(orm.THS_Hot.code == nowCode)
+    hts = [d.__data__ for d in ds]
+    if len(hts) > 0:
+        print('Load ', hts[0]['name'], ' Number:', len(hts))
+    else:
+        print('Load ', nowCode , ' not find in DB')
+    curCode = nowCode
+    hotWindow.updateData(hts)
+
 def work():
     global curCode
     while True:
         time.sleep(0.5)
         nowCode = findCode()
-        if curCode == nowCode:
-            continue
-        ds = orm.THS_Hot.select().where(orm.THS_Hot.code == nowCode)
-        hts = [d.__data__ for d in ds]
-        if len(hts) > 0:
-            print('Load ', hts[0]['name'], ' Number:', len(hts))
-        else:
-            print('Load ', nowCode , ' not find in DB')
-        curCode = nowCode
-        hotWindow.updateData(hts)
+        if curCode != nowCode:
+            work_updateCode(nowCode)
+        selDay = getSelectDay()
+        if selDay:
+            hotWindow.updateSelectDay(selDay)
 
 if __name__ == '__main__':
     init()
