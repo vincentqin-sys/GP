@@ -100,7 +100,11 @@ function initPageInfo(task, resolve) {
 
     getLoginInfo();
     console.log('initPageInfo: ', pageInfo);
-
+    if (! pageInfo.isLogined) {
+        // wait 120 secods , for user login
+        let we = new Task('wait', 120 * 1000, function (task, resolve) { resolve(); });
+        workThread.addTask(we);
+    }
     for (let i = 1; i < pageInfo.pageCount && pageInfo.isLogined; ++i) {
         let w2 = new Task('Goto Page', 1000, gotoPage);
         w2.pageIdx = i;
@@ -110,11 +114,7 @@ function initPageInfo(task, resolve) {
         w1.startOrder = i * pageInfo.perpage + 1;
         workThread.addTask(w1);
     }
-    if (! pageInfo.isLogined) {
-        // wait 120 secods , for user login
-        let we = new Task('wait', 120 * 1000, function (task, resolve) { resolve(); });
-        workThread.addTask(we);
-    }
+
     let wx = new Task('Send Page Data', 0, sendPageData);
     workThread.addTask(wx);
 
