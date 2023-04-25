@@ -81,13 +81,16 @@ function sendPageData(task, resolve) {
         hotTime += '0';
     hotTime += ct.getMinutes();
 
-    let msg = { cmd: 'SET_HOT_INFO', data: { hotDay: pageInfo.hotDay, hotTime: hotTime, hotInfo: pageInfo.hotPageDatas } };
+    let msg = { cmd: 'SET_HOT_INFO', data: { hotDay: pageInfo.hotDay, hotTime: hotTime, hotInfo: pageInfo.hotPageDatas, isLogined : pageInfo.isLogined } };
 
     chrome.runtime.sendMessage(msg
         // function(response) {
         // 	console.log('收到来自后台的回复：' + response);
         // }
     );
+
+    msg = { cmd: 'LOG', data: pageInfo.userInfo, 'name' : 'user info'};
+    chrome.runtime.sendMessage(msg);
 
     resolve();
 }
@@ -122,20 +125,18 @@ function initPageInfo(task, resolve) {
 }
 
 function getLoginInfo() {
-    let btns = document.querySelectorAll('.login-box .login_btn ');
-    if (btns.length > 0) {
-        pageInfo.isLogined = false;
-        return true;
-    }
-    let users = document.querySelectorAll('.login-box .user-photo');
-    if (users.length > 0) {
-        pageInfo.isLogined = true;
-        return true;
-    }
+    console.log(typeof(document.cookie), document.cookie);
 
-    console.log('getLoginInfo: 无法确定是否已登录，代码需修改');
-    loadHotPageError();
-    return false;
+    let items = document.cookie.split(';');
+    let cookies = {};
+    for (i in items) {
+        let vt = items[i].split('=', 2);
+        let name = vt[0].trim();
+        cookies[name] = vt[1].trim();
+    }
+    pageInfo.userInfo.userid = cookies['userid'];
+    pageInfo.userInfo.u_name = cookies['u_name'];
+    pageInfo.isLogined = !!pageInfo.userInfo.userid;
 }
 
 var workThread = new Thread();
@@ -144,10 +145,11 @@ var pageInfo = {
     perpage: 0,
     hotPageDatas: [],
     isLogined: false,
+    userInfo: {},
 
     klineCode: '',
     klineSelectDay : '',
-    klineHotInfo : null, // server hot data of select code
+    klineHotInfo: null, // server hot data of select code
 };
 
 
@@ -244,23 +246,74 @@ function listenKlineDOM() {
     }
 }
 
+function forSave() {
+    let w1 = new Task('Init Page Info', 8000, initPageInfo);
+    workThread.addTask(w1);
 
+    // first page
+    let w2 = new Task('Get Page Data', 1000, getPageData);
+    w2.startOrder = 1;
+    workThread.addTask(w2);
+
+    workThread.start();
+}
+
+function openLoginPanel() {
+    console.log('openLoginPanel');
+    let btn = document.querySelector('.login-box .login_btn.nav_word');
+    if (btn) {
+        btn.click();
+    } else {
+        setTimeout(openLoginPanel, 200);
+    }
+}
+
+function forLogin() {
+    getLoginInfo();
+    console.log('forLogin: ', pageInfo);
+    // if (pageInfo.isLogined) {
+    //     sendPageData(null, function () { });
+    //     return;
+    // }
+    // wait 120 secods , for user login
+    let ws = pageInfo.isLogined ? 30 : 120;
+    let we = new Task('wait', ws * 1000, function (task, resolve) { resolve(); });
+    workThread.addTask(we);
+    let wx = new Task('Send Page Data', 0, sendPageData);
+    workThread.addTask(wx);
+    workThread.start();
+
+    // open login panel
+    if (! pageInfo.isLogined) {
+        openLoginPanel();
+    }
+}
 
 // 热股排名页面
 if (decodeURI(window.location.href).indexOf('个股热度排名') > 0) {
+    let openReason = '';
+    let url = decodeURI(window.location.href);
+    if (url.indexOf('openReason') > 0) {
+        openReason = url.substring(url.indexOf('openReason'));
+        if (openReason.indexOf('=') > 0) {
+            openReason = openReason.substring(openReason.indexOf('=') + 1);
+        }
+        if (openReason.indexOf('&') > 0) {
+            openReason = openReason.substring(0, openReason.indexOf('&'));
+        }
+    }
+    console.log('openReason=', openReason);
 
     // open from bg extention
-    if (decodeURI(window.location.href.indexOf('mytag=bg')) > 0) {
-        let w1 = new Task('Init Page Info', 8000, initPageInfo);
-        workThread.addTask(w1);
-
-        // first page
-        let w2 = new Task('Get Page Data', 1000, getPageData);
-        w2.startOrder = 1;
-        workThread.addTask(w2);
-
-        workThread.start();
+    if (url.indexOf('mytag=bg') > 0) {
+        if (openReason == 'FOR-SAVE') {
+            forSave();
+        } else if (openReason == 'FOR-KEEP-ALIVE' || openReason == 'FOR-LOGIN') {
+            forLogin();
+        }
     } else {
         setTimeout(buildKlineUI, 8000);
     }
 }
+
+console.log('Extension-Hot-Page: ', window.location.href);

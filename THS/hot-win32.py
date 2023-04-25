@@ -4,6 +4,10 @@ from PIL import Image
 import ddddocr
 import orm
 
+# pip installl opencv-python
+
+
+
 THS_TOP_HWND = None
 THS_MAIN_HWND = None
 THS_LEVEL2_CODE_HWND = None
@@ -288,8 +292,8 @@ def work_updateCode(nowCode):
     ds = orm.THS_Hot.select().where(orm.THS_Hot.code == nowCode)
     hts = [d.__data__ for d in ds]
     if len(hts) > 0:
-        print('Load ', hts[0]['name'], ' Number:', len(hts))
-    else:
+        print('Load ', nowCode, hts[0]['name'], ' Count:', len(hts))
+    elif nowCode:
         print('Load ', nowCode , ' not find in DB')
     curCode = nowCode
     hotWindow.updateData(hts)

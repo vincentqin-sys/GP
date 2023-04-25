@@ -12,7 +12,7 @@ function Thread() {
 	this.curTaskBeginTime = 0;
 }
 
-Thread.prototype.start = function() {
+Thread.prototype.start = function(intervalTime) {
 	if (this.id != 0) {
 		return;
 	}
@@ -21,7 +21,8 @@ Thread.prototype.start = function() {
 		thiz._run();
 	}
 	this.curTaskBeginTime = Date.now();
-	this.id = setInterval(wrapRun, 100);
+	intervalTime = intervalTime || 300;
+	this.id = setInterval(wrapRun, intervalTime);
 }
 
 Thread.prototype.pause = function() {
@@ -47,7 +48,7 @@ Thread.prototype._run = function() {
 	function _resolve_() {
 		thiz._resolve();
 	}
-	console.log('Thread.run ', this.curTask);
+	// console.log('Thread.run ', this.curTask);
 	this.curTask.exec(this.curTask, _resolve_);
 }
 
