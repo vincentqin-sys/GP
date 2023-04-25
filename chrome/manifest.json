@@ -34,11 +34,13 @@
 			],
 			"run_at": "document_idle",
 			"js": [
-				"iwencai-hot-login-page.js"
+				"jquery-3.6.min.js", "iwencai-hot-login-page.js"
 			],
 			"all_frames": true
 		}
     ],
 
-	"web_accessible_resources": ["ajax-hook.js", "iwencai-hot-inject.js"]
+	"web_accessible_resources": ["ajax-hook.js", "iwencai-hot-login-inject.js", "canvas2image.js", 
+		"capatcha/a0.dib.bmp", "capatcha/b0.dib.bmp", "capatcha/c0.dib.bmp", "capatcha/d0.dib.bmp"
+	]
 }
