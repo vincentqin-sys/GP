@@ -298,5 +298,5 @@ function initUserInfoUI() {
     loginBtn.click();
 }
 
-setTimeout(initUserInfoUI, 1500);
+setTimeout(initUserInfoUI, 1000);
 setTimeout(checkImages, 2500);

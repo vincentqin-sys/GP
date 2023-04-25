@@ -268,6 +268,14 @@ function openLoginPanel() {
     }
 }
 
+function sendLoginData(task, resolve) {
+    let msg = { cmd: 'SET_LOGIN_INFO', data: { isLogined: pageInfo.isLogined, userInfo: pageInfo.userInfo } };
+    chrome.runtime.sendMessage(msg);
+
+    console.log('sendLoginData: ', msg);
+    resolve();
+}
+
 function forLogin() {
     getLoginInfo();
     console.log('forLogin: ', pageInfo);
@@ -279,7 +287,7 @@ function forLogin() {
     let ws = pageInfo.isLogined ? 30 : 120;
     let we = new Task('wait', ws * 1000, function (task, resolve) { resolve(); });
     workThread.addTask(we);
-    let wx = new Task('Send Page Data', 0, sendPageData);
+    let wx = new Task('Send Login Data', 0, sendLoginData);
     workThread.addTask(wx);
     workThread.start();
 
