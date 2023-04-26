@@ -22,7 +22,7 @@ cors = CORS(app)
 #@app.after_request
 def after(resp):
     resp = make_response(resp)
-    resp.headers[''] = '';
+    resp.headers[''] = ''
 
 @app.route('/')
 def root():
