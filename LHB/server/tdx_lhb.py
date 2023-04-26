@@ -72,13 +72,17 @@ def loadOneGP(code, day, name):
 # yyyy-mm-dd
 def loadOneDayLHB(day):
     cc = orm.TdxLHB.select().where(orm.TdxLHB.day == day).count()
-    if cc > 0:
-        #print(f'Alreay Exists:  {day} exsits {cc} rows')
-        return True
-
     result = []
     gps = loadOneDayTotal(day)
+    if ((not gps) or (cc == len(gps))):
+        return True
+
+    q = orm.TdxLHB.select().where(orm.TdxLHB.day == day)
+    oldDatas = [d.code for d in q]
+    
     for gp in gps:
+        if gp['code'] in oldDatas:
+            continue
         r = loadOneGP(gp['code'], day, gp['name'])
         result.append(r)
     with mcore.db.atomic():
@@ -107,7 +111,7 @@ def loadTdxLHB():
         if dayFrom.isoweekday() >= 6:
             dayFrom = dayFrom + delta
             continue
-        if dayFrom >= minDay and dayFrom <= maxDay:
+        if dayFrom >= minDay and dayFrom < maxDay:
             #print('Skip ' + str(dayFrom))
             pass
         else:
