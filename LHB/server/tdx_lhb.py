@@ -122,7 +122,7 @@ def run():
     print('in thread run', th.getName(), th.ident)
     while True:
         loadTdxLHB()
-        time.sleep(3600 * 6)
+        time.sleep(3600 * 0.5) # 0.5 hour
 
 flagAuto = False
 lock = threading.RLock()
