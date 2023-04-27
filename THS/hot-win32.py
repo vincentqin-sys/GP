@@ -184,6 +184,7 @@ class HotWindow:
 
         win.EndPaint(hwnd, ps)
         win.DeleteObject(font)
+        win.DeleteObject(bk)
         # print('WM_PAINT')
 
     # return [startIdx, endIdx)
@@ -196,6 +197,8 @@ class HotWindow:
             return (0, 0)
         if len(self.data) <= num:
             return (0, len(self.data))
+        if not self.selectDay:
+            return (len(self.data) - num, len(self.data))
         days = [d[0]['day'] for d in self.data]
         #最左
         if self.selectDay <= days[0]:
@@ -204,7 +207,7 @@ class HotWindow:
         if self.selectDay >= days[len(days) - 1]:
             return (len(days) - num, len(days))
         idx = 0
-        for i in enumerate(len(days) - 1): # skip last day
+        for i in range(len(days) - 1): # skip last day
             if (self.selectDay >= days[i]) and (self.selectDay < days[i + 1]):
                 idx = i
                 break
@@ -215,10 +218,24 @@ class HotWindow:
             idx -= num - (lastIdx - idx)
         return (idx, lastIdx)
 
+    def drawMoreTip(self, hdc, x, y, op):
+        sdc = win.SaveDC(hdc)
+        br = win.CreateSolidBrush(0xff0000)
+        win.SelectObject(hdc, br)
+        pts = None
+        CW ,CH = 5, 6
+        if op == 0: # left more arrow
+            pts = [(x, y), (x + CW, y - CH), (x + CW, y + CH)]
+        else: # right more arrow
+            pts = [(x, y), (x - CW, y - CH), (x - CW, y + CH)]
+        win.Polygon(hdc, pts)
+        win.RestoreDC(hdc, sdc)
+
     def drawMaxMode(self, hdc):
         if not self.data or len(self.data) == 0:
             return
-        x = 0
+        x = (self.rect[2] % self.DAY_HOT_WIDTH) // 2
+        startX = x
         nd = self.data
         startIdx, endIdx = self.findDrawDaysIndex()
         for i, data in enumerate(nd):
@@ -226,6 +243,10 @@ class HotWindow:
                 continue
             self.drawOneDayHot(hdc, x, data)
             x += self.DAY_HOT_WIDTH
+        if startIdx > 0:
+            self.drawMoreTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
+        if endIdx < len(self.data):
+            self.drawMoreTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
 
     def drawOneDayHot(self, hdc, x, data): # data = [ {day:'', time:'', hotValue:xx, hotOrder: '' }, ... ]
         if not data or len(data) == 0:
