@@ -186,12 +186,44 @@ class HotWindow:
         win.DeleteObject(font)
         # print('WM_PAINT')
 
+    # return [startIdx, endIdx)
+    def findDrawDaysIndex(self):
+        if not self.data:
+            return (0, 0)
+        width = self.rect[2]
+        num = width // self.DAY_HOT_WIDTH
+        if num == 0:
+            return (0, 0)
+        if len(self.data) <= num:
+            return (0, len(self.data))
+        days = [d[0]['day'] for d in self.data]
+        #最左
+        if self.selectDay <= days[0]:
+            return (0, num)
+        #最右
+        if self.selectDay >= days[len(days) - 1]:
+            return (len(days) - num, len(days))
+        idx = 0
+        for i in enumerate(len(days) - 1): # skip last day
+            if (self.selectDay >= days[i]) and (self.selectDay < days[i + 1]):
+                idx = i
+                break
+        lastIdx = idx + num
+        if lastIdx > len(days):
+            lastIdx = len(days)
+        if lastIdx - idx < num:
+            idx -= num - (lastIdx - idx)
+        return (idx, lastIdx)
+
     def drawMaxMode(self, hdc):
         if not self.data or len(self.data) == 0:
             return
         x = 0
         nd = self.data
-        for data in nd:
+        startIdx, endIdx = self.findDrawDaysIndex()
+        for i, data in enumerate(nd):
+            if i < startIdx or i >= endIdx:
+                continue
             self.drawOneDayHot(hdc, x, data)
             x += self.DAY_HOT_WIDTH
 
