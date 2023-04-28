@@ -128,6 +128,8 @@ function tryMoveBlock() {
         }, ms, x);
     }
     setTimeout(function () {
+        evt = new MouseEvent('mousemove', { clientX: 10 + imgsInfo.moveBockX, clientY: 10 });
+        document.dispatchEvent(evt); // send event to document
         evt = new MouseEvent('mouseup', { clientX: 10 + imgsInfo.moveBockX, clientY: 10 });
         document.dispatchEvent(evt); // send event to document
         imgsInfo.blockMoving = false;
