@@ -1,20 +1,16 @@
 import win32gui as win, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime
 from PIL import Image
-import ddddocr
-import orm
+import orm, number_ocr
 
 # pip installl opencv-python
-
-
 
 THS_TOP_HWND = None
 THS_MAIN_HWND = None
 THS_LEVEL2_CODE_HWND = None
 THS_SELECT_DAY_HWND = None
 
-def enumLevel2_Window(hwnd):
-    pass
+ocr = number_ocr.NumberOCR()
 
 def findLevel2CodeWnd(hwnd):
     global THS_LEVEL2_CODE_HWND
@@ -64,11 +60,6 @@ def findCode():
         code = title[6 : 12]
     return code
 
-def findSelectDay():
-    pass
-
-ocr = ddddocr.DdddOcr()
-
 def getSelectDay():
     global THS_SELECT_DAY_HWND, ocr
     if not win.IsWindowVisible(THS_SELECT_DAY_HWND):
@@ -90,7 +81,7 @@ def getSelectDay():
     bmpstr = saveBitMap.GetBitmapBits(True)
     im_PIL = Image.frombuffer('RGB',(bmpinfo['bmWidth'], 17), bmpstr, 'raw', 'BGRX', 0, 1) # bmpinfo['bmHeight']
 
-    selYear = ocr.classification(im_PIL)
+    selYear = ocr.match(im_PIL)
     # print('selYear=', selYear)
     
     # copy day bmp
@@ -99,7 +90,7 @@ def getSelectDay():
     bmpinfo = saveBitMap.GetInfo()
     bmpstr = saveBitMap.GetBitmapBits(True)
     im_PIL = Image.frombuffer('RGB',(bmpinfo['bmWidth'], 17), bmpstr, 'raw', 'BGRX', 0, 1) 
-    selDay = ocr.classification(im_PIL)
+    selDay = ocr.match(im_PIL)
     # print('selDay=', selDay)
     # im_PIL.show()
 
@@ -109,7 +100,9 @@ def getSelectDay():
     mfcDC.DeleteDC()
     win.ReleaseDC(THS_SELECT_DAY_HWND, dc)
 
-    return selYear + '-' + selDay[0 : 2] + '-' + selDay[2 : ]
+    sd = selYear + '-' + selDay[0 : 2] + '-' + selDay[2 : 4]
+    #print(sd)
+    return sd
 
 
 def init():
