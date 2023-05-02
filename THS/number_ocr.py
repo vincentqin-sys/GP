@@ -1,4 +1,4 @@
-import time
+import time, os, platform
 from PIL import Image
 import win32gui as win, win32con , win32api, win32ui # pip install pywin32
 
@@ -113,9 +113,14 @@ class EImage:
 
 class NumberOCR:
     def __init__(self):
-        img = Image.open('ocr-template.bmp')
-        self.templateImg = EImage(img)
-        self.templateDigit = "0215348976"
+        if platform.node() == 'DESKTOP-AHS50K5': #办公室电脑
+            img = Image.open('ocr-template-Work.bmp')
+            self.templateImg = EImage(img)
+            self.templateDigit = "1240358679"
+        elif platform.node() == 'DESKTOP-AHS50K5':
+            img = Image.open('ocr-template-Home.bmp')
+            self.templateImg = EImage(img)
+            self.templateDigit = "0215348976"
 
     def _matchOne(self, oimg : EImage, oRect):
         MIN_SIMILAR_VAL = 95
@@ -189,5 +194,5 @@ class BuildTemplateImage:
         self.destImg.imgPIL.save('template.bmp')
     
 if __name__ == '__main__':
-    dtm = BuildTemplateImage(0XC0334)
+    dtm = BuildTemplateImage(0X1109C)
     dtm.saveTemplate()
