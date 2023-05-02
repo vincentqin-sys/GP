@@ -113,13 +113,11 @@ class EImage:
 
 class NumberOCR:
     def __init__(self):
-        if platform.node() == 'DESKTOP-AHS50K5': #办公室电脑
-            img = Image.open('ocr-template-Work.bmp')
-            self.templateImg = EImage(img)
+        if platform.node() == 'DESKTOP-AHS50K5': # 办公室电脑
+            self.templateImg = EImage(Image.open('ocr-template-Work.bmp'))
             self.templateDigit = "1240358679"
-        elif platform.node() == 'DESKTOP-AHS50K5':
-            img = Image.open('ocr-template-Home.bmp')
-            self.templateImg = EImage(img)
+        elif platform.node() == 'WIN-OGPUU03JC8A': # 家里笔记本电脑
+            self.templateImg = EImage(Image.open('ocr-template-Home.bmp'))
             self.templateDigit = "0215348976"
 
     def _matchOne(self, oimg : EImage, oRect):
@@ -191,8 +189,11 @@ class BuildTemplateImage:
             time.sleep(0.5)
             if len(self.destImg.itemsRect) >= 10:
                 break
-        self.destImg.imgPIL.save('template.bmp')
+        self.destImg.imgPIL.save('ocr-template.bmp')
     
 if __name__ == '__main__':
-    dtm = BuildTemplateImage(0X1109C)
+    print(platform.node())
+    # 同花顺分析图中的日期窗口
+    THS_SELECT_DAY_HWND = 0X1109C
+    dtm = BuildTemplateImage(THS_SELECT_DAY_HWND)
     dtm.saveTemplate()
