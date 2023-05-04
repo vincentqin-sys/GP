@@ -26,6 +26,11 @@ function formatTime(date) {
     return v;
 }
 
+function mlog(...args) {
+    let ms = formatDate(new Date()) + ' ' + formatTime(new Date());
+    console.log('[' + ms + '] ', ...args);
+}
+
 // 监听消息
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 	let cmd = request['cmd'];
@@ -37,7 +42,8 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             setHotInfo(data);
         }
     } else if (cmd == 'LOG') {
-        console.log('Log', request);
+        // console.log('Log', request);
+        mlog('Log', request);
     } else if (cmd == 'SET_LOGIN_INFO') {
         if (sender && sender.tab && sender.tab.windowId == proc_info.hotWindowId) {
             setLoginInfo(data);
@@ -79,7 +85,7 @@ function setLoginInfo(data) {
 
     proc_info.hotWindowId = 0;
     proc_info.isLogined = data.isLogined;
-    console.log('setLoginInfo', data);
+    mlog('setLoginInfo', data);
 }
 
 function deepCopy(obj) {
@@ -100,10 +106,10 @@ function sendHotInfoToServer(data) {
         contentType : 'application/json',
         data: JSON.stringify(data),
         success: function (res) {
-            console.log('Success: Send hot info to server success ', res, data);
+            mlog('Success: Send hot info to server success ', res, data);
         },
         error: function (res) {
-            console.log('Fail: Send hot info to server fail ', data);
+            mlog('Fail: Send hot info to server fail ', data);
         }
     });
 }
