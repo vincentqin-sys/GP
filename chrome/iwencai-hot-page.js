@@ -89,8 +89,8 @@ function sendPageData(task, resolve) {
         // }
     );
 
-    msg = { cmd: 'LOG', data: pageInfo.userInfo, 'name' : 'user info'};
-    chrome.runtime.sendMessage(msg);
+    // msg = { cmd: 'LOG', data: pageInfo.userInfo, 'name' : 'user info'};
+    // chrome.runtime.sendMessage(msg);
 
     resolve();
 }

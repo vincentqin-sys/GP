@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Options</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="options.css">
+  </head>
+  <body>
+    <div class="logo"></div>
+    <div class="container">
+      <div class="item column">
+        <div class="info">
+          <p>1. Access-Control-Allow-Methods</p>
+        </div>
+        <div class="content">
+          <p>Value</p><input type="text" id="methods">
+        </div>
+      </div>
+      <div class="item row line">
+        <p class="note">Please specify the methods allowed when accessing the resources.</p>
+        <p class="note">The default value is: GET, PUT, POST, DELETE, HEAD, OPTIONS</p>
+        <p class="note">Note: add or remove items comma separated. All changes are auto-saved to the memory.</p>
+      </div>
+      <!-- -->
+      <div class="item column">
+        <div class="info">
+          <p>2. Access-Control-Allow-Headers</p>
+        </div>
+        <div class="content">
+          <p>Include</p><input type="checkbox" id="headers">
+        </div>
+      </div>
+      <div class="item row line">
+        <p class="note">Include (Access-Control-Request-Headers) in requestHeaders to (Access-Control-Allow-Headers) in responseHeaders.</p>
+        <p class="note">The default value is active. Unmark this option to NOT change Access-Control-Allow-Headers.</p>
+      </div>
+      <!-- -->
+      <div class="item column">
+        <div class="info">
+          <p>3. Access-Control-Allow-Credentials</p>
+        </div>
+        <div class="content">
+          <p>Expose</p><input type="checkbox" id="credentials">
+        </div>
+      </div>
+      <div class="item row line">
+        <p class="note">Make Access-Control-Allow-Credentials header value: True</p>
+        <p class="note">The default value is false. Mark this option to make the value true.</p>
+      </div>
+      <!-- -->
+      <div class="item column">
+        <div class="info">
+          <p>4. Access-Control-Allow-Origin</p>
+        </div>
+        <div class="content" style="text-align: right">
+          <label for="origin-all" title="All origins">*</label><input type="radio" name="origin" id="origin-all" title="All origins">
+          <label for="origin-top" title="Top origin (initiator)">Origin</label><input type="radio" name="origin" id="origin-top" title="Top origin (initiator)">
+        </div>
+      </div>
+      <div class="item row line">
+        <p class="note">Choose a value for Access-Control-Allow-Origin. The default value is: ORIGIN (initiator)</p>
+      </div>
+      <!-- -->
+      <div class="item column">
+        <div class="info">
+          <p>5. Add (*) as the origin for all redirected URLs</p>
+        </div>
+        <div class="content">
+          <p></p><input type="checkbox" id="redirect">
+        </div>
+      </div>
+      <div class="item row line">
+        <p class="note">To allow CORS for redirected URLs, the value for Access-Control-Allow-Origin is (*) regardless of what you choose in option #4. This option is active by default.</p>
+      </div>
+      <!-- -->
+      <div class="item row">
+        <div class="info">
+          <p>6. Whitelisted domains from - Allow CORS</p>
+          <p class="note">When CORS is allowed in your browser, for the following domains, CORS is disabled.</p>
+          <p class="note">Note: add or remove domains comma separated. All changes are auto-saved to the memory.</p>
+        </div>
+        <div class="content">
+          <textarea id="whitelist"></textarea>
+        </div>
+      </div>
+    </div>
+    <script type='text/javascript' src="options.js"></script>
+  </body>
+</html>

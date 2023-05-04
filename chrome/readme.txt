@@ -1,4 +1,5 @@
 注意事项：
+（一）
     开启fiddler，设置CROS response header，用于拦截验证码图片
 
 修改fiddler rules：
@@ -14,3 +15,9 @@ static function OnPeekAtResponseHeaders(oSession: Session) {
         FiddlerObject.log('CORS: ' + oSession.url);
     }
 }
+
+（二）
+设置chrome：
+chrome://flags/
+
+将 Block insecure private network requests 设置为 Disable
