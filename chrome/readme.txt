@@ -15,9 +15,3 @@ static function OnPeekAtResponseHeaders(oSession: Session) {
         FiddlerObject.log('CORS: ' + oSession.url);
     }
 }
-
-（二）
-设置chrome：
-chrome://flags/
-
-将 Block insecure private network requests 设置为 Disable

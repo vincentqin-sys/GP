@@ -3,7 +3,7 @@ from flask import render_template, request, jsonify, Blueprint, url_for, g
 from flask.views import MethodView, View
 import peewee as pw
 
-db = pw.SqliteDatabase('D:/vscode/GP/db/LHB.db')
+
 # proxy = pw.DatabaseProxy()
 # proxy.initialize(db)
 
@@ -119,7 +119,3 @@ class BaseView(MethodView):
     def delete(self, id):
         self.orm.delete().where(self.orm.id == id).execute()
         return self.success(None)
-
-class BaseModel(pw.Model):
-    class Meta:
-        database = db

@@ -23,6 +23,27 @@ def loadOneDayTotal(day):
     for it in infos:
         v.append({'code': it[0], 'name': it[1]})
     return v
+
+def getColInfo(colNames : list, cnt : list, name : str):
+    idx = colNames.index(name)
+    return cnt[idx]
+
+def isExsitsCnt(idx, colNames, title, cnt, cols):
+    titleIdx = colNames.index(title)
+    cols = [ colNames.index(c) for c in cols ]
+    org = cnt[idx]
+    for i in range(0, idx):
+        cur = cnt[i]
+        if cur[titleIdx] != org[titleIdx]:
+            continue
+        flag = True
+        for c in cols:
+            if cur[c] != org[c]:
+                flag = False
+                break
+        if flag:
+            return True
+    return False
     
 def loadOneGP(code, day, name):
     url = 'http://page2.tdx.com.cn:7615/TQLEX?Entry=CWServ.tdxsj_lhbd_ggxq'
@@ -38,36 +59,59 @@ def loadOneGP(code, day, name):
         
     totalInfo = rs['ResultSets'][0]
     # T004(代码), T012（上榜原因）, cjl（成交量）, cje（成交额）, closepri（收盘价）, zdf（涨跌幅）
-    totalInfoCnt = totalInfo['Content'][0]
-    result = {'day': day, 'code': code, 'name': name, 'title': totalInfoCnt[1], 'price': totalInfoCnt[4], 'zd': totalInfoCnt[5], 'vol': totalInfoCnt[2], 'cjje': totalInfoCnt[3], 
-                'detail': [], 'mrje': 0, 'mrjeRate': 0, 'mcje': 0, 'mcjeRate': 0, 'jme': 0, 'famous': ''}
+    totalColNames = totalInfo['ColName']
+    totalInfoCnt = totalInfo['Content']
+
+    results = {}
+    for r in totalInfoCnt:
+        title = getColInfo(totalColNames, r, 'T012')
+        obj = {'day': day, 'code': code, 'name': name, 
+               'price': getColInfo(totalColNames, r, 'closepri'), 
+               'zd': getColInfo(totalColNames, r, 'zdf'),
+               'vol': getColInfo(totalColNames, r, 'cjl'),
+               'cjje': getColInfo(totalColNames, r, 'cje'), 
+               'title': title,
+               'mrje': 0, 'mrjeRate': 0, 'mcje': 0, 'mcjeRate': 0, 'jme': 0, 'famous': '' }
+        results[ title ] = obj
+
     infos = rs['ResultSets'][1]
+    infosColNames = infos['ColName']
     infosCnt = infos['Content']
-    idx = 0
-    for it in infosCnt:
-        vv = {'yz': it[2], 'mrje': it[3], 'mcje': it[4], 'jme': it[5], 'yzDesc': it[12]}
-        vv['mrje'] = vv['mrje'] if vv['mrje'] else 0
-        vv['mcje'] = vv['mcje'] if vv['mcje'] else 0
-        vv['yzDesc'] = vv['yzDesc'] if vv['yzDesc'] else ''
-        vv['mrjeRate'] = vv['mrje'] * 100 / result['cjje']
-        vv['mcjeRate'] = vv['mcje'] * 100 / result['cjje']
-        result['mrje'] = result['mrje'] + vv['mrje']
-        result['mcje'] = result['mcje'] + vv['mcje']
-        result['detail'].append(vv)
-        if vv['yzDesc'] not in result['famous']:
-            result['famous'] = result['famous'] + vv['yzDesc'] + '; '
-        if idx == 4:
-            result['famous'] = result['famous'] + ' // '
-        idx += 1
-    result['mrjeRate'] = result['mrje'] * 100 / result['cjje']
-    result['mcjeRate'] = result['mcje'] * 100 / result['cjje']
-    result['detail'] = json.dumps(result['detail'], ensure_ascii = False)
-    result['jme'] = result['mrje'] - result['mcje']
-    #print(result['detail'])
-    names = ('vol', 'cjje', 'mrje', 'mrjeRate', 'mcje', 'mcjeRate', 'jme')
-    for n in names:
-        result[n] = int(result[n])
-    return result
+    for idx, it in enumerate(infosCnt):
+        # 'yz': it[2],
+        # ["T007", "T004", "T008", "T009", "T010", "je", "T012", "T006", "T011", "T015", "yxyz", "gsd", "bq1", "bq2", "bq3", "bq4"]
+        title = getColInfo(infosColNames, it, 'T012')
+        curInfo = results[title]
+
+        if isExsitsCnt(idx, infosColNames, 'T012', infosCnt, ('T008', 'T009', 'T010')):
+            continue
+
+        yzDesc = getColInfo(infosColNames, it, 'bq1') or ''
+        mrje = getColInfo(infosColNames, it, 'T009') or 0
+        mcje = getColInfo(infosColNames, it, 'T010') or 0
+        jme = getColInfo(infosColNames, it, 'je') or 0
+        bs = getColInfo(infosColNames, it, 'T006') # 'B' or 'S'
+        curInfo['mrje'] += mrje
+        curInfo['mcje'] += mcje
+        curInfo['jme'] += jme
+
+        if yzDesc not in curInfo['famous']:
+            if (bs == 'S') and ('//' not in curInfo['famous']):
+                curInfo['famous'] += ' // '
+            curInfo['famous'] += yzDesc + '; '
+        #print(curInfo['title'], curInfo['mrje'], curInfo['mcje'], curInfo['jme'], curInfo['famous'], sep=' / ')
+
+    datas = []
+    for k in results:
+        rs = results[k]
+        rs['mrjeRate'] = int(rs['mrje'] * 100 / rs['cjje'])
+        rs['mcjeRate'] = int(rs['mcje'] * 100 / rs['cjje'])
+        rs['mrje'] /= 10000 # 万 -> 亿
+        rs['mcje'] /= 10000
+        rs['jme'] /= 10000
+        rs['cjje'] /= 10000
+        datas.append(rs)
+    return datas
 
 # yyyy-mm-dd
 def loadOneDayLHB(day):
@@ -84,8 +128,8 @@ def loadOneDayLHB(day):
         if gp['code'] in oldDatas:
             continue
         r = loadOneGP(gp['code'], day, gp['name'])
-        result.append(r)
-    with mcore.db.atomic():
+        result.extend(r)
+    with orm.db.atomic():
         for batch in pw.chunked(result, 10):
             dd = orm.TdxLHB.insert_many(batch)
             dd.execute()
@@ -96,11 +140,12 @@ def loadOneDayLHB(day):
 runLock = threading.RLock()
 def loadTdxLHB():
     dayFrom = datetime.date(2022, 1, 4)
-    cursor = mcore.db.cursor()
+    cursor = orm.db.cursor()
     rs = cursor.execute('select min(日期), max(日期) from tdxlhb').fetchall()
-    if len(rs) > 0:
-        minDay = datetime.datetime.strptime(rs[0][0], '%Y-%m-%d').date()
-        maxDay = datetime.datetime.strptime(rs[0][1], '%Y-%m-%d').date()
+    rs = rs[0]
+    if rs[0]:
+        minDay = datetime.datetime.strptime(rs[0], '%Y-%m-%d').date()
+        maxDay = datetime.datetime.strptime(rs[1], '%Y-%m-%d').date()
     else:
         minDay = datetime.date(2022, 1, 1)
         maxDay = datetime.date(2022, 1, 1)
@@ -145,6 +190,9 @@ def autoLoadTdxLHB():
 if __name__ == '__main__':
     orm.init()
     loadTdxLHB()
+
+    # test
+    #loadOneGP('002241', '2022-11-10', '歌尔股份')
     
 
 

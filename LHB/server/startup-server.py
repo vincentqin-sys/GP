@@ -37,7 +37,7 @@ def toJE(s):
         return float(s) * 10000
     return float(s)
     
-
+"""
 @app.route('/writeThsLHBDataList', methods = ['POST'])
 def writeThsLHBDataList():
     try:
@@ -70,12 +70,13 @@ def writeThsLHBDataList():
         traceback.print_exc()
         m = {"status": "Fail", "msg": str(e)}
         return json.dumps(m)
-        
+"""
+     
 @app.route('/getLHBInfo', methods = ['POST'])
 def getLHBInfo():
     params = request.data
     params = json.loads(params)
-    cs = mcore.db.cursor()
+    cs = orm.db.cursor()
     cs.execute(params['sql'])
     data = cs.fetchall()
     txt = json.dumps(data, ensure_ascii = False) # ensure_ascii = False
