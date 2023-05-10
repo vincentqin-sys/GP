@@ -180,3 +180,27 @@ function openHotPage(openReason) {
 
 
 setInterval(hot_run, 1000 * 20); // 20 seconds
+
+
+// CORS
+function updateHeaders(hds, name, value) {
+	let sname = name.toLowerCase();
+	for (let i = 0; i < hds.length; i++) {
+		if (hds[i].name.toLowerCase() == sname) {
+			hds[i].value = value;
+			return;
+		}
+	}
+	hds.push({'name': name, 'value': value});
+}
+
+chrome.webRequest.onHeadersReceived.addListener(function(details) {
+		let hds = details.responseHeaders;
+		updateHeaders(hds, 'Access-Control-Allow-Origin', '*');
+		updateHeaders(hds, 'Access-Control-Allow-Credentials', 'true');
+		updateHeaders(hds, 'Access-Control-Allow-Methods', '*');
+		return {responseHeaders : hds};
+	},
+	{urls: ['http://captcha.10jqka.com.cn/*']},
+	['responseHeaders','blocking', 'extraHeaders']
+);

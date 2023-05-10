@@ -8,6 +8,7 @@
 	"permissions": [
 		"http://www.iwencai.com/*",
 		"http://upass.iwencai.com/*",
+		"http://captcha.10jqka.com.cn/*",
 		"tabs",
 		"webRequest",
 		"webRequestBlocking",
