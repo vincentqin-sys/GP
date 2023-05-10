@@ -127,6 +127,9 @@ def loadOneDayLHB(day):
     for gp in gps:
         if gp['code'] in oldDatas:
             continue
+        scode = gp['code'][0]
+        if scode != '3' and scode != '0' and scode != '6':
+            continue
         r = loadOneGP(gp['code'], day, gp['name'])
         result.extend(r)
     with orm.db.atomic():
@@ -139,7 +142,7 @@ def loadOneDayLHB(day):
 
 runLock = threading.RLock()
 def loadTdxLHB():
-    dayFrom = datetime.date(2022, 1, 4)
+    dayFrom = datetime.date(2023, 1, 1)
     cursor = orm.db.cursor()
     rs = cursor.execute('select min(日期), max(日期) from tdxlhb').fetchall()
     rs = rs[0]
@@ -147,8 +150,8 @@ def loadTdxLHB():
         minDay = datetime.datetime.strptime(rs[0], '%Y-%m-%d').date()
         maxDay = datetime.datetime.strptime(rs[1], '%Y-%m-%d').date()
     else:
-        minDay = datetime.date(2022, 1, 1)
-        maxDay = datetime.date(2022, 1, 1)
+        minDay = datetime.date(2023, 1, 1)
+        maxDay = datetime.date(2023, 1, 1)
 
     today = datetime.date.today()
     delta = datetime.timedelta(days=1)
