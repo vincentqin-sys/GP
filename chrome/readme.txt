@@ -1,5 +1,5 @@
-注意事项：
-（一）
+﻿注意事项：
+
     开启fiddler，设置CROS response header，用于拦截验证码图片
 
 修改fiddler rules：
@@ -15,3 +15,5 @@ static function OnPeekAtResponseHeaders(oSession: Session) {
         FiddlerObject.log('CORS: ' + oSession.url);
     }
 }
+
+现已不需要开启fiddler来修改CORS, 已通过chrome.webRequest完成了CORS
