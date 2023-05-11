@@ -5,7 +5,7 @@ import json, os
 import traceback
 import requests, json, logging
 
-import mviews, orm, mcore, proxy, tdx_lhb
+import orm, mcore, proxy, tdx_lhb
 
 logging.basicConfig(level=logging.WARN)
 app = Flask(__name__, static_folder='ui/static', template_folder='ui/templates')
@@ -123,7 +123,6 @@ def _close_db(*args):
 
 def startup():
     #if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-    mviews.init(app)
     orm.init()
     proxy.init(app)
     tdx_lhb.autoLoadTdxLHB()

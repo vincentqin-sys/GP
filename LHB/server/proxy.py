@@ -1,5 +1,5 @@
 import requests, json, flask, socket, re
-import mviews, orm, mcore
+import orm, mcore
 
 # 修改同花顺软件中的龙虎榜页面信息，添加营业部的注释信息
 # fiddler AutoResponder
