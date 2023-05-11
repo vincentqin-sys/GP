@@ -162,7 +162,7 @@ function buildKlineUI() {
     kline.after(hots);
     kline.after('<div id="kline_hots_tip" style="float: left; width: 100px; height:590px; background-color: #ccc;" > </div>');
 
-    setInterval(listenKlineDOM, 100);
+    setInterval(listenKlineDOM, 300);
 }
 
 function updateKlineUI() {
@@ -217,10 +217,27 @@ function markKlineHotDay(oldDay, newDay) {
         return;
     }
 
-    let lineHeight = $('#kline_hots_info tr:eq(1)').height();
-    let startY = lineHeight * newIdx;
-    let endY = lineHeight * (lastNewIdx + 1);
-    
+    // scroll to visible
+    let visibleHeight = $('#kline_hots_info').height();
+    if (visibleHeight <= 0) {
+        return;
+    }
+
+    let startElem = $('#kline_hots_info tr:eq(' + (newIdx + 1) + ')');
+    let lastElem = $('#kline_hots_info tr:eq(' + (lastNewIdx + 1) + ')');
+    let ROW_HEIGHT = startElem.height();
+    let startY = startElem.position().top;
+    let endY = lastElem.position().top + ROW_HEIGHT;
+
+    let se = document.querySelector('#kline_hots_info');
+    if (startY < se.scrollTop) {
+        se.scrollTo({ top: startY, behavior: 'smooth' });
+        return;
+    }
+    if (endY - se.scrollTop > visibleHeight) {
+        se.scrollTo({ top: endY - visibleHeight, behavior: 'smooth' });
+        return;
+    }
 }
 
 function listenKlineDOM() {
@@ -297,28 +314,33 @@ function forLogin() {
     }
 }
 
+function getRequestParams() {
+    let url = window.location.href;
+    let idx = url.indexOf('?');
+    if (idx < 0) {
+        return {};
+    }
+    let vals = {};
+    url = url.substring(idx + 1);
+    let params = url.split('&');
+    for (let i in params) {
+        let item = params[i].split('=');
+        vals[item[0]] = decodeURIComponent(item[1]);
+    }
+    return vals;
+}
+
 // 热股排名页面
 if (decodeURI(window.location.href).indexOf('个股热度排名') > 0) {
-    let openReason = '';
-    let url = decodeURI(window.location.href);
-    if (url.indexOf('openReason') > 0) {
-        openReason = url.substring(url.indexOf('openReason'));
-        if (openReason.indexOf('=') > 0) {
-            openReason = openReason.substring(openReason.indexOf('=') + 1);
-        }
-        if (openReason.indexOf('&') > 0) {
-            openReason = openReason.substring(0, openReason.indexOf('&'));
-        }
-    }
+    let reqParams = getRequestParams();
+    let openReason = reqParams['openReason'];
     console.log('openReason=', openReason);
 
     // open from bg extention
-    if (url.indexOf('mytag=bg') > 0) {
-        if (openReason == 'FOR-SAVE') {
-            forSave();
-        } else if (openReason == 'FOR-KEEP-ALIVE' || openReason == 'FOR-LOGIN') {
-            forLogin();
-        }
+    if (openReason == 'FOR-SAVE') {
+        forSave();
+    } else if (openReason == 'FOR-KEEP-ALIVE' || openReason == 'FOR-LOGIN') {
+        forLogin();
     } else {
         setTimeout(buildKlineUI, 8000);
     }

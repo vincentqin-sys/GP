@@ -62,7 +62,7 @@ def saveHot(): # 热点股票信息
 
 @app.route('/getHot/<code>', methods = ['GET'])
 def getHot(code): # 热点股票信息
-    datas = orm.THS_Hot.select().where(orm.THS_Hot.code == code)
+    datas = orm.THS_Hot.select(orm.THS_Hot.day, orm.THS_Hot.time, orm.THS_Hot.hotValue, orm.THS_Hot.hotOrder).where(orm.THS_Hot.code == code)
     nd = [d.__data__ for d in datas]
     return nd
 
