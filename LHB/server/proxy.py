@@ -35,7 +35,6 @@ def proxy():
     #print(names)
     for k in names:
         v = names[k]
-        orm.YouZi.saveInfo(k, v)
         rv = f'{k}  <span style="color:#f22; background-color:#aaa;" > {v} <span> '
         orgText = orgText.replace(k, rv)
     orgText = orgText.replace('width="350"', '')
