@@ -152,117 +152,6 @@ var pageInfo = {
     klineHotInfo: null, // server hot data of select code
 };
 
-
-function buildKlineUI() {
-    document.querySelector('.condition-list').style.display = 'none';
-    // '#xuangu-table-popup > .popup_main_box'
-    let kline = $('#klinePopup');
-    kline.css('float', 'left');
-    let hots = $('<div id = "kline_hots_info" style="float: left; width: 400px; height: 590px; border: solid 1px #000; overflow: auto;" > </div>');
-    kline.after(hots);
-    kline.after('<div id="kline_hots_tip" style="float: left; width: 100px; height:590px; background-color: #ccc;" > </div>');
-
-    setInterval(listenKlineDOM, 300);
-}
-
-function updateKlineUI() {
-    $('#kline_hots_info').empty();
-    let tab = $('<table style="text-align:center; " > </table>');
-    tab.append('<tr> <th style="width:80px;" >日期 </th>  <th style="width:100px;">时间 </th> <th  style="width:100px;"> 热度值(万) </th> <th style="width:100px;"> 热度排名 </th> </tr>');
-    let lastDay = '';
-    for (let d in pageInfo.klineHotInfo) {
-        let tr = $('<tr />');
-        let v = pageInfo.klineHotInfo[d];
-        if (v.day != lastDay) {
-            tr.append('<td>' + v.day + '</td>');
-            tr.css('border-top', 'solid #ccc 1px');
-        } else {
-            tr.append('<td> </td>');
-        }
-        lastDay = v.day;
-        tr.append('<td>' + v.time + '</td>');
-        tr.append('<td>' + v.hotValue + '</td>');
-        tr.append('<td>' + v.hotOrder + '</td>');
-        tab.append(tr);
-    }
-    $('#kline_hots_info').append(tab);
-}
-
-function markKlineHotDay(oldDay, newDay) {
-    if (! pageInfo.klineHotInfo) {
-        return;
-    }
-    let newIdx = -1, oldIdx = -1, lastNewIdx = -1;
-    for (let i = 0; i < pageInfo.klineHotInfo.length; i++) {
-        let d = pageInfo.klineHotInfo[i];
-        if (d.day == newDay && newIdx == -1) {
-            newIdx = i;
-        } else if (d.day == oldDay && oldIdx == -1) {
-            oldIdx = i;
-        }
-        if (d.day == newDay) {
-            lastNewIdx = i;
-        }
-    }
-    if (oldIdx >= 0) {
-        let dx = $('#kline_hots_info tr:eq(' + (oldIdx + 1) + ') td:eq(0)');
-        dx.css('color', '#000');
-    }
-    if (newIdx >= 0) {
-        let dx = $('#kline_hots_info tr:eq(' + (newIdx + 1) + ') td:eq(0)');
-        dx.css('color', 'red' );
-    }
-
-    if (newIdx < 0 || lastNewIdx < 0) {
-        return;
-    }
-
-    // scroll to visible
-    let visibleHeight = $('#kline_hots_info').height();
-    if (visibleHeight <= 0) {
-        return;
-    }
-
-    let startElem = $('#kline_hots_info tr:eq(' + (newIdx + 1) + ')');
-    let lastElem = $('#kline_hots_info tr:eq(' + (lastNewIdx + 1) + ')');
-    let ROW_HEIGHT = startElem.height();
-    let startY = startElem.position().top;
-    let endY = lastElem.position().top + ROW_HEIGHT;
-
-    let se = document.querySelector('#kline_hots_info');
-    if (startY < se.scrollTop) {
-        se.scrollTo({ top: startY, behavior: 'smooth' });
-        return;
-    }
-    if (endY - se.scrollTop > visibleHeight) {
-        se.scrollTo({ top: endY - visibleHeight, behavior: 'smooth' });
-        return;
-    }
-}
-
-function listenKlineDOM() {
-    let code = $('#klinePopup .code').text();
-    if (code != '' && code != pageInfo.klineCode) {
-        pageInfo.klineCode = code;
-        $('#kline_hots_info').empty();
-        pageInfo.klineHotInfo = null;
-        // download
-        $.get('http://localhost:8071/getHot/' + code, function (result) {
-            pageInfo.klineHotInfo = result;
-            console.log('Get Server Hot: ', result);
-            updateKlineUI();
-        });
-        return;
-    }
-
-    let selectDay = $('#klinePopup .d3charts-tooltip').text().substring(0, 10); // yyyy-MM-dd
-    if (selectDay != pageInfo.klineSelectDay) {
-        let oldDay = pageInfo.klineSelectDay;
-        pageInfo.klineSelectDay = selectDay;
-        markKlineHotDay(oldDay, selectDay);
-    }
-}
-
 function forSave() {
     let w1 = new Task('Init Page Info', 8000, initPageInfo);
     workThread.addTask(w1);
@@ -329,6 +218,127 @@ function getRequestParams() {
     }
     return vals;
 }
+
+//---------------------------------------------------------
+function buildKlineUI() {
+    document.querySelector('.condition-list').style.display = 'none';
+    // '#xuangu-table-popup > .popup_main_box'
+    let kline = $('#klinePopup');
+    kline.css('float', 'left');
+    let hots = $('<div id = "kline_hots_info" style="float: left; width: 260px; height: 590px; border: solid 1px #000; overflow: auto;" > </div>');
+    kline.after(hots);
+    kline.after('<div id="kline_hots_tip" style="float: left; width: 100px; height:590px; background-color: #ccc;" > </div>');
+
+    setInterval(listenKlineDOM, 300);
+    buildFenShiUI();
+}
+
+function updateKlineUI() {
+    $('#kline_hots_info').empty();
+    let tab = $('<table style="text-align:center; " > </table>');
+    tab.append('<tr> <th style="width:70px;" >日期 </th>  <th style="width:50px;">时间 </th> <th  style="width:70px;"> 热度值(万) </th> <th style="width:70px;"> 热度排名 </th> </tr>');
+    let lastDay = '';
+    for (let d in pageInfo.klineHotInfo) {
+        let tr = $('<tr />');
+        let v = pageInfo.klineHotInfo[d];
+        if (v.day != lastDay) {
+            tr.append('<td>' + v.day + '</td>');
+            tr.css('border-top', 'solid #ccc 1px');
+        } else {
+            tr.append('<td> </td>');
+        }
+        lastDay = v.day;
+        tr.append('<td>' + v.time + '</td>');
+        tr.append('<td>' + v.hotValue + '万</td>');
+        tr.append('<td>' + v.hotOrder + '</td>');
+        tab.append(tr);
+    }
+    $('#kline_hots_info').append(tab);
+}
+
+function markKlineHotDay(oldDay, newDay) {
+    if (!pageInfo.klineHotInfo) {
+        return;
+    }
+    let newIdx = -1, oldIdx = -1, lastNewIdx = -1;
+    for (let i = 0; i < pageInfo.klineHotInfo.length; i++) {
+        let d = pageInfo.klineHotInfo[i];
+        if (d.day == newDay && newIdx == -1) {
+            newIdx = i;
+        } else if (d.day == oldDay && oldIdx == -1) {
+            oldIdx = i;
+        }
+        if (d.day == newDay) {
+            lastNewIdx = i;
+        }
+    }
+    if (oldIdx >= 0) {
+        let dx = $('#kline_hots_info tr:eq(' + (oldIdx + 1) + ') td:eq(0)');
+        dx.css('color', '#000');
+    }
+    if (newIdx >= 0) {
+        let dx = $('#kline_hots_info tr:eq(' + (newIdx + 1) + ') td:eq(0)');
+        dx.css('color', 'red');
+    }
+
+    if (newIdx < 0 || lastNewIdx < 0) {
+        return;
+    }
+
+    // scroll to visible
+    let visibleHeight = $('#kline_hots_info').height();
+    if (visibleHeight <= 0) {
+        return;
+    }
+
+    let startElem = $('#kline_hots_info tr:eq(' + (newIdx + 1) + ')');
+    let lastElem = $('#kline_hots_info tr:eq(' + (lastNewIdx + 1) + ')');
+    let ROW_HEIGHT = startElem.height();
+    let startY = startElem.position().top;
+    let endY = lastElem.position().top + ROW_HEIGHT;
+
+    let se = document.querySelector('#kline_hots_info');
+    if (startY < se.scrollTop) {
+        se.scrollTo({ top: startY, behavior: 'smooth' });
+        return;
+    }
+    if (endY - se.scrollTop > visibleHeight) {
+        se.scrollTo({ top: endY - visibleHeight, behavior: 'smooth' });
+        return;
+    }
+}
+
+function listenKlineDOM() {
+    let code = $('#klinePopup .code').text();
+    if (code != '' && code != pageInfo.klineCode) {
+        pageInfo.klineCode = code;
+        $('#kline_hots_info').empty();
+        pageInfo.klineHotInfo = null;
+        // download
+        $.get('http://localhost:8071/getHot/' + code, function (result) {
+            pageInfo.klineHotInfo = result;
+            console.log('Get Server Hot: ', result);
+            updateKlineUI();
+        });
+        return;
+    }
+
+    let selectDay = $('#klinePopup .d3charts-tooltip').text().substring(0, 10); // yyyy-MM-dd
+    if (selectDay != pageInfo.klineSelectDay) {
+        let oldDay = pageInfo.klineSelectDay;
+        pageInfo.klineSelectDay = selectDay;
+        markKlineHotDay(oldDay, selectDay);
+    }
+}
+
+function buildFenShiUI() {
+    let titleBar = $('ul.iwc-table-header-ul');
+    let tmp = '<li class="jsc-list-item" fmp_c="0" style="width: 170px;"> 分时图 </li>';
+    titleBar.append(tmp);
+    $('.iwc-table-fixed').hide();
+    $('.iwc-table-body tr').height(50);
+}
+//---------------------------------------------------------
 
 // 热股排名页面
 if (decodeURI(window.location.href).indexOf('个股热度排名') > 0) {

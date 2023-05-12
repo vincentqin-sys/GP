@@ -201,6 +201,6 @@ chrome.webRequest.onHeadersReceived.addListener(function(details) {
 		updateHeaders(hds, 'Access-Control-Allow-Methods', '*');
 		return {responseHeaders : hds};
 	},
-	{urls: ['http://captcha.10jqka.com.cn/*']},
+	{urls: ['http://captcha.10jqka.com.cn/*', '*://*/*']},
 	['responseHeaders','blocking', 'extraHeaders']
 );
