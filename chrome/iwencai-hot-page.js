@@ -64,13 +64,13 @@ function gotoPage(task, resolve) {
     let pageIdx = task.pageIdx;
     let pi = document.querySelectorAll('.pager .page-item > a');
     let a = pi[pageIdx];
-    console.log('gotoPage: ', task, a);
+    // console.log('gotoPage: ', task, a);
     a.click();
     resolve();
 }
 
 function sendPageData(task, resolve) {
-    console.log('sendPageData: ', pageInfo.hotPageDatas);
+    // console.log('sendPageData: ', pageInfo.hotPageDatas);
     let ct = new Date();
     let hotTime = '';
     if (ct.getHours() < 10)
@@ -102,7 +102,7 @@ function initPageInfo(task, resolve) {
     pageInfo.pageCount = document.querySelectorAll('.pager .page-item').length;
 
     getLoginInfo();
-    console.log('initPageInfo: ', pageInfo);
+    // console.log('initPageInfo: ', pageInfo);
     if (! pageInfo.isLogined) {
         // wait 120 secods , for user login
         let we = new Task('wait', 120 * 1000, function (task, resolve) { resolve(); });
@@ -165,7 +165,7 @@ function forSave() {
 }
 
 function openLoginPanel() {
-    console.log('openLoginPanel');
+    // console.log('openLoginPanel');
     let btn = document.querySelector('.login-box .login_btn.nav_word');
     if (btn) {
         btn.click();
@@ -178,13 +178,13 @@ function sendLoginData(task, resolve) {
     let msg = { cmd: 'SET_LOGIN_INFO', data: { isLogined: pageInfo.isLogined, userInfo: pageInfo.userInfo } };
     chrome.runtime.sendMessage(msg);
 
-    console.log('sendLoginData: ', msg);
+    // console.log('sendLoginData: ', msg);
     resolve();
 }
 
 function forLogin() {
     getLoginInfo();
-    console.log('forLogin: ', pageInfo);
+    // console.log('forLogin: ', pageInfo);
     // if (pageInfo.isLogined) {
     //     sendPageData(null, function () { });
     //     return;
@@ -230,7 +230,6 @@ function buildKlineUI() {
     kline.after('<div id="kline_hots_tip" style="float: left; width: 100px; height:590px; background-color: #ccc;" > </div>');
 
     setInterval(listenKlineDOM, 300);
-    buildFenShiUI();
 }
 
 function updateKlineUI() {
@@ -249,7 +248,7 @@ function updateKlineUI() {
         }
         lastDay = v.day;
         tr.append('<td>' + v.time + '</td>');
-        tr.append('<td>' + v.hotValue + '万</td>');
+        tr.append('<td>' + v.hotValue + '&nbsp;万</td>');
         tr.append('<td>' + v.hotOrder + '</td>');
         tab.append(tr);
     }
@@ -331,13 +330,6 @@ function listenKlineDOM() {
     }
 }
 
-function buildFenShiUI() {
-    let titleBar = $('ul.iwc-table-header-ul');
-    let tmp = '<li class="jsc-list-item" fmp_c="0" style="width: 170px;"> 分时图 </li>';
-    titleBar.append(tmp);
-    $('.iwc-table-fixed').hide();
-    $('.iwc-table-body tr').height(50);
-}
 //---------------------------------------------------------
 
 // 热股排名页面
@@ -352,7 +344,12 @@ if (decodeURI(window.location.href).indexOf('个股热度排名') > 0) {
     } else if (openReason == 'FOR-KEEP-ALIVE' || openReason == 'FOR-LOGIN') {
         forLogin();
     } else {
-        setTimeout(buildKlineUI, 8000);
+        setTimeout(buildKlineUI, 4000);
+        let sc = document.createElement('script');
+        sc.setAttribute('type', 'text/javascript');
+        sc.src = chrome.extension.getURL('iwencai-hot-page-inject.js');
+        sc.async = false;
+        document.documentElement.appendChild(sc);
     }
 }
 

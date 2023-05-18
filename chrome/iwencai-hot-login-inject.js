@@ -20,7 +20,7 @@ function initTemplateImage() {
         // console.log('loadImageData:', img.width, img.height, url);
         let imgData = ctx.getImageData(0, 0, w, h);
         let src = elem.src.substring(elem.src.lastIndexOf('/') + 1);
-        console.log('initTemplateImage ', i, imgData.data.length, imgData.width, imgData.height);
+        // console.log('initTemplateImage ', i, imgData.data.length, imgData.width, imgData.height);
         let item = { 'img-idx': i, imgData: imgData, name: src };
         templateImages.push(item);
     }
@@ -54,13 +54,13 @@ function searchTemplateImageData() {
 
     for (let i = 0; i < templateImages.length; ++i) {
         let v = getPixelSimilerBlock(imgData, templateImages[i].imgData, 0, 0, CW, CH, 100);
-        console.log('searchTemplateImageData: ', i, templateImages[i].name, 'similerVal=', v);
+        // console.log('searchTemplateImageData: ', i, templateImages[i].name, 'similerVal=', v);
         if (v > similerVal) {
             valIdx = i;
             similerVal = v;
         }
     }
-    console.log('searchTemplateImageData =', templateImages[valIdx]);
+    // console.log('searchTemplateImageData =', templateImages[valIdx]);
     imgsInfo.matchTemplateImgData = templateImages[valIdx].imgData;
 }
 
@@ -94,7 +94,7 @@ function matchTemplateImage(fz, blockFZ) {
             if (sm < FZ) {
                 imgsInfo.matchBeginX = x;
                 imgsInfo.matchBeginY = y;
-                console.log('matchTemplateImage: x=', x, 'y=', y);
+                // console.log('matchTemplateImage: x=', x, 'y=', y);
                 return;
             }
         }
@@ -109,7 +109,7 @@ function tryMoveBlock() {
         return;
     }
     imgsInfo.moveBockX = imgsInfo.matchBeginX * imgsInfo.scaleBgWidth / imgsInfo.realBgWidth;
-    console.log('tryMoveBlock x=', imgsInfo.moveBockX);
+    // console.log('tryMoveBlock x=', imgsInfo.moveBockX);
     
     // start moving slider
     imgsInfo.blockMoving = true;
