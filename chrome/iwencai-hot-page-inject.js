@@ -165,6 +165,8 @@ function drawFenShiCanvas(fsData, width, height, canvas) {
 }
 
 function beautyfulUI() {
+    $('.left-bar-wrapper').hide();
+    $('.apps-bar').hide();
     $('.iwc-table-body table').css('width', '');
     $('.iwc-table-body').find('tr > td:nth-child(6)').each(function () {
         let txt = $(this).find('div').text();

@@ -227,7 +227,7 @@ function buildKlineUI() {
     kline.css('float', 'left');
     let hots = $('<div id = "kline_hots_info" style="float: left; width: 260px; height: 590px; border: solid 1px #000; overflow: auto;" > </div>');
     kline.after(hots);
-    kline.after('<div id="kline_hots_tip" style="float: left; width: 100px; height:590px; background-color: #ccc;" > </div>');
+    kline.after('<div id="kline_hots_tip" style="float: left; width: 80px; height:590px; background-color: #ccc;" > </div>');
 
     setInterval(listenKlineDOM, 300);
 }
