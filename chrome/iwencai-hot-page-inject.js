@@ -75,10 +75,16 @@ function bindFenShiCanvas(code) {
         return;
     }
     drawFenShiCanvas(fsData, fsElem.fs_canvas.width, fsElem.fs_canvas.height, fsElem.fs_canvas);
+    $(fsElem.fs_canvas).show();
 }
 
 function loadAllGPElements() {
-    GPInfos.codes = [];
+    for (let i in GPInfos.codes) {
+        let code = GPInfos.codes[i];
+        if (GPInfos[code + '_ELEM'])
+            delete GPInfos[code + '_ELEM'];
+    }
+    GPInfos.codes.length = 0;
     $('.iwc-table-body table').css('width', '');
     let trs = $('.iwc-table-body table tr');
     for (let i = 0; i < trs.length; i++) {
@@ -123,6 +129,7 @@ function drawFenShiCanvas(fsData, width, height, canvas) {
     const POINT_NN = 1;// 每几分钟选一个点
     const PRICE_IDX = 1; // 价格
     const PADDING_Y = 2; // 上下留点空间
+    const PADDING_X = 0; // 右边留点空间
     let mm = getFenShiDataMinMax(fsData, POINT_NN, PRICE_IDX);
     if (mm.minVal > fsData.pre)
         mm.minVal = fsData.pre;
@@ -130,15 +137,17 @@ function drawFenShiCanvas(fsData, width, height, canvas) {
         mm.maxVal = fsData.pre;
     
     let pointsCount = parseInt(4 * 60 / POINT_NN); // 画的点数
-    let pointsDistance = width / (pointsCount - 1); // 点之间的距离
+    let pointsDistance = (width - PADDING_X) / (pointsCount - 1); // 点之间的距离
     
     ctx.fillStyle = 'rgb(255, 255, 255)';
+    ctx.lineWidth = 1;
     ctx.fillRect(0, 0, width, height);
     if (fsData.data[fsData.data.length - GPInfos.FEN_SHI_DATA_ITEM_SIZE + PRICE_IDX] >= fsData.pre)
         ctx.strokeStyle = 'rgb(255, 0, 0)';
     else
         ctx.strokeStyle = 'rgb(0, 204, 0)';
     ctx.beginPath();
+    ctx.setLineDash([]);
     for (let i = 0, pts = 0; i < fsData.data.length; i += GPInfos.FEN_SHI_DATA_ITEM_SIZE) {
         if (i % POINT_NN != 0) {
             continue;
@@ -157,10 +166,10 @@ function drawFenShiCanvas(fsData, width, height, canvas) {
     // 画开盘价线
     ctx.strokeStyle = 'rgb(150, 150, 150)';
     ctx.beginPath();
-    ctx.setLineDash([5, 5]);
+    ctx.setLineDash([2, 4]);
     let y = (height - PADDING_Y * 2) - (fsData.pre - mm.minVal) * (height - PADDING_Y * 2) / (mm.maxVal - mm.minVal) + PADDING_Y;
     ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
+    ctx.lineTo(width - PADDING_X, y);
     ctx.stroke();
 }
 
@@ -187,12 +196,34 @@ function buildFenShiTitleUI() {
 
 function loadAllFenShiData() {
     for (let i in GPInfos.codes) {
-        loadFenShiData(GPInfos.codes[i]);
+        let code = GPInfos.codes[i];
+        if (!GPInfos[code + '_FS'])
+            loadFenShiData(code);
+        else
+            bindFenShiCanvas(code);
     }
 }
 
-setTimeout(buildFenShiTitleUI, 4000);
-setTimeout(beautyfulUI, 4000);
-setTimeout(loadAllGPElements, 4000);
-setTimeout(loadAllFenShiData, 4500);
+function pageChanged() {
+    $('.iwc-table-body canvas').hide();
+    setTimeout(function () {
+        loadAllGPElements();
+        loadAllFenShiData();
+    }, 1500);
+}
+
+function listenChangePage() {
+    $('.pcwencai-pagination-wrap > .pager a').on('click', pageChanged);
+    $('.pcwencai-pagination-wrap > .drop-down-box li').on('click', pageChanged);
+}
+
+setTimeout(function () {
+    buildFenShiTitleUI();
+    beautyfulUI();
+    listenChangePage();
+    loadAllGPElements();
+    loadAllFenShiData();
+}, 4000);
+
+
 
