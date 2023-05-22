@@ -95,7 +95,7 @@ function loadAllGPElements() {
             fs_td = tr.children('td:eq(8)');
             fs_canvas = fs_td.children('canvas')[0];
         } else {
-            fs_canvas = $('<canvas width="180" height="50" > </canvas>');
+            fs_canvas = $('<canvas width="200" height="50" > </canvas>');
             fs_td = $('<td style="padding: 4px 2px 0px 2px;"> </td>');
             fs_td.append(fs_canvas);
             tr.append(fs_td);
@@ -129,7 +129,7 @@ function drawFenShiCanvas(fsData, width, height, canvas) {
     const POINT_NN = 1;// 每几分钟选一个点
     const PRICE_IDX = 1; // 价格
     const PADDING_Y = 2; // 上下留点空间
-    const PADDING_X = 0; // 右边留点空间
+    const PADDING_X = 25; // 右边留点空间
     let mm = getFenShiDataMinMax(fsData, POINT_NN, PRICE_IDX);
     if (mm.minVal > fsData.pre)
         mm.minVal = fsData.pre;
@@ -171,6 +171,25 @@ function drawFenShiCanvas(fsData, width, height, canvas) {
     ctx.moveTo(0, y);
     ctx.lineTo(width - PADDING_X, y);
     ctx.stroke();
+    // 画最高、最低价
+    drawZhangFu(ctx, (mm.maxVal - fsData.pre) * 100 / fsData.pre, width, 10);
+    drawZhangFu(ctx, (mm.minVal - fsData.pre) * 100 / fsData.pre, width, height - 5);
+}
+
+function drawZhangFu(ctx, zf, x, y) {
+    if (zf >= 0) {
+        ctx.fillStyle = 'rgb(255, 0, 0)';
+    } else {
+        ctx.fillStyle = 'rgb(0, 204, 0)';
+    }
+    zf = '' + zf;
+    let pt = zf.indexOf('.');
+    if (pt > 0) {
+        zf = zf.substring(0, pt + 2);
+    }
+    zf += '%';
+    let ww = ctx.measureText(zf).width;
+    ctx.fillText(zf, x - ww, y);
 }
 
 function beautyfulUI() {
