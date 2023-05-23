@@ -145,7 +145,8 @@ class HotWindow:
         HEIGHT = 285
         x = 0
         y = rr[3] - rr[1] - HEIGHT
-        w = rr[2] - rr[0]
+        #w = rr[2] - rr[0]
+        w = win32api.GetSystemMetrics(0) # desktop width
         self.rect = (x, y, w, HEIGHT)
         self.wnd = win.CreateWindow('STATIC', 'HOT-Window', style, x, y, w, HEIGHT, THS_TOP_HWND, None, None, None)
         win.SetWindowPos(self.wnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
@@ -344,10 +345,28 @@ def work_updateCode(nowCode):
     curCode = nowCode
     hotWindow.updateData(hts)
 
+def showHotWindow():
+    # check window size changed
+    if hotWindow.rect[1] > 0: # y > 0
+        return
+    rr = win.GetClientRect(THS_TOP_HWND)
+    y = rr[3] - rr[1] - hotWindow.rect[3]
+    if y < 0:
+        return
+    x = hotWindow.rect[0]
+    win.SetWindowPos(hotWindow.wnd, 0, x, y, 0, 0, 0x0010|0x0200|0x0001|0x0004)
+    hotWindow.rect = (x, y, hotWindow.rect[2], hotWindow.rect[3])
+
 def work():
     global curCode
     while True:
         time.sleep(0.5)
+        if not win.IsWindow(THS_TOP_HWND):
+            win.PostQuitMessage(0)
+            break
+        if not isInKlineWindow():
+            continue
+        showHotWindow()
         nowCode = findCode()
         if curCode != nowCode:
             work_updateCode(nowCode)
@@ -360,3 +379,4 @@ if __name__ == '__main__':
     hotWindow.createHotWindow()
     threading.Thread(target = work).start()
     win.PumpMessages()
+    print('Quit')
