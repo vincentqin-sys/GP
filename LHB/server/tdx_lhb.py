@@ -68,10 +68,10 @@ def loadOneGP(code, day, name):
         obj = {'day': day, 'code': code, 'name': name, 
                'price': getColInfo(totalColNames, r, 'closepri'), 
                'zd': getColInfo(totalColNames, r, 'zdf'),
-               'vol': getColInfo(totalColNames, r, 'cjl'),
+               #'vol': getColInfo(totalColNames, r, 'cjl'),
                'cjje': getColInfo(totalColNames, r, 'cje'), 
                'title': title,
-               'mrje': 0, 'mrjeRate': 0, 'mcje': 0, 'mcjeRate': 0, 'jme': 0, 'famous': '' }
+               'mrje': 0, 'mcje': 0, 'jme': 0, 'famous': '' } # 'mrjeRate': 0, 'mcjeRate': 0,
         results[ title ] = obj
 
     infos = rs['ResultSets'][1]
@@ -104,8 +104,8 @@ def loadOneGP(code, day, name):
     datas = []
     for k in results:
         rs = results[k]
-        rs['mrjeRate'] = int(rs['mrje'] * 100 / rs['cjje'])
-        rs['mcjeRate'] = int(rs['mcje'] * 100 / rs['cjje'])
+        #rs['mrjeRate'] = int(rs['mrje'] * 100 / rs['cjje'])
+        #rs['mcjeRate'] = int(rs['mcje'] * 100 / rs['cjje'])
         rs['mrje'] /= 10000 # 万 -> 亿
         rs['mcje'] /= 10000
         rs['jme'] /= 10000
@@ -159,7 +159,7 @@ def loadTdxLHB():
         if dayFrom.isoweekday() >= 6:
             dayFrom = dayFrom + delta
             continue
-        if dayFrom >= minDay and dayFrom < maxDay:
+        if dayFrom <= maxDay:
             #print('Skip ' + str(dayFrom))
             pass
         else:
@@ -173,8 +173,10 @@ def run():
     th = threading.currentThread()
     print('in thread run', th.getName(), th.ident)
     while True:
-        loadTdxLHB()
-        time.sleep(3600 * 0.5) # 0.5 hour
+        now = datetime.datetime.now()
+        if now.isoweekday() < 6 and now.hour() == 20: # 周一至周五, 晚上8点
+            loadTdxLHB()
+        time.sleep(30 * 60) # 30 minutes
 
 flagAuto = False
 lock = threading.RLock()

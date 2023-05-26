@@ -202,6 +202,7 @@ function beautyfulUI() {
             $(this).find('div').text($(this).text() + '%');
         }
     });
+    $('.iwc-table-body td').css('border-bottom', 'solid 1px #fa3');
     setTimeout(beautyfulUI, 500);
 }
 
