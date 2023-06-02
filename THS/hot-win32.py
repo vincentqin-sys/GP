@@ -1,5 +1,5 @@
 import win32gui as win, win32con , win32api, win32ui # pip install pywin32
-import threading, time, datetime
+import threading, time, datetime, sys, os
 from PIL import Image
 import orm, number_ocr
 
@@ -362,7 +362,9 @@ def work():
     while True:
         time.sleep(0.5)
         if not win.IsWindow(THS_TOP_HWND):
-            win.PostQuitMessage(0)
+            #win.PostQuitMessage(0)
+            #sys.exit(0)
+            os._exit(0)
             break
         if not isInKlineWindow():
             continue

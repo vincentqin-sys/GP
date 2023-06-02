@@ -174,7 +174,7 @@ def run():
     print('in thread run', th.getName(), th.ident)
     while True:
         now = datetime.datetime.now()
-        if now.isoweekday() < 6 and now.hour() == 20: # 周一至周五, 晚上8点
+        if now.isoweekday() < 6 and now.hour == 20: # 周一至周五, 晚上8点
             loadTdxLHB()
         time.sleep(30 * 60) # 30 minutes
 
