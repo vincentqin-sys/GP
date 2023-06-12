@@ -41,7 +41,7 @@ def start():    #Main Program
         try:
             conn, addr = sock.accept() #Accept connection from client browser
             data = conn.recv(BUFFER_SIZE) #Recieve client data
-            print('data=', data)
+            print('data=', data, '\n')
             pools.submit(conn_string, (conn, data, addr)) #Starting a thread
         except KeyboardInterrupt:
             sock.close()
@@ -52,7 +52,6 @@ def start():    #Main Program
 
 def conn_string(conn, data, addr):
     try:
-        print(data)
         first_line = data.split(b'\n')[0]
         url = first_line.split(' ')[1]
         print('url=', url)
@@ -102,9 +101,7 @@ def fillter(webserver, url):
     pass
 
 if __name__== "__main__":
-    print('Cleared system proxy')
-    #set_system_proxy(True)
-    #set_system_proxy(True)
-    #sys_proxy()
+    print('Clear system proxy')
+    set_system_proxy(False)
     input('Press Enter to start Server')
     start()
