@@ -123,13 +123,12 @@ def init():
     THS_SELECT_DAY_HWND = findSelectDayWnd()
 
     if (not THS_MAIN_HWND) or (not THS_TOP_HWND) or (not THS_SELECT_DAY_HWND):
-        time.sleep(10)
-        init()
-        return
+        return False
 
     print('THS_TOP_HWND = %#X' % THS_TOP_HWND)
     print('THS_MAIN_HWND = %#X' % THS_MAIN_HWND)
     print('THS_SELECT_DAY_HWND = %#X' % THS_SELECT_DAY_HWND)
+    return True
 
 
 #-------------------hot  window ------------
@@ -386,7 +385,10 @@ def work():
             hotWindow.updateSelectDay(selDay)
 
 def subprocess_run():
-    init()
+    while True:
+        if init():
+            break
+        time.sleep(10)
     hotWindow.createHotWindow()
     threading.Thread(target = work).start()
     win.PumpMessages()
