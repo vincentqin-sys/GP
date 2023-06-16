@@ -1,5 +1,6 @@
 import win32gui as win, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
+from multiprocessing import Process
 from PIL import Image
 import orm, number_ocr
 
@@ -27,6 +28,8 @@ def findLevel2CodeWnd(hwnd):
 
 def findSelectDayWnd():
     global THS_MAIN_HWND
+    if not THS_MAIN_HWND:
+        return None
     child = win.GetWindow(THS_MAIN_HWND, win32con.GW_CHILD)
     while child:
         if win.GetClassName(child) == '#32770':
@@ -106,6 +109,8 @@ def getSelectDay():
 
 
 def init():
+    global THS_MAIN_HWND, THS_TOP_HWND, THS_SELECT_DAY_HWND
+    THS_MAIN_HWND = THS_TOP_HWND = THS_SELECT_DAY_HWND = None
     def callback(hwnd, lparam):
         title = win.GetWindowText(hwnd)
         if '同花顺(v' in title:
@@ -113,11 +118,15 @@ def init():
             THS_TOP_HWND = hwnd
         return True
     
-    global THS_MAIN_HWND, THS_TOP_HWND, THS_SELECT_DAY_HWND
     win.EnumWindows(callback, None)
-    # THS_MAIN_HWND = getChildWindow(THS_TOP_HWND, 0xE900)
     THS_MAIN_HWND =  win.FindWindowEx(THS_TOP_HWND, None, 'AfxFrameOrView100s', None)
     THS_SELECT_DAY_HWND = findSelectDayWnd()
+
+    if (not THS_MAIN_HWND) or (not THS_TOP_HWND) or (not THS_SELECT_DAY_HWND):
+        time.sleep(10)
+        init()
+        return
+
     print('THS_TOP_HWND = %#X' % THS_TOP_HWND)
     print('THS_MAIN_HWND = %#X' % THS_MAIN_HWND)
     print('THS_SELECT_DAY_HWND = %#X' % THS_SELECT_DAY_HWND)
@@ -363,8 +372,8 @@ def work():
         time.sleep(0.5)
         if not win.IsWindow(THS_TOP_HWND):
             #win.PostQuitMessage(0)
-            #sys.exit(0)
-            os._exit(0)
+            #sys.exit(0)  #仅退出当前线程
+            os._exit(0) # 退出进程
             break
         if not isInKlineWindow():
             continue
@@ -376,9 +385,16 @@ def work():
         if selDay:
             hotWindow.updateSelectDay(selDay)
 
-if __name__ == '__main__':
+def subprocess_run():
     init()
     hotWindow.createHotWindow()
     threading.Thread(target = work).start()
     win.PumpMessages()
-    print('Quit')
+    print('Quit Sub Process')
+
+if __name__ == '__main__':
+    while True:
+        p = Process(target = subprocess_run, daemon = True)
+        p.start()
+        print('start a new sub process, pid=', p.pid)
+        p.join()
