@@ -171,7 +171,6 @@ def loadTdxLHB():
 def run():
     time.sleep(10)
     th = threading.currentThread()
-    print('in thread run', th.getName(), th.ident)
     while True:
         now = datetime.datetime.now()
         if now.isoweekday() < 6 and now.hour == 20: # 周一至周五, 晚上8点
@@ -182,7 +181,6 @@ flagAuto = False
 lock = threading.RLock()
 def autoLoadTdxLHB():
     th = threading.currentThread()
-    print('in thread run: ', th.getName(), th.ident, '[auto]')
     lock.acquire()
     global flagAuto
     if flagAuto:

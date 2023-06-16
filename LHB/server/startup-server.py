@@ -122,13 +122,13 @@ def _close_db(*args):
 """
 
 def startup():
-    #if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    print('-----Start Server LHB at port 8050 ------')
     orm.init()
     proxy.init(app)
     tdx_lhb.autoLoadTdxLHB()
-    print('-----Start Server LHB at port 8050 ------')
     app.run(host = '0.0.0.0', port=8050) # , debug=True
     
     
 if __name__ == '__main__':
+    #if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
     startup()
