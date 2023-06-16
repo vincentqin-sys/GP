@@ -1,9 +1,12 @@
 from flask import Flask, url_for, views, abort, make_response, request
+# pip install  psutil
+import psutil, time, os
 import flask, peewee
 import json, os
 from flask_cors import CORS 
 import traceback
 import logging
+from multiprocessing import Process
 
 import orm
 import query
@@ -66,6 +69,25 @@ def getHot(code): # 热点股票信息
     nd = [d.__data__ for d in datas]
     return nd
 
+
+
+def check_chrome_open():
+    for pid in psutil.pids():
+        p = psutil.Process(pid)
+        if p.name() == 'chrome.exe':
+            return True
+    return False
+
+def sub_process():
+    while True:
+        if not check_chrome_open():
+            os.startfile('https://cn.bing.com/')
+        time.sleep(60 * 5) # 5 minutes
+
 if __name__ == '__main__':
+    p = Process(target = sub_process, daemon = True)
+    p.start()
+    print('open check chrome deamon, pid=', p.pid)
+
     print('----- Start Server THS at port 8071 -----')
     app.run(host = '0.0.0.0', port=8071) #, debug=True 
