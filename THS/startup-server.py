@@ -86,11 +86,11 @@ def sub_process():
         time.sleep(60 * 5) # 5 minutes
 
 if __name__ == '__main__':
+    print('功能：启动8071服务，保存同花顺热点；保持Chrome始终都启动了。')
     #p = Process(target = sub_process, daemon = True)
     #p.start()
     #print('open check chrome deamon, pid=', p.pid)
     p = threading.Thread(target=sub_process, daemon=True)
     p.start()
-
     print('----- Start Server THS at port 8071 -----')
     app.run(host = '0.0.0.0', port=8071) #, debug=True 

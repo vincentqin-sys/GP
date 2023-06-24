@@ -123,6 +123,7 @@ def _close_db(*args):
 """
 
 def startup():
+    print('功能：启动8050服务，将同花顺龙虎榜关联到通达信龙虎榜；自动下载通达信龙虎榜')
     print('-----Start Server LHB at port 8050 ------')
     orm.init()
     proxy.init(app)
