@@ -63,6 +63,8 @@ def saveHot(): # 热点股票信息
     with orm.db.atomic():
         for i in range(0, len(hotInfos), 20):
             orm.THS_Hot.insert_many(hotInfos[i : i + 20]).execute()
+    lt = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+    print(f'[{lt}] saveHot success, insert {hotDay} {hotTime} num:{len(hotInfos)}')
     return {"status": "OK"}
 
 @app.route('/getHot/<code>', methods = ['GET'])

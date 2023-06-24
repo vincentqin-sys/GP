@@ -137,7 +137,8 @@ def loadOneDayLHB(day):
             dd = orm.TdxLHB.insert_many(batch)
             dd.execute()
     if len(result) > 0:
-        print(f'Success insert  {len(result)} rows for day {day}')
+        lt = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+        print(f'{lt} Success insert  {len(result)} rows for day {day}')
     return True
 
 runLock = threading.RLock()
