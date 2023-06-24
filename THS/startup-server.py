@@ -12,10 +12,12 @@ import orm
 import query
 
 
-logging.basicConfig(level=logging.WARN)
-
 app = Flask(__name__, static_folder='ui/el', template_folder='ui')
 cors = CORS(app)
+
+logging.basicConfig(level = logging.ERROR)
+log = logging.getLogger('werkzeug')
+log.disabled = True
 
 @app.route('/', methods = ['GET'])
 def home():

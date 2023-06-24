@@ -1,22 +1,23 @@
 from flask import Flask, url_for, views, abort, make_response, request
 import flask, peewee
 from flask_cors import CORS 
-import json, os
+import json, os, sys
 import traceback
 import requests, json, logging
 
 import orm, mcore, proxy, tdx_lhb
 
-logging.basicConfig(level=logging.WARN)
 app = Flask(__name__, static_folder='ui/static', template_folder='ui/templates')
+
+logging.basicConfig(level = logging.ERROR)
+log = logging.getLogger('werkzeug')
+log.disabled = True
 
 cors = CORS(app)
 
 # https://www.cnblogs.com/cxygg/p/12419502.html 设置cors
 # pip install -U flask-cors 
 # https://blog.csdn.net/qq_42778001/article/details/101436742
-
-
 
 
 #@app.after_request
