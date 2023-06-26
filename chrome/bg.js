@@ -115,15 +115,15 @@ function sendHotInfoToServer(data) {
 }
 
 function checkWindowAlive() {
-    let bt = (Date.now() - proc_info.lastOpenHotPageTime) / 1000 >= 60; // 1 minuts
+    let bt = (Date.now() - proc_info.lastOpenHotPageTime) / 1000 >= 60 * 2; // 2 minuts
     if (! bt) {
         return;
     }
-    chrome.windows.get(proc_info.hotWindowId, function (window) {
-        if (! window) { // window is closed
+    // 超时，强制关闭
+    chrome.windows.remove(proc_info.hotWindowId, function () {
             proc_info.hotWindowId = 0; // reset window id
         }
-    });
+    );
 }
 
 // 热股排名
