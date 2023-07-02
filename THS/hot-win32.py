@@ -1,4 +1,4 @@
-import win32gui as win, win32con , win32api, win32ui # pip install pywin32
+import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 from multiprocessing import Process
 from PIL import Image
@@ -15,36 +15,36 @@ ocr = number_ocr.NumberOCR()
 
 def findLevel2CodeWnd(hwnd):
     global THS_LEVEL2_CODE_HWND
-    child = win.GetWindow(hwnd, win32con.GW_CHILD)
+    child = win32gui.GetWindow(hwnd, win32con.GW_CHILD)
     while child:
-        title = win.GetWindowText(child)
-        if win.IsWindowVisible(child) and title and ('逐笔成交--' in title):
+        title = win32gui.GetWindowText(child)
+        if win32gui.IsWindowVisible(child) and title and ('逐笔成交--' in title):
             THS_LEVEL2_CODE_HWND = child
             break
         findLevel2CodeWnd(child)
         if THS_LEVEL2_CODE_HWND:
             break
-        child = win.GetWindow(child, win32con.GW_HWNDNEXT)
+        child = win32gui.GetWindow(child, win32con.GW_HWNDNEXT)
 
 def findSelectDayWnd():
     global THS_MAIN_HWND
     if not THS_MAIN_HWND:
         return None
-    child = win.GetWindow(THS_MAIN_HWND, win32con.GW_CHILD)
+    child = win32gui.GetWindow(THS_MAIN_HWND, win32con.GW_CHILD)
     while child:
-        if win.GetClassName(child) == '#32770':
-            left, top, right, bottom = win.GetClientRect(child)
+        if win32gui.GetClassName(child) == '#32770':
+            left, top, right, bottom = win32gui.GetClientRect(child)
             w, h = right - left, bottom - top
             if h / 3 > w:
                 return child
-        child = win.GetWindow(child, win32con.GW_HWNDNEXT)
+        child = win32gui.GetWindow(child, win32con.GW_HWNDNEXT)
     return None
 
 # 当前显示的窗口是否是K线图
 def isInKlineWindow():
-    if '技术分析' not in win.GetWindowText(THS_TOP_HWND):
+    if '技术分析' not in win32gui.GetWindowText(THS_TOP_HWND):
         return False
-    return win.IsWindowVisible(THS_TOP_HWND)
+    return win32gui.IsWindowVisible(THS_TOP_HWND)
 
 # 查找股票代码
 def findCode():
@@ -53,11 +53,11 @@ def findCode():
         #print('Not in KLine Window')
         return None
     # 逐笔成交明细 Level-2
-    if not win.IsWindowVisible(THS_LEVEL2_CODE_HWND):
+    if not win32gui.IsWindowVisible(THS_LEVEL2_CODE_HWND):
         THS_LEVEL2_CODE_HWND = None
         findLevel2CodeWnd(THS_MAIN_HWND)
         #print('THS_LEVEL2_CODE_HWND = %#X' % THS_LEVEL2_CODE_HWND)
-    title = win.GetWindowText(THS_LEVEL2_CODE_HWND) or ''
+    title = win32gui.GetWindowText(THS_LEVEL2_CODE_HWND) or ''
     code = ''
     if '逐笔成交--' in title:
         code = title[6 : 12]
@@ -65,10 +65,10 @@ def findCode():
 
 def getSelectDay():
     global THS_SELECT_DAY_HWND, ocr
-    if not win.IsWindowVisible(THS_SELECT_DAY_HWND):
+    if not win32gui.IsWindowVisible(THS_SELECT_DAY_HWND):
         return None
-    dc = win.GetWindowDC(THS_SELECT_DAY_HWND)
-    #mdc = win.CreateCompatibleDC(dc)
+    dc = win32gui.GetWindowDC(THS_SELECT_DAY_HWND)
+    #mdc = win32gui.CreateCompatibleDC(dc)
     mfcDC = win32ui.CreateDCFromHandle(dc)
     saveDC = mfcDC.CreateCompatibleDC()
     saveBitMap = win32ui.CreateBitmap()
@@ -98,10 +98,10 @@ def getSelectDay():
     # im_PIL.show()
 
     # destory
-    win.DeleteObject(saveBitMap.GetHandle())
+    win32gui.DeleteObject(saveBitMap.GetHandle())
     saveDC.DeleteDC()
     mfcDC.DeleteDC()
-    win.ReleaseDC(THS_SELECT_DAY_HWND, dc)
+    win32gui.ReleaseDC(THS_SELECT_DAY_HWND, dc)
 
     sd = selYear + '-' + selDay[0 : 2] + '-' + selDay[2 : 4]
     #print(sd)
@@ -112,14 +112,14 @@ def init():
     global THS_MAIN_HWND, THS_TOP_HWND, THS_SELECT_DAY_HWND
     THS_MAIN_HWND = THS_TOP_HWND = THS_SELECT_DAY_HWND = None
     def callback(hwnd, lparam):
-        title = win.GetWindowText(hwnd)
+        title = win32gui.GetWindowText(hwnd)
         if '同花顺(v' in title:
             global THS_TOP_HWND
             THS_TOP_HWND = hwnd
         return True
     
-    win.EnumWindows(callback, None)
-    THS_MAIN_HWND =  win.FindWindowEx(THS_TOP_HWND, None, 'AfxFrameOrView100s', None)
+    win32gui.EnumWindows(callback, None)
+    THS_MAIN_HWND =  win32gui.FindWindowEx(THS_TOP_HWND, None, 'AfxFrameOrView100s', None)
     THS_SELECT_DAY_HWND = findSelectDayWnd()
 
     if (not THS_MAIN_HWND) or (not THS_TOP_HWND) or (not THS_SELECT_DAY_HWND):
@@ -147,7 +147,7 @@ class HotWindow:
         global THS_TOP_HWND, THS_MAIN_HWND
         # WS_CLIPCHILDREN:0x02000000L
         # 0x40000000 child-win ;  0x80000000 popup-win
-        rr = win.GetClientRect(THS_TOP_HWND)
+        rr = win32gui.GetClientRect(THS_TOP_HWND)
         print('THS top window: ', rr)
         style = 0x00800000 | 0x10000000 | win32con.WS_CHILD
         HEIGHT = 285
@@ -156,37 +156,37 @@ class HotWindow:
         #w = rr[2] - rr[0]
         w = win32api.GetSystemMetrics(0) # desktop width
         self.rect = (x, y, w, HEIGHT)
-        self.wnd = win.CreateWindow('STATIC', 'HOT-Window', style, x, y, w, HEIGHT, THS_TOP_HWND, None, None, None)
-        win.SetWindowPos(self.wnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        self.oldProc = win.GetWindowLong(self.wnd, -4) # GWL_WNDPROC
-        win.SetWindowLong(self.wnd, -4, hotWinProc)
+        self.wnd = win32gui.CreateWindow('STATIC', 'HOT-Window', style, x, y, w, HEIGHT, THS_TOP_HWND, None, None, None)
+        win32gui.SetWindowPos(self.wnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        self.oldProc = win32gui.GetWindowLong(self.wnd, -4) # GWL_WNDPROC
+        win32gui.SetWindowLong(self.wnd, -4, hotWinProc)
         print('hotWnd = %#X' % self.wnd, x, y, w, HEIGHT)
-        win.SendMessage(self.wnd, win32con.WM_PAINT)
+        win32gui.SendMessage(self.wnd, win32con.WM_PAINT)
 
     def destroy(self):
-        win.DestroyWindow(self.wnd)
+        win32gui.DestroyWindow(self.wnd)
     
     def drawHotWin(self, hwnd):
-        hdc, ps = win.BeginPaint(hwnd)
-        bk = win.CreateSolidBrush(0xffffff)
-        win.FillRect(hdc, win.GetClientRect(hwnd), bk)
-        win.SetBkMode(hdc, win32con.TRANSPARENT)
-        win.SetTextColor(hdc, 0x0)
+        hdc, ps = win32gui.BeginPaint(hwnd)
+        bk = win32gui.CreateSolidBrush(0xffffff)
+        win32gui.FillRect(hdc, win32gui.GetClientRect(hwnd), bk)
+        win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
+        win32gui.SetTextColor(hdc, 0x0)
 
-        a = win.LOGFONT()
+        a = win32gui.LOGFONT()
         a.lfHeight = 12
         a.lfFaceName = '新宋体'
-        font = win.CreateFontIndirect(a)
-        win.SelectObject(hdc, font)
+        font = win32gui.CreateFontIndirect(a)
+        win32gui.SelectObject(hdc, font)
         
         if self.maxMode:
             self.drawMaxMode(hdc)
         else:
             self.drawMinMode(hdc)
 
-        win.EndPaint(hwnd, ps)
-        win.DeleteObject(font)
-        win.DeleteObject(bk)
+        win32gui.EndPaint(hwnd, ps)
+        win32gui.DeleteObject(font)
+        win32gui.DeleteObject(bk)
         # print('WM_PAINT')
 
     # return [startIdx, endIdx)
@@ -221,17 +221,17 @@ class HotWindow:
         return (idx, lastIdx)
 
     def drawMoreTip(self, hdc, x, y, op):
-        sdc = win.SaveDC(hdc)
-        br = win.CreateSolidBrush(0xff0000)
-        win.SelectObject(hdc, br)
+        sdc = win32gui.SaveDC(hdc)
+        br = win32gui.CreateSolidBrush(0xff0000)
+        win32gui.SelectObject(hdc, br)
         pts = None
         CW ,CH = 5, 6
         if op == 0: # left more arrow
             pts = [(x, y), (x + CW, y - CH), (x + CW, y + CH)]
         else: # right more arrow
             pts = [(x, y), (x - CW, y - CH), (x - CW, y + CH)]
-        win.Polygon(hdc, pts)
-        win.RestoreDC(hdc, sdc)
+        win32gui.Polygon(hdc, pts)
+        win32gui.RestoreDC(hdc, sdc)
 
     def drawMaxMode(self, hdc):
         if not self.data or len(self.data) == 0:
@@ -253,8 +253,8 @@ class HotWindow:
     def drawOneDayHot(self, hdc, x, data): # data = [ {day:'', time:'', hotValue:xx, hotOrder: '' }, ... ]
         if not data or len(data) == 0:
             return
-        pen = win.CreatePen(win32con.PS_DASH, 1, 0xff0000) # day split vertical line
-        pen2 = win.CreatePen(win32con.PS_DOT, 1, 0x0000ff) # split one day hor-line
+        pen = win32gui.CreatePen(win32con.PS_DASH, 1, 0xff0000) # day split vertical line
+        pen2 = win32gui.CreatePen(win32con.PS_DOT, 1, 0x0000ff) # split one day hor-line
         y = 0
         WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 15
         day = data[0]['day']
@@ -264,44 +264,44 @@ class HotWindow:
         title = day + ' ' + WDS[wd - 1]
         sdc = 0
         if day == self.selectDay:
-            sdc = win.SaveDC(hdc)
-            win.SetTextColor(hdc, 0xEE00EE)
-        win.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
+            sdc = win32gui.SaveDC(hdc)
+            win32gui.SetTextColor(hdc, 0xEE00EE)
+        win32gui.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
         
         isDrawSplit = False
         for d in data:
             y += HEIGHT
             row = '%s  %3d万  %3d' % (d['time'], d['hotValue'], d['hotOrder'])
-            win.DrawText(hdc, row, len(row), (x, y, x + WIDTH, y + HEIGHT), win32con.DT_CENTER)
+            win32gui.DrawText(hdc, row, len(row), (x, y, x + WIDTH, y + HEIGHT), win32con.DT_CENTER)
             if d['time'] >= '13:00' and (not isDrawSplit):
                 isDrawSplit = True
-                win.SelectObject(hdc, pen2)
-                win.MoveToEx(hdc, x + 5, y - 2)
-                win.LineTo(hdc, x + WIDTH - 5, y - 2)
-        win.SelectObject(hdc, pen)
-        win.MoveToEx(hdc, x + WIDTH, 0)
-        win.LineTo(hdc, x + WIDTH, self.rect[3])
-        win.DeleteObject(pen)
-        win.DeleteObject(pen2)
+                win32gui.SelectObject(hdc, pen2)
+                win32gui.MoveToEx(hdc, x + 5, y - 2)
+                win32gui.LineTo(hdc, x + WIDTH - 5, y - 2)
+        win32gui.SelectObject(hdc, pen)
+        win32gui.MoveToEx(hdc, x + WIDTH, 0)
+        win32gui.LineTo(hdc, x + WIDTH, self.rect[3])
+        win32gui.DeleteObject(pen)
+        win32gui.DeleteObject(pen2)
         if day == self.selectDay:
-            win.RestoreDC(hdc, sdc)
+            win32gui.RestoreDC(hdc, sdc)
 
     def drawMinMode(self, hdc):
         title = '【我的热点】\n\n双击最大化'
-        rr = win.GetClientRect(self.wnd)
-        win.FillRect(hdc, win.GetClientRect(self.wnd), win32con.COLOR_WINDOWFRAME)  # background black
-        win.SetTextColor(hdc, 0x0000ff)
-        win.DrawText(hdc, title, len(title), rr, win32con.DT_CENTER | win32con.DT_VCENTER)
+        rr = win32gui.GetClientRect(self.wnd)
+        win32gui.FillRect(hdc, win32gui.GetClientRect(self.wnd), win32con.COLOR_WINDOWFRAME)  # background black
+        win32gui.SetTextColor(hdc, 0x0000ff)
+        win32gui.DrawText(hdc, title, len(title), rr, win32con.DT_CENTER | win32con.DT_VCENTER)
 
     def changeMode(self):
         if self.maxMode:
             WIDTH, HEIGHT = 150, 50
             y = self.rect[1] + self.rect[3] - HEIGHT
-            win.SetWindowPos(self.wnd, 0, 0, y, WIDTH, HEIGHT, 0)
+            win32gui.SetWindowPos(self.wnd, 0, 0, y, WIDTH, HEIGHT, 0)
         else:
-            win.SetWindowPos(self.wnd, 0, self.rect[0], self.rect[1], self.rect[2], self.rect[3], 0)
+            win32gui.SetWindowPos(self.wnd, 0, self.rect[0], self.rect[1], self.rect[2], self.rect[3], 0)
         self.maxMode = not self.maxMode
-        win.InvalidateRect(self.wnd, None, True)
+        win32gui.InvalidateRect(self.wnd, None, True)
 
     def updateData(self, data):
         self.selectDay = None
@@ -315,13 +315,13 @@ class HotWindow:
                 rs.append(newDs)
             newDs.append(d)
         self.data = rs
-        win.InvalidateRect(self.wnd, None, True)
+        win32gui.InvalidateRect(self.wnd, None, True)
 
     def updateSelectDay(self, newDay):
         if not newDay or self.selectDay == newDay:
             return
         self.selectDay = newDay
-        win.InvalidateRect(self.wnd, None, True)
+        win32gui.InvalidateRect(self.wnd, None, True)
 
 def hotWinProc(hwnd, msg, wparam, lparam):
     global hotWindow
@@ -329,14 +329,14 @@ def hotWinProc(hwnd, msg, wparam, lparam):
         hotWindow.drawHotWin(hwnd)
         return 0
     elif msg == win32con.WM_DESTROY:
-        win.PostQuitMessage(0)
+        win32gui.PostQuitMessage(0)
         return 0
     elif msg == win32con.WM_LBUTTONDBLCLK:
         hotWindow.changeMode()
         return 0
     else:
-        return win.DefWindowProc(hwnd, msg, wparam, lparam)
-        # win.CallWindowProc(hotWindow.oldProc, hwnd, msg, wparam, lparam)
+        return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
+        # win32gui.CallWindowProc(hotWindow.oldProc, hwnd, msg, wparam, lparam)
 
 #----------------------------------------
 hotWindow = HotWindow()
@@ -357,20 +357,20 @@ def showHotWindow():
     # check window size changed
     if hotWindow.rect[1] > 0: # y > 0
         return
-    rr = win.GetClientRect(THS_TOP_HWND)
+    rr = win32gui.GetClientRect(THS_TOP_HWND)
     y = rr[3] - rr[1] - hotWindow.rect[3]
     if y < 0:
         return
     x = hotWindow.rect[0]
-    win.SetWindowPos(hotWindow.wnd, 0, x, y, 0, 0, 0x0010|0x0200|0x0001|0x0004)
+    win32gui.SetWindowPos(hotWindow.wnd, 0, x, y, 0, 0, 0x0010|0x0200|0x0001|0x0004)
     hotWindow.rect = (x, y, hotWindow.rect[2], hotWindow.rect[3])
 
 def work():
     global curCode
     while True:
         time.sleep(0.5)
-        if not win.IsWindow(THS_TOP_HWND):
-            #win.PostQuitMessage(0)
+        if not win32gui.IsWindow(THS_TOP_HWND):
+            #win32gui.PostQuitMessage(0)
             #sys.exit(0)  #仅退出当前线程
             os._exit(0) # 退出进程
             break
@@ -391,7 +391,7 @@ def subprocess_run():
         time.sleep(10)
     hotWindow.createHotWindow()
     threading.Thread(target = work).start()
-    win.PumpMessages()
+    win32gui.PumpMessages()
     print('Quit Sub Process')
 
 if __name__ == '__main__':
