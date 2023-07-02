@@ -1,4 +1,4 @@
-import win32gui as win, win32con , win32api, win32ui # pip install pywin32
+import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 from multiprocessing import Process
 from PIL import Image
