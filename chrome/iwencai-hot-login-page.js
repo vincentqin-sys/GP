@@ -34,6 +34,9 @@ window.addEventListener("message", function (evt) {
     chrome.runtime.sendMessage(msg);
 }, false);
 
+let norBtn = document.querySelector('#to_normal_login');
+norBtn.click();
+
 let accBtn = document.querySelector('#to_account_login');
 accBtn.click();
 
