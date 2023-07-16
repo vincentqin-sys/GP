@@ -1,0 +1,86 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://unpkg.com/buefy/dist/buefy.min.css">
+
+    <script src="https://unpkg.com/vue@2"></script>
+    <script src="https://unpkg.com/buefy/dist/buefy.min.js"></script>
+    <script src="https://unpkg.com/buefy/dist/components/table"></script>
+    <script src="https://unpkg.com/buefy/dist/components/input"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div style="background-color: darkgray; width: 100%; height: 80px;">
+            <b-input v-model="sql"  type="textarea" style="width: 80%;  float: left;" rows=2 placeholder="input sql"></b-input>
+            <b-button @click="doQuery">Query</b-button>
+        </div>
+        <b-table :data="results" :columns="columns" :bordered="true" :striped="true"
+             :hoverable="true" :focusable="true" :selected.sync ="selObj" ></b-table>
+
+    </div>
+    https://buefy.org/documentation/input
+</body>
+<script>
+
+    function wrapData(colName, colVal) {
+        if (colName.indexOf('_亿') > 0) {
+            let s = '' + colVal;
+            let i = s.indexOf('.');
+            if (i > 0) {
+                s = s.substring(0, i + 2);
+                return parseFloat(s);
+            }
+        }
+        return colVal;
+    }
+
+    vue = new Vue({
+      el: '#app',
+      data: {sql : 'select * from tdxlhb where 日期 = "2023-07-14" ', results: [], columns: [], selObj: {}},
+      methods: {
+        doQuery: function() {
+            let v = this;
+            v.columns = [];
+            v.results = [];
+            let params = {sql : this.sql};
+            axios.post('/queryBySql', params).then(function(res) {
+                console.log(res.data);
+                let rs = res.data;
+                if (rs.status == "success") {
+                    let cols = [];
+                    let widthInfo = {'上榜类型AA' : 200, '日期':110, 'code':80, 'name': 95, '涨跌幅': 80};
+                    for (c in rs.cols) {
+                        let ci = null;
+                        let name = rs.cols[c];
+                        rs.cols[c] = name = name.replace('金额', '')
+                        rs.cols[c] = name = name.replace('额', '')
+                        if ('id|收盘价|'.indexOf(name) < 0) {
+                            ci = {field: name, label: name, sortable : true};
+                            cols.push(ci);
+                            if (name.indexOf('_亿') > 0) {
+                                ci.width = 60;
+                            } else if (name in widthInfo) {
+                                ci.width = widthInfo[name];
+                            }
+                        }
+                    }
+                    v.columns = cols;
+                    let dt = [];
+                    for (i in rs.data) {
+                        let rr = rs.data[i];
+                        let rv = {};
+                        for (let j = 0; j < rr.length; ++j) {
+                            rv[rs.cols[j]] = wrapData(rs.cols[j], rr[j]);
+                        }
+                        dt.push(rv);
+                    }
+                    v.results = dt;
+                } else {
+                }
+            });
+        }
+      }
+    })
+  </script>
+</html>

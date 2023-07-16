@@ -109,6 +109,27 @@ def fetchTdxLHB():
     tdx_lhb.loadTdxLHB()
     doingTag = False
     
+@app.route('/show-lhb.html', methods = ['GET'])
+def showLhbDB():
+    return flask.render_template('show-lhb.html')
+
+@app.route('/queryBySql', methods = ['POST'])
+def queryBySql():
+    try:
+        cs = orm.db.cursor()
+        params = json.loads(request.data)
+        cs.execute(params['sql'])
+        cols = [c[0] for c in cs.description]
+        data = cs.fetchall()
+        rs = {'status': 'success', 'cols': cols, 'data' : data}
+        #txt = json.dumps(rs, ensure_ascii = False) # ensure_ascii = False
+    except Exception as e:
+        print(e)
+        rs = {'status': 'fail', 'msg' : str(e)}
+    finally:
+        if cs:
+            cs.close()
+    return rs
 
 """
 @app.before_request
@@ -127,8 +148,9 @@ def startup():
     print('-----Start Server LHB at port 8050 ------')
     orm.init()
     proxy.init(app)
+    tdx_lhb.loadTdxLHB()
     tdx_lhb.autoLoadTdxLHB()
-    app.run(host = '0.0.0.0', port=8050) # , debug=True
+    app.run(host = '0.0.0.0', port=8050, debug=True) # , debug=True
     
     
 if __name__ == '__main__':
