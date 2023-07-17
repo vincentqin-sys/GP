@@ -1,7 +1,11 @@
 import peewee as pw
 import mcore
+import sys
 
-db = pw.SqliteDatabase('D:/vscode/GP/db/LHB.db')
+path = sys.argv[0]
+path = path[0 : path.index('GP') ]
+
+db = pw.SqliteDatabase(f'{path}/GP/db/LHB.db')
 
 class TdxLHB(pw.Model):
     day = pw.CharField(column_name = '日期' )

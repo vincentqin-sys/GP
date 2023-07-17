@@ -113,12 +113,10 @@ class EImage:
 
 class NumberOCR:
     def __init__(self):
-        if platform.node() == 'DESKTOP-AHS50K5': # 办公室电脑
-            self.templateImg = EImage(Image.open('ocr-template-Work.bmp'))
-            self.templateDigit = "1240358679"
-        elif platform.node() == 'WIN-OGPUU03JC8A': # 家里笔记本电脑
-            self.templateImg = EImage(Image.open('ocr-template-Home.bmp'))
-            self.templateDigit = "0215348976"
+        digits = {'DESKTOP-P6GAAMF' : "1240358679", 'WIN-OGPUU03JC8A' : "0215348976"}
+        key = platform.node()
+        self.templateImg = EImage(Image.open(f'ocr-template-{key}.bmp'))
+        self.templateDigit = digits[key]
 
     def _matchOne(self, oimg : EImage, oRect):
         MIN_SIMILAR_VAL = 95

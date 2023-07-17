@@ -1,7 +1,9 @@
 import peewee as pw
+import sys
 
-
-db = pw.SqliteDatabase('D:/vscode/GP/db/THS_F10.db')
+path = sys.argv[0]
+path = path[0 : path.index('GP') ]
+db = pw.SqliteDatabase(f'{path}GP/db/THS_F10.db')
 
 
 # 同花顺-- 机构持仓 (主力持仓)
@@ -93,7 +95,8 @@ class THS_GNTC(pw.Model):
         table_name = '概念题材'
 
 
-db2 = pw.SqliteDatabase('D:/vscode/GP/db/THS_Hot.db')    
+
+db2 = pw.SqliteDatabase(f'{path}GP/db/THS_Hot.db')
 
 
 # 同花顺--个股热度排名

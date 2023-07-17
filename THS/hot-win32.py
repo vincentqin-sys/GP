@@ -1,7 +1,7 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 from multiprocessing import Process
-from PIL import Image
+from PIL import Image  # pip install pillow
 import orm, number_ocr
 
 # pip installl opencv-python
