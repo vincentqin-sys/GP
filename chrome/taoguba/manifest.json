@@ -22,24 +22,12 @@
 	
     "content_scripts": [
         {
-			"matches": ["http://www.iwencai.com/unifiedwap/result*"],
+			"matches": ["https://www.taoguba.com.cn/*"],
             "run_at": "document_idle",
-            "js": ["jquery-3.6.min.js", "thread.js", "iwencai-hot-page.js"],
+            "js": ["jquery-3.6.min.js", "remark.js"],
 			"all_frames" : true
-		},
-		{
-			"matches": [
-				"http://upass.iwencai.com/login*"
-			],
-			"run_at": "document_idle",
-			"js": [
-				"jquery-3.6.min.js", "iwencai-hot-login-page.js"
-			],
-			"all_frames": true
 		}
     ],
 
-	"web_accessible_resources": ["ajax-hook.js", "iwencai-hot-login-inject.js", "canvas2image.js", "iwencai-hot-page-inject.js",
-		"capatcha/a0.dib.bmp", "capatcha/b0.dib.bmp", "capatcha/c0.dib.bmp", "capatcha/d0.dib.bmp"
-	]
+	"web_accessible_resources": []
 }
