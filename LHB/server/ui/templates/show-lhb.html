@@ -32,12 +32,23 @@
                 return parseFloat(s);
             }
         }
+        if (colName == '涨跌幅') {
+            return '' + colVal + '%';
+        }
         return colVal;
+    }
+
+    function lastDate() {
+        let d = new Date();
+        d = d.setDate(d.getDate() - 1);
+        d = new Date(d);
+        let m = d.getMonth() + 1;
+        return '' + d.getFullYear() + '-' + (m > 9 ? m : '0' + m) + '-' + d.getDate();
     }
 
     vue = new Vue({
       el: '#app',
-      data: {sql : 'select * from tdxlhb where 日期 = "2023-07-14" ', results: [], columns: [], selObj: {}},
+      data: {sql : 'select * from tdxlhb where 日期 = "' + lastDate() + '" ', results: [], columns: [], selObj: {}},
       methods: {
         doQuery: function() {
             let v = this;
