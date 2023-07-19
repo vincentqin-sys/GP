@@ -39,6 +39,13 @@ function findExists(url) {
     return null;
 }
 
+function beautyCurRemarkUI() {
+    let model = findExists(window.location.href);
+    if (model && model.ui) {
+        model.ui.css('background-color', '#8a8');
+    }
+}
+
 function remark() {
     let url = window.location.href;
     let emodel = findExists(url);
@@ -55,7 +62,7 @@ function remark() {
     sendRemarkToServer(model);
 }
 
-function sendRemarkToServer(model, ok) {
+function sendRemarkToServer(model) {
     // save to server 
     let mm = {};
     $.extend(true, mm, model);
@@ -71,6 +78,7 @@ function sendRemarkToServer(model, ok) {
             if (res.status == 'success') {
                 model.id = res.id;
                 bindItemUI(model);
+                beautyCurRemarkUI();
                 alert('Success: ' + res.msg);
             } else {
                 alert('Fail: ' + res.msg);
@@ -104,6 +112,7 @@ function loadUI() {
             bindItemUI(rs[i]);
         }
         console.log(rs);
+        beautyCurRemarkUI();
     });
 
     
