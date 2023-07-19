@@ -73,11 +73,26 @@ def getHot(code): # 热点股票信息
     nd = [d.__data__ for d in datas]
     return nd
 
+# 查询淘股吧remark信息
 @app.route('/query_taoguba_remark', methods = ['GET'])
-def query_taoguba_remark(): # 查询淘股吧remark信息
+def query_taoguba_remark(): 
     datas = orm.TaoGuBa_Remark.select()
     nd = [d.__data__ for d in datas]
     return nd
+
+# 保存淘股吧remark信息
+@app.route('/save_taoguba_remark', methods = ['POST'])
+def save_taoguba_remark(): 
+    tid = request.json.get('id')
+    if tid and tid > 0:
+        data = orm.TaoGuBa_Remark.get_or_none(orm.TaoGuBa_Remark.id == tid)
+        if data:
+            data.info = request.json.get('info')
+            data.save()
+            return {'status' : 'success', 'msg' : 'Update success', 'id': tid}
+    obj = orm.TaoGuBa_Remark.create(info = request.json.get('info'))
+    return {'status' : 'success', 'msg' : 'Insert success', 'id': obj.id}
+    
 
 def check_chrome_open():
     for pid in psutil.pids():

@@ -24,7 +24,7 @@
         {
 			"matches": ["https://www.taoguba.com.cn/*"],
             "run_at": "document_idle",
-            "js": ["jquery-3.6.min.js", "remark.js"],
+            "js": ["jquery-3.6.min.js", "thread.js", "remark.js"],
 			"all_frames" : true
 		}
     ],
