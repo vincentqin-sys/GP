@@ -74,19 +74,19 @@ function sendRemarkToServer(model) {
         contentType : 'application/json',
         data: JSON.stringify(mm),
         success: function (res) {
-            console.log('Success: Send hot info to server success ', res);
+            console.log('Success:  ', res);
             if (res.status == 'success') {
                 model.id = res.id;
                 bindItemUI(model);
                 beautyCurRemarkUI();
                 alert('Success: ' + res.msg);
             } else {
-                alert('Fail: ' + res.msg);
+                alert('Respones Fail: ' + res.msg);
             }
         },
-        error: function (res) {
-            console.log('Fail: Send hot info to server fail ', res, data);
-            alert('Fail: ' + res);
+        error: function (xhr) {
+            console.log('Net Error: ', model);
+            alert('Net Error');
         }
     });
 }
