@@ -150,7 +150,7 @@ def startup():
     proxy.init(app)
     tdx_lhb.loadTdxLHB()
     tdx_lhb.autoLoadTdxLHB()
-    app.run(host = '0.0.0.0', port=8050, debug=False) # , debug=True
+    app.run(host = '0.0.0.0', port=8050, debug=True) # , debug=True
     
     
 if __name__ == '__main__':
