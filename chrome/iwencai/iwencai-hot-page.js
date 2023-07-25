@@ -190,7 +190,7 @@ function forLogin() {
     //     return;
     // }
     // wait 120 secods , for user login
-    let ws = pageInfo.isLogined ? 30 : 120;
+    let ws = pageInfo.isLogined ? 5 : 100;
     let we = new Task('wait', ws * 1000, function (task, resolve) { resolve(); });
     workThread.addTask(we);
     let wx = new Task('Send Login Data', 0, sendLoginData);

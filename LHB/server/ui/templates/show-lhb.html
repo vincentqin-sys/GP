@@ -9,6 +9,7 @@
         }
         td, th {
             border: 1px solid #000000;
+            padding-left: 5px;
         }
         a {
             text-decoration: none;
@@ -87,7 +88,6 @@
                     // let widthInfo = {'上榜类型AA' : 200, '日期':110, 'code':80, 'name': 95, '涨跌幅': 80};
                     for (i in rs.cols) {
                         let name = rs.cols[i];
-                        rs.cols[i] = name = name.replace('金额', '').replace('额', '');
                         cols.push(name);
                     }
                     v.columns = cols;
