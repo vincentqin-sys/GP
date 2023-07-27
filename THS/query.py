@@ -113,23 +113,24 @@ def calcZhPMTag(info):
     if info.get('THS_HYDB_3-zhPM') and info.get('THS_HYDB_3-hyTotal'):
         info['THS_HYDB_3-zhPM-Tag'] = getTag(info.get('THS_HYDB_3-zhPM') / info.get('THS_HYDB_3-hyTotal'))
     
-
-#打印并复制信息到剪贴板
-def printCodeInfo(code):
+def getCodeInfo(code):
     code = int(code)
     code = "%06d" % code
     info = queryFullInfo(code)
     info = flatFullInfo(info)
-    print('\n', code, info['name'])
+    line = code + ' ' + str(info.get('name'))
     zb = ''
     if not info.get('THS_JGCC-totalRate1'):
         zb = '--'
     elif info['THS_JGCC-totalRate1'] < 1:
         zb = '不足1'
     else:
-        zb = int(info['THS_JGCC-totalRate1'])
+        zb = int(info.get('THS_JGCC-totalRate1'))
     calcZhPMTag(info)
-    jg = "机构: %d家, 持仓%s%%" % (info['THS_JGCC-orgNum1'], zb)
+    jgNum = info.get('THS_JGCC-orgNum1')
+    if jgNum is None:
+        jgNum = '--'
+    jg = "机构: %s家, 持仓%s%%" % (jgNum, zb)
     xy = ''
     if info.get('THS_HYDB_2-zhPM'):
         xy += '  二级 ' + str(info.get('THS_HYDB_2-zhPM')) + '/' + str(info.get('THS_HYDB_2-hyTotal')) + f'[{info.get("THS_HYDB_2-zhPM-Tag")}]' + '\n'
@@ -137,11 +138,16 @@ def printCodeInfo(code):
         xy += '  三级 ' + str(info.get('THS_HYDB_3-zhPM')) + '/' + str(info.get('THS_HYDB_3-hyTotal')) + f'[{info.get("THS_HYDB_3-zhPM-Tag")}]'
     if xy:
         xy = '行业排名: \n' + xy
-    txt = jg + '\n' + xy
-    pyperclip.copy(txt)
-    #copyToClipboard(txt)
-    print(txt, '\n')
+    txt = line + '\n' + jg + '\n' + xy
+    return txt
     
+    
+#打印并复制信息到剪贴板
+def printCodeInfo(code):
+    info = getCodeInfo(code)
+    pyperclip.copy(info)
+    print(info, '\n')
+
 def printCodeInfoLoop():
     while True:
         try:

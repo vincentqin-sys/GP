@@ -3,6 +3,7 @@ import threading, time, datetime, sys, os
 from multiprocessing import Process
 from PIL import Image  # pip install pillow
 import orm, number_ocr
+import mywin
 
 # pip installl opencv-python
 
@@ -129,7 +130,6 @@ def init():
     print('THS_MAIN_HWND = %#X' % THS_MAIN_HWND)
     print('THS_SELECT_DAY_HWND = %#X' % THS_SELECT_DAY_HWND)
     return True
-
 
 #-------------------hot  window ------------
 class HotWindow:
@@ -352,6 +352,7 @@ def work_updateCode(nowCode):
         print('Load ', nowCode , ' not find in DB')
     curCode = nowCode
     hotWindow.updateData(hts)
+    mywin.sortInfoWindow.changeCode(nowCode)
 
 def showHotWindow():
     # check window size changed
@@ -369,6 +370,7 @@ def work():
     global curCode
     while True:
         time.sleep(0.5)
+        mywin.eyeWindow.show()
         if not win32gui.IsWindow(THS_TOP_HWND):
             #win32gui.PostQuitMessage(0)
             #sys.exit(0)  #仅退出当前线程
@@ -390,6 +392,8 @@ def subprocess_run():
             break
         time.sleep(10)
     hotWindow.createHotWindow()
+    mywin.eyeWindow.createWindow()
+    mywin.sortInfoWindow.createWindow(THS_MAIN_HWND)
     threading.Thread(target = work).start()
     win32gui.PumpMessages()
     print('Quit Sub Process')

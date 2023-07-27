@@ -94,7 +94,19 @@ class THS_GNTC(pw.Model):
         database = db
         table_name = '概念题材'
 
-
+#查询指字的股票代码的详细信息 
+# return a dict of : {THS_Newest:最新动态、THS_GNTC:概念题材、THS_GD:股东、THS_JGCC:机构持仓、THS_HYDB_2:行业对比(二级)、THS_HYDB_3:行业对比(三级)}
+def queryFullInfo(code):
+    code = code.strip()
+    rs = {'code' : code}
+    rs['THS_Newest'] = THS_Newest.get_or_none(THS_Newest.code == code)
+    rs['THS_GNTC'] = THS_GNTC.get_or_none(THS_GNTC.code == code)
+    rs['THS_GD'] = THS_GD.get_or_none(THS_GD.code == code)
+    rs['THS_JGCC'] = THS_JGCC.get_or_none(THS_JGCC.code == code)
+    rs['THS_HYDB_2'] = THS_HYDB.get_or_none((THS_HYDB.code == code) & (THS_HYDB.hyDJ == '二级'))
+    rs['THS_HYDB_3'] = THS_HYDB.get_or_none((THS_HYDB.code == code) & (THS_HYDB.hyDJ == '三级'))
+    #print(rs)
+    return rs
 
 db2 = pw.SqliteDatabase(f'{path}GP/db/THS_Hot.db')
 
