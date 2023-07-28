@@ -46,8 +46,8 @@ class SortInfoWindow:
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
         w = win32api.GetSystemMetrics(0) # desktop width
-        self.size = (200, 135)
-        self.wnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, w - 260 - self.size[0], 150, *self.size, parentWnd, None, None, None)
+        self.size = (280, 135)
+        self.wnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
         win32gui.SetWindowPos(self.wnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.SetWindowLong(self.wnd, win32con.GWL_WNDPROC, sortInfoWinProc)
         win32gui.ShowWindow(self.wnd, win32con.SW_NORMAL)
@@ -68,11 +68,13 @@ class SortInfoWindow:
         hdc, ps = win32gui.BeginPaint(hwnd)
         bk = win32gui.CreateSolidBrush(0x000000)
         win32gui.FillRect(hdc, win32gui.GetClientRect(hwnd), bk)
+        pen = win32gui.CreatePen(win32con.PS_SOLID, 2, 0xff00ff)
+        win32gui.SelectObject(hdc, pen)
         win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
         win32gui.SetTextColor(hdc, 0x0)
 
         a = win32gui.LOGFONT()
-        a.lfHeight = 16
+        a.lfHeight = 14
         a.lfFaceName = '新宋体'
         font = win32gui.CreateFontIndirect(a)
         win32gui.SelectObject(hdc, font)
@@ -80,13 +82,22 @@ class SortInfoWindow:
         win32gui.EndPaint(hwnd, ps)
         win32gui.DeleteObject(font)
         win32gui.DeleteObject(bk)
+        win32gui.DeleteObject(pen)
     
     def drawContent(self, hdc):
         win32gui.SetTextColor(hdc, 0xdddddd)
-        rr = list(win32gui.GetClientRect(self.wnd))
-        rr[0] = rr[1] = 5
-        rr = tuple(rr)
-        win32gui.DrawText(hdc, self.textInfo, len(self.textInfo), rr, 0)
+        lines = self.textInfo.split('\n')
+        for i, line in enumerate(lines):
+            H = 18
+            y = i * H + 2
+            win32gui.DrawText(hdc, line, len(line), (2, y, self.size[0], y + H), 0)
+
+    def hide(self):
+        win32gui.ShowWindow(self.wnd, win32con.SW_HIDE)
+    
+    def show(self):
+        if not win32gui.IsWindowVisible(self.wnd):
+            win32gui.ShowWindow(self.wnd, win32con.SW_NORMAL)
         
 
 def sortInfoWinProc(hwnd, msg, wParam, lParam):

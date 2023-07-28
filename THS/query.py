@@ -122,7 +122,7 @@ def getCodeInfo(code):
     zb = ''
     if not info.get('THS_JGCC-totalRate1'):
         zb = '--'
-    elif info['THS_JGCC-totalRate1'] < 1:
+    elif info.get('THS_JGCC-totalRate1') < 1:
         zb = '不足1'
     else:
         zb = int(info.get('THS_JGCC-totalRate1'))
@@ -132,13 +132,14 @@ def getCodeInfo(code):
         jgNum = '--'
     jg = "机构: %s家, 持仓%s%%" % (jgNum, zb)
     xy = ''
+    hyName = ''
     if info.get('THS_HYDB_2-zhPM'):
         xy += '  二级 ' + str(info.get('THS_HYDB_2-zhPM')) + '/' + str(info.get('THS_HYDB_2-hyTotal')) + f'[{info.get("THS_HYDB_2-zhPM-Tag")}]' + '\n'
+        hyName = str(info.get('THS_HYDB_2-hyName'))
     if info.get('THS_HYDB_3-zhPM'):
         xy += '  三级 ' + str(info.get('THS_HYDB_3-zhPM')) + '/' + str(info.get('THS_HYDB_3-hyTotal')) + f'[{info.get("THS_HYDB_3-zhPM-Tag")}]'
-    if xy:
-        xy = '行业排名: \n' + xy
-    txt = line + '\n' + jg + '\n' + xy
+        hyName = str(info.get('THS_HYDB_3-hyName'))
+    txt = line + '\n' + hyName + '\n' + jg + '\n' + xy
     return txt
     
     

@@ -377,8 +377,10 @@ def work():
             os._exit(0) # 退出进程
             break
         if not isInKlineWindow():
+            mywin.sortInfoWindow.hide()
             continue
         showHotWindow()
+        mywin.sortInfoWindow.show()
         nowCode = findCode()
         if curCode != nowCode:
             work_updateCode(nowCode)
