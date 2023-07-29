@@ -148,9 +148,19 @@ def saveDB():
         with orm.db.atomic():
             orm.THS_HYDB_2.insert_many(datas).execute()
 
-if __name__ == '__main__':
+def loadAllFiles():
     files =  listHydbFiles()
     for f in files:
         loadFile(f)
     calcAllPM()
     saveDB()
+
+def loadOneFile(code):
+    f = BASE_PATH + code + '-同行比较.html'
+    loadFile(f)
+    calcAllPM()
+    saveDB()
+
+if __name__ == '__main__':
+    loadAllFiles()
+    #loadOneFile('002080')

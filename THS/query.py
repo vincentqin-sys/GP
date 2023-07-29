@@ -163,20 +163,22 @@ def getCodeInfo_THS(code):
         zb = int(jgccInfo.totalRate1)
         jgNum = jgccInfo.orgNum1
         name = jgccInfo.name
-    jg = "机构%s家, 持仓%s%%" % (jgNum, zb)
+    jg = "机构 %s家, 持仓%s%%" % (jgNum, zb)
 
     if gdInfo:
         jg += f'   前十流通股东{int(gdInfo.ltgdTop10Rate)}%'
+        name = gdInfo.name
 
     hy = ''
     hyName = ''
     for m in hydbInfo:
         hy += f'  {m.hydj} {m.zhpm} / {m.hysl} [{getPMTag(m.zhpm / m.hysl)}]\n'
         hyName = m.hy
+        name = m.name
     
     line = code + ' ' + name
     txt = line + '\n' + hyName + '\n' + jg + '\n' + hy
-    return txt    
+    return txt
     
 #打印并复制信息到剪贴板
 def printCodeInfo(code):
