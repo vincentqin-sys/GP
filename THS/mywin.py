@@ -106,8 +106,8 @@ def sortInfoWinProc(hwnd, msg, wParam, lParam):
     return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
 
 sortInfoWindow = SortInfoWindow()
-sortInfoWindow.createWindow(None)
-sortInfoWindow.changeCode('000977')
-win32gui.PumpMessages()
+#sortInfoWindow.createWindow(None)
+#sortInfoWindow.changeCode('000977')
+#win32gui.PumpMessages()
 #------------------------------------------
 
