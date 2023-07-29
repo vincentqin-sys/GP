@@ -62,6 +62,27 @@ class THS_HYDB(pw.Model):
         database = db
         table_name = '行业对比'
 
+# 同花顺--行业对比2（排名）
+class THS_HYDB_2(pw.Model):
+    code = pw.CharField() #股票代码
+    name = pw.CharField() #股票名称
+    hy = pw.CharField(null=True, column_name='行业')
+    hydj = pw.IntegerField(null = True, column_name='行业等级') #
+    hysl = pw.IntegerField(null=True, column_name='同行数量') # 行业中股票总数量
+
+    mgsy = pw.FloatField(null=True, column_name='每股收益') #
+    mgjzc = pw.FloatField(null=True, column_name='每股净资产') #
+    mgxjl = pw.FloatField(null=True, column_name='每股现金流') #
+    jlr = pw.FloatField(null=True, column_name='净利润') #
+    yyzsl = pw.FloatField(null=True, column_name='营业总收入') #
+    zgb = pw.FloatField(null=True, column_name='总股本') #
+
+    zhpm = pw.IntegerField(null = True, column_name='综合排名')
+
+    class Meta:
+        database = db
+        table_name = '行业对比_2'        
+
 # 同花顺--股东
 class THS_GD(pw.Model):
     code = pw.CharField() #股票代码
@@ -134,7 +155,7 @@ class TaoGuBa_Remark(pw.Model):
         database = db3
 
 
-db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC])
+db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC, THS_HYDB_2])
 db2.create_tables([THS_Hot])
 db3.create_tables([TaoGuBa_Remark])
 
