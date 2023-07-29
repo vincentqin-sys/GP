@@ -100,18 +100,18 @@ def queryManyFlatFullInfo(codes):
 # queryByGN(('数字经济', '信创'), 'AND')
 #flatFullInfo(queryFullInfo('600536'))
 
+def getPMTag(v):
+    if (v < 0.2): return '优秀'
+    if (v < 0.4): return '良好'
+    if (v < 0.6): return '一般'
+    if (v < 0.8): return '较差'
+    return '垃圾'
+
 def calcZhPMTag(info):
-    def getTag(v):
-        if (v < 0.2): return '优秀'
-        if (v < 0.4): return '良好'
-        if (v < 0.6): return '一般'
-        if (v < 0.8): return '较差'
-        return '垃圾'
-        
     if info.get('THS_HYDB_2-zhPM') and info.get('THS_HYDB_2-hyTotal'):
-        info['THS_HYDB_2-zhPM-Tag'] = getTag(info.get('THS_HYDB_2-zhPM') / info.get('THS_HYDB_2-hyTotal'))
+        info['THS_HYDB_2-zhPM-Tag'] = getPMTag(info.get('THS_HYDB_2-zhPM') / info.get('THS_HYDB_2-hyTotal'))
     if info.get('THS_HYDB_3-zhPM') and info.get('THS_HYDB_3-hyTotal'):
-        info['THS_HYDB_3-zhPM-Tag'] = getTag(info.get('THS_HYDB_3-zhPM') / info.get('THS_HYDB_3-hyTotal'))
+        info['THS_HYDB_3-zhPM-Tag'] = getPMTag(info.get('THS_HYDB_3-zhPM') / info.get('THS_HYDB_3-hyTotal'))
     
 def getCodeInfo(code):
     code = int(code)
@@ -142,6 +142,41 @@ def getCodeInfo(code):
     txt = line + '\n' + hyName + '\n' + jg + '\n' + xy
     return txt
     
+
+def getCodeInfo_THS(code):
+    code = int(code)
+    code = "%06d" % code
+    gdInfo = THS_GD.get_or_none(THS_GD.code == code)
+    jgccInfo = THS_JGCC.get_or_none(THS_JGCC.code == code)
+    hydbInfo = THS_HYDB_2.select().where(THS_HYDB_2.code == code).order_by(THS_HYDB_2.hy).execute()
+
+    name = ''
+    zb = ''
+    if not jgccInfo:
+        zb = '--'
+        jgNum = '--'
+    elif jgccInfo.totalRate1 < 1:
+        zb = '不足1'
+        jgNum = jgccInfo.orgNum1
+        name = jgccInfo.name
+    else:
+        zb = int(jgccInfo.totalRate1)
+        jgNum = jgccInfo.orgNum1
+        name = jgccInfo.name
+    jg = "机构%s家, 持仓%s%%" % (jgNum, zb)
+
+    if gdInfo:
+        jg += f'   前十流通股东{int(gdInfo.ltgdTop10Rate)}%'
+
+    hy = ''
+    hyName = ''
+    for m in hydbInfo:
+        hy += f'  {m.hydj} {m.zhpm} / {m.hysl} [{getPMTag(m.zhpm / m.hysl)}]\n'
+        hyName = m.hy
+    
+    line = code + ' ' + name
+    txt = line + '\n' + hyName + '\n' + jg + '\n' + hy
+    return txt    
     
 #打印并复制信息到剪贴板
 def printCodeInfo(code):
