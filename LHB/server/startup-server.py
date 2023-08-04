@@ -117,11 +117,27 @@ def showLhbDB():
 def queryBySql():
     try:
         cs = orm.db.cursor()
+        cs2 = orm.db_ths.cursor()
         params = json.loads(request.data)
         cs.execute(params['sql'])
         cols = [c[0] for c in cs.description]
         data = cs.fetchall()
+        for i, d in enumerate(data):
+            data[i] = [x for x in d]
         rs = {'status': 'success', 'cols': cols, 'data' : data}
+        if 'code' in cols:
+            codeIdx = cols.index('code')
+            codes = [d[codeIdx] for d in data]
+            sql = 'select code, max(行业) from 行业对比_2 where code in (' + ','.join(codes) + ') group by code'
+            cs2.execute(sql)
+            hyList = cs2.fetchall()
+            cols.append('行业')
+            for i, d in enumerate(data):
+                code = d[codeIdx]
+                for m in hyList:
+                    if m[0] == code:
+                        d.append(m[1])
+                        break
         #txt = json.dumps(rs, ensure_ascii = False) # ensure_ascii = False
     except Exception as e:
         print(e)
@@ -129,6 +145,8 @@ def queryBySql():
     finally:
         if cs:
             cs.close()
+        if cs2:
+            cs2.close()
     return rs
 
 """
