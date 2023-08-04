@@ -122,7 +122,7 @@ def getCodeInfo(code):
     zb = ''
     if not info.get('THS_JGCC-totalRate1'):
         zb = '--'
-    elif info.get('THS_JGCC-totalRate1') < 1:
+    elif int(info.get('THS_JGCC-totalRate1')) < 1:
         zb = '不足1'
     else:
         zb = int(info.get('THS_JGCC-totalRate1'))
@@ -155,14 +155,15 @@ def getCodeInfo_THS(code):
     if not jgccInfo:
         zb = '--'
         jgNum = '--'
-    elif jgccInfo.totalRate1 < 1:
-        zb = '不足1'
-        jgNum = jgccInfo.orgNum1
-        name = jgccInfo.name
     else:
-        zb = int(jgccInfo.totalRate1)
         jgNum = jgccInfo.orgNum1
         name = jgccInfo.name
+        if not jgccInfo.totalRate1:
+            zb = '--'
+        elif jgccInfo.totalRate1 < 1:
+            zb = '不足1'
+        else:
+            zb = int(jgccInfo.totalRate1)
     jg = "机构 %s家, 持仓%s%%" % (jgNum, zb)
 
     if gdInfo:
