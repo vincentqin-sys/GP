@@ -128,7 +128,8 @@ def queryBySql():
         if 'code' in cols:
             codeIdx = cols.index('code')
             codes = [d[codeIdx] for d in data]
-            sql = 'select code, max(行业) from 行业对比_2 where code in (' + ','.join(codes) + ') group by code'
+            codesStr = '", "'.join(codes)
+            sql = 'select code, max(行业) from 行业对比_2 where code in ("' + codesStr + '") group by code'
             cs2.execute(sql)
             hyList = cs2.fetchall()
             cols.append('行业')

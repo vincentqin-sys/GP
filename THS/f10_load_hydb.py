@@ -141,12 +141,19 @@ def calcAllPM():
             d['hysl'] = len(datas)
         calcHyPM(datas)
 
+def compare(exists, datas):
+    codes = [d.code for d in datas ]
+    for e in exists:
+        pass
+
 def saveDB():
     keys = sorted(hyInfos.keys())
-    for k in keys:
-        datas = hyInfos[k]
+    for hy in keys:
+        datas = hyInfos[hy]
         with orm.db.atomic():
-            orm.THS_HYDB_2.insert_many(datas).execute()
+            existsNum = orm.THS_HYDB_2.select().where(orm.THS_HYDB_2.hy == hy).count()
+            if existsNum == 0:
+                orm.THS_HYDB_2.insert_many(datas).execute()
 
 def loadAllFiles():
     files =  listHydbFiles()

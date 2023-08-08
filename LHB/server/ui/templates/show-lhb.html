@@ -103,6 +103,17 @@
                         dt.push(rv);
                         ntrClass.push('');
                     }
+                    dt.sort(function(a, b) {
+                        a = a['行业'];
+                        b = b['行业'];
+                        if (!a && !b) {
+                            return 0;
+                        }
+                        if (! a) {
+                            return 1;
+                        }
+                        return a.localeCompare(b);
+                    });
                     v.results = dt;
                     console.log('-->', v.columns, v.results);
                 } else {
