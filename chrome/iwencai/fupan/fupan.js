@@ -6,30 +6,76 @@ console.log('in fupan.js ', new Date());
 let cntDiv = $('<div style="position: absolute; left: 0; top :0; width: 100%; height: 100%; overflow: auto; z-index: 9999999; background-color: #fff;" />');
 $(document.body).append(cntDiv);
 
+//--------------------------K 线-------------------------------------------------
 function buildCodeUI(code, callback) {
-    const ROW_HEIGHT = 200;
+    const ROW_HEIGHT = 120;
     let p = $('<p style="width: 100%; border-bottom: solid 1px #ccc; padding-left: 20px;" />');
     let infoDiv = $('<div style="float: left; width: 100px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc; " /> ');
     let selInfoDiv = $('<div style="float: left; width: 150px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc; " /> ');
-    let canvas = $('<canvas style="width: 540px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc;" />');
+    let canvas = $('<canvas style="float: left; width: 540px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc;" />');
+    let fenShiCanvas = $('<canvas style="width: 300px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc;" />');
+    
     let obj = new KLine(canvas.get(0));
     obj.selInfoDiv = selInfoDiv;
+    let timeLineObj = new TimeLine(fenShiCanvas.get(0));
+    obj.timeLineObj = timeLineObj;
     // canvas.data('klineObj', obj);
     canvas.get(0).addEventListener('mousemove', function(e) {
         kline_mouseMove(e, obj);
+    });
+    canvas.get(0).addEventListener('click', function(e) {
+        kline_click(e, obj);
+    });
+    canvas.get(0).addEventListener('contextmenu', function(e) {
+        kline_rightclick(e, obj);
+        console.log('contextmenu');
+        e.preventDefault();
     });
 
     p.append(infoDiv);
     p.append(selInfoDiv);
     p.append(canvas);
+    p.append(fenShiCanvas);
 
     loadKLineData(code, 30, function(info, klineInfo) {
         obj.setData(info, klineInfo);
-        obj.draw();
         infoDiv.append(info.code + '<br/>' + info.name);
-        callback(obj);
+        loadTodayKLineData(code, 30, obj, function(obj) {
+            obj.draw();
+            callback(obj);
+        });
     });
     return p;
+}
+
+function kline_rightclick(e, klineObj) {
+    var event = e || window.event;
+    var x = event.offsetX;
+    var y = event.offsetY;
+    for (let i in klineObjArr) {
+        let pos = klineObjArr[i].getPosIdx(x);
+        klineObjArr[i].setHilightMouse(pos);
+        klineObjArr[i].draw();
+
+        let fsObj = klineObjArr[i].timeLineObj;
+        loadTimeLineData(klineObjArr[i].baseInfo.code, function(rs) {
+            fsObj.setData(rs);
+            fsObj.draw();
+        });
+    }
+}
+
+function kline_click(e, klineObj) {
+    var event = e || window.event;
+    var x = event.offsetX;
+    var y = event.offsetY;
+    for (let i in klineObjArr) {
+        let pos = klineObjArr[i].getPosIdx(x);
+        if (pos < 0)
+            continue;
+        klineObjArr[i].setSelectMouse(pos);
+        klineObjArr[i].draw();
+    }
 }
 
 function kline_mouseMove(e, klineObj) {
@@ -37,10 +83,13 @@ function kline_mouseMove(e, klineObj) {
     var x = event.offsetX;
     var y = event.offsetY;
     for (let i in klineObjArr) {
-        klineObjArr[i].draw();
-        klineObjArr[i].drawMouse(x, y);
-
         let posIdx = klineObjArr[i].getPosIdx(x);
+        klineObjArr[i].draw();
+        klineObjArr[i].drawMouse(posIdx);
+        if (posIdx < 0) {
+            continue;
+        }
+
         let info = klineObjArr[i].dataArr[posIdx];
         let txt = '' ;
         txt += '' + info.date + ' <br/><br/>';
@@ -88,7 +137,7 @@ function loadKLineData(code, maxDayNum, callback) {
                 }
                 klineInfo.push(item);
             }
-            console.log(info, klineInfo);
+            // console.log(info, klineInfo);
             if (callback) {
                 callback(info, klineInfo);
             }
@@ -96,27 +145,78 @@ function loadKLineData(code, maxDayNum, callback) {
     });
 }
 
-function loadFinishi(klineObjArr) {
-    let gp = klineObjArr[klineObjArr.length - 1]; // 最后一个股票代码
-    let lastDate = gp.dataArr[gp.dataArr.length - 1].date;
-    let firstDate = gp.dataArr[0].date;
-    for (let i = 0; i < klineObjArr.length - 1; i++) {
-        let obj = klineObjArr[i];
-        let curLastDate = obj.dataArr[obj.dataArr.length - 1].date;
-        let curFirstDate = obj.dataArr[0].date;
-        if (curLastDate < lastDate) {
-            obj.dataArr.push(null); // 加一天
+function loadTodayKLineData(code, maxDayNum, klineObj, callback) {
+    let url = getTodayKLineUrl(code);
+    $.ajax({
+        url: url, type: 'GET', dataType : 'text',
+        success: function(data) {
+            let idx = data.indexOf(':{');
+            let eidx = data.indexOf('}}');
+            data = data.substring(idx + 1, eidx + 1);
+            data = JSON.parse(data);
+            let keys = ['date', 'open', 'high', 'low', 'close', 'vol', 'money', 'rate'];
+            let idxKeys = ['1', '7', '8', '9', '11', '13', '19', '1968584'];
+            
+            let item = {};
+            for (let j = 0; j < keys.length; ++j) {
+                item[keys[j]] = parseFloat(data[idxKeys[j]]);
+            }
+            let last = klineObj.dataArr[klineObj.dataArr.length - 1];
+            if (last.date == item.date) {
+                klineObj.dataArr.splice(klineObj.dataArr.length - 1, 1);
+            }
+            klineObj.dataArr.push(item);
+            if (klineObj.dataArr.length > maxDayNum) {
+                let nn = klineObj.dataArr.length - maxDayNum;
+                klineObj.dataArr.splice(0, nn);
+            }
+            while (klineObj.dataArr.length < maxDayNum) {
+                klineObj.dataArr.splice(0, 0, null);
+            }
+            console.log(klineObj);
+            
+            if (callback) {
+                callback(klineObj);
+            }
         }
-        if (curFirstDate < firstDate) {
-            obj.dataArr.splice(0, 1); // 删除第一天
-        }
-        while (obj.dataArr.length < gp.dataArr.length) {
-            obj.dataArr.unshift(null);
-        }
-        obj.draw();
-    }
+    });
 }
 
+function loadFinish(klineObjArr) {
+    
+}
+
+//-------------------------------分时线--------------------------------------------------
+function loadTimeLineData(code, callback) {
+    const FEN_SHI_DATA_ITEM_SIZE = 5;
+    let url = getFenShiUrl(code);
+    $.ajax({
+        url: url, type: 'GET', dataType : 'text',
+        success: function(data) {
+            let idx = data.indexOf(':');
+            let eidx = data.indexOf('}})');
+            data = data.substring(idx + 1, eidx + 1);
+            data = JSON.parse(data);
+            let rs = {};
+            rs.pre = data.pre; // 昨日收盘价
+            rs.dataArr = [];
+            let iv = data.data.split(/;|,/g);
+            // 时间，价格，成交额（元），分时均价，成交量（手）
+            for (let i = 0; i < iv.length; i += FEN_SHI_DATA_ITEM_SIZE) {
+                let item = {};
+                item['time'] = parseInt(iv[i]);
+                item['price'] = parseFloat(iv[i + 1]);
+                item['money'] = parseInt(iv[i + 2]);
+                item['avgPrice'] = parseFloat(iv[i + 3]);
+                item['vol'] = parseInt(iv[i + 4]);
+                rs.dataArr.push(item);
+            }
+            callback(rs);
+        }
+    });
+}
+
+//--------------------------------------------------------------------------------------
 function buildUI(codeArr) {
     let num = 0;
     for (let i in codeArr) {
@@ -124,12 +224,13 @@ function buildUI(codeArr) {
             klineObjArr.push(klineObj);
             ++num;
             if (num == codeArr.length) {
-                loadFinishi(klineObjArr);
+                loadFinish(klineObjArr);
             }
         });
         cntDiv.append(p);
     }
 }
 
-// 最后一个必须是股票代码
-buildUI(['881157', '601099', '601136']);
+政券板块 = ['881157', '601099', '601136', '601059', '600906'];
+
+buildUI(政券板块);
