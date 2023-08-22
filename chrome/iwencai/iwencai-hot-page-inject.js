@@ -40,6 +40,17 @@ function getFenShiUrl(code) {
     return url;
 }
 
+// 日线 url
+function getKLineUrl(code) {
+    let sh = code[0] == '6' ? '17' : '33'; // 600xxx : 17;  300xxx 000xxx 002xxx : 33  48: 88:xxxx
+    if (code[0] == '8') {
+        sh = '48';
+    }
+    let url = 'http://d.10jqka.com.cn/v6/line/'+ sh + '_' + code + '/01/last1800.js';
+    url = getdUrl_henxin(url);
+    return url;
+}
+
 function loadFenShiData(code) {
     delete GPInfos[code + '_FS'];
     let url = getFenShiUrl(code);

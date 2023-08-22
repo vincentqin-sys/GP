@@ -42,6 +42,6 @@
     ],
 
 	"web_accessible_resources": ["ajax-hook.js", "iwencai-hot-login-inject.js", "canvas2image.js", "iwencai-hot-page-inject.js",
-		"capatcha/a0.dib.bmp", "capatcha/b0.dib.bmp", "capatcha/c0.dib.bmp", "capatcha/d0.dib.bmp"
+		"capatcha/a0.dib.bmp", "capatcha/b0.dib.bmp", "capatcha/c0.dib.bmp", "capatcha/d0.dib.bmp", "fupan/fupan.js", "fupan/kline.js"
 	]
 }

@@ -287,7 +287,7 @@ class HotWindow:
             win32gui.RestoreDC(hdc, sdc)
 
     def drawMinMode(self, hdc):
-        title = '【我的热点】\n\n双击最大化'
+        title = '【我的热点】'
         rr = win32gui.GetClientRect(self.wnd)
         win32gui.FillRect(hdc, win32gui.GetClientRect(self.wnd), win32con.COLOR_WINDOWFRAME)  # background black
         win32gui.SetTextColor(hdc, 0x0000ff)
@@ -295,7 +295,7 @@ class HotWindow:
 
     def changeMode(self):
         if self.maxMode:
-            WIDTH, HEIGHT = 150, 50
+            WIDTH, HEIGHT = 150, 20
             y = self.rect[1] + self.rect[3] - HEIGHT
             win32gui.SetWindowPos(self.wnd, 0, 0, y, WIDTH, HEIGHT, 0)
         else:

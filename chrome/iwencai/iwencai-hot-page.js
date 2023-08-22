@@ -332,6 +332,14 @@ function listenKlineDOM() {
 
 //---------------------------------------------------------
 
+function createScript(url) {
+    let sc = document.createElement('script');
+    sc.setAttribute('type', 'text/javascript');
+    sc.src = chrome.extension.getURL(url);
+    sc.async = false;
+    document.documentElement.appendChild(sc);
+}
+
 // 热股排名页面
 if (decodeURI(window.location.href).indexOf('个股热度排名') > 0) {
     let reqParams = getRequestParams();
@@ -343,13 +351,14 @@ if (decodeURI(window.location.href).indexOf('个股热度排名') > 0) {
         forSave();
     } else if (openReason == 'FOR-KEEP-ALIVE' || openReason == 'FOR-LOGIN') {
         forLogin();
+    } else if (openReason == 'FuPan') {
+        // 复盘
+        createScript('iwencai-hot-page-inject.js');
+        createScript('fupan/kline.js');
+        createScript('fupan/fupan.js');
     } else {
         setTimeout(buildKlineUI, 4000);
-        let sc = document.createElement('script');
-        sc.setAttribute('type', 'text/javascript');
-        sc.src = chrome.extension.getURL('iwencai-hot-page-inject.js');
-        sc.async = false;
-        document.documentElement.appendChild(sc);
+        createScript('iwencai-hot-page-inject.js');
     }
 }
 
