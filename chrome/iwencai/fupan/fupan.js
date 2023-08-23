@@ -7,13 +7,13 @@ let cntDiv = $('<div style="position: absolute; left: 0; top :0; width: 100%; he
 $(document.body).append(cntDiv);
 
 //--------------------------K 线-------------------------------------------------
-function buildCodeUI(code, callback) {
+function buildCodeUI(code, limitConfig, callback) {
     const ROW_HEIGHT = 120;
     let p = $('<p style="width: 100%; border-bottom: solid 1px #ccc; padding-left: 20px;" />');
     let infoDiv = $('<div style="float: left; width: 100px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc; " /> ');
     let selInfoDiv = $('<div style="float: left; width: 150px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc; " /> ');
-    let canvas = $('<canvas style="float: left; width: 540px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc;" />');
-    let fenShiCanvas = $('<canvas style="width: 300px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc;" />');
+    let canvas = $('<canvas style="float-x: left; width: 540px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc;" />');
+    let fenShiCanvas = $('<canvas style="width: 300px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc; " />');
     
     let obj = new KLine(canvas.get(0));
     obj.selInfoDiv = selInfoDiv;
@@ -35,12 +35,12 @@ function buildCodeUI(code, callback) {
     p.append(infoDiv);
     p.append(selInfoDiv);
     p.append(canvas);
-    p.append(fenShiCanvas);
+    // p.append(fenShiCanvas);
 
-    loadKLineData(code, 30, function(info, klineInfo) {
+    loadKLineData(code, limitConfig, function(info, klineInfo) {
         obj.setData(info, klineInfo);
         infoDiv.append(info.code + '<br/>' + info.name);
-        loadTodayKLineData(code, 30, obj, function(obj) {
+        loadTodayKLineData(code, limitConfig, obj, function(obj) {
             obj.draw();
             callback(obj);
         });
@@ -56,12 +56,13 @@ function kline_rightclick(e, klineObj) {
         let pos = klineObjArr[i].getPosIdx(x);
         klineObjArr[i].setHilightMouse(pos);
         klineObjArr[i].draw();
-
+        /*
         let fsObj = klineObjArr[i].timeLineObj;
         loadTimeLineData(klineObjArr[i].baseInfo.code, function(rs) {
             fsObj.setData(rs);
             fsObj.draw();
         });
+        */
     }
 }
 
@@ -110,9 +111,12 @@ function kline_mouseMove(e, klineObj) {
     }
 }
 
-// 最多取maxDayNum天的数据
-function loadKLineData(code, maxDayNum, callback) {
-    maxDayNum = maxDayNum || 30;
+function limitKLineData(arr, startDate, endDate) {
+
+}
+
+// limitConfig = {startDate: xx,   endDate : xxx}
+function loadKLineData(code, limitConfig, callback) {
     let url = getKLineUrl(code);
     $.ajax({
         url: url, type: 'GET', dataType : 'text',
@@ -125,11 +129,13 @@ function loadKLineData(code, maxDayNum, callback) {
             let info = {code : code, name : data.name, today : data.today};
             let klineInfo = [];
             let klineDataArr = data.data.split(/;/g);
-            if (klineDataArr.length > maxDayNum) {
-                klineDataArr = klineDataArr.slice(- maxDayNum);
-            }
             for (let i = 0; i < klineDataArr.length; i++) {
                 let kv = klineDataArr[i].split(',');
+                // first is date
+                let date = parseFloat(kv[0]);
+                if (date < limitConfig.startDate || date > limitConfig.endDate) {
+                    continue;
+                }
                 let keys = ['date', 'open', 'high', 'low', 'close', 'vol', 'money', 'rate']; // vol: 单位股, money:单位元
                 let item = {};
                 for (let j = 0; j < keys.length; ++j) {
@@ -145,7 +151,8 @@ function loadKLineData(code, maxDayNum, callback) {
     });
 }
 
-function loadTodayKLineData(code, maxDayNum, klineObj, callback) {
+// limitConfig = {startDate: xx,   endDate : xxx}
+function loadTodayKLineData(code, limitConfig, klineObj, callback) {
     let url = getTodayKLineUrl(code);
     $.ajax({
         url: url, type: 'GET', dataType : 'text',
@@ -161,20 +168,14 @@ function loadTodayKLineData(code, maxDayNum, klineObj, callback) {
             for (let j = 0; j < keys.length; ++j) {
                 item[keys[j]] = parseFloat(data[idxKeys[j]]);
             }
-            let last = klineObj.dataArr[klineObj.dataArr.length - 1];
-            if (last.date == item.date) {
-                klineObj.dataArr.splice(klineObj.dataArr.length - 1, 1);
-            }
-            klineObj.dataArr.push(item);
-            if (klineObj.dataArr.length > maxDayNum) {
-                let nn = klineObj.dataArr.length - maxDayNum;
-                klineObj.dataArr.splice(0, nn);
-            }
-            while (klineObj.dataArr.length < maxDayNum) {
-                klineObj.dataArr.splice(0, 0, null);
+            if (item.date >= limitConfig.startDate && item.date <= limitConfig.endDate) {
+                let last = klineObj.dataArr[klineObj.dataArr.length - 1];
+                if (last.date == item.date) {
+                    klineObj.dataArr.splice(klineObj.dataArr.length - 1, 1);
+                }
+                klineObj.dataArr.push(item);
             }
             console.log(klineObj);
-            
             if (callback) {
                 callback(klineObj);
             }
@@ -217,10 +218,10 @@ function loadTimeLineData(code, callback) {
 }
 
 //--------------------------------------------------------------------------------------
-function buildUI(codeArr) {
+function buildUI(codeArr, limitConfig) {
     let num = 0;
     for (let i in codeArr) {
-        let p = buildCodeUI(codeArr[i], function(klineObj) {
+        let p = buildCodeUI(codeArr[i], limitConfig, function(klineObj) {
             klineObjArr.push(klineObj);
             ++num;
             if (num == codeArr.length) {
@@ -232,5 +233,7 @@ function buildUI(codeArr) {
 }
 
 政券板块 = ['881157', '601099', '601136', '601059', '600906'];
+// buildUI(政券板块, {startDate : 20230713, endDate: 202301031});
 
-buildUI(政券板块);
+数据要素板块 = ['886041', '605398', '301159', '301169',  '601858', '300807', '301299', '003007', '002235', '002777', '600602', '600633', '002095'];
+buildUI(数据要素板块, {startDate : 20230713, endDate: 202301031} );

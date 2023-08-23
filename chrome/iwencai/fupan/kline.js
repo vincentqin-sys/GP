@@ -69,7 +69,7 @@ class KLine {
                 is20P = false;
             }
             let ZT = is20P ? 20 : 10;
-            let isZT = (parseInt(ZRDP  * (100 + ZT) + 0.5) <= parseInt(cur.close * 100));
+            let isZT = (parseInt(ZRDP  * (100 + ZT) + 0.5) <= parseInt(cur.close * 100 + 0.1));
             if (isZT) {
                 return 'ZT';
             }
