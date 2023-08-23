@@ -1,4 +1,5 @@
 var klineUIMgr = new KLineUIManager();
+var timeLineUIMgr = new TimeLineUIManager();
 
 //--------------------------K 线-------------------------------------------------
 function buildCodeUI(code, limitConfig, parent) {
@@ -9,9 +10,14 @@ function buildCodeUI(code, limitConfig, parent) {
    
     let klineUI = new KLineUI(540, ROW_HEIGHT);
     klineUIMgr.add(klineUI);
+    var timelineUI = new TimeLineUI(300, ROW_HEIGHT);
+    timeLineUIMgr.add(timelineUI);
+
+    klineUI.ui.css('float', 'left');
     p.append(infoDiv);
     p.append(selInfoDiv);
     p.append(klineUI.ui);
+    p.append(timelineUI.ui);
     parent.append(p);
 
     klineUI.addListener('LoadDataEnd', function(event) {
@@ -45,11 +51,12 @@ function buildCodeUI(code, limitConfig, parent) {
     });
 
     klineUI.loadData(code, limitConfig);
+    timelineUI.loadData(code);
 }
 
 
 function buildUI(codeArr, limitConfig) {
-    let cntDiv = $('<div style="position: absolute; left: 0; top :0; width: 100%; height: 100%; overflow: auto; z-index: 9999999; background-color: #fff;" />');
+    let cntDiv = $('<div style="position: absolute; left: 0; top :0; width: calc(100% - 16px); height: 100%; overflow: auto; z-index: 9999999; background-color: #fff; border: solid 8px #aaa; padding-bottom: 10px;" />');
     $(document.body).append(cntDiv);
 
     for (let i in codeArr) {

@@ -498,6 +498,7 @@ class KLineUI {
 
 class TimeLineUI {
     constructor(width, height) {
+        let thiz = this;
         let canvas = $('<canvas style="float-x: left; width: ' + width + 'px; height: ' + height + 'px; border-right: solid 1px #ccc;" />');
         this.ui = canvas;
         canvas = canvas.get(0);
@@ -510,10 +511,18 @@ class TimeLineUI {
 
     mouseMove(x, y, notify) {
         this.view.draw();
-        this.view.drawMouse(pos);
+        this.view.drawMouse(x);
         if (notify) {
             this.notify({name : 'MouseMove', x : x, y : y, source : this});
         }
+    }
+
+    addListener(eventName, listener) {
+        let lsts = this.listeners[eventName];
+        if (! lsts) {
+            lsts = this.listeners[eventName] = [];
+        }
+        lsts.push(listener);
     }
 
     // {name: 'LoadDataEnd' }
@@ -589,7 +598,8 @@ class KLineUIManager {
     }
 
     onUserEvent(event) {
-        let newEvent = {name : 'Virtual' + event.name, x : event.x, y : event.y, pos : event.pos};
+        let newEvent = $.extend({}, event);
+        newEvent.name = 'Virtual' + event.name;
         for (let i in this.klineUIArr) {
             let cur = this.klineUIArr[i];
             if (event.source != cur) {
@@ -614,4 +624,32 @@ class KLineUIManager {
             cur.limitLoadDataLength(maxLen);
         }
     }
+}
+
+
+class TimeLineUIManager {
+    constructor() {
+        this.timeLineUIArr = [];
+    }
+
+    add(timeLineUI) {
+        let thiz = this;
+        this.timeLineUIArr.push(timeLineUI);
+        timeLineUI.addListener('MouseMove', function(event) {thiz.onUserEvent(event);});
+        timeLineUI.addListener('Click', function(event) {thiz.onUserEvent(event);});
+    }
+
+    onUserEvent(event) {
+        let newEvent = $.extend({}, event);
+        newEvent.name = 'Virtual' + event.name;
+        for (let i in this.timeLineUIArr) {
+            let cur = this.timeLineUIArr[i];
+            if (event.source != cur) {
+                if (event.name == 'MouseMove') cur.mouseMove(event.x, event.y, false);
+                // else if (event.name == 'Click') cur.click(event.x, event.y, false);
+            }
+            cur.notify(newEvent);
+        }
+    }
+
 }
