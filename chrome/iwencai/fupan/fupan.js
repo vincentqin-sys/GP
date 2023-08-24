@@ -5,6 +5,12 @@ var timeLineUIMgr = new TimeLineUIManager();
 function buildCodeUI(code, limitConfig, parent) {
     const ROW_HEIGHT = 120;
     let p = $('<p style="width: 100%; border-bottom: solid 1px #ccc; padding-left: 20px;" />');
+    if (code == 'Empty') {
+        parent.append(p);
+        p.css({height: '4px', backgroundColor : '#abc'});
+        return;
+    }
+
     let infoDiv = $('<div style="float: left; width: 100px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc; " /> ');
     let selInfoDiv = $('<div style="float: left; width: 150px; height: ' + ROW_HEIGHT + 'px; border-right: solid 1px #ccc; " /> ');
    
@@ -65,8 +71,14 @@ function buildUI(codeArr, limitConfig) {
 }
 
 //--------------------------------------------------------------------------------------
-政券板块 = ['881157', '601099', '601136', '601059', '600906'];
-// buildUI(政券板块, {startDate : 20230713, endDate: 202301031});
+政券 = ['881157', '885456', '601099', '601136', '601059', '600906', '301315', '300380'];
+// buildUI(政券, {startDate : 20230713, endDate: 202301031});
 
-数据要素板块 = ['886041', '605398', '301159', '301169',  '601858', '300807', '301299', '003007', '002235', '002777', '600602', '600633', '002095'];
-buildUI(数据要素板块, {startDate : 20230713, endDate: 202301031} );
+数据要素 = ['886041', '605398', '301159', '301169',  '601858', '300807', '301299', '003007', '002235', '002777', '600602', '600633', '002095'];
+// buildUI(数据要素, {startDate : 20230713, endDate: 202301031} );
+
+医药商业 = ['881143', '603716', '301281', '600272', '603122', '301509'];
+// buildUI(医药商业, {startDate : 20230713, endDate: 202301031} );
+
+环保 = ['881181', '000826', '605069', 'Empty', '301203', '002310', '688671', '605081', '603291', '600796', '600292', '301372', '301288', '301148', '301049', '300958', '300172' , '002887', '002778'];
+buildUI(环保, {startDate : 20230713, endDate: 202301031} );

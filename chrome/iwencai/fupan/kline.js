@@ -59,10 +59,10 @@ class KLineView {
 
     getZDTag(posIdx) {
         let cur = this.dataArr[posIdx];
-        if (! cur) {
+        if (posIdx < 0 || !this.dataArr || posIdx >= this.dataArr.length || !cur) {
             return 'E'; // empty k-line
         }
-        if (posIdx > 0) {
+        if (posIdx > 0 && this.dataArr[posIdx - 1]['close']) {
             let ZRDP = this.dataArr[posIdx - 1].close;
             let is20P = this.getCode().substring(0, 3) == '688' || this.getCode().substring(0, 2) == '30';
             if (cur.date < 20200824) {
@@ -104,7 +104,7 @@ class KLineView {
         if (tag == 'ZT' || tag == 'ZTZB')
             return "rgb(0, 0, 255)";
         if (tag == 'DT' || tag == 'DTZB')
-            return "rgb(255, 255, 0)";
+            return "#FFC125";
         if (tag == 'DZDD')
             return "rgb(255, 0, 255)";
         if (tag == 'Z')
@@ -178,7 +178,7 @@ class KLineView {
         let nx = posIdx * (KLINE_WIDTH + KLINE_SPACE) + KLINE_SPACE + parseInt(KLINE_WIDTH / 2);
         this.ctx.beginPath();
         if (posIdx == this.hilightPosIdx) {
-            this.ctx.strokeStyle = '#7FFF00';
+            this.ctx.strokeStyle = '#00ff00' // '#7FFF00';
             this.ctx.setLineDash([3, 4]);
         } else {
             this.ctx.strokeStyle = 'black';
@@ -349,6 +349,9 @@ class KLineUI {
             thiz.rightClick(e.offsetX, e.offsetY, true);
             e.preventDefault();
         });
+        canvas.addEventListener('mouseleave', function(e) {
+            thiz.mouseLeave(true);
+        });
         this.listeners = {};
     }
 
@@ -382,6 +385,13 @@ class KLineUI {
         }
     }
 
+    mouseLeave(notify) {
+        this.view.draw();
+        if (notify) {
+            this.notify({name : 'MouseLeave', source : this});
+        }
+    }
+
     addListener(eventName, listener) {
         let lsts = this.listeners[eventName];
         if (! lsts) {
@@ -410,7 +420,7 @@ class KLineUI {
             arr.splice(0, arr.length - len);
         }
         while (arr.length < len) {
-            arr.unshift(null);
+            arr.unshift({});
         }
     }
 
@@ -506,6 +516,9 @@ class TimeLineUI {
         canvas.addEventListener('mousemove', function(e) {
             thiz.mouseMove(e.offsetX, e.offsetY, true);
         });
+        canvas.addEventListener('mouseleave', function(e) {
+            thiz.mouseLeave(true);
+        });
         this.listeners = {};
     }
 
@@ -514,6 +527,13 @@ class TimeLineUI {
         this.view.drawMouse(x);
         if (notify) {
             this.notify({name : 'MouseMove', x : x, y : y, source : this});
+        }
+    }
+
+    mouseLeave(notify) {
+        this.view.draw();
+        if (notify) {
+            this.notify({name : 'MouseLeave', source : this});
         }
     }
 
@@ -595,6 +615,7 @@ class KLineUIManager {
         klineUI.addListener('MouseMove', function(event) {thiz.onUserEvent(event);});
         klineUI.addListener('Click', function(event) {thiz.onUserEvent(event);});
         klineUI.addListener('RightClick', function(event) {thiz.onUserEvent(event);});
+        klineUI.addListener('MouseLeave', function(event) {thiz.onUserEvent(event);});
     }
 
     onUserEvent(event) {
@@ -606,6 +627,7 @@ class KLineUIManager {
                 if (event.name == 'MouseMove') cur.mouseMove(event.x, event.y, false);
                 else if (event.name == 'Click') cur.click(event.x, event.y, false);
                 else if (event.name == 'RightClick') cur.rightClick(event.x, event.y, false);
+                else if (event.name == 'MouseLeave') cur.mouseLeave(false);
             }
             cur.notify(newEvent);
         }
@@ -637,6 +659,7 @@ class TimeLineUIManager {
         this.timeLineUIArr.push(timeLineUI);
         timeLineUI.addListener('MouseMove', function(event) {thiz.onUserEvent(event);});
         timeLineUI.addListener('Click', function(event) {thiz.onUserEvent(event);});
+        timeLineUI.addListener('MouseLeave', function(event) {thiz.onUserEvent(event);});
     }
 
     onUserEvent(event) {
@@ -647,6 +670,7 @@ class TimeLineUIManager {
             if (event.source != cur) {
                 if (event.name == 'MouseMove') cur.mouseMove(event.x, event.y, false);
                 // else if (event.name == 'Click') cur.click(event.x, event.y, false);
+                else if (event.name == 'MouseLeave') cur.mouseLeave(false);
             }
             cur.notify(newEvent);
         }
