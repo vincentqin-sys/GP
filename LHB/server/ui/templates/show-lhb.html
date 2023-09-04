@@ -73,7 +73,7 @@
     vue = new Vue({
       delimiters : ["[[", "]]"],
       el: '#app',
-      data: {sql : 'select * from tdxlhb where 日期 = "' + lastDate() + '" ', results: [], columns: [], selObj: {}},
+      data: {sql : 'select 日期, code, name, 上榜类型, 涨跌幅, 成交额_亿, 买入金额_亿, 卖出金额_亿, 净买额_亿, 知名游资 from tdxlhb where 日期 = "' + lastDate() + '" ', results: [], columns: [], selObj: {}},
       selRowTR : null,
       methods: {
         doQuery: function() {
@@ -128,7 +128,7 @@
             return row[colName];
         },
         getStyle : function(colName) {
-            let widthInfo = {'上榜类型AA' : 200, '日期':110, 'code':80, 'name': 95, '涨跌幅': 80, '收盘价': 80};
+            let widthInfo = {'上榜类型' : 300, '日期':110, 'code':80, 'name': 95, '涨跌幅': 80, '收盘价': 80};
             let style = '';
             if (colName.indexOf('_亿') > 0) {
                 style += "width: 60px;";

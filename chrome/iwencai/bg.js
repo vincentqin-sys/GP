@@ -145,8 +145,11 @@ function hot_run() {
         return;
     }
     if (jtTime) {
-        if ((Date.now() - proc_info.lastOpenHotPageTimeForSave) / 1000 / 60 >= 15) { // 15 minutes
-            openHotPage('FOR-SAVE');
+        if ((Date.now() - proc_info.lastOpenHotPageTimeForSave) / 1000 / 60 >= 10) { // 10 minutes
+            let mm = new Date().getMinutes();
+            if (mm % 15 == 0) {
+                openHotPage('FOR-SAVE');
+            }
             return;
         }
     }

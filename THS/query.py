@@ -123,7 +123,7 @@ def getCodeInfo(code):
     if not info.get('THS_JGCC-totalRate1'):
         zb = '--'
     elif int(info.get('THS_JGCC-totalRate1')) < 1:
-        zb = '不足1'
+        zb = '<1'
     else:
         zb = int(info.get('THS_JGCC-totalRate1'))
     calcZhPMTag(info)
@@ -161,7 +161,7 @@ def getCodeInfo_THS(code):
         if not jgccInfo.totalRate1:
             zb = '--'
         elif jgccInfo.totalRate1 < 1:
-            zb = '不足1'
+            zb = '<1'
         else:
             zb = int(jgccInfo.totalRate1)
     jg = "机构 %s家, 持仓%s%%" % (jgNum, zb)
