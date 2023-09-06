@@ -150,7 +150,7 @@ class HotWindow:
         rr = win32gui.GetClientRect(THS_TOP_HWND)
         print('THS top window: ', rr)
         style = 0x00800000 | 0x10000000 | win32con.WS_CHILD
-        HEIGHT = 285
+        HEIGHT = 265 #285
         x = 0
         y = rr[3] - rr[1] - HEIGHT
         #w = rr[2] - rr[0]
@@ -256,7 +256,7 @@ class HotWindow:
         pen = win32gui.CreatePen(win32con.PS_DASH, 1, 0xff0000) # day split vertical line
         pen2 = win32gui.CreatePen(win32con.PS_DOT, 1, 0x0000ff) # split one day hor-line
         y = 0
-        WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 15
+        WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 14
         day = data[0]['day']
         ds = time.strptime(day, '%Y-%m-%d')
         wd = datetime.date(ds[0], ds[1], ds[2]).isoweekday()
