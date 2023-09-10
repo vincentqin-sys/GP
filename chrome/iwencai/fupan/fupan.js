@@ -94,4 +94,4 @@ function buildUI(codeArr, limitConfig) {
 // buildUI(机器人, {startDate : 20230713, endDate: 202301031} );
 
 零售 = ['881158', '605188 国光连锁', '600280 中央商场', '002336 人人乐', '000715 中兴商业', '601086 国芳集团']
-buildUI(零售, {startDate : 20230713, endDate: 202301031} );
+buildUI(零售, {startDate : 20230801, endDate: 202301031} );
