@@ -143,6 +143,19 @@ def getCodeInfo(code):
     return txt
     
 
+path = sys.argv[0]
+path = path[0 : path.index('GP') ]
+lhbDB = pw.SqliteDatabase(f'{path}GP/db/LHB.db')
+
+def getCodeInfo_LHB(code):
+    cc = lhbDB.cursor()
+    cc.execute('select count(*) from tdxlhb where code = "' + code + '" ')
+    data = cc.fetchone()
+    count = data[0]
+    cc.close()
+    txt = f'龙虎榜 {count}次'
+    return txt
+
 def getCodeInfo_THS(code):
     code = int(code)
     code = "%06d" % code
@@ -179,6 +192,9 @@ def getCodeInfo_THS(code):
     
     line = code + ' ' + name
     txt = line + '\n' + hyName + '\n' + jg + '\n' + hy
+    # 龙虎榜信息
+    txt += getCodeInfo_LHB(code)
+    
     return txt
     
 #打印并复制信息到剪贴板

@@ -46,7 +46,7 @@ class SortInfoWindow:
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
         w = win32api.GetSystemMetrics(0) # desktop width
-        self.size = (280, 145)
+        self.size = (280, 165)
         self.wnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
         win32gui.SetWindowPos(self.wnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.SetWindowLong(self.wnd, win32con.GWL_WNDPROC, sortInfoWinProc)

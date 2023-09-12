@@ -370,7 +370,7 @@ def work():
     global curCode
     while True:
         time.sleep(0.5)
-        mywin.eyeWindow.show()
+        #mywin.eyeWindow.show()
         if not win32gui.IsWindow(THS_TOP_HWND):
             #win32gui.PostQuitMessage(0)
             #sys.exit(0)  #仅退出当前线程
@@ -394,7 +394,7 @@ def subprocess_run():
             break
         time.sleep(10)
     hotWindow.createHotWindow()
-    mywin.eyeWindow.createWindow()
+    #mywin.eyeWindow.createWindow()
     mywin.sortInfoWindow.createWindow(THS_MAIN_HWND)
     threading.Thread(target = work).start()
     win32gui.PumpMessages()
