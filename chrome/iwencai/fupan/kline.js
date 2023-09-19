@@ -1,6 +1,10 @@
 var KLINE_SPACE = 4; // K线之间的间距
 var KLINE_WIDTH = 10; // K线的宽度
 
+class Metrics {
+    
+}
+
 class KLineView {
     constructor(canvas) {
         this.hilightPosIdx = -1;
