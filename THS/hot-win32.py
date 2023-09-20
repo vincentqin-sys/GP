@@ -333,10 +333,23 @@ def hotWinProc(hwnd, msg, wparam, lparam):
         return 0
     elif msg == win32con.WM_LBUTTONDBLCLK:
         hotWindow.changeMode()
+        showSortAndLiangDianWindow(not hotWindow.maxMode)
         return 0
     else:
         return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
         # win32gui.CallWindowProc(hotWindow.oldProc, hwnd, msg, wparam, lparam)
+
+# show-hide sort wnd, liang dian wnd
+def showSortAndLiangDianWindow(show):
+    liangDianWnd = win32gui.FindWindow('smallF10_dlg', '小F10')
+    if show:
+        mywin.sortInfoWindow.show()
+        if liangDianWnd:
+            win32gui.ShowWindow(liangDianWnd, win32con.SW_SHOW)
+    else:
+        mywin.sortInfoWindow.hide()
+        if liangDianWnd:
+            win32gui.ShowWindow(liangDianWnd, win32con.SW_HIDE)
 
 #----------------------------------------
 hotWindow = HotWindow()
@@ -377,10 +390,10 @@ def work():
             os._exit(0) # 退出进程
             break
         if not isInKlineWindow():
-            mywin.sortInfoWindow.hide()
+            #mywin.sortInfoWindow.hide()
             continue
         showHotWindow()
-        mywin.sortInfoWindow.show()
+        #mywin.sortInfoWindow.show()
         nowCode = findCode()
         if curCode != nowCode:
             work_updateCode(nowCode)
