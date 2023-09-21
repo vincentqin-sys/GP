@@ -1,22 +1,60 @@
 var KLINE_SPACE = 4; // K线之间的间距
 var KLINE_WIDTH = 10; // K线的宽度
 
-class Metrics {
-    
+class Listener {
+    constructor() {
+        this.listeners = {};
+    }
+    addListener(eventName, listener) {
+        let lsts = this.listeners[eventName];
+        if (! lsts) {
+            lsts = this.listeners[eventName] = [];
+        }
+        lsts.push(listener);
+    }
+
+    // event = {name: '', ..}
+    notify(event) {
+        let name = event.name;
+        let lsts = this.listeners[name];
+        if (! lsts) {
+            return;
+        }
+        for (let i in lsts) {
+            lsts[i](event);
+        }
+    }
 }
 
-class KLineView {
-    constructor(canvas) {
+class KLineView extends Listener {
+    constructor(width, height) {
+        super();
         this.hilightPosIdx = -1;
         this.selectPosIdxArr = [];
         this.dataArr = [];
-        this.canvas = canvas;
-        canvas.width = this.width  = $(canvas).width();
-        canvas.height =  this.height = $(canvas).height();
-        this.ctx = canvas.getContext("2d");
+        
+        let canvas = $('<canvas style="width: ' + width + 'px; height: ' + height + 'px; border-right: solid 1px #ccc;" />');
+        this.canvas = canvas.get(0);
+        this.canvas.width = this.width  = width;
+        this.canvas.height =  this.height = height;
+        this.ctx = this.canvas.getContext("2d");
+        let thiz = this;
+        this.canvas.addEventListener('mousemove', function(e) {
+            thiz.mouseMove(e.offsetX, e.offsetY, true);
+        });
+        this.canvas.addEventListener('click', function(e) {
+            thiz.click(e.offsetX, e.offsetY, true);
+        });
+        this.canvas.addEventListener('contextmenu', function(e) {
+            thiz.rightClick(e.offsetX, e.offsetY, true);
+            e.preventDefault();
+        });
+        this.canvas.addEventListener('mouseleave', function(e) {
+            thiz.mouseLeave(true);
+        });
     }
 
-    // [ {open, close, low, high, vol, money, rate}, ... ]
+    // [ {date, open, close, low, high, vol, money, rate}, ... ]
     setData(baseInfo, dataArr) {
         this.dataArr = dataArr;
         this.baseInfo = baseInfo;
@@ -114,7 +152,7 @@ class KLineView {
         if (tag == 'Z')
             return "rgb(253,50,50)";
         // tag is 'D'
-        return "rgb(84,252,252)"
+        return "rgb(84,252,252)";
     }
 
     draw() {
@@ -165,7 +203,7 @@ class KLineView {
 
     getPosIdx(x) {
         let nx = x - KLINE_SPACE;
-        var posIdx = parseInt(nx / (KLINE_WIDTH + KLINE_SPACE));
+        let posIdx = parseInt(nx / (KLINE_WIDTH + KLINE_SPACE));
         
         if (posIdx >= this.dataArr.length) {
             posIdx = -1;
@@ -175,6 +213,15 @@ class KLineView {
         return posIdx;
     }
 
+    getPosIdxByDate(date) {
+        for (let i = 0; i < this.dataArr.length; i++) {
+            if (this.dataArr[i] && this.dataArr[i]['date'] == date) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     drawMouse(posIdx) {
         if (posIdx < 0 || posIdx >= this.dataArr.length) {
             return;
@@ -182,7 +229,7 @@ class KLineView {
         let nx = posIdx * (KLINE_WIDTH + KLINE_SPACE) + KLINE_SPACE + parseInt(KLINE_WIDTH / 2);
         this.ctx.beginPath();
         if (posIdx == this.hilightPosIdx) {
-            this.ctx.strokeStyle = '#00ff00' // '#7FFF00';
+            this.ctx.strokeStyle = '#0088ff' // '#7FFF00';
             this.ctx.setLineDash([3, 4]);
         } else {
             this.ctx.strokeStyle = 'black';
@@ -214,14 +261,152 @@ class KLineView {
     setHilightMouse(posIdx) {
         this.hilightPosIdx = posIdx;
     }
+
+    mouseMove(x, y, notify) {
+        let pos = this.getPosIdx(x);
+        this.draw();
+        this.drawMouse(pos);
+        if (notify) {
+            this.notify({name : 'MouseMove', pos : pos, x : x, y : y, source : this});
+        }
+    }
+
+    click(x, y, notify) {
+        let pos = this.getPosIdx(x);
+        if (pos < 0) {
+            return;
+        }
+        this.setSelectMouse(pos);
+        this.draw();
+        if (notify) {
+            this.notify({name : 'Click', pos : pos, x : x, y : y, source : this});
+        }
+    }
+
+    rightClick(x, y, notify) {
+        let pos = this.getPosIdx(x);
+        this.setHilightMouse(pos);
+        this.draw();
+        if (notify) {
+            this.notify({name : 'RightClick', pos : pos, x : x, y : y, source : this});
+        }
+    }
+
+    mouseLeave(notify) {
+        this.draw();
+        if (notify) {
+            this.notify({name : 'MouseLeave', source : this});
+        }
+    }
+
+    limitLoadDataLength(len) {
+        let arr = this.dataArr;
+        if (arr.length > len) {
+            arr.splice(0, arr.length - len);
+        }
+        while (arr.length < len) {
+            arr.unshift({});
+        }
+    }
+
+    loadData(code, limitConfig) {
+        let thiz = this;
+        this.loadData_(code, limitConfig, function(info, klineInfo) {
+            thiz.setData(info, klineInfo);
+            // infoDiv.append(info.code + '<br/>' + info.name);
+            thiz.loadTodayData_(code, limitConfig, function(view) {
+                thiz.draw();
+                thiz.notify({name : 'LoadDataEnd'});
+            });
+        });
+    }
+
+    // limitConfig = {beginDate: xx,   endDate : xxx}
+    loadData_(code, limitConfig, callback) {
+        let url = getKLineUrl(code);
+        $.ajax({
+            url: url, type: 'GET', dataType : 'text',
+            success: function(data) {
+                let idx = data.indexOf('(');
+                let eidx = data.indexOf(')');
+                data = data.substring(idx + 1, eidx); 
+                data = JSON.parse(data);
+                // console.log(data);
+                let info = {code : code, name : data.name, today : data.today};
+                let klineInfo = [];
+                let klineDataArr = data.data.split(/;/g);
+                for (let i = 0; i < klineDataArr.length; i++) {
+                    let kv = klineDataArr[i].split(',');
+                    // first is date
+                    let date = parseFloat(kv[0]);
+                    if (date < limitConfig.beginDate || date > limitConfig.endDate) {
+                        continue;
+                    }
+                    let keys = ['date', 'open', 'high', 'low', 'close', 'vol', 'money', 'rate']; // vol: 单位股, money:单位元
+                    let item = {};
+                    for (let j = 0; j < keys.length; ++j) {
+                        item[keys[j]] = parseFloat(kv[j]);
+                    }
+                    klineInfo.push(item);
+                }
+                // console.log(info, klineInfo);
+                if (callback) {
+                    callback(info, klineInfo);
+                }
+            }
+        });
+    }
+
+    // limitConfig = {beginDate: xx,   endDate : xxx}
+    loadTodayData_(code, limitConfig, callback) {
+        let url = getTodayKLineUrl(code);
+        let thiz = this;
+        $.ajax({
+            url: url, type: 'GET', dataType : 'text',
+            success: function(data) {
+                let idx = data.indexOf(':{');
+                let eidx = data.indexOf('}}');
+                data = data.substring(idx + 1, eidx + 1);
+                data = JSON.parse(data);
+                let keys = ['date', 'open', 'high', 'low', 'close', 'vol', 'money', 'rate'];
+                let idxKeys = ['1', '7', '8', '9', '11', '13', '19', '1968584'];
+                
+                let item = {};
+                for (let j = 0; j < keys.length; ++j) {
+                    item[keys[j]] = parseFloat(data[idxKeys[j]]);
+                }
+                if (item.date >= limitConfig.beginDate && item.date <= limitConfig.endDate) {
+                    let last = thiz.dataArr[thiz.dataArr.length - 1];
+                    if (last.date == item.date) {
+                        thiz.dataArr.splice(thiz.dataArr.length - 1, 1);
+                    }
+                    thiz.dataArr.push(item);
+                }
+                console.log(thiz);
+                if (callback) {
+                    callback(thiz);
+                }
+            }
+        });
+    }
 }
     
-class TimeLineView {
-    constructor(canvas) {
+class TimeLineView extends Listener {
+    constructor(width, height) {
+        super();
         this.data = null;
+        let thiz = this;
+        let canvas = $('<canvas style="float-x: left; width: ' + width + 'px; height: ' + height + 'px; border-right: solid 1px #ccc;" />');
+        canvas = canvas.get(0);
+        canvas.addEventListener('mousemove', function(e) {
+            thiz.mouseMove(e.offsetX, e.offsetY, true);
+        });
+        canvas.addEventListener('mouseleave', function(e) {
+            thiz.mouseLeave(true);
+        });
         this.canvas = canvas;
-        canvas.width = this.width  = $(canvas).width();
-        canvas.height =  this.height = $(canvas).height();
+        canvas.width = this.width  = width;
+        canvas.height =  this.height = height;
         this.ctx = canvas.getContext("2d");
     }
 
@@ -334,239 +519,27 @@ class TimeLineView {
         this.ctx.closePath();
         this.ctx.setLineDash([]);
     }
-}
-
-class KLineUI {
-    constructor(width, height) {
-        let thiz = this;
-        let canvas = $('<canvas style="float-x: left; width: ' + width + 'px; height: ' + height + 'px; border-right: solid 1px #ccc;" />');
-        this.ui = canvas;
-        canvas = canvas.get(0);
-        this.view = new KLineView(canvas);
-        canvas.addEventListener('mousemove', function(e) {
-            thiz.mouseMove(e.offsetX, e.offsetY, true);
-        });
-        canvas.addEventListener('click', function(e) {
-            thiz.click(e.offsetX, e.offsetY, true);
-        });
-        canvas.addEventListener('contextmenu', function(e) {
-            thiz.rightClick(e.offsetX, e.offsetY, true);
-            e.preventDefault();
-        });
-        canvas.addEventListener('mouseleave', function(e) {
-            thiz.mouseLeave(true);
-        });
-        this.listeners = {};
-    }
 
     mouseMove(x, y, notify) {
-        let pos = this.view.getPosIdx(x);
-        this.view.draw();
-        this.view.drawMouse(pos);
-        if (notify) {
-            this.notify({name : 'MouseMove', pos : pos, x : x, y : y, source : this});
-        }
-    }
-
-    click(x, y, notify) {
-        let pos = this.view.getPosIdx(x);
-        if (pos < 0) {
-            return;
-        }
-        this.view.setSelectMouse(pos);
-        this.view.draw();
-        if (notify) {
-            this.notify({name : 'Click', pos : pos, x : x, y : y, source : this});
-        }
-    }
-
-    rightClick(x, y, notify) {
-        let pos = this.view.getPosIdx(x);
-        this.view.setHilightMouse(pos);
-        this.view.draw();
-        if (notify) {
-            this.notify({name : 'RightClick', pos : pos, x : x, y : y, source : this});
-        }
-    }
-
-    mouseLeave(notify) {
-        this.view.draw();
-        if (notify) {
-            this.notify({name : 'MouseLeave', source : this});
-        }
-    }
-
-    addListener(eventName, listener) {
-        let lsts = this.listeners[eventName];
-        if (! lsts) {
-            lsts = this.listeners[eventName] = [];
-        }
-        lsts.push(listener);
-    }
-
-    // event = {name: '', ..}
-    // {name: 'LoadDataEnd' }
-    // {name : 'RightClick | Click | MouseMove', pos, x, y, source}
-    notify(event) {
-        let name = event.name;
-        let lsts = this.listeners[name];
-        if (! lsts) {
-            return;
-        }
-        for (let i in lsts) {
-            lsts[i](event);
-        }
-    }
-
-    limitLoadDataLength(len) {
-        let arr = this.view.dataArr;
-        if (arr.length > len) {
-            arr.splice(0, arr.length - len);
-        }
-        while (arr.length < len) {
-            arr.unshift({});
-        }
-    }
-
-    loadData(code, limitConfig) {
-        let thiz = this;
-        this.loadData_(code, limitConfig, function(info, klineInfo) {
-            thiz.view.setData(info, klineInfo);
-            // infoDiv.append(info.code + '<br/>' + info.name);
-            thiz.loadTodayData_(code, limitConfig, thiz.view, function(view) {
-                thiz.view.draw();
-                thiz.notify({name : 'LoadDataEnd'});
-            });
-        });
-    }
-
-    // limitConfig = {startDate: xx,   endDate : xxx}
-    loadData_(code, limitConfig, callback) {
-        let url = getKLineUrl(code);
-        $.ajax({
-            url: url, type: 'GET', dataType : 'text',
-            success: function(data) {
-                let idx = data.indexOf('(');
-                let eidx = data.indexOf(')');
-                data = data.substring(idx + 1, eidx); 
-                data = JSON.parse(data);
-                // console.log(data);
-                let info = {code : code, name : data.name, today : data.today};
-                let klineInfo = [];
-                let klineDataArr = data.data.split(/;/g);
-                for (let i = 0; i < klineDataArr.length; i++) {
-                    let kv = klineDataArr[i].split(',');
-                    // first is date
-                    let date = parseFloat(kv[0]);
-                    if (date < limitConfig.startDate || date > limitConfig.endDate) {
-                        continue;
-                    }
-                    let keys = ['date', 'open', 'high', 'low', 'close', 'vol', 'money', 'rate']; // vol: 单位股, money:单位元
-                    let item = {};
-                    for (let j = 0; j < keys.length; ++j) {
-                        item[keys[j]] = parseFloat(kv[j]);
-                    }
-                    klineInfo.push(item);
-                }
-                // console.log(info, klineInfo);
-                if (callback) {
-                    callback(info, klineInfo);
-                }
-            }
-        });
-    }
-
-    // limitConfig = {startDate: xx,   endDate : xxx}
-    loadTodayData_(code, limitConfig, klineObj, callback) {
-        let url = getTodayKLineUrl(code);
-        $.ajax({
-            url: url, type: 'GET', dataType : 'text',
-            success: function(data) {
-                let idx = data.indexOf(':{');
-                let eidx = data.indexOf('}}');
-                data = data.substring(idx + 1, eidx + 1);
-                data = JSON.parse(data);
-                let keys = ['date', 'open', 'high', 'low', 'close', 'vol', 'money', 'rate'];
-                let idxKeys = ['1', '7', '8', '9', '11', '13', '19', '1968584'];
-                
-                let item = {};
-                for (let j = 0; j < keys.length; ++j) {
-                    item[keys[j]] = parseFloat(data[idxKeys[j]]);
-                }
-                if (item.date >= limitConfig.startDate && item.date <= limitConfig.endDate) {
-                    let last = klineObj.dataArr[klineObj.dataArr.length - 1];
-                    if (last.date == item.date) {
-                        klineObj.dataArr.splice(klineObj.dataArr.length - 1, 1);
-                    }
-                    klineObj.dataArr.push(item);
-                }
-                console.log(klineObj);
-                if (callback) {
-                    callback(klineObj);
-                }
-            }
-        });
-    }
-
-}
-
-class TimeLineUI {
-    constructor(width, height) {
-        let thiz = this;
-        let canvas = $('<canvas style="float-x: left; width: ' + width + 'px; height: ' + height + 'px; border-right: solid 1px #ccc;" />');
-        this.ui = canvas;
-        canvas = canvas.get(0);
-        this.view = new TimeLineView(canvas);
-        canvas.addEventListener('mousemove', function(e) {
-            thiz.mouseMove(e.offsetX, e.offsetY, true);
-        });
-        canvas.addEventListener('mouseleave', function(e) {
-            thiz.mouseLeave(true);
-        });
-        this.listeners = {};
-    }
-
-    mouseMove(x, y, notify) {
-        this.view.draw();
-        this.view.drawMouse(x);
+        this.draw();
+        this.drawMouse(x);
         if (notify) {
             this.notify({name : 'MouseMove', x : x, y : y, source : this});
         }
     }
 
     mouseLeave(notify) {
-        this.view.draw();
+        this.draw();
         if (notify) {
             this.notify({name : 'MouseLeave', source : this});
-        }
-    }
-
-    addListener(eventName, listener) {
-        let lsts = this.listeners[eventName];
-        if (! lsts) {
-            lsts = this.listeners[eventName] = [];
-        }
-        lsts.push(listener);
-    }
-
-    // {name: 'LoadDataEnd' }
-    // {name : 'MouseMove', x, y, source}
-    notify(event) {
-        let name = event.name;
-        let lsts = this.listeners[name];
-        if (! lsts) {
-            return;
-        }
-        for (let i in lsts) {
-            lsts[i](event);
         }
     }
 
     loadData(code) {
         let thiz = this;
         this.loadData_(code, function(rs) {
-            thiz.view.setData(rs);
-            thiz.view.draw();
+            thiz.setData(rs);
+            thiz.draw();
             thiz.notify({name: 'LoadDataEnd' });
         });
     }
@@ -601,8 +574,79 @@ class TimeLineUI {
     }
 }
 
-class KLineUIManager {
+class VolView extends Listener {
+    constructor(klineView, width, height) {
+        super();
+        this.klineView = klineView;
+        let canvas = $('<canvas style="float-x: left; width: ' + width + 'px; height: ' + height + 'px; border-right: solid 1px #ccc;" />');
+        this.canvas = canvas.get(0);
+        this.canvas.width = this.width  = width;
+        this.canvas.height =  this.height = height;
+        this.ctx = this.canvas.getContext("2d");
+
+        this.maxGlobalVal = 0;
+    }
+
+    getMinMaxVal() {
+        let min = 0, max = 0;
+        for (let i = 0; i < this.klineView.dataArr.length; i++) {
+            let cur = this.klineView.dataArr[i];
+            if (! cur || !cur['date']) {
+                continue;
+            }
+            if (min == 0 || min > cur.money) {
+                min = cur.money;
+            }
+            if (max == 0 || max < cur.money) {
+                max = cur.money;
+            }
+        }
+        return {maxVal : max, minVal : min};
+    }
+    
+    setGlobalMaxVal(max) {
+        this.maxGlobalVal = max;
+    }
+
+    draw() {
+        let mm = this.getMinMaxVal();
+        let maxVal = Math.max(this.maxGlobalVal, mm.maxVal);
+        if (maxVal <= 0) {
+            return;
+        }
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        let kBarsNum = this.klineView.dataArr.length;
+        for (let i = 0; i < kBarsNum; i++) {
+            let data = this.klineView.dataArr[i];
+            if (! data) {
+                continue;
+            }
+            //绘制方块
+            this.ctx.beginPath();
+            let y = (1 - data.money / maxVal) * this.height;
+            let x = i * (KLINE_WIDTH + KLINE_SPACE) + KLINE_SPACE;
+            this.ctx.rect(x + 0.5, y + 0.5, KLINE_WIDTH, this.height);
+            if (data.close >= data.open) {
+                this.ctx.fillStyle = 'rgb(255, 255, 255)';
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeStyle = "rgb(253,50,50)";
+                this.ctx.fill();
+                this.ctx.stroke();
+            } else {
+                this.ctx.fillStyle = "rgb(84,252,252)";
+                this.ctx.strokeStyle = "rgb(84,252,252)";
+                this.ctx.lineWidth = 0;
+                this.ctx.fill();
+                this.ctx.stroke();
+            }
+            this.ctx.closePath();
+        }
+    }
+}
+
+class KLineUIManager extends Listener {
     constructor() {
+        super();
         this.klineUIArr = [];
         this.loadDataEndNum = 0;
     }
@@ -641,20 +685,22 @@ class KLineUIManager {
         let maxLen = 0;
         for (let i in this.klineUIArr) {
             let cur = this.klineUIArr[i];
-            if (maxLen < cur.view.dataArr.length) {
-                maxLen = cur.view.dataArr.length;
+            if (maxLen < cur.dataArr.length) {
+                maxLen = cur.dataArr.length;
             }
         }
         for (let i in this.klineUIArr) {
             let cur = this.klineUIArr[i];
             cur.limitLoadDataLength(maxLen);
         }
+        this.notify({name: 'LoadAllDataEnd'})
     }
 }
 
 
-class TimeLineUIManager {
+class TimeLineUIManager extends Listener {
     constructor() {
+        super();
         this.timeLineUIArr = [];
     }
 
@@ -680,4 +726,31 @@ class TimeLineUIManager {
         }
     }
 
+}
+
+class VolUIManager extends Listener {
+    constructor() {
+        super();
+        this.volUIArr = [];
+    }
+
+    add(volView) {
+        this.volUIArr.push(volView);
+    }
+
+    onLoadAllDataEnd() {
+        let max = 0;
+        for (let i = 0; i < this.volUIArr.length; i++) {
+            let cur = this.volUIArr[i];
+            let mm = cur.getMinMaxVal();
+            if (max == 0 || max < mm.maxVal) {
+                mm = mm.maxVal;
+            }
+        }
+        for (let i = 0; i < this.volUIArr.length; i++) {
+            let cur = this.volUIArr[i];
+            cur.setGlobalMaxVal(max);
+            cur.draw();
+        }
+    }
 }
