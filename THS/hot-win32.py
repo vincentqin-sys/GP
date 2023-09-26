@@ -47,6 +47,12 @@ def isInKlineWindow():
         return False
     return win32gui.IsWindowVisible(THS_TOP_HWND)
 
+# 当前显示的窗口是否是分时图
+def isInFenShiWindow():
+    if '分时走势' not in win32gui.GetWindowText(THS_TOP_HWND):
+        return False
+    return win32gui.IsWindowVisible(THS_TOP_HWND)
+
 # 查找股票代码
 def findCode():
     global THS_MAIN_HWND, THS_TOP_HWND, THS_LEVEL2_CODE_HWND
@@ -162,6 +168,7 @@ class HotWindow:
         win32gui.SetWindowLong(self.wnd, -4, hotWinProc)
         print('hotWnd = %#X' % self.wnd, x, y, w, HEIGHT)
         win32gui.SendMessage(self.wnd, win32con.WM_PAINT)
+        self.changeMode()
 
     def destroy(self):
         win32gui.DestroyWindow(self.wnd)
@@ -346,6 +353,8 @@ def showSortAndLiangDianWindow(show):
         mywin.sortInfoWindow.show()
         if liangDianWnd:
             win32gui.ShowWindow(liangDianWnd, win32con.SW_SHOW)
+            win32gui.SetWindowPos(liangDianWnd, None, 560, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
+            win32gui.SetWindowPos(mywin.sortInfoWindow.wnd, None, 1087, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
     else:
         mywin.sortInfoWindow.hide()
         if liangDianWnd:
@@ -389,17 +398,23 @@ def work():
             #sys.exit(0)  #仅退出当前线程
             os._exit(0) # 退出进程
             break
-        if not isInKlineWindow():
-            #mywin.sortInfoWindow.hide()
-            continue
-        showHotWindow()
-        #mywin.sortInfoWindow.show()
-        nowCode = findCode()
-        if curCode != nowCode:
-            work_updateCode(nowCode)
-        selDay = getSelectDay()
-        if selDay:
-            hotWindow.updateSelectDay(selDay)
+        if isInKlineWindow():
+            showHotWindow()
+            nowCode = findCode()
+            if curCode != nowCode:
+                work_updateCode(nowCode)
+            selDay = getSelectDay()
+            if selDay:
+                hotWindow.updateSelectDay(selDay)
+            if not hotWindow.maxMode:
+                showSortAndLiangDianWindow(True)
+        elif isInFenShiWindow():
+            if not hotWindow.maxMode:
+                showSortAndLiangDianWindow(True)
+            pass
+        else:
+            mywin.sortInfoWindow.hide()
+        
 
 def subprocess_run():
     while True:
