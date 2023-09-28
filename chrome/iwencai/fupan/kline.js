@@ -742,9 +742,15 @@ class VolUIManager extends Listener {
         let max = 0;
         for (let i = 0; i < this.volUIArr.length; i++) {
             let cur = this.volUIArr[i];
+            let code = cur.klineView.baseInfo.code;
+            let bc = code.substring(0, 2);
+            if (bc == '1A' || bc == '88') {
+                // 指数
+                continue;
+            }
             let mm = cur.getMinMaxVal();
             if (max == 0 || max < mm.maxVal) {
-                mm = mm.maxVal;
+                max = mm.maxVal;
             }
         }
         for (let i = 0; i < this.volUIArr.length; i++) {
