@@ -62,12 +62,14 @@
     }
 
     function lastDate() {
-        let d = new Date();
-        d = d.setDate(d.getDate() - 1);
-        d = new Date(d);
-        let m = d.getMonth() + 1;
-        let dd = d.getDate() > 9 ? d.getDate() : '0' + d.getDate();
-        return '' + d.getFullYear() + '-' + (m > 9 ? m : '0' + m) + '-' + dd;
+        let ld = '{{ maxDay }}';
+        return ld;
+        // let d = new Date();
+        // d = d.setDate(d.getDate() - 1);
+        // d = new Date(d);
+        // let m = d.getMonth() + 1;
+        // let dd = d.getDate() > 9 ? d.getDate() : '0' + d.getDate();
+        // return '' + d.getFullYear() + '-' + (m > 9 ? m : '0' + m) + '-' + dd;
     }
 
     vue = new Vue({

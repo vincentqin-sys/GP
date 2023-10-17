@@ -111,7 +111,12 @@ def fetchTdxLHB():
     
 @app.route('/show-lhb.html', methods = ['GET'])
 def showLhbDB():
-    return flask.render_template('show-lhb.html')
+    cs = orm.db.cursor()
+    cs.execute('select max(日期) from TdxLHB')
+    data = cs.fetchone()
+    day = data[0]
+    cs.close()
+    return flask.render_template('show-lhb.html', maxDay = day )
 
 @app.route('/queryBySql', methods = ['POST'])
 def queryBySql():
