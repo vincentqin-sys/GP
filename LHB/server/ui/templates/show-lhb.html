@@ -91,9 +91,9 @@
                         let name = rs.cols[i];
                         cols.push(name);
                     }
-                    v.columns = cols;
                     let dt = [];
                     let ntrClass = [];
+                    let sumObj = {买入金额_亿 : 0, 卖出金额_亿 : 0, 净买额_亿 : 0};
                     for (i in rs.data) {
                         let rr = rs.data[i];
                         let rv = {};
@@ -102,6 +102,11 @@
                         }
                         dt.push(rv);
                         ntrClass.push('');
+                        if (rv['上榜类型'].indexOf('累计') < 0) {
+                            sumObj.买入金额_亿 += rv.买入金额_亿;
+                            sumObj.卖出金额_亿 += rv.卖出金额_亿;
+                            sumObj.净买额_亿 += rv.净买额_亿;
+                        }
                     }
                     dt.sort(function(a, b) {
                         a = a['行业'];
@@ -114,6 +119,17 @@
                         }
                         return a.localeCompare(b);
                     });
+
+                    
+                    cols.splice(0, 0, 'ID');
+                    for (let i = 0; i < dt.length; i++) {
+                        dt[i]['ID'] = i + 1;
+                    }
+                    dt.splice(0, 0, sumObj);
+                    for (k in sumObj) {
+                        sumObj[k] = wrapData(k, sumObj[k]);
+                    }
+                    v.columns = cols;
                     v.results = dt;
                     console.log('-->', v.columns, v.results);
                 } else {
