@@ -104,6 +104,10 @@ class UserParams {
         return parseInt(Math.random() * 720);
     }
     serverTimeNow() {
+        let diff = this.timeNow() - TOKEN_SERVER_TIME;
+        if (diff > 20 * 60) { // 20 minuts
+            TOKEN_SERVER_TIME = this.timeNow();
+        }
         return parseInt(TOKEN_SERVER_TIME);
     }
     timeNow() {
