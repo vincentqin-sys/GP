@@ -1002,17 +1002,17 @@ var TOKEN_SERVER_TIME = new Date().getTime() / 1000; // 1684212000.849;
                 t = r[88],
                 e = parseInt(u[13], c[122]),
                 a = s[217];
-                S = new qn([a, a, a, a, n, n, n, e, t, t, t, t, t, t, t, a, t, n]),
-                S[p] = Jn.serverTimeNow(),  // S[1] = 
-                M(),
-                S[B] = Vn,  // S[15] = 0
-                S[k] = Un,  // S[17] = 3
-                S[R] = c[2], // S[16] = 0
-                S[h] = Jn.strhash(navigator.userAgent),  // S[3] = 
-                S[b] = tt.getBrowserFeature(),  // S[13] = 
-                S[g] = tt.getPlatform(),   // S[4]
-                S[w] = tt.getBrowserIndex(),  // S[5]
-                S[m] = tt.getPluginNum()  // S[6]
+                S = new qn([a, a, a, a, n, n, n, e, t, t, t, t, t, t, t, a, t, n]);
+                S[p] = Jn.serverTimeNow();  // S[1] = 
+                M();
+                S[B] = Vn;  // S[15] = 0
+                S[k] = Un;  // S[17] = 3
+                S[R] = c[2]; // S[16] = 0
+                S[h] = Jn.strhash(navigator.userAgent);  // S[3] = 
+                S[b] = tt.getBrowserFeature();  // S[13] = 
+                S[g] = tt.getPlatform();   // S[4]
+                S[w] = tt.getBrowserIndex();  // S[5]
+                S[m] = tt.getPluginNum();  // S[6]
             }
             function M() {
                 var n = Qn.getCookie(Fn) || Zn.get(jn);
@@ -1024,19 +1024,19 @@ var TOKEN_SERVER_TIME = new Date().getTime() / 1000; // 1684212000.849;
                 S[l] = Jn.random()
             }
             function O() { // henxin-v的生成参数
-                S[R]++, // S[17]++
-                S[p] = Jn.serverTimeNow(), // S[1] = parseInt(TOKEN_SERVER_TIME)
-                S[d] = Jn.timeNow(), // S[2] = parseInt(new Date().getTime() / 1000)
-                S[B] = Vn, // S[0] = 0
-                S[I] = nt.getMouseMove(), // S[7] = 167 会变吗？
-                S[y] = nt.getMouseClick(), // S[8] = 0  会变吗？
-                S[_] = nt.getMouseWhell(), // S[9] = 2  会变吗？
-                S[C] = nt.getKeyDown(),  // S[10] = 0   会变吗？
-                S[E] = nt.getClickPos().x, // S[11] = 0   会变吗？
+                S[R]++; // S[17]++
+                S[p] = Jn.serverTimeNow(); // S[1] = parseInt(TOKEN_SERVER_TIME)
+                S[d] = Jn.timeNow(); // S[2] = parseInt(new Date().getTime() / 1000)
+                S[B] = Vn; // S[0] = 0
+                S[I] = nt.getMouseMove(); // S[7] = 167 会变吗？
+                S[y] = nt.getMouseClick(); // S[8] = 0  会变吗？
+                S[_] = nt.getMouseWhell(); // S[9] = 2  会变吗？
+                S[C] = nt.getKeyDown();  // S[10] = 0   会变吗？
+                S[E] = nt.getClickPos().x; // S[11] = 0   会变吗？
                 S[A] = nt.getClickPos().y; // S[12] = 0   会变吗？
 				// console.log('S=', S);
-                var n = S.toBuffer(); // console.log('S.toBuffer=', n); // n is Array
-                let ddnn = zn.encode(n); // console.log('S.encode=', ddnn); 
+                var n = S.toBuffer();  console.log('S.toBuffer=', n); // n is Array
+                let ddnn = zn.encode(n); console.log('S.encode=', ddnn); 
 				return ddnn;
             }
             n[e[57]] = P; // n.Init = P
