@@ -194,5 +194,9 @@ hx.init();
 let rs = hx.update();
 console.log(rs);
 rs = 'http://d.10jqka.com.cn/v6/line/33_002261/01/today.js?hexin-v=' + rs
-console.log(rs)
+console.log(rs);
+
+javascript: window.location.href = 'https://s.thsi.cn/js/chameleon/time.1' + (new Date().getTime() / 1200000) + '.js'
+
+
 */
