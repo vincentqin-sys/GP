@@ -126,7 +126,7 @@ def init():
         return True
     
     win32gui.EnumWindows(callback, None)
-    THS_MAIN_HWND =  win32gui.FindWindowEx(THS_TOP_HWND, None, 'AfxFrameOrView100s', None)
+    THS_MAIN_HWND =  win32gui.FindWindowEx(THS_TOP_HWND, None, 'AfxFrameOrView140s', None)
     THS_SELECT_DAY_HWND = findSelectDayWnd()
 
     if (not THS_MAIN_HWND) or (not THS_TOP_HWND) or (not THS_SELECT_DAY_HWND):
