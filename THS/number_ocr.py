@@ -113,10 +113,9 @@ class EImage:
 
 class NumberOCR:
     def __init__(self):
-        digits = {'DESKTOP-P6GAAMF' : "1240358679", 'WIN-OGPUU03JC8A' : "0215348976"}
         key = platform.node()
         self.templateImg = EImage(Image.open(f'ocr-template-{key}.bmp'))
-        self.templateDigit = digits[key]
+        self.templateDigit = '0123456789'
 
     def _matchOne(self, oimg : EImage, oRect):
         MIN_SIMILAR_VAL = 95
@@ -187,7 +186,7 @@ class BuildTemplateImage:
             time.sleep(0.5)
             if len(self.destImg.itemsRect) >= 10:
                 break
-        self.destImg.imgPIL.save('ocr-template.bmp')
+        self.destImg.imgPIL.save(f'[c] ocr-template-{platform.node()}.bmp')
     
 if __name__ == '__main__':
     print(platform.node())

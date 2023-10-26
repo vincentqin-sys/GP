@@ -378,7 +378,11 @@ def formatThsHot(thsHot):
 
 def work_updateCode(nowCode):
     global curCode
-    ds = orm.THS_Hot.select().where(orm.THS_Hot.code == int(nowCode))
+    try:
+        icode = int(nowCode)
+    except Exception as e:
+        icode = 0
+    ds = orm.THS_Hot.select().where(orm.THS_Hot.code == icode)
     hts = [formatThsHot(d.__data__) for d in ds]
     if len(hts) > 0:
         print('Load ', nowCode, ' Count:', len(hts))
