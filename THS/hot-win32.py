@@ -366,12 +366,22 @@ def showSortAndLiangDianWindow(show, move):
 hotWindow = HotWindow()
 curCode = None
 
+def formatThsHot(thsHot):
+    day = str(thsHot['day'])
+    day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 :]
+    t = str(thsHot['time'])
+    if len(t) < 4:
+        t = '0' + t
+    t = t[0 : 2] + ':' + t[2 : ]
+    rt = {'day' : day, 'time': t, 'code': thsHot['code'], 'hotValue': thsHot['hotValue'], 'hotOrder': thsHot['hotOrder']}
+    return rt
+
 def work_updateCode(nowCode):
     global curCode
-    ds = orm.THS_Hot.select().where(orm.THS_Hot.code == nowCode)
-    hts = [d.__data__ for d in ds]
+    ds = orm.THS_Hot.select().where(orm.THS_Hot.code == int(nowCode))
+    hts = [formatThsHot(d.__data__) for d in ds]
     if len(hts) > 0:
-        print('Load ', nowCode, hts[0]['name'], ' Count:', len(hts))
+        print('Load ', nowCode, ' Count:', len(hts))
     elif nowCode:
         print('Load ', nowCode , ' not find in DB')
     curCode = nowCode

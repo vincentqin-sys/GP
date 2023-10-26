@@ -57,8 +57,10 @@ def saveHot(): # 热点股票信息
     hotTime = request.json.get('hotTime')
     hotInfos = request.json.get('hotInfo')
     for hi in hotInfos:
-        hi['day'] = hotDay
-        hi['time'] = hotTime
+        hi['day'] = int(hotDay.replace('-', ''))
+        hi['time'] = int(hotTime.replace(':', ''))
+        hi['code'] = int(hi['code'])
+        del hi['name']
 
     with orm.db.atomic():
         for i in range(0, len(hotInfos), 20):

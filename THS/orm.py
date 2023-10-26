@@ -134,10 +134,9 @@ db2 = pw.SqliteDatabase(f'{path}GP/db/THS_Hot.db')
 
 # 同花顺--个股热度排名
 class THS_Hot(pw.Model):
-    day = pw.FixedCharField(column_name = '日期', max_length = 10 ) # 刷新日期
-    time = pw.FixedCharField(column_name = '时间' , max_length = 5 ) # 刷新时间  HH:MM
-    code = pw.FixedCharField(max_length = 6) #股票代码
-    name = pw.CharField(max_length = 16 ) #股票名称
+    day = pw.IntegerField(column_name = '日期') # 刷新日期
+    code = pw.IntegerField() #股票代码
+    time = pw.IntegerField(column_name = '时间') # 刷新时间  HHMM
     hotValue = pw.IntegerField(column_name = '热度值_万' ) #
     hotOrder = pw.IntegerField(column_name = '热度排名' ) #
 
