@@ -71,13 +71,12 @@ def loadOneGP(code, day, name):
                #'vol': getColInfo(totalColNames, r, 'cjl'),
                'cjje': getColInfo(totalColNames, r, 'cje'), 
                'title': title,
-               'mrje': 0, 'mcje': 0, 'jme': 0, 'famous': '' } # 'mrjeRate': 0, 'mcjeRate': 0,
+               'mrje': 0, 'mcje': 0, 'jme': 0, 'famous': '', 'famousBuy':'', 'famousSell': ''} # 'mrjeRate': 0, 'mcjeRate': 0,
         results[ title ] = obj
 
     infos = rs['ResultSets'][1]
     infosColNames = infos['ColName']
     infosCnt = infos['Content']
-    famousBuy = famousSell = ''
 
     for idx, it in enumerate(infosCnt):
         # 'yz': it[2],
@@ -102,18 +101,23 @@ def loadOneGP(code, day, name):
         mrje /= 10000
         mcje /= 10000
         if bs == 'B' and mrje >= 0.1:
-            famousBuy += f'{yzDesc}:(+{mrje:.1f}'
+            famousBuy = f'{yzDesc}(+{mrje:.1f}'
             if mcje >= 0.1:
                 famousBuy += ' -%.1f' % (mcje)
             famousBuy += '); '
+            curInfo['famousBuy'] += famousBuy
         if bs == 'S' and mcje >= 0.1:
-            famousSell += f'{yzDesc}:(-{mcje:.1f}'
+            famousSell = f'{yzDesc}(-{mcje:.1f}'
             if mrje >= 0.1:
                 famousSell += ' +%.1f' % (mrje)
             famousSell += '); '
-    if famousBuy or famousSell:
-        curInfo['famous'] = famousBuy + ' // ' + famousSell
+            curInfo['famousSell'] += famousSell
 
+    for k, v in results.items():
+        if v['famousBuy'] or v['famousSell']:
+            v['famous'] = v['famousBuy'] + ' // ' + v['famousSell']
+        del v['famousBuy']
+        del v['famousSell']
         #print(curInfo['title'], curInfo['mrje'], curInfo['mcje'], curInfo['jme'], curInfo['famous'], sep=' / ')
 
     datas = []
