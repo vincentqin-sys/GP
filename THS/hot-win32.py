@@ -271,8 +271,9 @@ class HotWindow:
             if showDays[i] < self.selectDay:
                 idx = i
         x = idx * self.DAY_HOT_WIDTH + self.DAY_HOT_WIDTH
-        self.drawArrowTip(hdc, x - 20, self.rect[3] - 20, 1, 0x0000ff)
-        if idx < len(showDays) - 1:
+        if idx >= 0:
+            self.drawArrowTip(hdc, x - 20, self.rect[3] - 20, 1, 0x0000ff)
+        else:
             self.drawArrowTip(hdc, x + 20, self.rect[3] - 20, 0, 0x0000ff)
 
     def drawHot(self, hdc):
