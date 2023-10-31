@@ -319,10 +319,10 @@ class HotWindow:
         flag = True
         for d in data['famous']:
             y += HEIGHT
-            if flag and ('+' not in d):
+            if flag and ('+' != d[0]):
                 flag = False
                 y += 10
-            win32gui.DrawText(hdc, d, len(d), (x + 10, y, x + WIDTH, y + HEIGHT), win32con.DT_LEFT)
+            win32gui.DrawText(hdc, d, len(d), (x + 5, y, x + WIDTH, y + HEIGHT), win32con.DT_LEFT)
             
         win32gui.SelectObject(hdc, pen)
         win32gui.MoveToEx(hdc, x + WIDTH, 0)
@@ -405,11 +405,11 @@ class HotWindow:
             famous = str(d.famous).split('//')
             if len(famous) == 2:
                 for f in famous[0].strip().split(';'):
-                    if f: r['famous'].append(' + ' + f.strip())
+                    if f: r['famous'].append('+ ' + f.strip())
                 for f in famous[1].strip().split(';'):
-                    if f: r['famous'].append(' - ' + f.strip())
+                    if f: r['famous'].append('- ' + f.strip())
             else:
-                r['famous'].append('   无知名游资')
+                r['famous'].append(' 无知名游资')
             data.append(r)
         self.lhbData = data
         self.selectDay = None

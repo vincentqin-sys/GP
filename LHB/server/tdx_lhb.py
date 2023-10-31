@@ -77,6 +77,8 @@ def loadOneGP(code, day, name):
     infos = rs['ResultSets'][1]
     infosColNames = infos['ColName']
     infosCnt = infos['Content']
+    famousBuy = famousSell = ''
+
     for idx, it in enumerate(infosCnt):
         # 'yz': it[2],
         # ["T007", "T004", "T008", "T009", "T010", "je", "T012", "T006", "T011", "T015", "yxyz", "gsd", "bq1", "bq2", "bq3", "bq4"]
@@ -95,10 +97,23 @@ def loadOneGP(code, day, name):
         curInfo['mcje'] += mcje
         curInfo['jme'] += jme
 
-        if yzDesc not in curInfo['famous']:
-            if (bs == 'S') and ('//' not in curInfo['famous']):
-                curInfo['famous'] += ' // '
-            curInfo['famous'] += yzDesc + '; '
+        if not yzDesc:
+            continue
+        mrje /= 10000
+        mcje /= 10000
+        if bs == 'B' and mrje >= 0.1:
+            famousBuy += f'{yzDesc}:(+{mrje:.1f}'
+            if mcje >= 0.1:
+                famousBuy += ' -%.1f' % (mcje)
+            famousBuy += '); '
+        if bs == 'S' and mcje >= 0.1:
+            famousSell += f'{yzDesc}:(-{mcje:.1f}'
+            if mrje >= 0.1:
+                famousSell += ' +%.1f' % (mrje)
+            famousSell += '); '
+    if famousBuy or famousSell:
+        curInfo['famous'] = famousBuy + ' // ' + famousSell
+
         #print(curInfo['title'], curInfo['mrje'], curInfo['mcje'], curInfo['jme'], curInfo['famous'], sep=' / ')
 
     datas = []
