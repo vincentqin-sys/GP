@@ -146,7 +146,9 @@ class HotWindow:
         self.wnd = None
         self.rect = None  # 窗口大小 (x, y, w, h)
         self.maxMode = True #  是否是最大化的窗口
-        self.data = None
+        self.hotData = None # 热点数据
+        self.lhbData = None # 龙虎榜数据
+        self.dataType = 'HOT' # HOT  LHB
         self.selectDay = ''
 
     def createHotWindow(self):
@@ -173,7 +175,7 @@ class HotWindow:
     def destroy(self):
         win32gui.DestroyWindow(self.wnd)
     
-    def drawHotWin(self, hwnd):
+    def draw(self, hwnd):
         hdc, ps = win32gui.BeginPaint(hwnd)
         bk = win32gui.CreateSolidBrush(0xffffff)
         win32gui.FillRect(hdc, win32gui.GetClientRect(hwnd), bk)
@@ -187,7 +189,10 @@ class HotWindow:
         win32gui.SelectObject(hdc, font)
         
         if self.maxMode:
-            self.drawMaxMode(hdc)
+            if self.dataType == "HOT":
+                self.drawHot(hdc)
+            elif self.dataType == 'LHB':
+                self.drawLHB(hdc)
         else:
             self.drawMinMode(hdc)
 
@@ -197,18 +202,17 @@ class HotWindow:
         # print('WM_PAINT')
 
     # return [startIdx, endIdx)
-    def findDrawDaysIndex(self):
-        if not self.data:
+    def findDrawDaysIndex(self, days):
+        if not days:
             return (0, 0)
         width = self.rect[2]
         num = width // self.DAY_HOT_WIDTH
         if num == 0:
             return (0, 0)
-        if len(self.data) <= num:
-            return (0, len(self.data))
+        if len(days) <= num:
+            return (0, len(days))
         if not self.selectDay:
-            return (len(self.data) - num, len(self.data))
-        days = [d[0]['day'] for d in self.data]
+            return (len(days) - num, len(days))
         #最左
         if self.selectDay <= days[0]:
             return (0, num)
@@ -227,9 +231,9 @@ class HotWindow:
             idx -= num - (lastIdx - idx)
         return (idx, lastIdx)
 
-    def drawMoreTip(self, hdc, x, y, op):
+    def drawArrowTip(self, hdc, x, y, op, color = 0xff0000):
         sdc = win32gui.SaveDC(hdc)
-        br = win32gui.CreateSolidBrush(0xff0000)
+        br = win32gui.CreateSolidBrush(color)
         win32gui.SelectObject(hdc, br)
         pts = None
         CW ,CH = 5, 6
@@ -240,22 +244,87 @@ class HotWindow:
         win32gui.Polygon(hdc, pts)
         win32gui.RestoreDC(hdc, sdc)
 
-    def drawMaxMode(self, hdc):
-        if not self.data or len(self.data) == 0:
+    def drawLHB(self, hdc):
+        if not self.lhbData or len(self.lhbData) == 0:
             return
         x = (self.rect[2] % self.DAY_HOT_WIDTH) // 2
         startX = x
-        nd = self.data
-        startIdx, endIdx = self.findDrawDaysIndex()
+        nd = self.lhbData
+        days = [d['day'] for d in self.lhbData]
+        startIdx, endIdx = self.findDrawDaysIndex(days)
+        for i, data in enumerate(nd):
+            if i < startIdx or i >= endIdx:
+                continue
+            self.drawOneDayLHB(hdc, x, data)
+            x += self.DAY_HOT_WIDTH
+        if startIdx > 0:
+            self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
+        if endIdx < len(self.lhbData):
+            self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
+        self.drawLHBSelectTip(hdc, days[startIdx : endIdx])
+
+    def drawLHBSelectTip(self, hdc, showDays):
+        if (not self.selectDay) or len(showDays) == 0 or (self.selectDay in showDays):
+            return
+        idx = -1
+        for i in range(0, len(showDays)):
+            if showDays[i] < self.selectDay:
+                idx = i
+        x = idx * self.DAY_HOT_WIDTH + self.DAY_HOT_WIDTH
+        self.drawArrowTip(hdc, x - 20, self.rect[3] - 20, 1, 0x0000ff)
+        if idx < len(showDays) - 1:
+            self.drawArrowTip(hdc, x + 20, self.rect[3] - 20, 0, 0x0000ff)
+
+    def drawHot(self, hdc):
+        if not self.hotData or len(self.hotData) == 0:
+            return
+        x = (self.rect[2] % self.DAY_HOT_WIDTH) // 2
+        startX = x
+        nd = self.hotData
+        days = [d[0]['day'] for d in self.hotData]
+        startIdx, endIdx = self.findDrawDaysIndex(days)
         for i, data in enumerate(nd):
             if i < startIdx or i >= endIdx:
                 continue
             self.drawOneDayHot(hdc, x, data)
             x += self.DAY_HOT_WIDTH
         if startIdx > 0:
-            self.drawMoreTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
-        if endIdx < len(self.data):
-            self.drawMoreTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
+            self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
+        if endIdx < len(self.hotData):
+            self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
+
+    def drawOneDayLHB(self, hdc, x, data): # data = {'day': '', 'famous': [] }
+        if not data:
+            return
+        pen = win32gui.CreatePen(win32con.PS_DASH, 1, 0xff0000) # day split vertical line
+        y = 0
+        WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 14
+        day = data['day']
+        ds = time.strptime(day, '%Y-%m-%d')
+        wd = datetime.date(ds[0], ds[1], ds[2]).isoweekday()
+        WDS = '一二三四五六日'
+        title = day + ' ' + WDS[wd - 1]
+        sdc = 0
+        if day == self.selectDay:
+            sdc = win32gui.SaveDC(hdc)
+            win32gui.SetTextColor(hdc, 0xEE00EE)
+        win32gui.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
+        
+        y += 10
+        flag = True
+        for d in data['famous']:
+            y += HEIGHT
+            if flag and ('+' not in d):
+                flag = False
+                y += 10
+            win32gui.DrawText(hdc, d, len(d), (x + 10, y, x + WIDTH, y + HEIGHT), win32con.DT_LEFT)
+            
+        win32gui.SelectObject(hdc, pen)
+        win32gui.MoveToEx(hdc, x + WIDTH, 0)
+        win32gui.LineTo(hdc, x + WIDTH, self.rect[3])
+        win32gui.DeleteObject(pen)
+        if day == self.selectDay:
+            win32gui.RestoreDC(hdc, sdc)
 
     def drawOneDayHot(self, hdc, x, data): # data = [ {day:'', time:'', hotValue:xx, hotOrder: '' }, ... ]
         if not data or len(data) == 0:
@@ -310,7 +379,45 @@ class HotWindow:
         self.maxMode = not self.maxMode
         win32gui.InvalidateRect(self.wnd, None, True)
 
-    def updateData(self, data):
+    def changeDataType(self):
+        if not self.maxMode:
+            return
+        tp = ('HOT', 'LHB')
+        idx = tp.index(self.dataType)
+        idx = (idx + 1) % len(tp)
+        self.dataType = tp[idx]
+        win32gui.InvalidateRect(self.wnd, None, True)
+
+    def updateCode(self, code):
+        self.updateHotData(code)
+        self.updateLHBData(code)
+
+    def updateLHBData(self, code):
+        ds = orm.TdxLHB.select().where(orm.TdxLHB.code == code)
+        data = []
+        for d in ds:
+            r = {'day': d.day, 'famous': []}
+            famous = str(d.famous).split('//')
+            if len(famous) == 2:
+                for f in famous[0].strip().split(';'):
+                    if f: r['famous'].append(' + ' + f.strip())
+                for f in famous[1].strip().split(';'):
+                    if f: r['famous'].append(' - ' + f.strip())
+            else:
+                r['famous'].append('   无知名游资')
+            data.append(r)
+        self.lhbData = data
+        self.selectDay = None
+        win32gui.InvalidateRect(self.wnd, None, True)
+
+    def updateHotData(self, code):
+        ds = orm.THS_Hot.select().where(orm.THS_Hot.code == int(code))
+        hts = [formatThsHot(d.__data__) for d in ds]
+        if len(hts) > 0:
+            print('Load ', code, ' Count:', len(hts))
+        elif code:
+            print('Load ', code , ' not find in DB')
+        data = hts
         self.selectDay = None
         lastDay = None
         newDs = None
@@ -321,7 +428,7 @@ class HotWindow:
                 newDs = []
                 rs.append(newDs)
             newDs.append(d)
-        self.data = rs
+        self.hotData = rs
         win32gui.InvalidateRect(self.wnd, None, True)
 
     def updateSelectDay(self, newDay):
@@ -333,7 +440,7 @@ class HotWindow:
 def hotWinProc(hwnd, msg, wparam, lparam):
     global hotWindow
     if msg == win32con.WM_PAINT:
-        hotWindow.drawHotWin(hwnd)
+        hotWindow.draw(hwnd)
         return 0
     elif msg == win32con.WM_DESTROY:
         win32gui.PostQuitMessage(0)
@@ -341,6 +448,9 @@ def hotWinProc(hwnd, msg, wparam, lparam):
     elif msg == win32con.WM_LBUTTONDBLCLK:
         hotWindow.changeMode()
         showSortAndLiangDianWindow(not hotWindow.maxMode, True)
+        return 0
+    elif msg == win32con.WM_RBUTTONUP:
+        hotWindow.changeDataType()
         return 0
     else:
         return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
@@ -381,15 +491,9 @@ def work_updateCode(nowCode):
     try:
         icode = int(nowCode)
     except Exception as e:
-        icode = 0
-    ds = orm.THS_Hot.select().where(orm.THS_Hot.code == icode)
-    hts = [formatThsHot(d.__data__) for d in ds]
-    if len(hts) > 0:
-        print('Load ', nowCode, ' Count:', len(hts))
-    elif nowCode:
-        print('Load ', nowCode , ' not find in DB')
+        nowCode = '0'
     curCode = nowCode
-    hotWindow.updateData(hts)
+    hotWindow.updateCode(nowCode)
     mywin.sortInfoWindow.changeCode(nowCode)
 
 def showHotWindow():
