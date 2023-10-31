@@ -235,6 +235,8 @@ class HotWindow:
         sdc = win32gui.SaveDC(hdc)
         br = win32gui.CreateSolidBrush(color)
         win32gui.SelectObject(hdc, br)
+        pen = win32gui.CreatePen(win32con.PS_SOLID, 1, color)
+        win32gui.SelectObject(hdc, pen)
         pts = None
         CW ,CH = 5, 6
         if op == 0: # left more arrow
@@ -243,6 +245,8 @@ class HotWindow:
             pts = [(x, y), (x - CW, y - CH), (x - CW, y + CH)]
         win32gui.Polygon(hdc, pts)
         win32gui.RestoreDC(hdc, sdc)
+        win32gui.DeleteObject(br)
+        win32gui.DeleteObject(pen)
 
     def drawLHB(self, hdc):
         if not self.lhbData or len(self.lhbData) == 0:
