@@ -98,19 +98,12 @@ def loadOneGP(code, day, name):
 
         if not yzDesc:
             continue
-        mrje /= 10000
-        mcje /= 10000
-        if bs == 'B' and mrje >= 0.1:
-            famousBuy = f'{yzDesc}(+{mrje:.1f}'
-            if mcje >= 0.1:
-                famousBuy += ' -%.1f' % (mcje)
-            famousBuy += '); '
+        jme /= 10000
+        if bs == 'B':
+            famousBuy = f'{yzDesc}(+{jme:.1f}); '
             curInfo['famousBuy'] += famousBuy
-        if bs == 'S' and mcje >= 0.1:
-            famousSell = f'{yzDesc}(-{mcje:.1f}'
-            if mrje >= 0.1:
-                famousSell += ' +%.1f' % (mrje)
-            famousSell += '); '
+        elif bs == 'S':
+            famousSell = f'{yzDesc}({jme:.1f}); '
             curInfo['famousSell'] += famousSell
 
     for k, v in results.items():
