@@ -63,8 +63,20 @@ def loadOneGP(code, day, name):
     totalInfoCnt = totalInfo['Content']
 
     results = {}
+    titlesInfo = {'hasCurDay': False, 'has3Days': False}
     for r in totalInfoCnt:
         title = getColInfo(totalColNames, r, 'T012')
+        is3 = '累计' in title
+        if is3:
+            if titlesInfo['has3Days']:
+                continue
+            else:
+                titlesInfo['has3Days'] = True
+        else:
+            if titlesInfo['hasCurDay']:
+                continue
+            else:
+                titlesInfo['hasCurDay'] = True
         obj = {'day': day, 'code': code, 'name': name, 
                'price': getColInfo(totalColNames, r, 'closepri'), 
                'zd': getColInfo(totalColNames, r, 'zdf'),
@@ -82,6 +94,8 @@ def loadOneGP(code, day, name):
         # 'yz': it[2],
         # ["T007", "T004", "T008", "T009", "T010", "je", "T012", "T006", "T011", "T015", "yxyz", "gsd", "bq1", "bq2", "bq3", "bq4"]
         title = getColInfo(infosColNames, it, 'T012')
+        if title not in results:
+            continue
         curInfo = results[title]
 
         if isExsitsCnt(idx, infosColNames, 'T012', infosCnt, ('T008', 'T009', 'T010')):

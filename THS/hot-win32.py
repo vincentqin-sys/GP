@@ -314,12 +314,12 @@ class HotWindow:
             sdc = win32gui.SaveDC(hdc)
             win32gui.SetTextColor(hdc, 0xEE00EE)
         win32gui.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
-        
+
         y += 10
         flag = True
         for d in data['famous']:
             y += HEIGHT
-            if flag and ('+' != d[0]):
+            if flag and ('-' == d[0]):
                 flag = False
                 y += 10
             win32gui.DrawText(hdc, d, len(d), (x + 5, y, x + WIDTH, y + HEIGHT), win32con.DT_LEFT)
@@ -402,6 +402,8 @@ class HotWindow:
         data = []
         for d in ds:
             r = {'day': d.day, 'famous': []}
+            if '累计' in d.title:
+                r['famous'].append('    3日')
             famous = str(d.famous).split('//')
             if len(famous) == 2:
                 for f in famous[0].strip().split(';'):
