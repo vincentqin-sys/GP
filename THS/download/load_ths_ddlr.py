@@ -7,6 +7,9 @@ import orm
 
 BASE_DATA_PATH = 'D:/ths/struct/'
 
+if not os.path.exists(BASE_DATA_PATH):
+    os.makedirs(BASE_DATA_PATH)
+
 def isCode(name):
     if not name:
         return False
@@ -122,6 +125,8 @@ def test2():
     win32gui.EnumChildWindows(MAIN_WIN, enumCallback, 'WWX')
 
 if __name__ == '__main__':
+    print('必须打开Fiddler, Fiddler拦截onBeforeResponse, 将数据下载下来')
+    print('再将同花顺的大单统计功能打开, 鼠标定位在输入框中')
     autoLoadTop200Data()
     loadAllFileData()
     # test2()

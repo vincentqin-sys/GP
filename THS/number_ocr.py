@@ -114,7 +114,7 @@ class EImage:
 class NumberOCR:
     def __init__(self):
         key = platform.node()
-        self.templateImg = EImage(Image.open(f'ocr-template-{key}.bmp'))
+        self.templateImg = EImage(Image.open(f'img/ocr-template-{key}.bmp'))
         self.templateDigit = '0123456789'
 
     def _matchOne(self, oimg : EImage, oRect):

@@ -3,7 +3,7 @@ import threading, time, datetime, sys, os
 from multiprocessing import Process
 from PIL import Image  # pip install pillow
 import orm, number_ocr
-import mywin
+import sort_win32
 
 # pip installl opencv-python
 
@@ -524,17 +524,17 @@ def hotWinProc(hwnd, msg, wparam, lparam):
 def showSortAndLiangDianWindow(show, move):
     liangDianWnd = win32gui.FindWindow('smallF10_dlg', '小F10')
     if show:
-        mywin.sortInfoWindow.show()
+        sort_win32.sortInfoWindow.show()
         if liangDianWnd:
             win32gui.ShowWindow(liangDianWnd, win32con.SW_SHOW)
     else:
-        mywin.sortInfoWindow.hide()
+        sort_win32.sortInfoWindow.hide()
         if liangDianWnd:
             win32gui.ShowWindow(liangDianWnd, win32con.SW_HIDE)
     if move:
         if liangDianWnd:
             win32gui.SetWindowPos(liangDianWnd, None, 560, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
-        win32gui.SetWindowPos(mywin.sortInfoWindow.wnd, None, 1087, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
+        win32gui.SetWindowPos(sort_win32.sortInfoWindow.wnd, None, 1087, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
 
 #----------------------------------------
 hotWindow = HotWindow()
@@ -558,7 +558,7 @@ def work_updateCode(nowCode):
         nowCode = '0'
     curCode = nowCode
     hotWindow.updateCode(nowCode)
-    mywin.sortInfoWindow.changeCode(nowCode)
+    sort_win32.sortInfoWindow.changeCode(nowCode)
 
 def showHotWindow():
     # check window size changed
@@ -597,7 +597,7 @@ def work():
                 showSortAndLiangDianWindow(True, True)
             pass
         else:
-            mywin.sortInfoWindow.hide()
+            sort_win32.sortInfoWindow.hide()
         
 
 def subprocess_run():
@@ -606,8 +606,7 @@ def subprocess_run():
             break
         time.sleep(10)
     hotWindow.createHotWindow()
-    #mywin.eyeWindow.createWindow()
-    mywin.sortInfoWindow.createWindow(THS_MAIN_HWND)
+    sort_win32.sortInfoWindow.createWindow(THS_MAIN_HWND)
     threading.Thread(target = work).start()
     win32gui.PumpMessages()
     print('Quit Sub Process')

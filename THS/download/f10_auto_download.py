@@ -37,6 +37,7 @@ class Download_HYDB:
             time.sleep(2.5)
 
 if __name__ == '__main__':
+    print('必须先打开fiddler')
     time.sleep(5)
     # Download_HYDB().download()
     # Download_3().download()

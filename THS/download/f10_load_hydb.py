@@ -1,10 +1,15 @@
 
 #加载行业对比数据
-import os, json
+import os, json, sys
 from bs4 import BeautifulSoup
-from .. import orm
 
-BASE_PATH = 'D:/ths/'
+sys.path.append('.')
+import orm
+
+BASE_PATH = 'D:/ths/f10/'
+
+if not os.path.exists(BASE_PATH):
+    os.makedirs(BASE_PATH)
 
 # 行业信息
 hyInfos = {} # {行业名称: [关联股票, ...] }

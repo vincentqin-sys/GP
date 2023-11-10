@@ -2,7 +2,7 @@ import os, json
 from bs4 import BeautifulSoup
 from .. import orm
 
-BASE_PATH = 'D:/VSCode/THS/'
+BASE_PATH = 'D:/ths/f10/'
 
 # str to float, strip not numbers
 def toFloat(s):
