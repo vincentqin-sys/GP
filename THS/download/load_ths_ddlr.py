@@ -125,6 +125,7 @@ def test2():
     win32gui.EnumChildWindows(MAIN_WIN, enumCallback, 'WWX')
 
 if __name__ == '__main__':
+    print('自动下载Top 200大单买卖数据(同花顺Level-2)')
     print('必须打开Fiddler, Fiddler拦截onBeforeResponse, 将数据下载下来')
     print('再将同花顺的大单统计功能打开, 鼠标定位在输入框中')
     autoLoadTop200Data()
