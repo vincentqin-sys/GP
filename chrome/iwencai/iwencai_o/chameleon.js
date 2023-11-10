@@ -123,7 +123,7 @@ class Henxin {
         this.data = [];
         this.base_fileds = [4, 4, 4, 4, 1, 1, 1, 3, 2, 2, 2, 2, 2, 2, 2, 4, 2, 1];
         for (let i = 0; i < this.base_fileds.length; i++) {
-            this.data[i] = [0];
+            this.data[i] = 0;
         }
         this.uiParams = new UserParams();
         this.base64 = new Base64();
