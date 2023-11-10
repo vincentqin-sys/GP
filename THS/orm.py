@@ -143,7 +143,7 @@ class THS_Hot(pw.Model):
         database = db2
         table_name = '个股热度排名'
 
-        
+
 db3 = pw.SqliteDatabase(f'{path}GP/db/TaoGuBa.db')
 
 # 淘股吧 remark表 收藏表
@@ -170,12 +170,28 @@ class TdxLHB(pw.Model):
     #mcjeRate = pw.IntegerField(column_name = '卖出金额_占比' , null=True) #  (占总成交比例%)
     jme = pw.DecimalField(column_name = '净买额_亿' , null=True, decimal_places = 1, max_digits = 10) #  (亿元)
     famous = pw.CharField(column_name = '知名游资' , null=True)
-
     class Meta:
         database = db4
+
+
+# 大单流入流出情况
+db5 = pw.SqliteDatabase(f'{path}/GP/db/THS-DDBS.db')
+class THS_DDLR(pw.Model):
+    day = pw.CharField(max_length = 8) # YYYYMMDD
+    code = pw.CharField(max_length = 6)
+    name = pw.CharField(max_length= 24)
+    activeIn = pw.DecimalField(column_name = '主动买入_亿' , null=True, decimal_places = 1, max_digits = 10) # 亿元
+    activeOut = pw.DecimalField(column_name = '主动卖出_亿' , null=True, decimal_places = 1, max_digits = 10) #  (亿元)
+    positiveIn = pw.DecimalField(column_name = '被动买入_亿' , null=True, decimal_places = 1, max_digits = 10) #  (亿元)
+    positiveOut = pw.DecimalField(column_name = '被动卖出_亿' , null=True, decimal_places = 1, max_digits = 10) #  (亿元)
+    total = pw.DecimalField(column_name = '净流入_亿' , null=True, decimal_places = 1, max_digits = 10) # 亿元
+    class Meta:
+        database = db5
+        table_name = '个股大单买卖'
 
 db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC, THS_HYDB_2])
 db2.create_tables([THS_Hot])
 db3.create_tables([TaoGuBa_Remark])
+db5.create_tables([THS_DDLR])
 
     

@@ -140,6 +140,7 @@ def init():
 #-------------------hot  window ------------
 class HotWindow:
     DAY_HOT_WIDTH = 120
+    DATA_TYPE = ('HOT', 'LHB', 'DDLR') # # HOT(热度)  LHB(龙虎榜) DDLR（大单流入）
 
     def __init__(self):
         self.oldProc = None
@@ -148,7 +149,8 @@ class HotWindow:
         self.maxMode = True #  是否是最大化的窗口
         self.hotData = None # 热点数据
         self.lhbData = None # 龙虎榜数据
-        self.dataType = 'HOT' # HOT  LHB
+        self.ddlrData = None # 大单流入数据
+        self.dataType = 'HOT'
         self.selectDay = ''
 
     def createHotWindow(self):
@@ -193,6 +195,8 @@ class HotWindow:
                 self.drawHot(hdc)
             elif self.dataType == 'LHB':
                 self.drawLHB(hdc)
+            elif self.dataType == 'DDLR':
+                self.drawDDLR(hdc)
         else:
             self.drawMinMode(hdc)
 
@@ -298,6 +302,28 @@ class HotWindow:
         if endIdx < len(self.hotData):
             self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
 
+    def drawDDLR(self, hdc):
+        if not self.ddlrData or len(self.ddlrData) == 0:
+            return
+        x = (self.rect[2] % self.DAY_HOT_WIDTH) // 2
+        startX = x
+        nd = self.ddlrData
+        days = [d['day'] for d in self.ddlrData]
+        startIdx, endIdx = self.findDrawDaysIndex(days)
+        maxVal = 0
+        for d in self.ddlrData:
+            if maxVal < abs(d['total']):
+                maxVal = abs(d['total'])
+        for i, data in enumerate(nd):
+            if i < startIdx or i >= endIdx:
+                continue
+            self.drawOneDayDDLR(hdc, x, data, maxVal)
+            x += self.DAY_HOT_WIDTH
+        if startIdx > 0:
+            self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
+        if endIdx < len(self.lhbData):
+            self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
+
     def drawOneDayLHB(self, hdc, x, data): # data = {'day': '', 'famous': [] }
         if not data:
             return
@@ -305,15 +331,7 @@ class HotWindow:
         y = 0
         WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 14
         day = data['day']
-        ds = time.strptime(day, '%Y-%m-%d')
-        wd = datetime.date(ds[0], ds[1], ds[2]).isoweekday()
-        WDS = '一二三四五六日'
-        title = day + ' ' + WDS[wd - 1]
-        sdc = 0
-        if day == self.selectDay:
-            sdc = win32gui.SaveDC(hdc)
-            win32gui.SetTextColor(hdc, 0xEE00EE)
-        win32gui.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
+        sdc = self.drawDayTitle(hdc, x, day)
 
         y += 10
         flag = True
@@ -328,7 +346,7 @@ class HotWindow:
         win32gui.MoveToEx(hdc, x + WIDTH, 0)
         win32gui.LineTo(hdc, x + WIDTH, self.rect[3])
         win32gui.DeleteObject(pen)
-        if day == self.selectDay:
+        if day == self.selectDay and sdc:
             win32gui.RestoreDC(hdc, sdc)
 
     def drawOneDayHot(self, hdc, x, data): # data = [ {day:'', time:'', hotValue:xx, hotOrder: '' }, ... ]
@@ -339,15 +357,7 @@ class HotWindow:
         y = 0
         WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 14
         day = data[0]['day']
-        ds = time.strptime(day, '%Y-%m-%d')
-        wd = datetime.date(ds[0], ds[1], ds[2]).isoweekday()
-        WDS = '一二三四五六日'
-        title = day + ' ' + WDS[wd - 1]
-        sdc = 0
-        if day == self.selectDay:
-            sdc = win32gui.SaveDC(hdc)
-            win32gui.SetTextColor(hdc, 0xEE00EE)
-        win32gui.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
+        sdc = self.drawDayTitle(hdc, x, day)
         
         isDrawSplit = False
         for d in data:
@@ -364,8 +374,48 @@ class HotWindow:
         win32gui.LineTo(hdc, x + WIDTH, self.rect[3])
         win32gui.DeleteObject(pen)
         win32gui.DeleteObject(pen2)
-        if day == self.selectDay:
+        if day == self.selectDay and sdc:
             win32gui.RestoreDC(hdc, sdc)
+
+    # day = YYYY-MM-DD
+    def drawDayTitle(self, hdc, x, day):
+        WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 14
+        ds = time.strptime(day, '%Y-%m-%d')
+        wd = datetime.date(ds[0], ds[1], ds[2]).isoweekday()
+        WDS = '一二三四五六日'
+        title = day + ' ' + WDS[wd - 1]
+        sdc = 0
+        if day == self.selectDay:
+            sdc = win32gui.SaveDC(hdc)
+            win32gui.SetTextColor(hdc, 0xEE00EE)
+        win32gui.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
+        return sdc
+
+    def drawOneDayDDLR(self, hdc, x, data, maxVal): # data = THS_DDLR.__data__
+        if not data:
+            return
+        odc = win32gui.SaveDC(hdc)
+        pen = win32gui.GetStockObject(win32con.NULL_PEN)
+        win32gui.SelectObject(hdc, pen)
+        color = 0x0000ff  if data['total'] >= 0 else 0x00ff00
+        br1 = win32gui.CreateSolidBrush(color)
+        win32gui.SelectObject(hdc, br1)
+        WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 150
+        day = data['day']
+        day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
+        sdc = self.drawDayTitle(hdc, x, day)
+        h = abs(data['total']) / maxVal * HEIGHT
+        ty = 15 + HEIGHT - h
+        by = 15 + HEIGHT
+        cx = int(x + WIDTH / 2 - 10)
+        win32gui.Rectangle(hdc, cx, ty, cx + 20, by)
+        info = f"{float(data['total']) : .2f} 亿"
+        win32gui.DrawText(hdc, info, len(info), (x, by + 15, x + WIDTH, by + 45), win32con.DT_CENTER)
+        #win32gui.DeleteObject(pen)
+        win32gui.DeleteObject(br1)
+        if day == self.selectDay and sdc:
+            win32gui.RestoreDC(hdc, sdc)
+        win32gui.RestoreDC(hdc, odc)
 
     def drawMinMode(self, hdc):
         title = '【我的热点】'
@@ -387,7 +437,7 @@ class HotWindow:
     def changeDataType(self):
         if not self.maxMode:
             return
-        tp = ('HOT', 'LHB')
+        tp = self.DATA_TYPE
         idx = tp.index(self.dataType)
         idx = (idx + 1) % len(tp)
         self.dataType = tp[idx]
@@ -396,6 +446,7 @@ class HotWindow:
     def updateCode(self, code):
         self.updateHotData(code)
         self.updateLHBData(code)
+        self.updateDDLRData(code)
 
     def updateLHBData(self, code):
         ds = orm.TdxLHB.select().where(orm.TdxLHB.code == code)
@@ -436,6 +487,12 @@ class HotWindow:
                 rs.append(newDs)
             newDs.append(d)
         self.hotData = rs
+        win32gui.InvalidateRect(self.wnd, None, True)
+
+    def updateDDLRData(self, code):
+        ds = orm.THS_DDLR.select().where(orm.THS_DDLR.code == code)
+        self.ddlrData = [d.__data__ for d in ds]
+        self.selectDay = None
         win32gui.InvalidateRect(self.wnd, None, True)
 
     def updateSelectDay(self, newDay):
