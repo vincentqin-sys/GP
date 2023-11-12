@@ -3,6 +3,29 @@
    import System.IO;
    import System.Text;
 
+   // ---------------------------------------------
+   static function mkdirs(path) {
+        if(! Directory.Exists(path)) {
+            var di = new DirectoryInfo(path);
+            di.Create()
+        }
+   }
+
+   var demain = "http://basic.10jqka.com.cn/";
+   if (furl.StartsWith(demain)) {
+       url = furl.Substring(demain.Length);
+       if (url.EndsWith("/field.html")) {
+           // 同行比较
+           var code = url.Substring(0, 6);
+           var file = "D:/ths/f10/" + code + "-同行比较.html";
+           oSession.utilDecodeResponse();
+           oSession.SaveResponseBody(file);
+           return;
+       }
+   }
+
+   //----------------------------------------------
+
     static function getParams(url) {
         var rt = new Object();
         var idx = url.IndexOf('?');

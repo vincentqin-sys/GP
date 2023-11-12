@@ -84,7 +84,7 @@ class LoadThsDdlrStruct:
 
     def mergeSavedData(self, datas):
         code = datas[0]['code']
-        name = self.getNameByCode(code)
+        name = getNameByCode(code)
         maxDay = orm.THS_DDLR.select(pw.fn.Max(orm.THS_DDLR.day)).where(orm.THS_DDLR.code == code).scalar()
         if not maxDay:
             maxDay = ''
@@ -168,7 +168,7 @@ def autoLoadTop200Data(self):
             pyautogui.press('delete')
             time.sleep(0.02)
         code = f"{d.code :06d}" 
-        print(f"[{idx + 1}]", code)
+        print(f"[{idx + 1}] Download by fiddler : ", code)
         pyautogui.typewrite(code, 0.1)
         pyautogui.press('enter')
         time.sleep(5)
