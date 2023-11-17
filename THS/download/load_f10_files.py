@@ -2,7 +2,7 @@ import os, json, sys
 from bs4 import BeautifulSoup
 import pyautogui as pa
 import time
-
+import fiddler
 sys.path.append('.')
 import orm
 
@@ -364,6 +364,8 @@ class Download_HYDB:
 
 
 if __name__ == '__main__':
+    fd = fiddler.Fiddler()
+    fd.open()
     # 自动下载数据
     time.sleep(10)
     # print('必须先打开fiddler')
@@ -375,7 +377,7 @@ if __name__ == '__main__':
     loadAllFile('主力持仓')
     loadAllFile('最新动态')
     LoadHYDB().loadAllFiles()
-    pass
+    fd.close()
     
 
 

@@ -53,10 +53,16 @@ def isInFenShiWindow():
         return False
     return win32gui.IsWindowVisible(THS_TOP_HWND)
 
+# 当前显示的窗口是否是“我的首页”
+def isInMyHomeWindow():
+    if '我的首页' not in win32gui.GetWindowText(THS_TOP_HWND):
+        return False
+    return win32gui.IsWindowVisible(THS_TOP_HWND)
+
 # 查找股票代码
 def findCode():
     global THS_MAIN_HWND, THS_TOP_HWND, THS_LEVEL2_CODE_HWND
-    if not isInKlineWindow():
+    if (not isInKlineWindow()) and (not isInMyHomeWindow()):
         #print('Not in KLine Window')
         return None
     # 逐笔成交明细 Level-2
@@ -582,7 +588,7 @@ def work():
             #sys.exit(0)  #仅退出当前线程
             os._exit(0) # 退出进程
             break
-        if isInKlineWindow():
+        if isInKlineWindow() or isInMyHomeWindow():
             showHotWindow()
             nowCode = findCode()
             if curCode != nowCode:
@@ -590,7 +596,7 @@ def work():
             selDay = getSelectDay()
             if selDay:
                 hotWindow.updateSelectDay(selDay)
-            if not hotWindow.maxMode:
+            if (not hotWindow.maxMode) and (not isInMyHomeWindow()):
                 showSortAndLiangDianWindow(True, False)
         elif isInFenShiWindow():
             if not hotWindow.maxMode:

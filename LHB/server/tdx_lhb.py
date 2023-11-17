@@ -186,7 +186,7 @@ def loadTdxLHB():
         if dayFrom.isoweekday() >= 6:
             dayFrom = dayFrom + delta
             continue
-        if dayFrom <= maxDay:
+        if dayFrom < maxDay:
             #print('Skip ' + str(dayFrom))
             pass
         else:
@@ -200,9 +200,11 @@ def run():
     th = threading.currentThread()
     while True:
         now = datetime.datetime.now()
-        if now.isoweekday() < 6 and now.hour == 20: # 周一至周五, 晚上8点
+        curTime = now.strftime('%H:%M')
+        if now.isoweekday() < 6 and curTime >= '16:30' and curTime <= '18:00': # 周一至周五, 晚上8点
             loadTdxLHB()
-        time.sleep(30 * 60) # 30 minutes
+            time.sleep(5 * 60)
+        time.sleep(5 * 60)
 
 flagAuto = False
 lock = threading.RLock()

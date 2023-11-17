@@ -1,7 +1,7 @@
 import peewee as pw
 from peewee import fn
-import os, json, time, sys, pyautogui
-import io
+import os, json, time, sys, pyautogui, io
+import fiddler
 
 sys.path.append('.')
 import orm
@@ -24,7 +24,7 @@ def isCode(name):
             return False
     return True
 
-def getNameByCode(self, code):
+def getNameByCode(code):
     n = orm.THS_Newest.get_or_none(orm.THS_Newest.code == code)
     if not n:
         return ''
@@ -75,6 +75,7 @@ class LoadThsDdlrStruct:
 
     def loadAllFileData(self):
         fs = self.listFiles()
+        print('找到大单结构数据: ', len(fs), '个')
         for f in fs:
             data = self.loadFileData(f)
             if len(data) <= 0:
@@ -96,7 +97,7 @@ class LoadThsDdlrStruct:
 class LoadThsDdlrDetail:
     def __init__(self) -> None:
         self.tradeDays = self.getMaxTradeDays()
-        print(self.tradeDays)
+        #print(self.tradeDays)
         pass
 
     def getMaxTradeDays(self):
@@ -113,6 +114,7 @@ class LoadThsDdlrDetail:
 
     def loadAllFilesData(self):
         fs = os.listdir(BASE_DETAIL_PATH)
+        print('找到大单详细数据: ', len(fs), '个')
         for f in fs:
             if isCode(f):
                 fp = BASE_DETAIL_PATH + f
@@ -151,12 +153,13 @@ class LoadThsDdlrDetail:
         f2.write(sio.getvalue())
         f2.close()
 
-
 # 自动下载同花顺热点Top200个股的大单数据
-def autoLoadTop200Data(self):
+def autoLoadTop200Data():
     print('自动下载Top 200大单买卖数据(同花顺Level-2)')
     print('必须打开Fiddler, Fiddler拦截onBeforeResponse, 将数据下载下来')
     print('再将同花顺的大单统计功能打开, 鼠标定位在输入框中')
+    fd = fiddler.Fiddler()
+    fd.open()
 
     time.sleep(10)
     datas = orm.THS_Hot.select().order_by(orm.THS_Hot.id.desc()).limit(200)
@@ -172,7 +175,7 @@ def autoLoadTop200Data(self):
         pyautogui.typewrite(code, 0.1)
         pyautogui.press('enter')
         time.sleep(5)
-
+    fd.close()
 
 def test2():
     import win32gui, win32con
