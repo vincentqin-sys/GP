@@ -54,6 +54,12 @@ function sendData(data) {
     data.time = hm;
     let msg = { cmd: 'SET_TOP_VOL', data: data};
     chrome.runtime.sendMessage(msg);
+
+    chrome.extension.storage.local.get(data.tradeDay, function(dd) {
+        if (! dd) dd = [];
+        dd.push(data);
+        chrome.extension.storage.local.set(data.tradeDay, dd);
+    });
 }
 
 var _reloadPage = false;
