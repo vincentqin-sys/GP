@@ -362,4 +362,6 @@ if (decodeURI(window.location.href).indexOf('个股热度排名') > 0) {
     }
 }
 
+
+
 console.log('Extension-Hot-Page: ', window.location.href);

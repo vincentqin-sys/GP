@@ -20,7 +20,6 @@ class Fiddler:
         subprocess.Popen('C:\\Program Files (x86)\\Fiddler\\Fiddler.exe', shell=True)
         self.needClose = True
         time.sleep(5)
-        self.open()
 
     def close(self):
         # os.system('taskkill /F /IM Fiddler.exe')

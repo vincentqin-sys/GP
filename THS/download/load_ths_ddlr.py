@@ -1,7 +1,7 @@
 import peewee as pw
 from peewee import fn
 import os, json, time, sys, pyautogui, io
-import fiddler
+import fiddler, ths
 
 sys.path.append('.')
 import orm
@@ -13,6 +13,11 @@ if not os.path.exists(BASE_STRUCT_PATH):
     os.makedirs(BASE_STRUCT_PATH)
 if not os.path.exists(BASE_DETAIL_PATH):
     os.makedirs(BASE_DETAIL_PATH)
+
+def codeExists(code):
+    e1 = os.path.exists(BASE_STRUCT_PATH + code)
+    e2 = os.path.exists(BASE_DETAIL_PATH + code)
+    return e1 and e2
 
 def isCode(name):
     if not name:
@@ -36,7 +41,7 @@ class LoadThsDdlrStruct:
         rs = [BASE_STRUCT_PATH + f for f in fs if isCode(f) ]
         return rs
 
-    def loadFileData(self, fileName):
+    def _loadFileData(self, fileName):
         data = {}
         f = open(fileName, 'r', encoding= 'utf8')
         lines = f.readlines()
@@ -73,15 +78,18 @@ class LoadThsDdlrStruct:
             rt.append(v)
         return rt
 
+    def loadOneFile(self, filePath):
+        data = self._loadFileData(filePath)
+        if len(data) <= 0:
+            return
+        self.mergeSavedData(data)
+        os.remove(filePath)
+
     def loadAllFileData(self):
         fs = self.listFiles()
         print('找到大单结构数据: ', len(fs), '个')
         for f in fs:
-            data = self.loadFileData(f)
-            if len(data) <= 0:
-                continue
-            self.mergeSavedData(data)
-            os.remove(f)
+            self.loadOneFile(f)
 
     def mergeSavedData(self, datas):
         code = datas[0]['code']
@@ -153,6 +161,20 @@ class LoadThsDdlrDetail:
         f2.write(sio.getvalue())
         f2.close()
 
+def autoLoadOne(code, ddWin):
+    ddWin.showWindow()
+    time.sleep(1.5)
+    ddWin.grubFocusInSearchBox()
+    # clear input text
+    for i in range(20):
+        pyautogui.press('backspace')
+        pyautogui.press('delete')
+        time.sleep(0.02)
+    pyautogui.typewrite(code, 0.1)
+    pyautogui.press('enter')
+    time.sleep(5)
+    return codeExists(code)
+
 # 自动下载同花顺热点Top200个股的大单数据
 def autoLoadTop200Data():
     print('自动下载Top 200大单买卖数据(同花顺Level-2)')
@@ -160,22 +182,25 @@ def autoLoadTop200Data():
     print('再将同花顺的大单统计功能打开, 鼠标定位在输入框中')
     fd = fiddler.Fiddler()
     fd.open()
-
     time.sleep(10)
+
+    ddWin = ths.THS_DDWindow()
+    if not ddWin.initWindows():
+        raise Exception('未打开同花顺的大单页面')
+
     datas = orm.THS_Hot.select().order_by(orm.THS_Hot.id.desc()).limit(200)
     datas = [d for d in datas]
     datas.reverse()
+    failTimes = 0
     for idx, d in enumerate(datas):
-        for i in range(20):
-            pyautogui.press('backspace')
-            pyautogui.press('delete')
-            time.sleep(0.02)
-        code = f"{d.code :06d}" 
-        print(f"[{idx + 1}] Download by fiddler : ", code)
-        pyautogui.typewrite(code, 0.1)
-        pyautogui.press('enter')
-        time.sleep(5)
+        code = f"{d.code :06d}"
+        sc = autoLoadOne(code, ddWin)
+        if sc:
+            failTimes += 1
+        sc = 'Success' if sc else 'Fail'
+        print(f"[{idx + 1}] Download by fiddler : ", code, sc)
     fd.close()
+    print('Load 200, Fail number:', failTimes)
 
 def test2():
     import win32gui, win32con

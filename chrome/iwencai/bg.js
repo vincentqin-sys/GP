@@ -5,6 +5,8 @@ proc_info = {
     needSave: false,
     hotInfos: [],
     isLogined: false,
+
+    topVols : {},
 };
 
 // YYYY-MM-DD
@@ -48,12 +50,26 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         if (sender && sender.tab && sender.tab.windowId == proc_info.hotWindowId) {
             setLoginInfo(data);
         }
+    } else if (cmd == 'SET_TOP_VOL') {
+        setTopVol(data);
     }
 	
 	if (sendResponse) {
 		sendResponse('OK');
 	}
 });
+
+function setTopVol(data) {
+    if (! proc_info.topVols[data.day]) {
+        proc_info.topVols[data.day] = [];
+    }
+    let arr = proc_info.topVols[data.day];
+    arr.push(data);
+}
+
+function getTopVol(day) {
+    return proc_info.topVols[day];
+}
 
 function setHotInfo(data) {
     if (! proc_info.hotWindowId) {
