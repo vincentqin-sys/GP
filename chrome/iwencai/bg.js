@@ -37,39 +37,32 @@ function mlog(...args) {
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 	let cmd = request['cmd'];
     let data = request['data'];
+    let cl = false;
 
     if (cmd == 'SET_HOT_INFO') {
+        cl = true;
         // console.log('sender=', sender);
         if (sender && sender.tab && sender.tab.windowId == proc_info.hotWindowId) {
             setHotInfo(data);
         }
     } else if (cmd == 'LOG') {
+        cl = true;
         // console.log('Log', request);
         mlog('Log', request);
     } else if (cmd == 'SET_LOGIN_INFO') {
         if (sender && sender.tab && sender.tab.windowId == proc_info.hotWindowId) {
+            cl = true;
             setLoginInfo(data);
         }
     } else if (cmd == 'SET_TOP_VOL') {
+        cl = true;
         setTopVol(data);
     }
 	
-	if (sendResponse) {
+	if (cl && sendResponse) {
 		sendResponse('OK');
 	}
 });
-
-function setTopVol(data) {
-    if (! proc_info.topVols[data.day]) {
-        proc_info.topVols[data.day] = [];
-    }
-    let arr = proc_info.topVols[data.day];
-    arr.push(data);
-}
-
-function getTopVol(day) {
-    return proc_info.topVols[day];
-}
 
 function setHotInfo(data) {
     if (! proc_info.hotWindowId) {

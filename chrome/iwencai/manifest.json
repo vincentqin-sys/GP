@@ -18,7 +18,7 @@
 	],
 	
 	"background": {
-		"scripts": ["jquery-3.6.min.js", "bg.js"],
+		"scripts": ["jquery-3.6.min.js", "bg.js", "bg2.js"],
 		"persistent": true
 	},
 	
