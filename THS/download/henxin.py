@@ -1,4 +1,4 @@
-import datetime, time, random
+import datetime, time, random, requests
 
 class Base64:
     def __init__(self):
@@ -189,11 +189,57 @@ class Henxin:
         return c
 
 
+class HexinUrl:
+    def __init__(self) -> None:
+        self.hx = Henxin()
+        self.hx.init()
+
+    def getCodeSH(self, code):
+        # 600xxx -> 17;  300xxx 000xxx 002xxx -> 33;   88xxxx -> 48
+        if code[0] == '8': #指数
+            return '48'
+        if code[0] == '6':
+            return '17'
+        return '33'
+    
+    def _getUrlWithParam(self, url):
+        param = self.hx.update()
+        url = url + '?hexin-v=' + param
+        return url
+    
+    # 分时线 url
+    def getFenShiUrl(self, code):
+        sh = self.getCodeSH(code)
+        url = 'http://d.10jqka.com.cn/v6/time/' + sh + '_' + code + '/last.js'
+        url = self._getUrlWithParam(url)
+        return url
+    
+    # 今日-日线 url
+    def getTodayKLineUrl(self, code):
+        sh = self.getCodeSH(code)
+        url = 'http://d.10jqka.com.cn/v6/line/'+ sh + '_' + code + '/01/today.js'
+        url = self._getUrlWithParam(url)
+        return url
+    
+    # 日线 url
+    def getKLineUrl(self, code):
+        sh = self.getCodeSH(code)
+        url = 'http://d.10jqka.com.cn/v6/line/'+ sh + '_' + code + '/01/last1800.js'
+        url = self._getUrlWithParam(url)
+        return url
+
+class HenxinLoader:
+    def __init__(self) -> None:
+        pass
+
+    def loadFenShiData(text):
+        pass
+
+
 if __name__ == '__main__':
-    hx = Henxin()
-    hx.init()
-    rs = hx.update()
-    print(rs)
-    rs = 'http://d.10jqka.com.cn/v6/line/33_002261/01/today.js?hexin-v=' + rs
-    print(rs)
-    # javascript: window.location.href = 'https:#s.thsi.cn/js/chameleon/time.1' + (new Date().getTime() / 1200000) + '.js'
+    hx = HexinUrl()
+    url = hx.getTodayKLineUrl('1A0001')
+    url = hx.getFenShiUrl('002528')
+    print(time.time() / 1200)
+    print(url)
+    # javascript: window.location.href = 'https://s.thsi.cn/js/chameleon/time.1' + (new Date().getTime() / 1200000) + '.js'
