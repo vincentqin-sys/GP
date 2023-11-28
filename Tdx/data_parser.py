@@ -4,10 +4,28 @@ from collections import namedtuple
 BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
 DEST_MIN_LINE_PATH = r'D:\Program Files\new_tdx2\vipdoc2'
 
-DayStruct = namedtuple('DayStruct', ['day', 'open', 'high', 'low', 'close', 'money', 'vol', 'th'])
-            # th = {MA5, MA10}
-MinLineStruct = namedtuple('MinLineStruct', ['day', 'time', 'open', 'high', 'low', 'close', 'money', 'vol', 'th'])
-                # th = {avgPrice 分时均价}
+class ItemData:
+    DS = ('day', 'open', 'high', 'low', 'close', 'money', 'vol') # vol(股)
+    MLS = ('day', 'time', 'open', 'high', 'low', 'close', 'money', 'vol') # avgPrice 分时均价
+    # MA5
+
+    def __init__(self, *args):
+        a = self.DS if len(args) == len(self.DS) else self.MLS
+        for i, k in enumerate(a):
+            setattr(self, k, args[i])
+
+    def __repr__(self) -> str:
+        d = self.__dict__
+        a = self.DS if 'time' not in d else self.MLS
+        s = 'ItemData('
+        for k in a:
+            s += f"{k}={str(d[k])}, "
+        ks = d.keys() - set(a)
+        for k in ks:
+            s += f"{k}={str(d[k])}, "
+        s = s[0 : -2]
+        s += ')'
+        return s
 
 class DataFile:
     DT_DAY, DT_MINLINE = 1, 2
@@ -66,7 +84,7 @@ class DataFile:
                 break
             if self.dataType == self.DT_DAY:
                 item = struct.unpack('5lf2l', bs)
-                item = DayStruct(item[0], item[1], item[2], item[3], item[4], item[5], item[6], {})
+                item = ItemData(item[0 : -1])
             else:
                 item = struct.unpack('2H5f2l', bs)
                 d0 = item[0]
@@ -75,7 +93,7 @@ class DataFile:
                 r = (d0 % 2048) % 100
                 d0 = y * 10000 + m * 100 + r
                 d1 = (item[1] // 60) * 100 + (item[1] % 60)
-                item = MinLineStruct(d0, d1, T(item[2]), T(item[3]), T(item[4]), T(item[5]), item[6], item[7], {})
+                item = ItemData(d0, d1, T(item[2]), T(item[3]), T(item[4]), T(item[5]), item[6], item[7])
             rs.append(item)
         f.close()
         # check minute line number
@@ -98,7 +116,7 @@ class DataFile:
             d = self.data[idx]
             sumMoney += d.money
             sumVol += d.vol
-            d.th['avgPrice'] = sumMoney / sumVol
+            d.avgPrice = sumMoney / sumVol
             idx += 1
 
     def calcMA(self, N):
@@ -107,7 +125,7 @@ class DataFile:
             ap = 0
             for j in range(i + 1 - N, i + 1):
                 ap += self.data[j].close
-            self.data[i].th[name] = ap / N
+            setattr(self.data[i], name, ap / N)
     
     def _calcZDTInfo(self, pre, c):
         is20p = (self.code[0:3] == '688') or (self.code[0:2] == '30')
@@ -117,10 +135,10 @@ class DataFile:
         isztzb = (int(pre * (100 + ZT) / 100 + 0.5) <= c.high) and (c.high != c.close)
         isdt = int(pre * (100 - ZT) / 100 + 0.5) >= c.close
         isdtzb = (int(pre * (100 - ZT) / 100 + 0.5) >= c.low) and (c.low != c.close)
-        if isztzb: c.th['ZDT'] = 'ZTZB'
-        if isdtzb: c.th['ZDT'] = 'DTZB'
-        if iszt: c.th['ZDT'] = 'ZT'
-        if isdt: c.th['ZDT'] = 'DT'
+        if isztzb: c.ZDT = 'ZTZB'
+        if isdtzb: c.ZDT = 'DTZB'
+        if iszt: c.ZDT = 'ZT'
+        if isdt: c.ZDT = 'DT'
 
     # 计算涨跌停信息
     def calcZDT(self):
@@ -143,9 +161,9 @@ class DataFile:
     def getItemsByZT(self, includeZTZB : bool):
         rs = []
         for d in self.data:
-            if d.th.get('ZDT') == 'ZT':
+            if getattr(d, 'ZDT', None) == 'ZT':
                 rs.append(d)
-            if includeZTZB and d.th.get('ZDT') == 'ZTZB':
+            if includeZTZB and getattr(d, 'ZDT', None) == 'ZTZB':
                 rs.append(d)
         return rs
 
@@ -155,6 +173,5 @@ if __name__ == '__main__':
     df.calcZDT()
     zt = df.getItemsByZT(True)
     for d in zt:
-        if d.day == 20231113:
             print(d, sep= '\n')
     
