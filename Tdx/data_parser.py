@@ -173,5 +173,5 @@ if __name__ == '__main__':
     df.calcZDT()
     zt = df.getItemsByZT(True)
     for d in zt:
-            print(d, sep= '\n')
+        print(d, sep= '\n')
     
