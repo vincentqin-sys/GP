@@ -84,7 +84,7 @@ class DataFile:
                 break
             if self.dataType == self.DT_DAY:
                 item = struct.unpack('5lf2l', bs)
-                item = ItemData(item[0 : -1])
+                item = ItemData(*item[0 : -1])
             else:
                 item = struct.unpack('2H5f2l', bs)
                 d0 = item[0]
