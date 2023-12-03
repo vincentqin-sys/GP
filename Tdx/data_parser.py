@@ -1,12 +1,12 @@
 import os, struct
 from collections import namedtuple
 
-BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
+VIPDOC_BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
 DEST_MIN_LINE_PATH = r'D:\Program Files\new_tdx2\vipdoc2'
 
 class ItemData:
-    DS = ('day', 'open', 'high', 'low', 'close', 'money', 'vol') # vol(股)
-    MLS = ('day', 'time', 'open', 'high', 'low', 'close', 'money', 'vol') # avgPrice 分时均价
+    DS = ('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股)
+    MLS = ('day', 'time', 'open', 'high', 'low', 'close', 'amount', 'vol') # avgPrice 分时均价
     # MA5
 
     def __init__(self, *args):
@@ -71,8 +71,8 @@ class DataFile:
     def _getPathByCode(self, code):
         tag = 'sh' if code[0] == '6' or code[0] == '8' else 'sz'
         if self.dataType == self.DT_DAY:
-            return os.path.join(BASE_PATH, tag, 'lday', tag + code + '.day')
-        return os.path.join(BASE_PATH, tag, 'minline', tag + code + '.lc1')
+            return os.path.join(VIPDOC_BASE_PATH, tag, 'lday', tag + code + '.day')
+        return os.path.join(VIPDOC_BASE_PATH, tag, 'minline', tag + code + '.lc1')
 
     def _loadDataFile(self, path):
         def T(fv): return int(fv * 100 + 0.5)
@@ -111,12 +111,12 @@ class DataFile:
         if fromIdx < 0:
             return 0
         idx = fromIdx
-        sumMoney, sumVol = 0, 0
+        sumamount, sumVol = 0, 0
         while idx < len(self.data) and self.data[idx].day == day:
             d = self.data[idx]
-            sumMoney += d.money
+            sumamount += d.amount
             sumVol += d.vol
-            d.avgPrice = sumMoney / sumVol
+            d.avgPrice = sumamount / sumVol
             idx += 1
 
     def calcMA(self, N):
