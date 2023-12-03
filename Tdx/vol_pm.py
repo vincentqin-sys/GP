@@ -3,10 +3,10 @@ import peewee as pw
 from data_parser import *
 import orm
 
-class TdxVolOrderTools:
+class TdxVolPMTools:
     def __init__(self):
         fromDay = 20230101
-        v = orm.TdxVolOrderModel.select(pw.fn.max(orm.TdxVolOrderModel.day)).scalar()
+        v = orm.TdxVolPMModel.select(pw.fn.max(orm.TdxVolPMModel.day)).scalar()
         if v: fromDay = v
         self.fromDay = fromDay
         
@@ -41,7 +41,7 @@ class TdxVolOrderTools:
         ths_db.close()
     
     def _save(self, datas):
-        orm.TdxVolOrderModel.bulk_create(datas, 50)
+        orm.TdxVolPMModel.bulk_create(datas, 50)
     
     def calcVolOrder_Top500(self):
         self._loadAllCodes()
@@ -65,11 +65,11 @@ class TdxVolOrderTools:
                 di = nf.getItemData(day)
                 amount =  (di.amount if di else 0) / 100000000
                 d = {'code': code, 'name': self.codeNames.get(code), 'day': day, 'amount': amount, 'pm': i + 1}
-                top500.append(orm.TdxVolOrderModel(**d))
+                top500.append(orm.TdxVolPMModel(**d))
                 print(d)
             self._save(top500)
 
 
 if __name__ == '__main__':
-    t = TdxVolOrderTools()
+    t = TdxVolPMTools()
     t.calcVolOrder_Top500()

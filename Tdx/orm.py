@@ -3,9 +3,9 @@ import sys
 
 path = sys.argv[0]
 path = path[0 : path.index('GP') ]
-voldb = pw.SqliteDatabase(f'{path}GP/db/TdxVolOrder.db')
+voldb = pw.SqliteDatabase(f'{path}GP/db/TdxVolPM.db')
 
-class TdxVolOrderModel(pw.Model):
+class TdxVolPMModel(pw.Model):
     code = pw.CharField() #股票代码
     name = pw.CharField() #股票名称
     day = pw.IntegerField() # 日期
@@ -17,4 +17,4 @@ class TdxVolOrderModel(pw.Model):
         table_name = '成交额排名'
 
 
-voldb.create_tables([TdxVolOrderModel])
+voldb.create_tables([TdxVolPMModel])
