@@ -189,6 +189,18 @@ class THS_DDLR(pw.Model):
         database = db5
         table_name = '个股大单买卖'
 
+voldb = pw.SqliteDatabase(f'{path}GP/db/TdxVolPM.db')
+class TdxVolPMModel(pw.Model):
+    code = pw.CharField() #股票代码
+    name = pw.CharField() #股票名称
+    day = pw.IntegerField() # 日期
+    amount = pw.FloatField() #成交额 （亿元）
+    pm = pw.IntegerField() #全市成交排名
+
+    class Meta:
+        database = voldb
+        table_name = '成交额排名'
+
 db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC, THS_HYDB_2])
 db2.create_tables([THS_Hot])
 db3.create_tables([TaoGuBa_Remark])

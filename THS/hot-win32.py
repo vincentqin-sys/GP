@@ -146,7 +146,7 @@ def init():
 #-------------------hot  window ------------
 class HotWindow:
     DAY_HOT_WIDTH = 120
-    DATA_TYPE = ('HOT', 'LHB', 'DDLR') # # HOT(热度)  LHB(龙虎榜) DDLR（大单流入）
+    DATA_TYPE = ('HOT', 'LHB', 'AMOUNT_PM') # # HOT(热度)  LHB(龙虎榜) AMOUNT_PM(成交额排名) DDLR（大单流入）
 
     def __init__(self):
         self.oldProc = None
@@ -156,8 +156,9 @@ class HotWindow:
         self.hotData = None # 热点数据
         self.lhbData = None # 龙虎榜数据
         self.ddlrData = None # 大单流入数据
+        self.volPMData = None # 成交额排名
         self.dataType = 'HOT'
-        self.selectDay = ''
+        self.selectDay = '' # YYYY-MM-DD
 
     def createHotWindow(self):
         global THS_TOP_HWND, THS_MAIN_HWND
@@ -203,6 +204,8 @@ class HotWindow:
                 self.drawLHB(hdc)
             elif self.dataType == 'DDLR':
                 self.drawDDLR(hdc)
+            elif self.dataType == 'AMOUNT_PM':
+                self.drawVolPM(hdc)
         else:
             self.drawMinMode(hdc)
 
@@ -329,6 +332,24 @@ class HotWindow:
             self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
         if endIdx < len(self.lhbData):
             self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
+        
+    def drawVolPM(self, hdc):
+        if not self.volPMData or len(self.volPMData) == 0:
+            return
+        x = (self.rect[2] % self.DAY_HOT_WIDTH) // 2
+        startX = x
+        days = [str(d['day']) for d in self.volPMData]
+        startIdx, endIdx = self.findDrawDaysIndex(days)
+        for i, data in enumerate(self.volPMData):
+            if i < startIdx or i >= endIdx:
+                continue
+            self.drawOneDayVolPM(hdc, x, data)
+            x += self.DAY_HOT_WIDTH
+        if startIdx > 0:
+            self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
+        if endIdx < len(self.hotData):
+            self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
+        pass
 
     def drawOneDayLHB(self, hdc, x, data): # data = {'day': '', 'famous': [] }
         if not data:
@@ -423,6 +444,17 @@ class HotWindow:
             win32gui.RestoreDC(hdc, sdc)
         win32gui.RestoreDC(hdc, odc)
 
+    def drawOneDayVolPM(self, hdc, x, data):
+        if not data:
+            return
+        day = str(data['day'])
+        #day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
+        sdc = self.drawDayTitle(hdc, x, day)
+        pm = str(data['pm'])
+        win32gui.DrawText(hdc, pm, len(pm), (x, 20, x + self.DAY_HOT_WIDTH, 45), win32con.DT_CENTER)
+        if day == self.selectDay and sdc:
+            win32gui.RestoreDC(hdc, sdc)
+
     def drawMinMode(self, hdc):
         title = '【我的热点】'
         rr = win32gui.GetClientRect(self.wnd)
@@ -452,7 +484,8 @@ class HotWindow:
     def updateCode(self, code):
         self.updateHotData(code)
         self.updateLHBData(code)
-        self.updateDDLRData(code)
+        #self.updateDDLRData(code)
+        self.updateVolPMData(code)
 
     def updateLHBData(self, code):
         ds = orm.TdxLHB.select().where(orm.TdxLHB.code == code)
@@ -498,6 +531,17 @@ class HotWindow:
     def updateDDLRData(self, code):
         ds = orm.THS_DDLR.select().where(orm.THS_DDLR.code == code)
         self.ddlrData = [d.__data__ for d in ds]
+        self.selectDay = None
+        win32gui.InvalidateRect(self.wnd, None, True)
+    
+    def updateVolPMData(self, code):
+        def formatData(d):
+            day = str(d['day'])
+            day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
+            d['day'] = day
+            return d
+        ds = orm.TdxVolPMModel.select().where(orm.TdxVolPMModel.code == code)
+        self.volPMData = [formatData(d.__data__) for d in ds]
         self.selectDay = None
         win32gui.InvalidateRect(self.wnd, None, True)
 
