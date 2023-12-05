@@ -145,8 +145,7 @@ def init():
 
 #-------------------hot  window ------------
 class HotWindow:
-    DAY_HOT_WIDTH = 120
-    DATA_TYPE = ('HOT', 'LHB', 'AMOUNT_PM') # # HOT(热度)  LHB(龙虎榜) AMOUNT_PM(成交额排名) DDLR（大单流入）
+    DATA_TYPE = ('HOT', 'LHB', 'VOL_PM') # # HOT(热度)  LHB(龙虎榜) VOL_PM(成交额排名) DDLR（大单流入）
 
     def __init__(self):
         self.oldProc = None
@@ -198,14 +197,7 @@ class HotWindow:
         win32gui.SelectObject(hdc, font)
         
         if self.maxMode:
-            if self.dataType == "HOT":
-                self.drawHot(hdc)
-            elif self.dataType == 'LHB':
-                self.drawLHB(hdc)
-            elif self.dataType == 'DDLR':
-                self.drawDDLR(hdc)
-            elif self.dataType == 'AMOUNT_PM':
-                self.drawVolPM(hdc)
+            self.drawDataType(hdc)
         else:
             self.drawMinMode(hdc)
 
@@ -214,13 +206,25 @@ class HotWindow:
         win32gui.DeleteObject(bk)
         # print('WM_PAINT')
 
+    def drawDataType(self, hdc):
+        DEFAULT_ITEM_WIDTH = 120
+        if self.dataType == "HOT" and self.hotData:
+            days = [d[0]['day'] for d in self.hotData]
+            self._drawDataType(hdc, days, self.hotData, DEFAULT_ITEM_WIDTH, self.drawOneDayHot)
+        elif self.dataType == 'LHB' and self.lhbData:
+            days = [d['day'] for d in self.lhbData]
+            self._drawDataType(hdc, days, self.lhbData, DEFAULT_ITEM_WIDTH, self.drawOneDayLHB)
+        elif self.dataType == 'VOL_PM' and self.volPMData:
+            days = [str(d['day']) for d in self.volPMData]
+            self._drawDataType(hdc, days, self.volPMData, DEFAULT_ITEM_WIDTH - 30, self.drawOneDayVolPM)
+
     # param days: [YYYY-MM-DD, ....]
     # return [startIdx, endIdx)
-    def findDrawDaysIndex(self, days):
+    def findDrawDaysIndex(self, days, itemWidth):
         if not days:
             return (0, 0)
         width = self.rect[2]
-        num = width // self.DAY_HOT_WIDTH
+        num = width // itemWidth
         if num == 0:
             return (0, 0)
         if len(days) <= num:
@@ -262,104 +266,36 @@ class HotWindow:
         win32gui.DeleteObject(br)
         win32gui.DeleteObject(pen)
 
-    def drawLHB(self, hdc):
-        if not self.lhbData or len(self.lhbData) == 0:
+    def _drawDataType(self, hdc, days, datas, itemWidth, drawOneDay):
+        if not datas or len(datas) == 0:
             return
-        x = (self.rect[2] % self.DAY_HOT_WIDTH) // 2
+        x = (self.rect[2] % itemWidth) // 2
         startX = x
-        nd = self.lhbData
-        days = [d['day'] for d in self.lhbData]
-        startIdx, endIdx = self.findDrawDaysIndex(days)
-        for i, data in enumerate(nd):
-            if i < startIdx or i >= endIdx:
-                continue
-            self.drawOneDayLHB(hdc, x, data)
-            x += self.DAY_HOT_WIDTH
-        if startIdx > 0:
-            self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
-        if endIdx < len(self.lhbData):
-            self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
-        self.drawLHBSelectTip(hdc, days[startIdx : endIdx])
-
-    def drawLHBSelectTip(self, hdc, showDays):
-        if (not self.selectDay) or len(showDays) == 0 or (self.selectDay in showDays):
-            return
-        idx = -1
-        for i in range(0, len(showDays)):
-            if showDays[i] < self.selectDay:
-                idx = i
-        x = idx * self.DAY_HOT_WIDTH + self.DAY_HOT_WIDTH
-        if idx >= 0:
-            self.drawArrowTip(hdc, x - 20, self.rect[3] - 20, 1, 0x0000ff)
-        else:
-            self.drawArrowTip(hdc, x + 20, self.rect[3] - 20, 0, 0x0000ff)
-
-    def drawHot(self, hdc):
-        if not self.hotData or len(self.hotData) == 0:
-            return
-        x = (self.rect[2] % self.DAY_HOT_WIDTH) // 2
-        startX = x
-        nd = self.hotData
-        days = [d[0]['day'] for d in self.hotData]
-        startIdx, endIdx = self.findDrawDaysIndex(days)
-        for i, data in enumerate(nd):
-            if i < startIdx or i >= endIdx:
-                continue
-            self.drawOneDayHot(hdc, x, data)
-            x += self.DAY_HOT_WIDTH
-        if startIdx > 0:
-            self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
-        if endIdx < len(self.hotData):
-            self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
-
-    def drawDDLR(self, hdc):
-        if not self.ddlrData or len(self.ddlrData) == 0:
-            return
-        x = (self.rect[2] % self.DAY_HOT_WIDTH) // 2
-        startX = x
-        nd = self.ddlrData
-        days = [d['day'] for d in self.ddlrData]
-        startIdx, endIdx = self.findDrawDaysIndex(days)
-        maxVal = 0
-        for d in self.ddlrData:
-            if maxVal < abs(d['total']):
-                maxVal = abs(d['total'])
-        for i, data in enumerate(nd):
-            if i < startIdx or i >= endIdx:
-                continue
-            self.drawOneDayDDLR(hdc, x, data, maxVal)
-            x += self.DAY_HOT_WIDTH
-        if startIdx > 0:
-            self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
-        if endIdx < len(self.lhbData):
-            self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
-        
-    def drawVolPM(self, hdc):
-        if not self.volPMData or len(self.volPMData) == 0:
-            return
-        x = (self.rect[2] % self.DAY_HOT_WIDTH) // 2
-        startX = x
-        days = [str(d['day']) for d in self.volPMData]
-        startIdx, endIdx = self.findDrawDaysIndex(days)
-        for i, data in enumerate(self.volPMData):
-            if i < startIdx or i >= endIdx:
-                continue
-            self.drawOneDayVolPM(hdc, x, data)
-            x += self.DAY_HOT_WIDTH
-        if startIdx > 0:
-            self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
-        if endIdx < len(self.hotData):
-            self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
-        pass
-
-    def drawOneDayLHB(self, hdc, x, data): # data = {'day': '', 'famous': [] }
-        if not data:
-            return
         pen = win32gui.CreatePen(win32con.PS_DASH, 1, 0xff0000) # day split vertical line
+        startIdx, endIdx = self.findDrawDaysIndex(days, itemWidth)
+        for i, data in enumerate(datas):
+            if i < startIdx or i >= endIdx:
+                continue
+            sdc = win32gui.SaveDC(hdc)
+            if data:
+                drawOneDay(hdc, data, x, itemWidth, i, startIdx, endIdx)
+            # draw vertical split line
+            win32gui.SelectObject(hdc, pen)
+            win32gui.MoveToEx(hdc, x + itemWidth, 0)
+            win32gui.LineTo(hdc, x + itemWidth, self.rect[3])
+            win32gui.RestoreDC(hdc, sdc)
+            x += itemWidth
+        if startIdx > 0:
+            self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
+        if endIdx < len(datas):
+            self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
+        win32gui.DeleteObject(pen)
+
+    def drawOneDayLHB(self, hdc, data, x, itemWidth, *args): # data = {'day': '', 'famous': [] }
         y = 0
-        WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 14
+        WIDTH, HEIGHT = itemWidth, 14
         day = data['day']
-        sdc = self.drawDayTitle(hdc, x, day)
+        sdc = self.drawDayTitle(hdc, x, day, itemWidth)
 
         y += 10
         flag = True
@@ -369,24 +305,16 @@ class HotWindow:
                 flag = False
                 y += 10
             win32gui.DrawText(hdc, d, len(d), (x + 5, y, x + WIDTH, y + HEIGHT), win32con.DT_LEFT)
-            
-        win32gui.SelectObject(hdc, pen)
-        win32gui.MoveToEx(hdc, x + WIDTH, 0)
-        win32gui.LineTo(hdc, x + WIDTH, self.rect[3])
-        win32gui.DeleteObject(pen)
-        if day == self.selectDay and sdc:
-            win32gui.RestoreDC(hdc, sdc)
 
-    def drawOneDayHot(self, hdc, x, data): # data = [ {day:'', time:'', hotValue:xx, hotOrder: '' }, ... ]
+    def drawOneDayHot(self, hdc, data, x, itemWidth, *args): # data = [ {day:'', time:'', hotValue:xx, hotOrder: '' }, ... ]
         if not data or len(data) == 0:
             return
-        pen = win32gui.CreatePen(win32con.PS_DASH, 1, 0xff0000) # day split vertical line
         pen2 = win32gui.CreatePen(win32con.PS_DOT, 1, 0x0000ff) # split one day hor-line
+        win32gui.SelectObject(hdc, pen2)
         y = 0
-        WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 14
+        WIDTH, HEIGHT = itemWidth, 14
         day = data[0]['day']
-        sdc = self.drawDayTitle(hdc, x, day)
-        
+        sdc = self.drawDayTitle(hdc, x, day, itemWidth)
         isDrawSplit = False
         for d in data:
             y += HEIGHT
@@ -394,20 +322,13 @@ class HotWindow:
             win32gui.DrawText(hdc, row, len(row), (x, y, x + WIDTH, y + HEIGHT), win32con.DT_CENTER)
             if d['time'] >= '13:00' and (not isDrawSplit):
                 isDrawSplit = True
-                win32gui.SelectObject(hdc, pen2)
                 win32gui.MoveToEx(hdc, x + 5, y - 2)
                 win32gui.LineTo(hdc, x + WIDTH - 5, y - 2)
-        win32gui.SelectObject(hdc, pen)
-        win32gui.MoveToEx(hdc, x + WIDTH, 0)
-        win32gui.LineTo(hdc, x + WIDTH, self.rect[3])
-        win32gui.DeleteObject(pen)
         win32gui.DeleteObject(pen2)
-        if day == self.selectDay and sdc:
-            win32gui.RestoreDC(hdc, sdc)
 
     # day = YYYY-MM-DD
-    def drawDayTitle(self, hdc, x, day):
-        WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 14
+    def drawDayTitle(self, hdc, x, day, itemWidth):
+        WIDTH, HEIGHT = itemWidth, 14
         ds = time.strptime(day, '%Y-%m-%d')
         wd = datetime.date(ds[0], ds[1], ds[2]).isoweekday()
         WDS = '一二三四五六日'
@@ -419,46 +340,33 @@ class HotWindow:
         win32gui.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
         return sdc
 
-    def drawOneDayDDLR(self, hdc, x, data, maxVal): # data = THS_DDLR.__data__
-        if not data:
-            return
-        odc = win32gui.SaveDC(hdc)
-        pen = win32gui.GetStockObject(win32con.NULL_PEN)
-        win32gui.SelectObject(hdc, pen)
-        color = 0x0000ff  if data['total'] >= 0 else 0x00ff00
-        br1 = win32gui.CreateSolidBrush(color)
-        win32gui.SelectObject(hdc, br1)
-        WIDTH, HEIGHT = self.DAY_HOT_WIDTH, 150
+    def drawOneDayVolPM(self, hdc, data, x, itemWidth, *args):
+        idx, startIdx, endIdx, *_ = args
         day = data['day']
-        day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
-        sdc = self.drawDayTitle(hdc, x, day)
-        h = abs(data['total']) / maxVal * HEIGHT
-        ty = 15 + HEIGHT - h
-        by = 15 + HEIGHT
-        cx = int(x + WIDTH / 2 - 10)
-        win32gui.Rectangle(hdc, cx, ty, cx + 20, by)
-        info = f"{float(data['total']) : .2f} 亿"
-        win32gui.DrawText(hdc, info, len(info), (x, by + 15, x + WIDTH, by + 45), win32con.DT_CENTER)
-        #win32gui.DeleteObject(pen)
-        win32gui.DeleteObject(br1)
-        if day == self.selectDay and sdc:
-            win32gui.RestoreDC(hdc, sdc)
-        win32gui.RestoreDC(hdc, odc)
+        sdc = self.drawDayTitle(hdc, x, day, itemWidth)
+        info = '  排名: ' + str(data['pm'])
+        win32gui.DrawText(hdc, info, len(info), (x, 20, x + itemWidth, 80), win32con.DT_LEFT)
 
-    def drawOneDayVolPM(self, hdc, x, data):
-        if not data:
+        startY, endY = 60, self.rect[3] - 40
+        BASE_VOL = 6000 #基准成交额为6000亿
+        lsvol = max(data['ls-vol'] - BASE_VOL, 100)
+        maxVol = 100
+        for i in range(startIdx, endIdx):
+            maxVol = max(self.volPMData[i]['ls-vol'] - BASE_VOL, maxVol)
+        y = int(startY + (1 - lsvol / maxVol) * (endY - startY))
+        sx = x + itemWidth // 2 - 5
+        # 8000亿以上显示红色，以下为绿色
+        hbr = win32gui.CreateSolidBrush(0x0000ff if data['ls-vol'] >= 8000 else 0x00ff00)
+        win32gui.FillRect(hdc, (sx, y, sx + 10, endY), hbr)
+        win32gui.DeleteObject(hbr)
+        if idx <= 0:
             return
-        pen = win32gui.CreatePen(win32con.PS_DASH, 1, 0xff0000) # day split vertical line
-        day = data['day']
-        sdc = self.drawDayTitle(hdc, x, day)
-        win32gui.DrawText(hdc, data['info'], len(data['info']), (x, 20, x + self.DAY_HOT_WIDTH, 80), win32con.DT_LEFT)
-        win32gui.SelectObject(hdc, pen)
-        WIDTH = self.DAY_HOT_WIDTH
-        win32gui.MoveToEx(hdc, x + WIDTH, 0)
-        win32gui.LineTo(hdc, x + WIDTH, self.rect[3])
-        win32gui.DeleteObject(pen)
-        if day == self.selectDay and sdc:
-            win32gui.RestoreDC(hdc, sdc)
+        cv = data['ls-vol']
+        pv = cv - self.volPMData[idx - 1]['ls-vol']
+        info = f"{cv} 亿"
+        win32gui.DrawText(hdc, info, len(info), (x, y - 12, x + itemWidth, y), win32con.DT_CENTER)
+        info = f"( {pv :+d} 亿 )"
+        win32gui.DrawText(hdc, info, len(info), (x, endY + 10, x + itemWidth, self.rect[3]), win32con.DT_CENTER)
 
     def drawMinMode(self, hdc):
         title = '【我的热点】'
@@ -489,7 +397,6 @@ class HotWindow:
     def updateCode(self, code):
         self.updateHotData(code)
         self.updateLHBData(code)
-        #self.updateDDLRData(code)
         self.updateVolPMData(code)
 
     def updateLHBData(self, code):
@@ -542,15 +449,16 @@ class HotWindow:
     def updateVolPMData(self, code):
         zsDatas = orm.TdxVolPMModel.select().where(orm.TdxVolPMModel.code == '000000')
         codeDatas = orm.TdxVolPMModel.select().where(orm.TdxVolPMModel.code == code)
-        zs = {}
-        for c in zsDatas:
-            zs[c.day] = c
+        cs = {}
+        for c in codeDatas:
+            cs[c.day] = c
         dd = []
-        for d in codeDatas:
-            info = '  排名: ' + str(d.pm) + '\n\n  两市: ' + str(int(zs[d.day].amount)) +' 亿'
+        for d in zsDatas:
             day = str(d.day)
             day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
-            item = {'day': day, 'info': info}
+            cc = cs.get(d.day, None)
+            pm = cc.pm if cc else '--'
+            item = {'day': day, 'pm': pm, 'ls-vol': int(d.amount)}
             dd.append(item)
         self.volPMData = dd
         self.selectDay = None
@@ -617,6 +525,8 @@ def work_updateCode(nowCode):
         icode = int(nowCode)
     except Exception as e:
         nowCode = '0'
+    if curCode == nowCode:
+        return
     curCode = nowCode
     hotWindow.updateCode(nowCode)
     sort_win32.sortInfoWindow.changeCode(nowCode)
