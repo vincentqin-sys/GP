@@ -214,6 +214,7 @@ class HotWindow:
         win32gui.DeleteObject(bk)
         # print('WM_PAINT')
 
+    # param days: [YYYY-MM-DD, ....]
     # return [startIdx, endIdx)
     def findDrawDaysIndex(self, days):
         if not days:
@@ -447,11 +448,15 @@ class HotWindow:
     def drawOneDayVolPM(self, hdc, x, data):
         if not data:
             return
-        day = str(data['day'])
-        #day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
+        pen = win32gui.CreatePen(win32con.PS_DASH, 1, 0xff0000) # day split vertical line
+        day = data['day']
         sdc = self.drawDayTitle(hdc, x, day)
-        pm = str(data['pm'])
-        win32gui.DrawText(hdc, pm, len(pm), (x, 20, x + self.DAY_HOT_WIDTH, 45), win32con.DT_CENTER)
+        win32gui.DrawText(hdc, data['info'], len(data['info']), (x, 20, x + self.DAY_HOT_WIDTH, 80), win32con.DT_LEFT)
+        win32gui.SelectObject(hdc, pen)
+        WIDTH = self.DAY_HOT_WIDTH
+        win32gui.MoveToEx(hdc, x + WIDTH, 0)
+        win32gui.LineTo(hdc, x + WIDTH, self.rect[3])
+        win32gui.DeleteObject(pen)
         if day == self.selectDay and sdc:
             win32gui.RestoreDC(hdc, sdc)
 
@@ -535,13 +540,19 @@ class HotWindow:
         win32gui.InvalidateRect(self.wnd, None, True)
     
     def updateVolPMData(self, code):
-        def formatData(d):
-            day = str(d['day'])
+        zsDatas = orm.TdxVolPMModel.select().where(orm.TdxVolPMModel.code == '000000')
+        codeDatas = orm.TdxVolPMModel.select().where(orm.TdxVolPMModel.code == code)
+        zs = {}
+        for c in zsDatas:
+            zs[c.day] = c
+        dd = []
+        for d in codeDatas:
+            info = '  排名: ' + str(d.pm) + '\n\n  两市: ' + str(int(zs[d.day].amount)) +' 亿'
+            day = str(d.day)
             day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
-            d['day'] = day
-            return d
-        ds = orm.TdxVolPMModel.select().where(orm.TdxVolPMModel.code == code)
-        self.volPMData = [formatData(d.__data__) for d in ds]
+            item = {'day': day, 'info': info}
+            dd.append(item)
+        self.volPMData = dd
         self.selectDay = None
         win32gui.InvalidateRect(self.wnd, None, True)
 

@@ -20,7 +20,7 @@ class TdxVolPMTools:
         self.codes = rtSH + rtSZ
     
     def _calcDays(self):
-        df = DataFile('880081', DataFile.DT_DAY)
+        df = DataFile('999999', DataFile.DT_DAY)
         days = []
         for i in range(len(df.data)):
             if df.data[i].day > self.fromDay:
@@ -69,7 +69,21 @@ class TdxVolPMTools:
                 print(d)
             self._save(top500)
 
+    # 计算两市成交总额
+    def calcSHSZVol(self):
+        sh = DataFile('999999', DataFile.DT_DAY)
+        sz = DataFile('399001', DataFile.DT_DAY)
+        zs = []
+        for day in self.days:
+            d1 = sh.getItemData(day)
+            d2 = sz.getItemData(day)
+            amount = (d1.amount + d2.amount) // 100000000
+            zs.append(orm.TdxVolPMModel(**{'code': '999999', 'name': '上证指数', 'day': day, 'amount': d1.amount // 100000000, 'pm': 0}))
+            zs.append(orm.TdxVolPMModel(**{'code': '399001', 'name': '深证指数', 'day': day, 'amount': d2.amount // 100000000, 'pm': 0}))
+            zs.append(orm.TdxVolPMModel(**{'code': '000000', 'name': '两市成交', 'day': day, 'amount': amount, 'pm': 0}))
+        self._save(zs)
 
 if __name__ == '__main__':
     t = TdxVolPMTools()
     t.calcVolOrder_Top500()
+    t.calcSHSZVol()

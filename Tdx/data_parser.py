@@ -1,8 +1,7 @@
-import os, struct
+import os, struct, platform
 from collections import namedtuple
 
 VIPDOC_BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
-DEST_MIN_LINE_PATH = r'D:\Program Files\new_tdx2\vipdoc2'
 
 class ItemData:
     DS = ('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股)
@@ -34,8 +33,8 @@ class DataFile:
     def __init__(self, code, dataType):
         self.code = code
         self.dataType = dataType
-        path = self._getPathByCode(self.code)
-        self.data = self._loadDataFile(path)
+        paths = self._getPathByCode(self.code)
+        self.data = self._loadDataFiles(paths)
 
     def getItemIdx(self, day):
         left, right = 0, len(self.data) - 1
@@ -69,10 +68,33 @@ class DataFile:
         return self.data[idx]
 
     def _getPathByCode(self, code):
-        tag = 'sh' if code[0] == '6' or code[0] == '8' else 'sz'
+        tag = 'sh' if code[0] == '6' or code[0] == '8' or code[0] == '9' else 'sz'
+        bp = os.path.join(VIPDOC_BASE_PATH, tag)
+        fs = os.listdir(bp)
+        fs = sorted(fs)
         if self.dataType == self.DT_DAY:
-            return os.path.join(VIPDOC_BASE_PATH, tag, 'lday', tag + code + '.day')
-        return os.path.join(VIPDOC_BASE_PATH, tag, 'minline', tag + code + '.lc1')
+            rt = [f for f in fs if 'lday-' in f]
+            rt.append('lday')
+            rt = [os.path.join(bp, r, tag + code + '.day') for r in rt]
+        else:
+            rt = [f for f in fs if 'minline-' in f]
+            rt.append('minline')
+            rt = [os.path.join(bp, r, tag + code + '.lc1') for r in rt]
+        rs = [r for r in rt if os.path.exists(r)]
+        return rs
+
+    def _loadDataFiles(self, paths):
+        rt = None
+        for p in paths:
+            data = self._loadDataFile(p)
+            if not rt:
+                rt = data
+                continue
+            lastDay = rt[-1].day
+            for d in data:
+                if d.day > lastDay:
+                    rt.append(d)
+        return rt
 
     def _loadDataFile(self, path):
         def T(fv): return int(fv * 100 + 0.5)
@@ -168,7 +190,9 @@ class DataFile:
         return rs
 
 if __name__ == '__main__':
-    df = DataFile('300364', DataFile.DT_MINLINE)
+    df = DataFile('300364', DataFile.DT_DAY)
+    for d in df.data:
+        print(d)
     df.calcMA(5)
     df.calcZDT()
     zt = df.getItemsByZT(True)
