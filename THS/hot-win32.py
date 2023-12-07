@@ -266,7 +266,7 @@ class HotWindow:
         win32gui.DeleteObject(br)
         win32gui.DeleteObject(pen)
 
-    def _drawDataType(self, hdc, days, datas, itemWidth, drawOneDay):
+    def _drawDataType(self, hdc, days, datas, itemWidth, drawOneDay, optParams = None):
         if not datas or len(datas) == 0:
             return
         x = (self.rect[2] % itemWidth) // 2
@@ -278,7 +278,7 @@ class HotWindow:
                 continue
             sdc = win32gui.SaveDC(hdc)
             if data:
-                drawOneDay(hdc, data, x, itemWidth, i, startIdx, endIdx)
+                drawOneDay(hdc, data, x, itemWidth, i, startIdx, endIdx, optParams)
             # draw vertical split line
             win32gui.SelectObject(hdc, pen)
             win32gui.MoveToEx(hdc, x + itemWidth, 0)
@@ -341,6 +341,17 @@ class HotWindow:
         return sdc
 
     def drawOneDayLSInfo(self, hdc, data, x, itemWidth, *args):
+        def getRangeOf(name):
+            maxVal, minVal = 0, 0
+            for i in range(startIdx, endIdx):
+                v = self.lsInfoData[i][name]
+                if minVal == 0 and maxVal == 0:
+                    maxVal = minVal = v
+                    continue
+                maxVal = max(maxVal, v)
+                minVal = min(minVal, v)
+            return minVal, maxVal
+
         idx, startIdx, endIdx, *_ = args
         if idx <= 0:
             return
@@ -349,33 +360,62 @@ class HotWindow:
         #info = '  排名: ' + str(data['pm'])
         #win32gui.DrawText(hdc, info, len(info), (x, 20, x + itemWidth, 80), win32con.DT_LEFT)
 
-        # 1. 成交额图表
         startY, endY = 60, self.rect[3] - 40
+        hbrRed = win32gui.CreateSolidBrush(0x0000ff)
+        hbrGreen = win32gui.CreateSolidBrush(0x00ff00)
+        hbrBlue = win32gui.CreateSolidBrush(0xff0000)
+        hbrYellow = win32gui.CreateSolidBrush(0x00ffff)
+        # 涨跌数量图表
+        upRate =  data['upNum'] / (data['upNum'] + data['downNum'])
+        startY = 30
+        spY = startY + int(upRate * (endY - startY))
+        win32gui.FillRect(hdc, (x + 5, startY, x + 10, spY), hbrRed)
+        win32gui.FillRect(hdc, (x + 5, spY, x + 10, endY), hbrGreen)
+        # 涨跌停数量图表
+        ztX, ztStartY = x + 20, startY + 30
+        ztMin, ztMax = getRangeOf('ztNum')
+        ZT_NUM_BASE = ztMin // 2
+        ztY = int(ztStartY + (1 - (data['ztNum'] - ZT_NUM_BASE) / (ztMax - ZT_NUM_BASE)) * (endY - ztStartY))
+        win32gui.FillRect(hdc, (ztX, ztY, ztX + 5, endY), hbrBlue)
+        info = str(data['ztNum'])
+        win32gui.DrawText(hdc, info, len(info), (ztX - 4, ztY - 12, ztX + 8, ztY), win32con.DT_CENTER)
+        #连板数量图表
+        lbX = ztX + 15
+        lbY = int(ztStartY + (1 - (data['lbNum']) / ztMax) * (endY - ztStartY))
+        win32gui.FillRect(hdc, (lbX, lbY, lbX + 5, endY), hbrBlue)
+        info = str(data['lbNum'])
+        win32gui.DrawText(hdc, info, len(info), (lbX - 4, lbY - 12, lbX + 8, lbY), win32con.DT_CENTER)
+        #最高板数量图表
+        zgbX = lbX + 15
+        zgbY = int(ztStartY + (1 - (data['zgb']) / ztMax) * (endY - ztStartY))
+        win32gui.FillRect(hdc, (zgbX, zgbY, zgbX + 5, endY), hbrBlue)
+        info = str(data['zgb'])
+        win32gui.DrawText(hdc, info, len(info), (zgbX - 4, zgbY - 12, zgbX + 8, zgbY), win32con.DT_CENTER)
+        #跌停数量图表
+        dtX = zgbX + 15
+        dtY = int(ztStartY + (1 - (data['dtNum']) / ztMax) * (endY - ztStartY))
+        win32gui.FillRect(hdc, (dtX, dtY, dtX + 5, endY), hbrYellow)
+        info = str(data['dtNum'])
+        win32gui.DrawText(hdc, info, len(info), (dtX - 4, dtY - 12, dtX + 8, dtY), win32con.DT_CENTER)
+        # 成交额图表
         BASE_VOL = 6000 #基准成交额为6000亿
         lsvol = max(data['amount'] - BASE_VOL, 100)
         maxVol = 100
         for i in range(startIdx, endIdx):
             maxVol = max(self.lsInfoData[i]['amount'] - BASE_VOL, maxVol)
-        y = int(startY + (1 - lsvol / maxVol) * (endY - startY))
-        sx = x + itemWidth // 2 - 5
-        # 8000亿以上显示红色，以下为绿色
-        hbrRed = win32gui.CreateSolidBrush(0x0000ff)
-        hbrGreen = win32gui.CreateSolidBrush(0x00ff00)
-        hbr = hbrRed if data['amount'] >= 8000 else hbrGreen
-        win32gui.FillRect(hdc, (sx, y, sx + 10, endY), hbr)
-        cv = int(data['amount'])
-        pv = int(cv - self.lsInfoData[idx - 1]['amount'])
-        info = f"{cv}\n({pv :+d})"
-        win32gui.DrawText(hdc, info, len(info), (x + itemWidth // 2, y - 12, x + itemWidth, y + 30), win32con.DT_CENTER)
-        # 涨跌数量图表
-        upRate =  data['upNum'] / (data['upNum'] + data['downNum'])
+        volY = int(startY + (1 - lsvol / maxVol) * (endY - startY))
+        volX = dtX + 23
+        hbr = hbrRed if data['amount'] >= 8000 else hbrGreen # 8000亿以上显示红色，以下为绿色
+        win32gui.FillRect(hdc, (volX, volY, volX + 10, endY), hbr)
+        info = f"{int(data['amount'])}"
+        win32gui.DrawText(hdc, info, len(info), (volX - 10, volY - 12, volX + 20, volY + 30), win32con.DT_CENTER)
+        info = f"{int(data['amount'] - self.lsInfoData[idx - 1]['amount']) :+d}"
+        win32gui.DrawText(hdc, info, len(info), (volX - 10, endY, volX + 20, endY + 15), win32con.DT_CENTER)
         
-
-        # 2. 显示左侧信息
-        info = f"涨停:{data['ztNum']}\n最高:{data['zgb']}\n连板:{data['lbNum']}\n跌停:{data['dtNum']}"
-        win32gui.DrawText(hdc, info, len(info), (x + 5, startY + 30, x + itemWidth, self.rect[3]), win32con.DT_LEFT)
         win32gui.DeleteObject(hbrRed)
         win32gui.DeleteObject(hbrGreen)
+        win32gui.DeleteObject(hbrBlue)
+        win32gui.DeleteObject(hbrYellow)
 
 
     def drawMinMode(self, hdc):
