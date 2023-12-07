@@ -40,7 +40,7 @@ class TdxVolPMTools:
         self.loadAllCodes()
         self.calcDays()
         self.initCodeName()
-        dfs = [DataFile(c, DataFile.DT_DAY) for c in self.codes]
+        dfs = [DataFile(c, DataFile.DT_DAY, False) for c in self.codes]
         bpd = 0
         def sortKey(df):
             idx = df.getItemIdx(bpd)
@@ -62,13 +62,13 @@ class TdxVolPMTools:
                     name = 'N'
                 d = {'code': code, 'name': name, 'day': day, 'amount': amount, 'pm': i + 1}
                 top500.append(orm.TdxVolPMModel(**d))
-                print(d)
+                #print(d)
             self.save(top500)
 
     # 计算两市成交总额
     def calcSHSZVol(self):
-        sh = DataFile('999999', DataFile.DT_DAY)
-        sz = DataFile('399001', DataFile.DT_DAY)
+        sh = DataFile('999999', DataFile.DT_DAY, False)
+        sz = DataFile('399001', DataFile.DT_DAY, False)
         zs = []
         for day in self.days:
             d1 = sh.getItemData(day)
@@ -117,9 +117,9 @@ class TdxLSTools:
     def calcInfo(self):
         self.codes = DataFileUtils.listAllCodes()
         self.days = DataFileUtils.calcDays(self.fromDay)
-        sh = DataFile('999999', DataFile.DT_DAY, True, self.fromDay)
-        sz = DataFile('399001', DataFile.DT_DAY, True, self.fromDay)
-        dfs = [DataFile(c, DataFile.DT_DAY, True, self.fromDay) for c in self.codes]
+        sh = DataFile('999999', DataFile.DT_DAY, True)
+        sz = DataFile('399001', DataFile.DT_DAY, True)
+        dfs = [DataFile(c, DataFile.DT_DAY, True) for c in self.codes]
         rs = []
         for df in dfs:
             df.calcZDT()

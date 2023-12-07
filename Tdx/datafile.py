@@ -31,10 +31,9 @@ class DataFile:
     FROM_DAY = 20230101 # 仅计算由此开始的日期数据
 
     # dataType = DT_DAY  |  DT_MINLINE
-    def __init__(self, code, dataType, merge = False, fromDay = FROM_DAY):
+    def __init__(self, code, dataType, merge):
         self.code = code
         self.dataType = dataType
-        self.fromDay = fromDay
         paths = self._getPathByCode(self.code, merge)
         self.data = self._loadDataFiles(paths)
 
@@ -121,7 +120,7 @@ class DataFile:
                 d0 = y * 10000 + m * 100 + r
                 d1 = (item[1] // 60) * 100 + (item[1] % 60)
                 item = ItemData(d0, d1, T(item[2]), T(item[3]), T(item[4]), T(item[5]), item[6], item[7])
-            if item.day >= self.fromDay:
+            if item.day >= self.FROM_DAY:
                 rs.append(item)
         f.close()
         # check minute line number
@@ -222,7 +221,7 @@ class DataFileUtils:
     # @return list[day, ...]
     @staticmethod
     def calcDays(fromDay):
-        df = DataFile('999999', DataFile.DT_DAY, True, fromDay)
+        df = DataFile('999999', DataFile.DT_DAY, True)
         days = []
         for i in range(len(df.data)):
             if df.data[i].day > fromDay:
