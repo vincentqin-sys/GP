@@ -1,4 +1,4 @@
-from data_parser import *
+from datafile import *
 
 
 def test():

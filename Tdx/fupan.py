@@ -1,6 +1,6 @@
 import sys
 import peewee as pw
-from data_parser import *
+from datafile import *
 from orm import *
 
 class FuPan:

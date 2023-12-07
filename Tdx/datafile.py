@@ -4,7 +4,7 @@ from collections import namedtuple
 VIPDOC_BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
 
 class ItemData:
-    DS = ('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股)
+    DS = ('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股), lbs(连板数)
     MLS = ('day', 'time', 'open', 'high', 'low', 'close', 'amount', 'vol') # avgPrice 分时均价
     # MA5
 
@@ -28,11 +28,13 @@ class ItemData:
 
 class DataFile:
     DT_DAY, DT_MINLINE = 1, 2
+    FROM_DAY = 20230101 # 仅计算由此开始的日期数据
 
     # dataType = DT_DAY  |  DT_MINLINE
-    def __init__(self, code, dataType, merge = False):
+    def __init__(self, code, dataType, merge = False, fromDay = FROM_DAY):
         self.code = code
         self.dataType = dataType
+        self.fromDay = fromDay
         paths = self._getPathByCode(self.code, merge)
         self.data = self._loadDataFiles(paths)
 
@@ -119,7 +121,8 @@ class DataFile:
                 d0 = y * 10000 + m * 100 + r
                 d1 = (item[1] // 60) * 100 + (item[1] % 60)
                 item = ItemData(d0, d1, T(item[2]), T(item[3]), T(item[4]), T(item[5]), item[6], item[7])
-            rs.append(item)
+            if item.day >= self.fromDay:
+                rs.append(item)
         f.close()
         # check minute line number
         if self.dataType == self.DT_MINLINE and (len(rs) % 240) != 0:
@@ -160,16 +163,19 @@ class DataFile:
         isztzb = (int(pre * (100 + ZT) / 100 + 0.5) <= c.high) and (c.high != c.close)
         isdt = int(pre * (100 - ZT) / 100 + 0.5) >= c.close
         isdtzb = (int(pre * (100 - ZT) / 100 + 0.5) >= c.low) and (c.low != c.close)
-        if isztzb: c.ZDT = 'ZTZB'
-        if isdtzb: c.ZDT = 'DTZB'
-        if iszt: c.ZDT = 'ZT'
-        if isdt: c.ZDT = 'DT'
+        if isztzb: c.zdt = 'ZTZB'
+        if isdtzb: c.zdt = 'DTZB'
+        if iszt: c.zdt = 'ZT'
+        if isdt: c.zdt = 'DT'
 
     # 计算涨跌停信息
     def calcZDT(self):
         if self.dataType == self.DT_DAY:
             for i in range(1, len(self.data)):
                 self._calcZDTInfo(self.data[i - 1].close, self.data[i])
+                if self.data[i].zdt == 'ZT':
+                    nowLbs = getattr(self.data[i - 1], 'lbs', 0)
+                    self.data[i].lbs = nowLbs + 1
         else:
             ONE_DAY_NUM = 240
             for i in range(1, len(self.data) // ONE_DAY_NUM):
@@ -186,11 +192,14 @@ class DataFile:
     def getItemsByZT(self, includeZTZB : bool):
         rs = []
         for d in self.data:
-            if getattr(d, 'ZDT', None) == 'ZT':
+            if getattr(d, 'zdt', None) == 'ZT':
                 rs.append(d)
-            if includeZTZB and getattr(d, 'ZDT', None) == 'ZTZB':
+            if includeZTZB and getattr(d, 'zdt', None) == 'ZTZB':
                 rs.append(d)
         return rs
+
+class DataFileDir:
+    pass
 
 if __name__ == '__main__':
     df = DataFile('300364', DataFile.DT_DAY)
