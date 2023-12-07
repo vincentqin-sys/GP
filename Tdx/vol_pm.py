@@ -10,7 +10,7 @@ class TdxVolPMTools:
         if v: fromDay = v
         self.fromDay = fromDay
         
-    def _loadAllCodes(self):
+    def loadAllCodes(self):
         sh = os.path.join(VIPDOC_BASE_PATH, 'sh/lday')
         codes = os.listdir(sh)
         rtSH = [c for c in codes if c[2] == '6']
@@ -19,7 +19,7 @@ class TdxVolPMTools:
         rtSZ = [c for c in codes if c[2] == '0' or c[2] == '3']
         self.codes = rtSH + rtSZ
     
-    def _calcDays(self):
+    def calcDays(self):
         df = DataFile('999999', DataFile.DT_DAY)
         days = []
         for i in range(len(df.data)):
@@ -27,7 +27,7 @@ class TdxVolPMTools:
                 days.append(df.data[i].day)
         self.days = days
 
-    def _initCodeName(self):
+    def initCodeName(self):
         ths_db = pw.SqliteDatabase(f'{orm.path}GP/db/THS_F10.db')
         sql = 'select code, name from 最新动态'
         csr = ths_db.cursor()
@@ -44,9 +44,9 @@ class TdxVolPMTools:
         orm.TdxVolPMModel.bulk_create(datas, 50)
     
     def calcVolOrder_Top500(self):
-        self._loadAllCodes()
-        self._calcDays()
-        self._initCodeName()
+        self.loadAllCodes()
+        self.calcDays()
+        self.initCodeName()
         dfs = [DataFile(c[2:8], DataFile.DT_DAY) for c in self.codes]
         bpd = 0
         def sortKey(df):
