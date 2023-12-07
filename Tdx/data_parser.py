@@ -30,10 +30,10 @@ class DataFile:
     DT_DAY, DT_MINLINE = 1, 2
 
     # dataType = DT_DAY  |  DT_MINLINE
-    def __init__(self, code, dataType):
+    def __init__(self, code, dataType, merge = False):
         self.code = code
         self.dataType = dataType
-        paths = self._getPathByCode(self.code)
+        paths = self._getPathByCode(self.code, merge)
         self.data = self._loadDataFiles(paths)
 
     def getItemIdx(self, day):
@@ -67,17 +67,20 @@ class DataFile:
             return None
         return self.data[idx]
 
-    def _getPathByCode(self, code):
+    def _getPathByCode(self, code, merge):
         tag = 'sh' if code[0] == '6' or code[0] == '8' or code[0] == '9' else 'sz'
         bp = os.path.join(VIPDOC_BASE_PATH, tag)
         fs = os.listdir(bp)
         fs = sorted(fs)
+        rt = []
         if self.dataType == self.DT_DAY:
-            rt = [f for f in fs if 'lday-' in f]
+            if merge:
+                rt = [f for f in fs if 'lday-' in f]
             rt.append('lday')
             rt = [os.path.join(bp, r, tag + code + '.day') for r in rt]
         else:
-            rt = [f for f in fs if 'minline-' in f]
+            if merge:
+                rt = [f for f in fs if 'minline-' in f]
             rt.append('minline')
             rt = [os.path.join(bp, r, tag + code + '.lc1') for r in rt]
         rs = [r for r in rt if os.path.exists(r)]

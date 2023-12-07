@@ -45,7 +45,9 @@ class TdxVolPMTools:
     
     def calcVolOrder_Top500(self):
         self._loadAllCodes()
+        print('[calcVolOrder_Top500] loadAllCodes end')
         self._calcDays()
+        print('[calcVolOrder_Top500] calcDays end')
         self._initCodeName()
         dfs = [DataFile(c[2:8], DataFile.DT_DAY) for c in self.codes]
         bpd = 0
@@ -64,7 +66,10 @@ class TdxVolPMTools:
                 code = nf.code
                 di = nf.getItemData(day)
                 amount =  (di.amount if di else 0) / 100000000
-                d = {'code': code, 'name': self.codeNames.get(code), 'day': day, 'amount': amount, 'pm': i + 1}
+                name = self.codeNames.get(code)
+                if not name:
+                    name = 'N'
+                d = {'code': code, 'name': name, 'day': day, 'amount': amount, 'pm': i + 1}
                 top500.append(orm.TdxVolPMModel(**d))
                 print(d)
             self._save(top500)
