@@ -173,7 +173,7 @@ class DataFile:
         if self.dataType == self.DT_DAY:
             for i in range(1, len(self.data)):
                 self._calcZDTInfo(self.data[i - 1].close, self.data[i])
-                if self.data[i].zdt == 'ZT':
+                if getattr(self.data[i], 'zdt', '') == 'ZT':
                     nowLbs = getattr(self.data[i - 1], 'lbs', 0)
                     self.data[i].lbs = nowLbs + 1
         else:
@@ -198,11 +198,41 @@ class DataFile:
                 rs.append(d)
         return rs
 
-class DataFileDir:
-    pass
+class DataFileUtils:
+
+    # 所有股标代码（上证、深证股），不含指数、北证股票
+    # @return list[code, ...]
+    @staticmethod
+    def listAllCodes():
+        allDirs = []
+        for tag in ('sh', 'sz'):
+            sh = os.path.join(VIPDOC_BASE_PATH, tag)
+            for ld in os.listdir(sh):
+                if 'lday' in ld:
+                    allDirs.append(os.path.join(sh, ld))
+        rs = set()
+        for d in allDirs:
+            codes = os.listdir(d)
+            rt = [c[2:8] for c in codes if c[2] == '6' or c[2] == '0' or c[2] == '3']
+            rs = rs.union(rt)
+        rs = sorted(rs, reverse=True)
+        return rs
+    
+    # 计算fromDay开始的所有日期(不含fromDay)
+    # @return list[day, ...]
+    @staticmethod
+    def calcDays(fromDay):
+        df = DataFile('999999', DataFile.DT_DAY, True, fromDay)
+        days = []
+        for i in range(len(df.data)):
+            if df.data[i].day > fromDay:
+                days.append(df.data[i].day)
+        return days
+
 
 if __name__ == '__main__':
-    df = DataFile('300364', DataFile.DT_DAY)
+    DataFileUtils.listAllCodes()
+    df = DataFile('603598', DataFile.DT_DAY, True)
     for d in df.data:
         print(d)
     df.calcMA(5)

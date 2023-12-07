@@ -19,12 +19,12 @@ class TdxVolPMModel(pw.Model):
 class TdxLSModel(pw.Model):
     day = pw.IntegerField(column_name='日期')
     amount = pw.FloatField(column_name='成交额') # （亿元）
-    upNum = pw.IntegerField(column_name='上涨家数')
-    downNum = pw.IntegerField(column_name = '下跌家数')
-    zts = pw.IntegerField(column_name='涨停数')
-    lbs = pw.IntegerField(column_name='连板数') #二板以上家数
-    zgb = pw.IntegerField(column_name='最高板')
-    dts = pw.IntegerField(column_name='跌停数')
+    upNum = pw.IntegerField(column_name='上涨家数', default=0)
+    downNum = pw.IntegerField(column_name = '下跌家数', default=0)
+    ztNum = pw.IntegerField(column_name='涨停数', default=0)
+    lbNum = pw.IntegerField(column_name='连板数', default=0) #二板以上家数
+    zgb = pw.IntegerField(column_name='最高板', default=0)
+    dtNum = pw.IntegerField(column_name='跌停数', default=0)
 
     class Meta:
         database = voldb

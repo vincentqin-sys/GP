@@ -15,21 +15,10 @@ class TdxVolPMTools:
         
     # 加载所有股标代码（上证、深证股），不含指数、北证股票
     def loadAllCodes(self):
-        sh = os.path.join(VIPDOC_BASE_PATH, 'sh/lday')
-        codes = os.listdir(sh)
-        rtSH = [c for c in codes if c[2] == '6']
-        sz = os.path.join(VIPDOC_BASE_PATH, 'sz/lday')
-        codes = os.listdir(sz)
-        rtSZ = [c for c in codes if c[2] == '0' or c[2] == '3']
-        self.codes = rtSH + rtSZ
+        self.codes = DataFileUtils.listAllCodes()
     
     def calcDays(self):
-        df = DataFile('999999', DataFile.DT_DAY)
-        days = []
-        for i in range(len(df.data)):
-            if df.data[i].day > self.fromDay:
-                days.append(df.data[i].day)
-        self.days = days
+        self.days = DataFileUtils.calcDays(self.fromDay)
 
     def initCodeName(self):
         ths_db = pw.SqliteDatabase(f'{orm.path}GP/db/THS_F10.db')
@@ -51,7 +40,7 @@ class TdxVolPMTools:
         self.loadAllCodes()
         self.calcDays()
         self.initCodeName()
-        dfs = [DataFile(c[2:8], DataFile.DT_DAY) for c in self.codes]
+        dfs = [DataFile(c, DataFile.DT_DAY) for c in self.codes]
         bpd = 0
         def sortKey(df):
             idx = df.getItemIdx(bpd)
@@ -91,8 +80,58 @@ class TdxVolPMTools:
         self.save(zs)
 
 
+class TdxLSTools:
+    def __init__(self) -> None:
+        fromDay = 20230101
+        v = orm.TdxLSModel.select(pw.fn.max(orm.TdxLSModel.day)).scalar()
+        if v: fromDay = v
+        self.fromDay = fromDay
+        self.codes = None
+        self.days = None
+
+    def calcOneDayInfo(self, day, sz, sh, dfs):
+        item = orm.TdxLSModel()
+        item.day = day
+        item.amount = (sz.getItemData(day).amount + sh.getItemData(day).amount) // 100000000 # 亿元
+        for df in dfs:
+            idx = df.getItemIdx(day)
+            if idx <= 0:
+                continue
+            dt = df.data[idx]
+            if dt.close > df.data[idx - 1].close:
+                item.upNum += 1
+            elif dt.close < df.data[idx - 1].close:
+                item.downNum += 1
+            zdt = getattr(dt, 'zdt', '')
+            if zdt == 'ZT':
+                item.ztNum += 1
+            elif zdt == 'DT':
+                item.dtNum += 1
+            lbs = getattr(dt, 'lbs', 0)
+            if lbs >= 2:
+                item.lbNum += 1
+            if item.zgb < lbs:
+                item.zgb = lbs
+        return item
+
+    def calcInfo(self):
+        self.codes = DataFileUtils.listAllCodes()
+        self.days = DataFileUtils.calcDays(self.fromDay)
+        sh = DataFile('999999', DataFile.DT_DAY, True, self.fromDay)
+        sz = DataFile('399001', DataFile.DT_DAY, True, self.fromDay)
+        dfs = [DataFile(c, DataFile.DT_DAY, True, self.fromDay) for c in self.codes]
+        rs = []
+        for df in dfs:
+            df.calcZDT()
+        for day in self.days:
+            item = self.calcOneDayInfo(day, sz, sh, dfs)
+            rs.append(item)
+        orm.TdxLSModel.bulk_create(rs, 50)
 
 if __name__ == '__main__':
     t = TdxVolPMTools()
     t.calcVolOrder_Top500()
     t.calcSHSZVol()
+    #-----------------------------
+    t = TdxLSTools()
+    t.calcInfo()
