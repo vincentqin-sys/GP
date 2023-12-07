@@ -201,6 +201,20 @@ class TdxVolPMModel(pw.Model):
         database = voldb
         table_name = '成交额排名'
 
+class TdxLSModel(pw.Model):
+    day = pw.IntegerField(column_name='日期')
+    amount = pw.FloatField(column_name='成交额') # （亿元）
+    upNum = pw.IntegerField(column_name='上涨家数', default=0)
+    downNum = pw.IntegerField(column_name = '下跌家数', default=0)
+    ztNum = pw.IntegerField(column_name='涨停数', default=0)
+    lbNum = pw.IntegerField(column_name='连板数', default=0) #二板以上家数
+    zgb = pw.IntegerField(column_name='最高板', default=0)
+    dtNum = pw.IntegerField(column_name='跌停数', default=0)
+
+    class Meta:
+        database = voldb
+        table_name = '两市总体情况'        
+
 db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC, THS_HYDB_2])
 db2.create_tables([THS_Hot])
 db3.create_tables([TaoGuBa_Remark])

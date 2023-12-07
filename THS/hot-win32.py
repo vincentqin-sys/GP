@@ -215,8 +215,8 @@ class HotWindow:
             days = [d['day'] for d in self.lhbData]
             self._drawDataType(hdc, days, self.lhbData, DEFAULT_ITEM_WIDTH, self.drawOneDayLHB)
         elif self.dataType == 'LS_INFO' and self.lsInfoData:
-            days = [str(d.day) for d in self.lsInfoData]
-            self._drawDataType(hdc, days, self.lsInfoData, DEFAULT_ITEM_WIDTH - 30, self.drawOneDayLSInfo)
+            days = [d['day'] for d in self.lsInfoData]
+            self._drawDataType(hdc, days, self.lsInfoData, DEFAULT_ITEM_WIDTH, self.drawOneDayLSInfo)
 
     # param days: [YYYY-MM-DD, ....]
     # return [startIdx, endIdx)
@@ -342,11 +342,14 @@ class HotWindow:
 
     def drawOneDayLSInfo(self, hdc, data, x, itemWidth, *args):
         idx, startIdx, endIdx, *_ = args
+        if idx <= 0:
+            return
         day = data['day']
         sdc = self.drawDayTitle(hdc, x, day, itemWidth)
-        info = '  排名: ' + str(data['pm'])
-        win32gui.DrawText(hdc, info, len(info), (x, 20, x + itemWidth, 80), win32con.DT_LEFT)
+        #info = '  排名: ' + str(data['pm'])
+        #win32gui.DrawText(hdc, info, len(info), (x, 20, x + itemWidth, 80), win32con.DT_LEFT)
 
+        # 1. 成交额图表
         startY, endY = 60, self.rect[3] - 40
         BASE_VOL = 6000 #基准成交额为6000亿
         lsvol = max(data['amount'] - BASE_VOL, 100)
@@ -356,20 +359,24 @@ class HotWindow:
         y = int(startY + (1 - lsvol / maxVol) * (endY - startY))
         sx = x + itemWidth // 2 - 5
         # 8000亿以上显示红色，以下为绿色
-        hbr = win32gui.CreateSolidBrush(0x0000ff if data['amount'] >= 8000 else 0x00ff00)
+        hbrRed = win32gui.CreateSolidBrush(0x0000ff)
+        hbrGreen = win32gui.CreateSolidBrush(0x00ff00)
+        hbr = hbrRed if data['amount'] >= 8000 else hbrGreen
         win32gui.FillRect(hdc, (sx, y, sx + 10, endY), hbr)
-        win32gui.DeleteObject(hbr)
-        if idx <= 0:
-            return
-        cv = data['amount']
-        pv = cv - self.lsInfoData[idx - 1]['amount']
-        info = f"{cv} 亿"
-        win32gui.DrawText(hdc, info, len(info), (x, y - 12, x + itemWidth, y), win32con.DT_CENTER)
-        info = f"( {pv :+d} 亿 )"
-        win32gui.DrawText(hdc, info, len(info), (x, endY + 10, x + itemWidth, self.rect[3]), win32con.DT_CENTER)
-        #显示左侧信息
-        info = f"上涨:{data['upNum']}\n下跌:{data['downNum']}\n\n涨停:{data['ztNum']}\n最高板:{data['zgb']}\n连板:{data['lbNum']}\n跌停:{data['dtNum']}"
+        cv = int(data['amount'])
+        pv = int(cv - self.lsInfoData[idx - 1]['amount'])
+        info = f"{cv}\n({pv :+d})"
+        win32gui.DrawText(hdc, info, len(info), (x + itemWidth // 2, y - 12, x + itemWidth, y + 30), win32con.DT_CENTER)
+        # 涨跌数量图表
+        upRate =  data['upNum'] / (data['upNum'] + data['downNum'])
+        
+
+        # 2. 显示左侧信息
+        info = f"涨停:{data['ztNum']}\n最高:{data['zgb']}\n连板:{data['lbNum']}\n跌停:{data['dtNum']}"
         win32gui.DrawText(hdc, info, len(info), (x + 5, startY + 30, x + itemWidth, self.rect[3]), win32con.DT_LEFT)
+        win32gui.DeleteObject(hbrRed)
+        win32gui.DeleteObject(hbrGreen)
+
 
     def drawMinMode(self, hdc):
         title = '【我的热点】'
