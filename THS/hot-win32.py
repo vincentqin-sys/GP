@@ -145,7 +145,7 @@ def init():
 
 #-------------------hot  window ------------
 class HotWindow:
-    DATA_TYPE = ('HOT', 'LHB', 'VOL_PM') # # HOT(热度)  LHB(龙虎榜) VOL_PM(成交额排名) DDLR（大单流入）
+    DATA_TYPE = ('HOT', 'LHB', 'LS_INFO') # # HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息，含成交额排名) DDLR（大单流入）
 
     def __init__(self):
         self.oldProc = None
@@ -155,7 +155,7 @@ class HotWindow:
         self.hotData = None # 热点数据
         self.lhbData = None # 龙虎榜数据
         self.ddlrData = None # 大单流入数据
-        self.volPMData = None # 成交额排名
+        self.lsInfoData = None # 成交额排名
         self.dataType = 'HOT'
         self.selectDay = '' # YYYY-MM-DD
 
@@ -214,9 +214,9 @@ class HotWindow:
         elif self.dataType == 'LHB' and self.lhbData:
             days = [d['day'] for d in self.lhbData]
             self._drawDataType(hdc, days, self.lhbData, DEFAULT_ITEM_WIDTH, self.drawOneDayLHB)
-        elif self.dataType == 'VOL_PM' and self.volPMData:
-            days = [str(d['day']) for d in self.volPMData]
-            self._drawDataType(hdc, days, self.volPMData, DEFAULT_ITEM_WIDTH - 30, self.drawOneDayVolPM)
+        elif self.dataType == 'LS_INFO' and self.lsInfoData:
+            days = [str(d.day) for d in self.lsInfoData]
+            self._drawDataType(hdc, days, self.lsInfoData, DEFAULT_ITEM_WIDTH - 30, self.drawOneDayVolPM)
 
     # param days: [YYYY-MM-DD, ....]
     # return [startIdx, endIdx)
@@ -352,7 +352,7 @@ class HotWindow:
         lsvol = max(data['ls-vol'] - BASE_VOL, 100)
         maxVol = 100
         for i in range(startIdx, endIdx):
-            maxVol = max(self.volPMData[i]['ls-vol'] - BASE_VOL, maxVol)
+            maxVol = max(self.lsInfoData[i]['ls-vol'] - BASE_VOL, maxVol)
         y = int(startY + (1 - lsvol / maxVol) * (endY - startY))
         sx = x + itemWidth // 2 - 5
         # 8000亿以上显示红色，以下为绿色
@@ -362,7 +362,7 @@ class HotWindow:
         if idx <= 0:
             return
         cv = data['ls-vol']
-        pv = cv - self.volPMData[idx - 1]['ls-vol']
+        pv = cv - self.lsInfoData[idx - 1]['ls-vol']
         info = f"{cv} 亿"
         win32gui.DrawText(hdc, info, len(info), (x, y - 12, x + itemWidth, y), win32con.DT_CENTER)
         info = f"( {pv :+d} 亿 )"
@@ -397,7 +397,7 @@ class HotWindow:
     def updateCode(self, code):
         self.updateHotData(code)
         self.updateLHBData(code)
-        self.updateVolPMData(code)
+        self.updateLSInfoData(code)
 
     def updateLHBData(self, code):
         ds = orm.TdxLHB.select().where(orm.TdxLHB.code == code)
@@ -446,8 +446,8 @@ class HotWindow:
         self.selectDay = None
         win32gui.InvalidateRect(self.wnd, None, True)
     
-    def updateVolPMData(self, code):
-        zsDatas = orm.TdxVolPMModel.select().where(orm.TdxVolPMModel.code == '000000')
+    def updateLSInfoData(self, code):
+        zsDatas = orm.TdxLSModel.select()
         codeDatas = orm.TdxVolPMModel.select().where(orm.TdxVolPMModel.code == code)
         cs = {}
         for c in codeDatas:
@@ -458,9 +458,11 @@ class HotWindow:
             day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
             cc = cs.get(d.day, None)
             pm = cc.pm if cc else '--'
-            item = {'day': day, 'pm': pm, 'ls-vol': int(d.amount)}
+            item = d.__data__
+            item['day'] = day
+            item['pm'] = pm
             dd.append(item)
-        self.volPMData = dd
+        self.lsInfoData = dd
         self.selectDay = None
         win32gui.InvalidateRect(self.wnd, None, True)
 
