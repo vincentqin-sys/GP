@@ -126,6 +126,7 @@ class TdxLSTools:
         for day in self.days:
             item = self.calcOneDayInfo(day, sz, sh, dfs)
             rs.append(item)
+            print(item)
         orm.TdxLSModel.bulk_create(rs, 50)
 
 if __name__ == '__main__':
