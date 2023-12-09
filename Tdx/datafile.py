@@ -4,7 +4,7 @@ from collections import namedtuple
 VIPDOC_BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
 
 class ItemData:
-    DS = ('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股), lbs(连板数)
+    DS = ('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股), lbs(连板数), zdt(涨跌停)
     MLS = ('day', 'time', 'open', 'high', 'low', 'close', 'amount', 'vol') # avgPrice 分时均价
     # MA5
 
@@ -217,13 +217,15 @@ class DataFileUtils:
         rs = sorted(rs, reverse=True)
         return rs
     
-    # 计算fromDay开始的所有日期(不含fromDay)
+    # 计算fromDay开始的所有日期
     # @return list[day, ...]
     @staticmethod
-    def calcDays(fromDay):
+    def calcDays(fromDay, inclueFromDay = False):
         df = DataFile('999999', DataFile.DT_DAY, True)
         days = []
         for i in range(len(df.data)):
+            if inclueFromDay and df.data[i].day == fromDay:
+                days.append(df.data[i].day)
             if df.data[i].day > fromDay:
                 days.append(df.data[i].day)
         return days

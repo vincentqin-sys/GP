@@ -237,17 +237,32 @@ class HotWindow:
         #最右
         if self.selectDay >= days[len(days) - 1]:
             return (len(days) - num, len(days))
+
         idx = 0
         for i in range(len(days) - 1): # skip last day
             if (self.selectDay >= days[i]) and (self.selectDay < days[i + 1]):
                 idx = i
                 break
-        lastIdx = idx + num
-        if lastIdx > len(days):
-            lastIdx = len(days)
-        if lastIdx - idx < num:
-            idx -= num - (lastIdx - idx)
-        return (idx, lastIdx)
+        # 最右侧优先显示    
+        #lastIdx = idx + num
+        #if lastIdx > len(days):
+        #    lastIdx = len(days)
+        #if lastIdx - idx < num:
+        #    idx -= num - (lastIdx - idx)
+        #return (idx, lastIdx)
+
+        # 居中优先显示
+        fromIdx = lastIdx = idx
+        while True:
+            if lastIdx < len(days):
+                lastIdx += 1
+            if lastIdx - fromIdx >= num:
+                break
+            if fromIdx > 0:
+                fromIdx -= 1
+            if lastIdx - fromIdx >= num:
+                break
+        return (fromIdx, lastIdx)
 
     def drawArrowTip(self, hdc, x, y, op, color = 0xff0000):
         sdc = win32gui.SaveDC(hdc)
@@ -411,7 +426,11 @@ class HotWindow:
         win32gui.DrawText(hdc, info, len(info), (volX - 10, volY - 12, volX + 20, volY + 30), win32con.DT_CENTER)
         info = f"{int(data['amount'] - self.lsInfoData[idx - 1]['amount']) :+d}"
         win32gui.DrawText(hdc, info, len(info), (volX - 10, endY, volX + 20, endY + 15), win32con.DT_CENTER)
-        
+        # 显示当前选中日期的图标
+        if day == self.selectDay:
+            hbrBlack = win32gui.CreateSolidBrush(0x000000)
+            win32gui.FillRect(hdc, (x + 40, self.rect[3] - 15, x + 70, self.rect[3] - 10), hbrBlack)
+            win32gui.DeleteObject(hbrBlack)
         win32gui.DeleteObject(hbrRed)
         win32gui.DeleteObject(hbrGreen)
         win32gui.DeleteObject(hbrBlue)
