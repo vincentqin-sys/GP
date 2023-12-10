@@ -129,6 +129,8 @@ class TdxLSTools:
             print(item)
         orm.TdxLSModel.bulk_create(rs, 50)
 
+
+
 if __name__ == '__main__':
     t = TdxVolPMTools()
     t.calcVolOrder_Top500()

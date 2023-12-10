@@ -37,6 +37,15 @@ class DataFile:
         paths = self._getPathByCode(self.code, merge)
         self.data = self._loadDataFiles(paths)
 
+    @staticmethod
+    def loadFromFile(filePath):
+        name = os.path.basename(filePath)
+        code = name[2 : 8]
+        dataType = DataFile.DT_DAY if name[-4 : ] == '.day' else DataFile.DT_MINLINE
+        datafile = DataFile(code, dataType, False)
+        datafile.data = datafile._loadDataFile(filePath)
+        return datafile
+
     def getItemIdx(self, day):
         left, right = 0, len(self.data) - 1
         idx = -1
@@ -229,16 +238,7 @@ class DataFileUtils:
             if df.data[i].day > fromDay:
                 days.append(df.data[i].day)
         return days
-
-
+    
 if __name__ == '__main__':
-    DataFileUtils.listAllCodes()
-    df = DataFile('603598', DataFile.DT_DAY, True)
-    for d in df.data:
-        print(d)
-    df.calcMA(5)
-    df.calcZDT()
-    zt = df.getItemsByZT(True)
-    for d in zt:
-        print(d, sep= '\n')
+    pass
     

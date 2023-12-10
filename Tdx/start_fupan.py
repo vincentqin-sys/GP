@@ -1,23 +1,26 @@
-import sys
+import sys, json
 import win32gui, win32con , win32api, win32ui, pyautogui# pip install pywin32
 from datafile import *
 from orm import *
 
-# 涨停复盘
-class ZhangTingFuPan:
+# 涨停连板复盘
+class LBFuPan:
+    instance = None
+
     def __init__(self, fromDay, curCodeIdx = 0):
+        LBFuPan.instance = self
         self.curCodeIdx = curCodeIdx
         self.curCodes = []
         self.fromDay = fromDay
         self.days = []
         
 
-    # 最高板到首板排序
+    # 最高板到二连板排序
     def calcTopZTList(self, dfs, day):
         rs = []
         for df in dfs:
             dt = df.getItemData(day)
-            if dt and getattr(dt, 'lbs', 0) > 0:
+            if dt and getattr(dt, 'lbs', 0) > 1: #首板以上
                 rs.append({'day': day, 'code': df.code, 'lbs': dt.lbs})
         rs = sorted(rs, key=lambda it: it['lbs'], reverse=True)
         return rs
@@ -25,7 +28,7 @@ class ZhangTingFuPan:
     def initData(self):
         codes = DataFileUtils.listAllCodes()
         self.days = DataFileUtils.calcDays(self.fromDay, True)
-        self.days = self.days[0 : 30] # 仅保存前30个日期
+        #self.days = self.days[0 : 30]
         dfs = [DataFile(c, DataFile.DT_DAY, True) for c in codes]
         for df in dfs:
             df.calcZDT()
@@ -53,9 +56,11 @@ class ZhangTingFuPan:
         return dt
 
 class ThsWindow:
-    oldWinProc = None
     SIZE = (150, 80)
+    instance = None
+
     def __init__(self):
+        ThsWindow.instance = self
         self.hwnd = None
         self.hwndText = '[None]'
         self.THS_MAIN_HWND = self.THS_TOP_HWND = None
@@ -75,9 +80,8 @@ class ThsWindow:
         if not self.THS_TOP_HWND:
             return
         style = win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_BORDER | win32con.SS_CENTER
-        self.hwnd = win32gui.CreateWindow('STATIC', 'ZTInfo-Window', style, 800, 300, *self.SIZE, self.THS_TOP_HWND, None, None, None)
+        self.hwnd = win32gui.CreateWindow('STATIC', 'ZTInfo-Window', style, 800, 250, *self.SIZE, self.THS_TOP_HWND, None, None, None)
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        ThsWindow.oldWinProc = win32gui.GetWindowLong(self.hwnd, win32con.GWL_WNDPROC)
         win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, ThsWindow.winProc)
         win32gui.SendMessage(self.hwnd, win32con.WM_PAINT)
 
@@ -100,29 +104,44 @@ class ThsWindow:
     @staticmethod
     def winProc(hwnd, msg, wparam, lparam):
         if msg == win32con.WM_RBUTTONUP:
-            info = fupan.next()
+            info = LBFuPan.instance.next()
             print('[Next]', info)
             day = str(info['day'])
             day = day[0 : 4] + '-' + day[4: 6] + '-' + day[6 :]
             txt = f"{day} \n\n{info['code']} \n {info['lbs']}连板 [{info['pos']}/{info['num']}]"
-            thsWin.hwndText = txt
+            ThsWindow.instance.hwndText = txt
             if info:
                 pyautogui.typewrite(info['code'], 0.1)
                 pyautogui.press('enter')
                 win32gui.InvalidateRect(hwnd, None, True)
             return 0
         if msg == win32con.WM_PAINT:
-            thsWin.draw(hwnd)
+            ThsWindow.instance.draw(hwnd)
             return 0
-        # win32gui.CallWindowProc(ThsWindow.oldWinProc, hwnd, msg, wparam, lparam)
         return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
+def loadFuPanConfig():
+    path = os.path.dirname(__file__)
+    path = os.path.join(path, 'fupan.config.json')
+    config = {'day': 20230201, 'pos': 1}
+    if not os.path.exists(path):
+        return config
+    f = open(path, 'r')
+    js = json.load(f)
+    f.close()
+    return js
 
-thsWin = ThsWindow()
-thsWin.buildViews()
-fupan = ZhangTingFuPan(20230202, 3)
-fupan.initData()
-thsWin.hwndText = 'Init End'
-win32gui.InvalidateRect(thsWin.hwnd, None, True)
-print('-----------init end-------')
-win32gui.PumpMessages()
+def saveFuPanConfig(config):
+    pass
+
+if __name__ == '__main__':
+    config = loadFuPanConfig()
+
+    thsWin = ThsWindow()
+    thsWin.buildViews()
+    fupan = LBFuPan(config['day'], config['pos'])
+    fupan.initData()
+    thsWin.hwndText = 'Init End'
+    win32gui.InvalidateRect(thsWin.hwnd, None, True)
+    print('-----------init end-------')
+    win32gui.PumpMessages()

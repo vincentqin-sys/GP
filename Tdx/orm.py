@@ -31,4 +31,16 @@ class TdxLSModel(pw.Model):
         table_name = '两市总体情况'
 
 
+class TdxZTLBModel(pw.Model):
+    day = pw.IntegerField()
+    code = pw.CharField()
+    name = pw.CharField()
+    lbs = pw.IntegerField(column_name='几连板', default=0)
+    lbIdx = pw.IntegerField(column_name='连板序号', default=0)
+    lbNum = pw.IntegerField(column_name='当日连板数量', default=0)
+
+    class Meta:
+        database = voldb
+        table_name = '连板股票'
+
 voldb.create_tables([TdxVolPMModel, TdxLSModel])
