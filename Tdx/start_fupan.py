@@ -52,6 +52,7 @@ class LBFuPan:
         idx = self.curCodeIdx - fromIdx + 1
         dt['pos'] = idx
         dt['num'] = num
+        dt['idx'] = self.curCodeIdx
         self.curCodeIdx += 1
         return dt
 
@@ -114,6 +115,8 @@ class ThsWindow:
                 pyautogui.typewrite(info['code'], 0.1)
                 pyautogui.press('enter')
                 win32gui.InvalidateRect(hwnd, None, True)
+                config['idx'] = info['idx']
+                saveFuPanConfig()
             return 0
         if msg == win32con.WM_PAINT:
             ThsWindow.instance.draw(hwnd)
@@ -121,9 +124,8 @@ class ThsWindow:
         return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
 def loadFuPanConfig():
-    path = os.path.dirname(__file__)
-    path = os.path.join(path, 'fupan.config.json')
-    config = {'day': 20230201, 'pos': 1}
+    config = {'day': 20230201, 'idx': 0}
+    path = 'fupan.config'
     if not os.path.exists(path):
         return config
     f = open(path, 'r')
@@ -131,15 +133,19 @@ def loadFuPanConfig():
     f.close()
     return js
 
-def saveFuPanConfig(config):
-    pass
+def saveFuPanConfig():
+    path = 'fupan.config'
+    txt = json.dumps(config)
+    f = open(path, 'w')
+    f.write(txt)
+    f.close()
+
+config = loadFuPanConfig()
 
 if __name__ == '__main__':
-    config = loadFuPanConfig()
-
     thsWin = ThsWindow()
     thsWin.buildViews()
-    fupan = LBFuPan(config['day'], config['pos'])
+    fupan = LBFuPan(config['day'], config['idx'])
     fupan.initData()
     thsWin.hwndText = 'Init End'
     win32gui.InvalidateRect(thsWin.hwnd, None, True)
