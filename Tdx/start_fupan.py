@@ -37,31 +37,34 @@ class LBFuPan:
             rs = self.calcTopZTList(dfs, d)
             self.curCodes.extend(rs)
 
-    def next(self):
-        if self.curCodeIdx >= len(self.curCodes):
-            print('[ZhangTingFuPan].next Finish')
-            return None
-        self.curCodeIdx += 1
-        dt = self.curCodes[self.curCodeIdx]
+    def getInfo(self, idx):
+        dt = self.curCodes[idx]
         day = dt['day']
-        fromIdx, endIdx = self.curCodeIdx, self.curCodeIdx
+        fromIdx, endIdx = idx, idx
         while fromIdx > 0 and self.curCodes[fromIdx - 1]['day'] == day:
             fromIdx -= 1
         while endIdx < len(self.curCodes) - 1 and self.curCodes[endIdx + 1]['day'] == day:
             endIdx += 1
         num = endIdx - fromIdx + 1
-        idx = self.curCodeIdx - fromIdx + 1
-        dt['pos'] = idx
+        pos = idx - fromIdx + 1
+        dt['pos'] = pos
         dt['num'] = num
-        dt['idx'] = self.curCodeIdx
+        dt['idx'] = idx
         return dt
+
+    def next(self):
+        if self.curCodeIdx >= len(self.curCodes):
+            print('[ZhangTingFuPan].next Finish')
+            return None
+        self.curCodeIdx += 1
+        return self.getInfo(self.curCodeIdx)
     
     def prev(self):
         if self.curCodeIdx <= 0:
             print('[ZhangTingFuPan].prev Finish')
             return None
         self.curCodeIdx -= 1
-        return self.curCodes[self.curCodeIdx]
+        return self.getInfo(self.curCodeIdx)
 
 class ThsWindow:
     SIZE = (150, 80)
@@ -115,36 +118,33 @@ class ThsWindow:
         win32gui.DeleteObject(bk)
 
     @staticmethod
+    def setInfo(hwnd, info):
+        if not info:
+            return
+        day = str(info['day'])
+        day = day[0 : 4] + '-' + day[4: 6] + '-' + day[6 :]
+        txt = f"{day} \n\n{info['code']} \n {info['lbs']}连板 [{info['pos']}/{info['num']}]"
+        ThsWindow.instance.hwndText = txt
+        if info:
+            pyautogui.typewrite(info['code'], 0.1)
+            pyautogui.press('enter')
+            win32gui.InvalidateRect(hwnd, None, True)
+            config['idx'] = info['idx']
+            saveFuPanConfig()
+
+    @staticmethod
     def winProc(hwnd, msg, wparam, lparam):
         if msg == win32con.WM_RBUTTONUP:
             # next
             info = LBFuPan.instance.next()
             print('[Next]', info)
-            day = str(info['day'])
-            day = day[0 : 4] + '-' + day[4: 6] + '-' + day[6 :]
-            txt = f"{day} \n\n{info['code']} \n {info['lbs']}连板 [{info['pos']}/{info['num']}]"
-            ThsWindow.instance.hwndText = txt
-            if info:
-                pyautogui.typewrite(info['code'], 0.1)
-                pyautogui.press('enter')
-                win32gui.InvalidateRect(hwnd, None, True)
-                config['idx'] = info['idx']
-                saveFuPanConfig()
+            ThsWindow.setInfo(hwnd, info)
             return 0
         elif msg == win32con.WM_LBUTTONUP:
             # pre
             info = LBFuPan.instance.prev()
             print('[Prev]', info)
-            day = str(info['day'])
-            day = day[0 : 4] + '-' + day[4: 6] + '-' + day[6 :]
-            txt = f"{day} \n\n{info['code']} \n {info['lbs']}连板 [{info['pos']}/{info['num']}]"
-            ThsWindow.instance.hwndText = txt
-            if info:
-                pyautogui.typewrite(info['code'], 0.1)
-                pyautogui.press('enter')
-                win32gui.InvalidateRect(hwnd, None, True)
-                config['idx'] = info['idx']
-                saveFuPanConfig()
+            ThsWindow.setInfo(hwnd, info)
             return 0
         if msg == win32con.WM_PAINT:
             ThsWindow.instance.draw(hwnd)
