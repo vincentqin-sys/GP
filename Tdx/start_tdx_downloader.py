@@ -37,10 +37,17 @@ class TdxDownloader:
 
     def login(self):
         hwnd = win32gui.FindWindow('#32770', '通达信金融终端V7.642')
-        print(f'login hwnd={hwnd :X}')
+        print(f'login hwnd=0x{hwnd :X}')
         if not hwnd:
             raise Exception('Not find Tdx login window')
         win32gui.SetForegroundWindow(hwnd)
+        pwdPos = (250, 300)
+        pwdPos = self.getScreenPos(hwnd, *pwdPos)
+        pyautogui.click(*pwdPos, duration=0.5)
+        for i in range(20):
+            pyautogui.press('backspace')
+        pyautogui.typewrite('gaoyan2012')
+
         loginBtnPos = (200, 370)
         loginBtnPos = self.getScreenPos(hwnd, *loginBtnPos)
         pyautogui.click(*loginBtnPos, duration=0.5)
@@ -113,7 +120,7 @@ if __name__ == '__main__':
     lastDay = 0
     while True:
         today = datetime.datetime.now()
-        if today.weekday() == 0 or today.weekday() == 6:
+        if today.weekday() >= 5: #周六周日
             time.sleep(60 * 60)
             continue
         if lastDay == today.day:
