@@ -9,7 +9,7 @@ class LBFuPan:
 
     def __init__(self, fromDay, curCodeIdx = 0):
         LBFuPan.instance = self
-        self.curCodeIdx = curCodeIdx
+        self.curCodeIdx = curCodeIdx - 1
         self.curCodes = []
         self.fromDay = fromDay
         self.days = []
@@ -20,7 +20,7 @@ class LBFuPan:
         rs = []
         for df in dfs:
             dt = df.getItemData(day)
-            if dt and getattr(dt, 'lbs', 0) > 1: #首板以上
+            if dt and getattr(dt, 'lbs', 0) >= config['minLBS']:
                 rs.append({'day': day, 'code': df.code, 'lbs': dt.lbs})
         rs = sorted(rs, key=lambda it: it['lbs'], reverse=True)
         return rs
@@ -41,6 +41,7 @@ class LBFuPan:
         if self.curCodeIdx >= len(self.curCodes):
             print('[ZhangTingFuPan].next Finish')
             return None
+        self.curCodeIdx += 1
         dt = self.curCodes[self.curCodeIdx]
         day = dt['day']
         fromIdx, endIdx = self.curCodeIdx, self.curCodeIdx
@@ -53,8 +54,14 @@ class LBFuPan:
         dt['pos'] = idx
         dt['num'] = num
         dt['idx'] = self.curCodeIdx
-        self.curCodeIdx += 1
         return dt
+    
+    def prev(self):
+        if self.curCodeIdx <= 0:
+            print('[ZhangTingFuPan].prev Finish')
+            return None
+        self.curCodeIdx -= 1
+        return self.curCodes[self.curCodeIdx]
 
 class ThsWindow:
     SIZE = (150, 80)
@@ -73,7 +80,7 @@ class ThsWindow:
         win32gui.EnumWindows(callback, None)
         if self.THS_TOP_HWND:
             self.THS_MAIN_HWND =  win32gui.FindWindowEx(self.THS_TOP_HWND, None, 'AfxFrameOrView140s', None)
-        print('[ThsWindow.init] Find HTS_TOP_WINDOW = ', self.THS_TOP_HWND)
+        print(f'[ThsWindow.init] Find HTS_TOP_WINDOW = {self.THS_TOP_HWND:X}', )
         if not self.THS_TOP_HWND:
             raise Exception('Not find THS_TOP_WINDOW')
 
@@ -81,10 +88,15 @@ class ThsWindow:
         if not self.THS_TOP_HWND:
             return
         style = win32con.WS_CHILD | win32con.WS_VISIBLE | win32con.WS_BORDER | win32con.SS_CENTER
-        self.hwnd = win32gui.CreateWindow('STATIC', 'ZTInfo-Window', style, 800, 250, *self.SIZE, self.THS_TOP_HWND, None, None, None)
+        rect = win32gui.GetWindowRect(self.THS_TOP_HWND)
+        if rect[2] - rect[0] > 1500:
+            xy = (1350, 250)
+        else:
+            xy = (800, 250)
+        self.hwnd = win32gui.CreateWindow('STATIC', 'ZTInfo-Window', style, *xy, *self.SIZE, self.THS_TOP_HWND, None, None, None)
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, ThsWindow.winProc)
-        win32gui.SendMessage(self.hwnd, win32con.WM_PAINT)
+        win32gui.PostMessage(self.hwnd, win32con.WM_PAINT)
 
     def draw(self, hwnd):
         hdc, ps = win32gui.BeginPaint(hwnd)
@@ -105,8 +117,24 @@ class ThsWindow:
     @staticmethod
     def winProc(hwnd, msg, wparam, lparam):
         if msg == win32con.WM_RBUTTONUP:
+            # next
             info = LBFuPan.instance.next()
             print('[Next]', info)
+            day = str(info['day'])
+            day = day[0 : 4] + '-' + day[4: 6] + '-' + day[6 :]
+            txt = f"{day} \n\n{info['code']} \n {info['lbs']}连板 [{info['pos']}/{info['num']}]"
+            ThsWindow.instance.hwndText = txt
+            if info:
+                pyautogui.typewrite(info['code'], 0.1)
+                pyautogui.press('enter')
+                win32gui.InvalidateRect(hwnd, None, True)
+                config['idx'] = info['idx']
+                saveFuPanConfig()
+            return 0
+        elif msg == win32con.WM_LBUTTONUP:
+            # pre
+            info = LBFuPan.instance.prev()
+            print('[Prev]', info)
             day = str(info['day'])
             day = day[0 : 4] + '-' + day[4: 6] + '-' + day[6 :]
             txt = f"{day} \n\n{info['code']} \n {info['lbs']}连板 [{info['pos']}/{info['num']}]"
