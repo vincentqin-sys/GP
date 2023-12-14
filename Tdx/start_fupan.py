@@ -20,7 +20,8 @@ class LBFuPan:
         rs = []
         for df in dfs:
             dt = df.getItemData(day)
-            if dt and getattr(dt, 'lbs', 0) >= config['minLBS']:
+            lbs = getattr(dt, 'lbs', 0)
+            if dt and lbs >= config['minLBS'] and lbs <= config['maxLBS']:
                 rs.append({'day': day, 'code': df.code, 'lbs': dt.lbs})
         rs = sorted(rs, key=lambda it: it['lbs'], reverse=True)
         return rs
