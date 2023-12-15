@@ -4,7 +4,7 @@ from collections import namedtuple
 VIPDOC_BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
 
 class ItemData:
-    DS = ('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股), lbs(连板数), zdt(涨跌停)
+    DS = ('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股), lbs(连板数), zdt(涨跌停), zhangFu(涨幅)
     MLS = ('day', 'time', 'open', 'high', 'low', 'close', 'amount', 'vol') # avgPrice 分时均价
     # MA5
 
@@ -29,12 +29,14 @@ class ItemData:
 class DataFile:
     DT_DAY, DT_MINLINE = 1, 2
     FROM_DAY = 20230101 # 仅计算由此开始的日期数据
+    FLAG_NEWEST, FLAG_OLDEST, FLAG_ALL = -1, -2, -3 # 最新、最早、全部
 
-    # dataType = DT_DAY  |  DT_MINLINE
-    def __init__(self, code, dataType, merge):
+    # @param dataType = DT_DAY  |  DT_MINLINE
+    # @param flag = FLAG_NEWEST | FLAG_OLDEST | FLAG_ALL
+    def __init__(self, code, dataType, flag):
         self.code = code
         self.dataType = dataType
-        paths = self._getPathByCode(self.code, merge)
+        paths = self._getPathByCode(self.code, flag)
         self.data = self._loadDataFiles(paths)
 
     @staticmethod
@@ -77,21 +79,30 @@ class DataFile:
             return None
         return self.data[idx]
 
-    def _getPathByCode(self, code, merge):
+    def _getByFlag(self, arr, flag):
+        if flag == self.FLAG_ALL:
+            return arr
+        if flag == self.FLAG_NEWEST:
+            return arr[-1]
+        if flag == self.FLAG_OLDEST:
+            return arr[0]
+        raise Exception('Error flag, flag=', flag)
+
+    def _getPathByCode(self, code, flag):
         tag = 'sh' if code[0] == '6' or code[0] == '8' or code[0] == '9' else 'sz'
         bp = os.path.join(VIPDOC_BASE_PATH, tag)
         fs = os.listdir(bp)
         fs = sorted(fs)
         rt = []
         if self.dataType == self.DT_DAY:
-            if merge:
-                rt = [f for f in fs if 'lday-' in f]
+            rt = sorted([f for f in fs if 'lday-' in f])
             rt.append('lday')
+            rt = self._getByFlag(rt, flag)
             rt = [os.path.join(bp, r, tag + code + '.day') for r in rt]
         else:
-            if merge:
-                rt = [f for f in fs if 'minline-' in f]
+            rt = [f for f in fs if 'minline-' in f]
             rt.append('minline')
+            rt = self._getByFlag(rt, flag)
             rt = [os.path.join(bp, r, tag + code + '.lc1') for r in rt]
         rs = [r for r in rt if os.path.exists(r)]
         return rs
@@ -195,6 +206,16 @@ class DataFile:
                         self._calcZDTInfo(pre, cur)
                     lc = cur.close
 
+    #计算涨幅
+    def calcZhangFu(self):
+        if self.dataType != self.DT_DAY:
+            return
+        for i in range(1, len(self.data)):
+            pc = self.data[i - 1].close
+            cc = self.data[i].close
+            zhangFu = (cc - pc) / pc * 100
+            setattr(self.data[i], 'zhangFu', zhangFu)
+
     # 获得涨停板
     # param includeZTZB  是否含涨停炸板
     def getItemsByZT(self, includeZTZB : bool):
@@ -221,7 +242,7 @@ class DataFileUtils:
         rs = set()
         for d in allDirs:
             codes = os.listdir(d)
-            rt = [c[2:8] for c in codes if c[2] == '6' or c[2] == '0' or c[2] == '3']
+            rt = [c[2:8] for c in codes if (c[2] == '6' or c[2] == '0' or c[2] == '3') and (c[2:5] != '399')]
             rs = rs.union(rt)
         rs = sorted(rs, reverse=True)
         return rs
@@ -230,7 +251,7 @@ class DataFileUtils:
     # @return list[day, ...]
     @staticmethod
     def calcDays(fromDay, inclueFromDay = False):
-        df = DataFile('999999', DataFile.DT_DAY, True)
+        df = DataFile('999999', DataFile.DT_DAY, DataFile.FLAG_ALL)
         days = []
         for i in range(len(df.data)):
             if inclueFromDay and df.data[i].day == fromDay:

@@ -380,6 +380,7 @@ class HotWindow:
         hbrGreen = win32gui.CreateSolidBrush(0x00ff00)
         hbrBlue = win32gui.CreateSolidBrush(0xff0000)
         hbrYellow = win32gui.CreateSolidBrush(0x00ffff)
+        hbrYellow2 = win32gui.CreateSolidBrush(0x00aaaa)
         # 涨跌数量图表
         upRate =  data['upNum'] / (data['upNum'] + data['downNum'])
         startY = 30
@@ -412,6 +413,14 @@ class HotWindow:
         win32gui.FillRect(hdc, (dtX, dtY, dtX + 5, endY), hbrYellow)
         info = str(data['dtNum'])
         win32gui.DrawText(hdc, info, len(info), (dtX - 4, dtY - 12, dtX + 8, dtY), win32con.DT_CENTER)
+        #下跌超过7%的个股数量图表
+        d7X = dtX + 15
+        _, d7Max = getRangeOf('down7Num')
+        d7Max = max(d7Max, ztMax)
+        d7Y = int(ztStartY + (1 - (data['down7Num']) / d7Max) * (endY - ztStartY))
+        win32gui.FillRect(hdc, (d7X, d7Y, d7X + 5, endY), hbrYellow2)
+        info = str(data['down7Num'])
+        win32gui.DrawText(hdc, info, len(info), (d7X - 4, d7Y - 12, d7X + 8, d7Y), win32con.DT_CENTER)
         # 成交额图表
         BASE_VOL = 6000 #基准成交额为6000亿
         lsvol = max(data['amount'] - BASE_VOL, 100)
@@ -419,7 +428,7 @@ class HotWindow:
         for i in range(startIdx, endIdx):
             maxVol = max(self.lsInfoData[i]['amount'] - BASE_VOL, maxVol)
         volY = int(startY + (1 - lsvol / maxVol) * (endY - startY))
-        volX = dtX + 23
+        volX = d7X + 15
         hbr = hbrRed if data['amount'] >= 8000 else hbrGreen # 8000亿以上显示红色，以下为绿色
         win32gui.FillRect(hdc, (volX, volY, volX + 10, endY), hbr)
         info = f"{int(data['amount'])}"

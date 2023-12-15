@@ -41,6 +41,7 @@ class TdxDownloader:
         if not hwnd:
             raise Exception('Not find Tdx login window')
         win32gui.SetForegroundWindow(hwnd)
+        time.sleep(3)
         pwdPos = (250, 300)
         pwdPos = self.getScreenPos(hwnd, *pwdPos)
         pyautogui.click(*pwdPos, duration=0.5)
@@ -51,7 +52,7 @@ class TdxDownloader:
         loginBtnPos = (200, 370)
         loginBtnPos = self.getScreenPos(hwnd, *loginBtnPos)
         pyautogui.click(*loginBtnPos, duration=0.5)
-        time.sleep(10)
+        time.sleep(15)
 
     def getTdxMainWindow(self):
         mainWnd = win32gui.FindWindow('TdxW_MainFrame_Class', None)
@@ -64,10 +65,10 @@ class TdxDownloader:
         mainWnd = self.getTdxMainWindow()
         win32gui.SetForegroundWindow(mainWnd)
         btnPos = (433, 35)
-        time.sleep(1.5)
+        time.sleep(3)
         btnPos = self.getScreenPos(mainWnd, *btnPos)
         pyautogui.click(*btnPos, duration=0.5)
-        time.sleep(3)
+        time.sleep(10)
 
     def startDownload(self):
         hwnd = win32gui.FindWindow('#32770', '盘后数据下载')
@@ -87,7 +88,7 @@ class TdxDownloader:
         startBtnPos = self.getScreenPos(hwnd, 440, 400, False)
         pyautogui.click(*startBtnPos, duration = 0.3) # 点击下载
         # wait for download end
-        time.sleep(5)
+        time.sleep(30)
         if win32gui.GetWindowText(startBtn) != '取消下载':
             raise Exception('start download Fail')
         while True:

@@ -25,6 +25,7 @@ class TdxLSModel(pw.Model):
     lbNum = pw.IntegerField(column_name='连板数', default=0) #二板以上家数
     zgb = pw.IntegerField(column_name='最高板', default=0)
     dtNum = pw.IntegerField(column_name='跌停数', default=0)
+    down7Num = pw.IntegerField(column_name='跌幅超百分之7个股数', default=0)
 
     class Meta:
         database = voldb
@@ -43,4 +44,14 @@ class TdxZTLBModel(pw.Model):
         database = voldb
         table_name = '连板股票'
 
-voldb.create_tables([TdxVolPMModel, TdxLSModel])
+class TdxVolTop50ZSModel(pw.Model):
+    day = pw.IntegerField()
+    vol = pw.IntegerField()
+    zhangFu = pw.FloatField(column_name='涨幅')
+    avgZhangFu = pw.FloatField(column_name='平均涨幅')
+
+    class Meta:
+        database = voldb
+        table_name = '成交额Top50指数'
+
+voldb.create_tables([TdxVolPMModel, TdxLSModel, TdxVolTop50ZSModel])

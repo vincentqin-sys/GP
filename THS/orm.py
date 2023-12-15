@@ -210,6 +210,7 @@ class TdxLSModel(pw.Model):
     lbNum = pw.IntegerField(column_name='连板数', default=0) #二板以上家数
     zgb = pw.IntegerField(column_name='最高板', default=0)
     dtNum = pw.IntegerField(column_name='跌停数', default=0)
+    down7Num = pw.IntegerField(column_name='跌幅超百分之7个股数', default=0)
 
     class Meta:
         database = voldb
