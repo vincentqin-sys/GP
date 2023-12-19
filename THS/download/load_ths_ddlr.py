@@ -1,18 +1,22 @@
 import peewee as pw
 from peewee import fn
-import os, json, time, sys, pyautogui, io
+import os, json, time, sys, pyautogui, io, datetime
 import fiddler, ths
 
 sys.path.append('.')
+sys.path.append('..')
 import orm
 
-BASE_STRUCT_PATH = 'D:/ths/ddlr-struct/'
-BASE_DETAIL_PATH = 'D:/ths/ddlr-detail/'
+BASE_STRUCT_PATH = 'D:/ThsData/ddlr-struct/'
+BASE_DETAIL_PATH = 'D:/ThsData/ddlr-detail-src/'
+DEST_DETAIL_PATH = 'D:/ThsData/ddlr-detail/'
 
 if not os.path.exists(BASE_STRUCT_PATH):
     os.makedirs(BASE_STRUCT_PATH)
 if not os.path.exists(BASE_DETAIL_PATH):
     os.makedirs(BASE_DETAIL_PATH)
+if not os.path.exists(DEST_DETAIL_PATH):
+    os.makedirs(DEST_DETAIL_PATH)
 
 def codeExists(code):
     e1 = os.path.exists(BASE_STRUCT_PATH + code)
@@ -109,7 +113,7 @@ class LoadThsDdlrDetail:
         pass
 
     def getMaxTradeDays(self):
-        query = orm.THS_Hot.select(orm.THS_Hot.day).distinct().order_by(orm.THS_Hot.day.desc()).limit(10).tuples()
+        query = orm.THS_Hot.select(orm.THS_Hot.day).distinct().order_by(orm.THS_Hot.day.desc()).limit(100).tuples()
         #print(query)
         maxDays = [str(d[0]) for d in query]
         return maxDays
@@ -126,11 +130,12 @@ class LoadThsDdlrDetail:
         for f in fs:
             if isCode(f):
                 fp = BASE_DETAIL_PATH + f
-                self.loadFileData(fp)
+                destfp = DEST_DETAIL_PATH + f
+                self.loadFileData(fp, destfp)
                 os.remove(fp)
     
     # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
-    def loadFileData(self, fileName):
+    def loadFileData(self, fileName, destfp):
         f = open(fileName, 'r', encoding= 'utf8')
         lines = f.readlines()
         f.close()
@@ -157,26 +162,80 @@ class LoadThsDdlrDetail:
             sio.write('\n')
             i += 2
 
-        f2 = open(fileName + '.dd', 'a', encoding='utf8')
+        f2 = open(destfp + '.dd', 'a', encoding='utf8')
         f2.write(sio.getvalue())
         f2.close()
 
+class ThsDdlrDetailData:
+
+    def __init__(self, code) -> None:
+        self.code = code
+        self.data = []  # [{day :'YYYY-MM-DD', data: [(minutes, bs, money), ...], ... ]   # minutes int value . eg: 930 ==> '09:30' ; bs -> 1:主动买 2:被动买 3:主动卖 4:被动卖;  money :万元
+        self._loadFile()
+
+    def getDataAtDay(self, day):
+        for item in self.data:
+            if item['day'] == day:
+                return item['data']
+        return None
+
+    # return [fromIdx, endIdx)
+    def getMiniteDataRange(self, dayData, fromIdx):
+        if fromIdx < 0 or fromIdx >= len(dayData):
+            return None
+        minute = dayData[fromIdx][0]
+        for i in range(fromIdx, len(dayData)):
+            if minute != dayData[i][0]:
+                break
+            i += 1
+        return (fromIdx, i)
+
+    def _loadOneLine(self, line):
+        rs = {}
+        spec = line.split(';')
+        rs['day'] = spec[0][0 : 4] + '-' + spec[0][4 : 6] + '-' + spec[0][6 : 8]
+        rs['data'] = []
+        md = None
+        for i in range(1, len(spec)):
+            items = spec[i].split(',')
+            if len(items) != 3:
+                break
+            _time, bs, money = items
+            rs['data'].append((int(_time), int(bs), int(money)))
+        return rs
+
+    def _loadFile(self):
+        fp = DEST_DETAIL_PATH + self.code + '.dd'
+        if not os.path.exists(fp):
+            return
+        f = open(fp, 'r')
+        while True:
+            line = f.readline().strip()
+            if not line:
+                break
+            item = self._loadOneLine(line)
+            if len(self.data) > 0 and self.data[-1]['day'] == item['day']:
+                self.data[-1] = item # 重复数据 replace it
+            else:
+                self.data.append(item)
+        f.close()
+
 def autoLoadOne(code, ddWin):
     ddWin.showWindow()
-    time.sleep(1.5)
     ddWin.grubFocusInSearchBox()
     # clear input text
     for i in range(20):
         pyautogui.press('backspace')
         pyautogui.press('delete')
-        time.sleep(0.02)
-    pyautogui.typewrite(code, 0.1)
+    pyautogui.typewrite(code, 0.01)
     pyautogui.press('enter')
-    time.sleep(5)
+    time.sleep(3)
     return codeExists(code)
 
 # 自动下载同花顺热点Top200个股的大单数据
 def autoLoadTop200Data():
+    d = datetime.datetime.today()
+    print(d.strftime('%Y-%m-%d'), ':')
     print('自动下载Top 200大单买卖数据(同花顺Level-2)')
     print('必须打开Fiddler, Fiddler拦截onBeforeResponse, 将数据下载下来')
     print('再将同花顺的大单统计功能打开, 鼠标定位在输入框中')
@@ -185,22 +244,23 @@ def autoLoadTop200Data():
     time.sleep(10)
 
     ddWin = ths.THS_DDWindow()
-    if not ddWin.initWindows():
-        raise Exception('未打开同花顺的大单页面')
+    ddWin.initWindows()
+    if not ddWin.openDDLJ():
+        raise Exception('同花顺的大单页面打开失败')
 
     datas = orm.THS_Hot.select().order_by(orm.THS_Hot.id.desc()).limit(200)
     datas = [d for d in datas]
     datas.reverse()
-    failTimes = 0
+    successTimes = 0
     for idx, d in enumerate(datas):
         code = f"{d.code :06d}"
         sc = autoLoadOne(code, ddWin)
         if sc:
-            failTimes += 1
-        sc = 'Success' if sc else 'Fail'
-        print(f"[{idx + 1}] Download by fiddler : ", code, sc)
+            successTimes += 1
+        #sc = 'Success' if sc else 'Fail'
+        #print(f"[{idx + 1}] Download by fiddler : ", code, sc)
     fd.close()
-    print('Load 200, Fail number:', failTimes)
+    print('Load 200, Success number:', successTimes)
 
 def test2():
     import win32gui, win32con
@@ -215,13 +275,24 @@ def test2():
 
     win32gui.EnumChildWindows(MAIN_WIN, enumCallback, 'WWX')
 
-if __name__ == '__main__':
+def run():
     autoLoadTop200Data()
-
     lds = LoadThsDdlrStruct()
     lds.loadAllFileData()
-
     ldd = LoadThsDdlrDetail()
     # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
     ldd.loadAllFilesData()
+
+if __name__ == '__main__':
+    lastDay = None
+    while True:
+        today = datetime.datetime.now()
+        nowDay = today.strftime('%Y-%m-%d')
+        if lastDay == nowDay:
+            time.sleep(10 * 60)
+            continue
+        if today.hour >= 18 and today.minute >= 20:
+            lastDay = nowDay
+            run()
+
     

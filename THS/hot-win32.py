@@ -641,7 +641,7 @@ def work():
             selDay = getSelectDay()
             if selDay:
                 hotWindow.updateSelectDay(selDay)
-            if (not hotWindow.maxMode) and (not isInMyHomeWindow()):
+            if (not hotWindow.maxMode): #  and (not isInMyHomeWindow())
                 showSortAndLiangDianWindow(True, False)
         elif isInFenShiWindow():
             if not hotWindow.maxMode:

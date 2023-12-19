@@ -91,7 +91,7 @@
 				}
 				var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 body = ts + '\t' + code + '\t' + startDay + '\t' + dayNum + '\n' + body + '\n';
-                var path = "D:/ths/ddlr-struct/" + code;
+                var path = "D:/ThsData/ddlr-struct/" + code;
                 var fs = new FileStream(path, FileMode.Append, FileAccess.Write);
                 var bb = new UTF8Encoding(true).GetBytes(body);
                 fs.Write(bb, 0, bb.Length);
@@ -108,7 +108,7 @@
             oSession.utilDecodeResponse();
             var body = oSession.GetResponseBodyAsString();
             var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            var path = "D:/ths/ddlr-detail/" + code;
+            var path = "D:/ThsData/ddlr-detail-src/" + code;
             body = ts + '\t' + code + '\n' + body + '\n';
             var fs = new FileStream(path, FileMode.Append, FileAccess.Write);
             var bb = new UTF8Encoding(true).GetBytes(body);

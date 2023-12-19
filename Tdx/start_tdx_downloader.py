@@ -128,7 +128,7 @@ if __name__ == '__main__':
             time.sleep(60 * 60)
             continue
         ts = f"{today.hour:02d}:{today.minute:02d}"
-        if ts < '18:30':
+        if ts < '19:30':
             time.sleep(10 * 60)
             continue
         lastDay = today.day

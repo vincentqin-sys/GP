@@ -65,23 +65,25 @@ class ThsSortQuery:
             hyName = m.hy
             name = m.name
         
-        line = code + ' ' + name
-        txt = line + '\n' + hyName + '\n' + jg + '\n' + hy
+        txt = hyName + '\n' + jg + '\n' + hy
         # 龙虎榜信息
         txt += self.getLhbInfo(code)
         
-        return txt
+        return {'info': txt, 'code': code, 'name': name}
 
 #-----------------------------------------------------------
 # 同行比较排名窗口信息
 class SortInfoWindow:
+    DATA_TYPES = ('Sort', 'Hot')
     def __init__(self) -> None:
         self.wnd = None
         self.size = None  # 窗口大小 (w, h)
         self.maxMode = True #  是否是最大化的窗口
         self.curCode = None
-        self.textInfo = ''
+        self.sortData = None
+        self.hotData = None
         self.query = ThsSortQuery()
+        self.dataType = SortInfoWindow.DATA_TYPES[0]
 
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
@@ -96,14 +98,30 @@ class SortInfoWindow:
         if (self.curCode == code) or (not code):
             return
         self.curCode = code
-        self.textInfo = self.query.getCodeInfo_THS(self.curCode)
+        self.sortData = self.query.getCodeInfo_THS(self.curCode)
+        win32gui.SetWindowText(self.wnd, f'{self.sortData["code"]} {self.sortData["name"]}')
+        qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.min(orm.THS_Hot.hotOrder), pw.fn.max(orm.THS_Hot.hotOrder)).where(orm.THS_Hot.code == self.curCode).group_by(orm.THS_Hot.day).order_by(orm.THS_Hot.day.desc()).limit(20)
+        #print(qq.sql())
+        self.hotData = [d for d in qq.tuples()]
         if self.wnd and self.size:
             #win32gui.InvalidateRect(self.wnd, (0, 0, *self.size), True)
             #win32gui.UpdateWindow(self.wnd)
             win32gui.InvalidateRect(self.wnd, None, True)
             #win32gui.PostMessage(self.wnd, win32con.WM_PAINT)
 
-    def onDraw(self):
+    def changeDataType(self):
+        idx = (self.DATA_TYPES.index(self.dataType) + 1) % len(self.DATA_TYPES)
+        self.dataType = self.DATA_TYPES[idx]
+        if self.wnd and self.size:
+            win32gui.InvalidateRect(self.wnd, None, True)
+
+    def drawDataType(self, hdc):
+        if self.dataType == 'Sort':
+            self.drawSort(hdc)
+        elif self.dataType == 'Hot':
+            self.drawHot(hdc)
+
+    def draw(self):
         hwnd = self.wnd
         hdc, ps = win32gui.BeginPaint(hwnd)
         bk = win32gui.CreateSolidBrush(0x000000)
@@ -118,19 +136,45 @@ class SortInfoWindow:
         a.lfFaceName = '新宋体'
         font = win32gui.CreateFontIndirect(a)
         win32gui.SelectObject(hdc, font)
-        self.drawContent(hdc)
+        self.drawDataType(hdc)
         win32gui.EndPaint(hwnd, ps)
         win32gui.DeleteObject(font)
         win32gui.DeleteObject(bk)
         win32gui.DeleteObject(pen)
     
-    def drawContent(self, hdc):
+    def drawSort(self, hdc):
+        if not self.sortData:
+            return
         win32gui.SetTextColor(hdc, 0xdddddd)
-        lines = self.textInfo.split('\n')
+        lines = self.sortData['info'].split('\n')
         for i, line in enumerate(lines):
             H = 18
             y = i * H + 2
             win32gui.DrawText(hdc, line, len(line), (2, y, self.size[0], y + H), 0)
+    
+    def drawHot(self, hdc):
+        if not self.hotData:
+            return
+        win32gui.SetTextColor(hdc, 0xdddddd)
+        H = 18
+        MAX_ROWS = 7
+        for i in range(0, MAX_ROWS):
+            hot = self.hotData[i]
+            line = f"{hot[0]} {hot[1]}->{hot[2]}"
+            y = i * H + 2
+            win32gui.DrawText(hdc, line, len(line), (2, y, self.size[0], y + H), 0)
+        for i in range(0, MAX_ROWS):
+            hot = self.hotData[i + MAX_ROWS]
+            line = f"{hot[0]} {hot[1]}->{hot[2]}"
+            y = i * H + 2
+            x = 135
+            win32gui.DrawText(hdc, line, len(line), (x, y, self.size[0], y + H), 0)
+        pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
+        win32gui.SelectObject(hdc, pen)
+        win32gui.MoveToEx(hdc, 132, 0)
+        win32gui.LineTo(hdc, 132, self.size[1])
+        win32gui.DeleteObject(pen)
+
 
     def hide(self):
         win32gui.ShowWindow(self.wnd, win32con.SW_HIDE)
@@ -141,7 +185,9 @@ class SortInfoWindow:
 
 def sortInfoWinProc(hwnd, msg, wParam, lParam):
     if msg == win32con.WM_PAINT:
-        sortInfoWindow.onDraw()
+        sortInfoWindow.draw()
+    if msg == win32con.WM_RBUTTONUP or msg == win32con.WM_LBUTTONDBLCLK:
+        sortInfoWindow.changeDataType()
     return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
 
 sortInfoWindow = SortInfoWindow()

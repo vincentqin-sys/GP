@@ -46,18 +46,63 @@ class THS_DDWindow:
         self.ddWnd = None
         self.topWnd = None
 
+    def _enumChild(self, hwnd, rt):
+        if not win32gui.IsWindowVisible(hwnd):
+            return True
+        title = win32gui.GetWindowText(hwnd)
+        if '逐笔成交--600000(' in title:
+            rt['val'] = hwnd
+        return True
+    
+    def getScreenPos(self, hwnd, x, y):
+        while hwnd:
+            rect = win32gui.GetWindowRect(hwnd)
+            x += rect[0]
+            y += rect[1]
+            hwnd = win32gui.GetParent(hwnd)
+        return x, y
+
+    # 打开 大单棱镜
+    def _openDDLJ(self):
+        if not self.topWnd:
+            return
+        if win32gui.IsIconic(self.topWnd):
+            win32gui.ShowWindow(self.topWnd, win32con.SW_MAXIMIZE)
+        win32gui.SetForegroundWindow(self.topWnd)
+        self.ddWnd = win32gui.FindWindow(None, '大单棱镜')
+        if self.ddWnd:
+            return
+        pyautogui.typewrite('600000', 0.02)
+        pyautogui.press('enter')
+        time.sleep(3)
+        rt = {'val': None}
+        win32gui.EnumChildWindows(self.topWnd, self._enumChild, rt)
+        hwnd = rt['val']
+        if not hwnd:
+            return
+        print(f'hwnd=0x{hwnd: X}')
+        _, y, x, _ = win32gui.GetWindowRect(hwnd)
+        y += 5
+        x -= 40
+        #pyautogui.moveTo(x, y)
+        pyautogui.click(x, y, interval = 0.5)
+        time.sleep(3)
+        self.ddWnd = win32gui.FindWindow(None, '大单棱镜')
+    
+    def openDDLJ(self):
+        for i in range(0, 3):
+            if not self.ddWnd:
+                self._openDDLJ()
+                time.sleep(3)
+        return self.ddWnd
+
     def initWindows(self):
         def callback(hwnd, selfx):
             title = win32gui.GetWindowText(hwnd)
             if '同花顺(v' in title:
                 selfx.topWnd = hwnd
             return True
-    
         win32gui.EnumWindows(callback, self)
-        self.ddWnd = win32gui.FindWindow(None, '大单棱镜')
-        if not self.ddWnd:
-            print('未查找到同花顺的大单棱镜窗口, 请确保已打开')
-        return self.ddWnd != None
 
     def showWindow(self):
         if not self.ddWnd:
@@ -65,7 +110,7 @@ class THS_DDWindow:
         if win32gui.IsIconic(self.topWnd):
             win32gui.ShowWindow(self.topWnd, win32con.SW_MAXIMIZE)
         win32gui.SetForegroundWindow(self.ddWnd)
-        time.sleep(1.5)
+        time.sleep(0.5)
 
     def grubFocusInSearchBox(self):
         if not self.ddWnd:
@@ -74,7 +119,9 @@ class THS_DDWindow:
         x, y = rect[0] + 100, rect[1] + 60 # search input box center
         pyautogui.click(x, y)
 
-dd = THS_DDWindow()
-dd.initWindows()
-dd.showWindow()
-dd.grubFocusInSearchBox()
+if __name__ == '__main__':
+    dd = THS_DDWindow()
+    dd.initWindows()
+    dd.openDDLJ()
+    dd.showWindow()
+    dd.grubFocusInSearchBox()
