@@ -88,7 +88,7 @@ class SortInfoWindow:
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
         w = win32api.GetSystemMetrics(0) # desktop width
-        self.size = (280, 165)
+        self.size = (300, 165)
         self.wnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
         win32gui.SetWindowPos(self.wnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.SetWindowLong(self.wnd, win32con.GWL_WNDPROC, sortInfoWinProc)
@@ -98,11 +98,26 @@ class SortInfoWindow:
         if (self.curCode == code) or (not code):
             return
         self.curCode = code
+        # load sort data
         self.sortData = self.query.getCodeInfo_THS(self.curCode)
         win32gui.SetWindowText(self.wnd, f'{self.sortData["code"]} {self.sortData["name"]}')
-        qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.min(orm.THS_Hot.hotOrder), pw.fn.max(orm.THS_Hot.hotOrder)).where(orm.THS_Hot.code == self.curCode).group_by(orm.THS_Hot.day).order_by(orm.THS_Hot.day.desc()).limit(20)
+        
+        # load hot data
+        qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.min(orm.THS_Hot.hotOrder).alias('minOrder'), pw.fn.max(orm.THS_Hot.hotOrder).alias('maxOrder')).where(orm.THS_Hot.code == self.curCode).group_by(orm.THS_Hot.day).order_by(orm.THS_Hot.day.desc()).limit(20)
         #print(qq.sql())
-        self.hotData = [d for d in qq.tuples()]
+        self.hotData = [d for d in qq.dicts()]
+        # 每日前10名的个数
+        qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.count().alias('_count')).where(orm.THS_Hot.code == self.curCode, orm.THS_Hot.hotOrder <= 10).group_by(orm.THS_Hot.day).order_by(orm.THS_Hot.day.desc()).limit(20)
+        #print(qq.sql())
+        qdata = {}
+        for d in qq.tuples():
+            qdata[d[0]] = d[1]
+        for d in self.hotData:
+            day = d['day']
+            if day in qdata:
+                d['count'] = qdata[day]
+            else:
+                d['count'] = 0
         if self.wnd and self.size:
             #win32gui.InvalidateRect(self.wnd, (0, 0, *self.size), True)
             #win32gui.UpdateWindow(self.wnd)
@@ -158,17 +173,15 @@ class SortInfoWindow:
         win32gui.SetTextColor(hdc, 0xdddddd)
         H = 18
         MAX_ROWS = 7
-        for i in range(0, MAX_ROWS):
+        for i in range(0, MAX_ROWS * 2):
             hot = self.hotData[i]
-            line = f"{hot[0]} {hot[1]}->{hot[2]}"
-            y = i * H + 2
-            win32gui.DrawText(hdc, line, len(line), (2, y, self.size[0], y + H), 0)
-        for i in range(0, MAX_ROWS):
-            hot = self.hotData[i + MAX_ROWS]
-            line = f"{hot[0]} {hot[1]}->{hot[2]}"
-            y = i * H + 2
-            x = 135
-            win32gui.DrawText(hdc, line, len(line), (x, y, self.size[0], y + H), 0)
+            day = str(hot['day'])[4 : ]
+            day = day[0 : 2] + '.' + day[2 : 4]
+            count = '' if hot['count'] == 0 else f"{hot['count'] :>2d}"
+            line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {count}"
+            y = i % MAX_ROWS * H + 2
+            x = self.size[0] // 2 if i >= MAX_ROWS else 2
+            win32gui.DrawText(hdc, line, len(line), (x, y, self.size[0], y + H), win32con.DT_LEFT)
         pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
         win32gui.SelectObject(hdc, pen)
         win32gui.MoveToEx(hdc, 132, 0)

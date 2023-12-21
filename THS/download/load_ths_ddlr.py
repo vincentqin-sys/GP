@@ -2,6 +2,7 @@ import peewee as pw
 from peewee import fn
 import os, json, time, sys, pyautogui, io, datetime
 import fiddler, ths
+import win32api
 
 sys.path.append('.')
 sys.path.append('..')
@@ -276,23 +277,49 @@ def test2():
     win32gui.EnumChildWindows(MAIN_WIN, enumCallback, 'WWX')
 
 def run():
-    autoLoadTop200Data()
-    lds = LoadThsDdlrStruct()
-    lds.loadAllFileData()
-    ldd = LoadThsDdlrDetail()
-    # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
-    ldd.loadAllFilesData()
+    if not getDesktopGUILock():
+        return False
+    try:
+        autoLoadTop200Data()
+        lds = LoadThsDdlrStruct()
+        lds.loadAllFileData()
+        ldd = LoadThsDdlrDetail()
+        # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
+        ldd.loadAllFilesData()
+        rs = True
+    except Exception as e:
+        print('Occur Exception: ', e)
+        rs = False
+    releaseDesktopGUILock()
+    return rs
+    
+def getDesktopGUILock():
+    LOCK_NAME = 'D:/__Desktop_GUI_Lock__'
+    import os
+    if os.path.exists(LOCK_NAME):
+        return False
+    f = open(LOCK_NAME, 'w')
+    f.close()
+    return True
+
+def releaseDesktopGUILock():
+    LOCK_NAME = 'D:/__Desktop_GUI_Lock__'
+    if os.path.exists(LOCK_NAME):
+        os.remove(LOCK_NAME)
 
 if __name__ == '__main__':
     lastDay = None
+
     while True:
         today = datetime.datetime.now()
         nowDay = today.strftime('%Y-%m-%d')
         if lastDay == nowDay:
             time.sleep(10 * 60)
             continue
-        if today.hour >= 18 and today.minute >= 20:
-            lastDay = nowDay
-            run()
+        st = today.strftime('%H:%M')
+        if st >= '18:20' and st < '19:00':
+            pyautogui.hotkey('win', 'd')
+            if run():
+                lastDay = nowDay
 
     

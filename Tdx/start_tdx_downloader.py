@@ -106,6 +106,8 @@ class TdxDownloader:
         self.killProcess()
 
 def work():
+    if not getDesktopGUILock():
+        return False
     # 下载
     tdx = TdxDownloader()
     tdx.run()
@@ -116,6 +118,22 @@ def work():
     #计算两市行情信息
     t = start_ls_info.TdxLSTools()
     t.calcInfo()
+    releaseDesktopGUILock()
+    return True
+
+def getDesktopGUILock():
+    LOCK_NAME = 'D:/__Desktop_GUI_Lock__'
+    import os
+    if os.path.exists(LOCK_NAME):
+        return False
+    f = open(LOCK_NAME, 'w')
+    f.close()
+    return True
+
+def releaseDesktopGUILock():
+    LOCK_NAME = 'D:/__Desktop_GUI_Lock__'
+    if os.path.exists(LOCK_NAME):
+        os.remove(LOCK_NAME)    
 
 if __name__ == '__main__':
     lastDay = 0
@@ -131,6 +149,6 @@ if __name__ == '__main__':
         if ts < '19:30':
             time.sleep(10 * 60)
             continue
-        lastDay = today.day
-        work()
+        if work():
+            lastDay = today.day
         

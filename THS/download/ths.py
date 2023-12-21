@@ -92,6 +92,7 @@ class THS_DDWindow:
     def openDDLJ(self):
         for i in range(0, 3):
             if not self.ddWnd:
+                self._showTopWindow()
                 self._openDDLJ()
                 time.sleep(3)
         return self.ddWnd
@@ -104,13 +105,11 @@ class THS_DDWindow:
             return True
         win32gui.EnumWindows(callback, self)
 
-    def showWindow(self):
-        if not self.ddWnd:
+    def _showTopWindow(self):
+        if not self.topWnd:
             return
         if win32gui.IsIconic(self.topWnd):
             win32gui.ShowWindow(self.topWnd, win32con.SW_MAXIMIZE)
-        win32gui.SetForegroundWindow(self.ddWnd)
-        time.sleep(0.5)
 
     def grubFocusInSearchBox(self):
         if not self.ddWnd:
@@ -123,5 +122,4 @@ if __name__ == '__main__':
     dd = THS_DDWindow()
     dd.initWindows()
     dd.openDDLJ()
-    dd.showWindow()
     dd.grubFocusInSearchBox()

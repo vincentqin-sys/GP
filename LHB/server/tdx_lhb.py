@@ -7,22 +7,26 @@ import mcore, orm
 # yyyy-mm-dd
 # return [ {code, name}, ... ]
 def loadOneDayTotal(day):
-    url = 'http://page2.tdx.com.cn:7615/TQLEX?Entry=CWServ.tdxsj_lhbd_lhbzl'
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36',
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'Referer': 'http://page2.tdx.com.cn:7615/site/tdxsj/html/tdxsj_lhbd.html'}
-    params = '{' + f"'Params': ['0', '{day}', '1']" + '}'
-    orgRes = requests.post(url, data=params, headers = headers)
-    txt = orgRes.text
-    rs = json.loads(txt)
-    if ('ErrorCode' not in rs) or (rs['ErrorCode'] != 0):
-        print('Error[loadOneDayTotal]: load tdx long hu bang error. day=', day)
-        return None
-    infos = rs['ResultSets'][0]['Content']
-    v = []
-    for it in infos:
-        v.append({'code': it[0], 'name': it[1]})
-    return v
+    try:
+        url = 'http://page2.tdx.com.cn:7615/TQLEX?Entry=CWServ.tdxsj_lhbd_lhbzl'
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36',
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'Referer': 'http://page2.tdx.com.cn:7615/site/tdxsj/html/tdxsj_lhbd.html'}
+        params = '{' + f"'Params': ['0', '{day}', '1']" + '}'
+        orgRes = requests.post(url, data=params, headers = headers)
+        txt = orgRes.text
+        rs = json.loads(txt)
+        if ('ErrorCode' not in rs) or (rs['ErrorCode'] != 0):
+            print('Error[loadOneDayTotal]: load tdx long hu bang error. day=', day)
+            return None
+        infos = rs['ResultSets'][0]['Content']
+        v = []
+        for it in infos:
+            v.append({'code': it[0], 'name': it[1]})
+        return v
+    except Exception as e:
+        print('[loadOneDayTotal] Occur Exception: ', e)
+    return []
 
 def getColInfo(colNames : list, cnt : list, name : str):
     idx = colNames.index(name)
