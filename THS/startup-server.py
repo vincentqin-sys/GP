@@ -1,13 +1,13 @@
 from flask import Flask, url_for, views, abort, make_response, request
 # pip install  psutil
-import psutil, time, os, threading
-import flask, peewee
+import psutil, time, os, threading, datetime
+import flask, peewee as pw
 import json, os
 from flask_cors import CORS 
 import traceback
 import logging
 from multiprocessing import Process
-import orm
+import orm, hot_utils
 
 app = Flask(__name__, static_folder='ui/el', template_folder='ui')
 cors = CORS(app)
@@ -59,7 +59,7 @@ def save_taoguba_remark():
             return {'status' : 'success', 'msg' : 'Update success', 'id': tid}
     obj = orm.TaoGuBa_Remark.create(info = request.json.get('info'))
     return {'status' : 'success', 'msg' : 'Insert success', 'id': obj.id}
-    
+
 
 def check_chrome_open():
     for pid in psutil.pids():
@@ -74,13 +74,24 @@ def sub_process():
         if not check_chrome_open():
             os.startfile('https://cn.bing.com/')
         time.sleep(60 * 5) # 5 minutes
+        checkRunCalcHotZH()
+
+def checkRunCalcHotZH():
+    now = datetime.datetime.now()
+    ts = now.strftime('%H:%M')
+    if ts <= '15:05' or ts >= '16:00':
+        return
+    hot_utils.calcAllHotZHAndSave()
+
+
+
 
 if __name__ == '__main__':
-    print('功能：启动8071服务，保存同花顺热点；保持Chrome始终都启动了。')
+    print('功能: 启动8071服务, 保存同花顺热点; 保持Chrome始终都启动了。')
     #p = Process(target = sub_process, daemon = True)
     #p.start()
     #print('open check chrome deamon, pid=', p.pid)
     p = threading.Thread(target=sub_process, daemon=True)
     p.start()
     print('----- Start Server THS at port 8071 -----')
-    app.run(host = '0.0.0.0', port=8071) #, debug=True 
+    app.run(host = '0.0.0.0', port=8071) #, debug=True

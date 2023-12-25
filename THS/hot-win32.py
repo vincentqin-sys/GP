@@ -420,7 +420,7 @@ class HotWindow:
         d7Y = int(ztStartY + (1 - (data['down7Num']) / d7Max) * (endY - ztStartY))
         win32gui.FillRect(hdc, (d7X, d7Y, d7X + 5, endY), hbrYellow2)
         info = str(data['down7Num'])
-        win32gui.DrawText(hdc, info, len(info), (d7X - 4, d7Y - 12, d7X + 8, d7Y), win32con.DT_CENTER)
+        win32gui.DrawText(hdc, info, len(info), (d7X - 4, d7Y - 12, d7X + 12, d7Y), win32con.DT_CENTER)
         # 成交额图表
         BASE_VOL = 6000 #基准成交额为6000亿
         lsvol = max(data['amount'] - BASE_VOL, 100)
@@ -444,7 +444,6 @@ class HotWindow:
         win32gui.DeleteObject(hbrGreen)
         win32gui.DeleteObject(hbrBlue)
         win32gui.DeleteObject(hbrYellow)
-
 
     def drawMinMode(self, hdc):
         title = '【我的热点】'
@@ -641,6 +640,7 @@ def work():
             selDay = getSelectDay()
             if selDay:
                 hotWindow.updateSelectDay(selDay)
+                sort_win32.sortInfoWindow.changeSelectDay(selDay)
             if (not hotWindow.maxMode): #  and (not isInMyHomeWindow())
                 showSortAndLiangDianWindow(True, False)
         elif isInFenShiWindow():

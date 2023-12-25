@@ -1,7 +1,7 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 import sys
-import orm
+import orm, hot_utils
 import peewee as pw
 
 #-----------------------------------------------------------
@@ -84,15 +84,51 @@ class SortInfoWindow:
         self.hotData = None
         self.query = ThsSortQuery()
         self.dataType = SortInfoWindow.DATA_TYPES[0]
+        self.selectDay = 0
 
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
         w = win32api.GetSystemMetrics(0) # desktop width
-        self.size = (300, 165)
+        self.size = (320, 230)
         self.wnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
         win32gui.SetWindowPos(self.wnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.SetWindowLong(self.wnd, win32con.GWL_WNDPROC, sortInfoWinProc)
         win32gui.ShowWindow(self.wnd, win32con.SW_NORMAL)
+
+    # param days (int): [YYYYMMDD, ....]
+    # param selDay : int
+    # return [startIdx, endIdx)
+    def findDrawDaysIndex(self, days, selDay, maxNum):
+        if not days:
+            return (0, 0)
+        if len(days) <= maxNum:
+            return (0, len(days))
+        if not selDay:
+            return (len(days) - maxNum, len(days))
+        #最左
+        if selDay <= days[0]:
+            return (0, maxNum)
+        #最右
+        if selDay >= days[len(days) - 1]:
+            return (len(days) - maxNum, len(days))
+
+        idx = 0
+        for i in range(len(days) - 1): # skip last day
+            if (selDay >= days[i]) and (selDay < days[i + 1]):
+                idx = i
+                break
+        # 居中优先显示
+        fromIdx = lastIdx = idx
+        while True:
+            if lastIdx < len(days):
+                lastIdx += 1
+            if lastIdx - fromIdx >= maxNum:
+                break
+            if fromIdx > 0:
+                fromIdx -= 1
+            if lastIdx - fromIdx >= maxNum:
+                break
+        return (fromIdx, lastIdx)
 
     def changeCode(self, code):
         if (self.curCode == code) or (not code):
@@ -103,11 +139,11 @@ class SortInfoWindow:
         win32gui.SetWindowText(self.wnd, f'{self.sortData["code"]} {self.sortData["name"]}')
         
         # load hot data
-        qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.min(orm.THS_Hot.hotOrder).alias('minOrder'), pw.fn.max(orm.THS_Hot.hotOrder).alias('maxOrder')).where(orm.THS_Hot.code == self.curCode).group_by(orm.THS_Hot.day).order_by(orm.THS_Hot.day.desc()).limit(20)
+        qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.min(orm.THS_Hot.hotOrder).alias('minOrder'), pw.fn.max(orm.THS_Hot.hotOrder).alias('maxOrder')).where(orm.THS_Hot.code == self.curCode).group_by(orm.THS_Hot.day) #.order_by(orm.THS_Hot.day.desc())
         #print(qq.sql())
         self.hotData = [d for d in qq.dicts()]
         # 每日前10名的个数
-        qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.count().alias('_count')).where(orm.THS_Hot.code == self.curCode, orm.THS_Hot.hotOrder <= 10).group_by(orm.THS_Hot.day).order_by(orm.THS_Hot.day.desc()).limit(20)
+        """qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.count().alias('_count')).where(orm.THS_Hot.code == self.curCode, orm.THS_Hot.hotOrder <= 10).group_by(orm.THS_Hot.day).order_by(orm.THS_Hot.day.desc())
         #print(qq.sql())
         qdata = {}
         for d in qq.tuples():
@@ -118,11 +154,41 @@ class SortInfoWindow:
                 d['count'] = qdata[day]
             else:
                 d['count'] = 0
+        """
+        qq2 = orm.THS_HotZH.select(orm.THS_HotZH.day, orm.THS_HotZH.zhHotOrder).where(orm.THS_HotZH.code == self.curCode)
+        qdata = {}
+        for d in qq2.tuples():
+            qdata[d[0]] = d[1]
+        for d in self.hotData:
+            day = d['day']
+            if day in qdata:
+                d['zhHotOrder'] = qdata[day]
+            else:
+                d['zhHotOrder'] = 0
+        if self.hotData and len(self.hotData) > 0:
+            last = self.hotData[-1]
+            if last['zhHotOrder'] == 0:
+                rd = hot_utils.calcHotZHOnDayCode(last['day'], self.curCode)
+                if rd:
+                    last['zhHotOrder'] = rd['zhHotOrder']
+        
         if self.wnd and self.size:
             #win32gui.InvalidateRect(self.wnd, (0, 0, *self.size), True)
             #win32gui.UpdateWindow(self.wnd)
             win32gui.InvalidateRect(self.wnd, None, True)
             #win32gui.PostMessage(self.wnd, win32con.WM_PAINT)
+
+    # param selDay yyyy-mm-dd or int 
+    def changeSelectDay(self, selDay):
+        if not selDay:
+            selDay = 0
+        if type(selDay) == str:
+            selDay = selDay.replace('-', '')
+            selDay = int(selDay)
+        if self.selectDay != selDay:
+            self.selectDay = selDay
+            if self.wnd and self.size:
+                win32gui.InvalidateRect(self.wnd, None, True)
 
     def changeDataType(self):
         idx = (self.DATA_TYPES.index(self.dataType) + 1) % len(self.DATA_TYPES)
@@ -172,22 +238,31 @@ class SortInfoWindow:
             return
         win32gui.SetTextColor(hdc, 0xdddddd)
         H = 18
-        MAX_ROWS = 7
-        for i in range(0, MAX_ROWS * 2):
+        rect = win32gui.GetClientRect(self.wnd)
+        RH = rect[3] - rect[1]
+        RW = rect[2] - rect[0]
+        MAX_ROWS = RH // H
+        days = [d['day'] for d in self.hotData]
+        fromIdx, endIdx = self.findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
+        for i in range(fromIdx, endIdx):
             hot = self.hotData[i]
+            if hot['day'] == self.selectDay:
+                win32gui.SetTextColor(hdc, 0x0000ff)
+            else:
+                win32gui.SetTextColor(hdc, 0xdddddd)
             day = str(hot['day'])[4 : ]
             day = day[0 : 2] + '.' + day[2 : 4]
-            count = '' if hot['count'] == 0 else f"{hot['count'] :>2d}"
-            line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {count}"
-            y = i % MAX_ROWS * H + 2
-            x = self.size[0] // 2 if i >= MAX_ROWS else 2
-            win32gui.DrawText(hdc, line, len(line), (x, y, self.size[0], y + H), win32con.DT_LEFT)
+            zhHotOrder = '' if hot['zhHotOrder'] == 0 else f"{hot['zhHotOrder'] :>3d}"
+            line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {zhHotOrder}"
+            idx = i - fromIdx
+            y = (idx % MAX_ROWS) * H + 2
+            x = RW // 2 if idx >= MAX_ROWS else 0
+            win32gui.DrawText(hdc, line, len(line), (x + 2, y, x + RW // 2, y + H), win32con.DT_LEFT)
         pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
         win32gui.SelectObject(hdc, pen)
-        win32gui.MoveToEx(hdc, 132, 0)
-        win32gui.LineTo(hdc, 132, self.size[1])
+        win32gui.MoveToEx(hdc, RW // 2, 0)
+        win32gui.LineTo(hdc, RW // 2, self.size[1])
         win32gui.DeleteObject(pen)
-
 
     def hide(self):
         win32gui.ShowWindow(self.wnd, win32con.SW_HIDE)

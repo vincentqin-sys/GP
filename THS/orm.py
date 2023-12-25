@@ -143,6 +143,18 @@ class THS_Hot(pw.Model):
         database = db2
         table_name = '个股热度排名'
 
+# 同花顺--个股热度综合排名
+class THS_HotZH(pw.Model):
+    day = pw.IntegerField(column_name = '日期') # 刷新日期
+    code = pw.IntegerField() #股票代码
+    avgHotValue = pw.IntegerField(column_name = '平均热度值_万' )
+    avgHotOrder = pw.FloatField(column_name = '平均热度排名' )
+    zhHotOrder = pw.IntegerField(column_name = '综合热度排名' )
+
+    class Meta:
+        database = db2
+        table_name = '个股热度综合排名'
+
 
 db3 = pw.SqliteDatabase(f'{path}GP/db/TaoGuBa.db')
 
@@ -217,7 +229,7 @@ class TdxLSModel(pw.Model):
         table_name = '两市总体情况'        
 
 db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC, THS_HYDB_2])
-db2.create_tables([THS_Hot])
+db2.create_tables([THS_Hot, THS_HotZH])
 db3.create_tables([TaoGuBa_Remark])
 db5.create_tables([THS_DDLR])
 
