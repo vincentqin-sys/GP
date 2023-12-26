@@ -24,11 +24,16 @@ logging.basicConfig(level = logging.ERROR)
 log = logging.getLogger('werkzeug')
 log.disabled = True
 
+def showHot():
+    return flask.render_template('show-hot.html')
+
 if __name__ == '__main__':
     print('启动8071服务')
     
     # 启动同花顺热点服务
     hot_server.startup(app)
+    app.add_url_rule('/show-hot.html', view_func=showHot,  methods = ['GET'])
+
     # 启动龙虎榜
     lhb_server.startup(app)
     lhb_downloader.autoLoadTdxLHB()

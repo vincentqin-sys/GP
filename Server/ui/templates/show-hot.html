@@ -55,16 +55,21 @@
       delimiters : ["[[", "]]"],
       el: '#app',
       // restult item is {day: '', codes:[] }
-      data: {results: [], selectName: '', lastDay: '', rowsInfo : [], selectCells: []},
+      data: {results: [], selectName: '', lastDay: 0, rowsInfo : [], selectCells: []},
       methods: {
         doShowMore: function() {
             let v = this;
             let params = {lastDay : this.lastDay, num :FIX_ROW_NUM};
-            axios.post('/THS/moreHotOrders', params).then(function(res) {
+            axios.get('/moreHotOrders', {params : params}).then(function(res) {
                 console.log(res.data);
                 let rs = res.data;
+                v.rowsInfo = _rowsInfo;
                 for (let i in rs) {
-                    v.results.push(rs[i]);
+                    let day = rs[i].day;
+                    if (! v.lastDay || v.lastDay > day) {
+                        v.results.push(rs[i]);
+                        v.lastDay = day;
+                    }
                 }
             });
         },
@@ -77,26 +82,24 @@
         buildCell : function(ridx, cidx) {
             return this.getCellValue(ridx, cidx);
         },
-        getClassName : function(ridx, cidx) {
-            let cv = this.getCellValue(ridx, cidx);
-            if (this.lastDay && this.lastDay == cv) {
-                return 'sel-cell';
-            }
-            return '';
-        },
         selCell : function(evt, ridx, cidx) {
             let nowName = this.getCellValue(ridx, cidx);
             if (nowName == this.selectName) {
                 return;
             }
-            for (let i in this.selectCells) {
-                this.selectCells[i].className = '';
-            }
-            this.selectCells.splice(0, this.selectCells.length);
-            let p = evt.target;
-            p.className = 'sel-cell';
-            this.selectCells.push(p);
+            this.selectName = nowName;
         }
+      },
+      computed: {
+        getClassName: function() {
+            return function(ridx, cidx) {
+                let cv = this.getCellValue(ridx, cidx);
+                if (this.selectName && this.selectName == cv) {
+                    return 'sel-cell';
+                }
+                return '';
+            }
+        },
       }
     });
   </script>

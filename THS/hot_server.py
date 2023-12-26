@@ -62,26 +62,42 @@ def checkRunCalcHotZH():
         return
     hot_utils.calcAllHotZHAndSave()
 
-def getMoreHot():
+def getMoreHotOrders():
     lastDay = request.args.get('lastDay')
     num = request.args.get('num')
-    if not lastDay:
+    if not lastDay or lastDay == '0':
         lastDay = datetime.date.today().strftime('%Y%m%d')
+    lastDay = int(lastDay)
     num = 200 if not num else int(num)
-    q = orm.THS_HotZH.select(orm.THS_HotZH.day).discinct().order_by(orm.THS_HotZH.day.desc()).tuples()
+    q = orm.THS_HotZH.select(orm.THS_HotZH.day).distinct().order_by(orm.THS_HotZH.day.desc()).tuples()
     existsDays = [d[0] for d in q]
     hotLastDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
     rs = []
     if (lastDay >= hotLastDay) and (hotLastDay not in existsDays):
         nn = hot_utils.calcHotZHOnDay(hotLastDay)[0 : num]
-        nn = [hot_utils.getNameByCode(d['code']) for d in nn]
-        rs.append({'day': hotLastDay, 'codes': nn})
+        news = []
+        for d in nn:
+            name = hot_utils.getNameByCode(d['code'])
+            if not name:
+                name = f"{d['code'] :06d}"
+            news.append(name)
+        rs.append({'day': hotLastDay, 'codes': news})
     DAYS_NUM = 5
+    for fromIdx, d in enumerate(existsDays):
+        if d <= lastDay:
+            break
     for i in range(0, DAYS_NUM - len(rs)):
-        day = existsDays[i]
+        if i + fromIdx >= len(existsDays):
+            break
+        day = existsDays[i + fromIdx]
+        news = []
         qd = orm.THS_HotZH.select(orm.THS_HotZH.code).where(orm.THS_HotZH.day == day).order_by(orm.THS_HotZH.zhHotOrder.asc()).limit(num).tuples()
-        nn = [hot_utils.getNameByCode(d[0]) for d in nn]
-        rs.append({'day': day, 'codes': nn})
+        for d in qd:
+            name = hot_utils.getNameByCode(d[0])
+            if not name:
+                name = f"{d[0] :06d}"
+            news.append(name)
+        rs.append({'day': day, 'codes': news})
     return rs
 
 def startup(app : Flask):
@@ -94,4 +110,4 @@ def startup(app : Flask):
 
     app.add_url_rule('/saveHot', view_func=saveHot, methods=['POST'])
     app.add_url_rule('/getHot/<code>', view_func=getHot,  methods = ['GET'])
-    app.add_url_rule('/THS/getMoreHot/<code>', view_func=getHot,  methods = ['GET'])
+    app.add_url_rule('/moreHotOrders', view_func=getMoreHotOrders,  methods = ['GET'])
