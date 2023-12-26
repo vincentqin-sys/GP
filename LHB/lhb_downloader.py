@@ -216,18 +216,10 @@ def run():
             time.sleep(5 * 60)
         time.sleep(5 * 60)
 
-flagAuto = False
-lock = threading.RLock()
+
 def autoLoadTdxLHB():
-    th = threading.currentThread()
-    lock.acquire()
-    global flagAuto
-    if flagAuto:
-        return
-    flagAuto = True
     th = threading.Thread(target = run)
     th.start()
-    lock.release()
     
 if __name__ == '__main__':
     print('功能：自动下载通达信龙虎榜')

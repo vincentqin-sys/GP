@@ -33,4 +33,4 @@ if __name__ == '__main__':
     lhb_server.startup(app)
     lhb_downloader.autoLoadTdxLHB()
 
-    app.run(host = '0.0.0.0', port=8071) #, debug=True  port=8071
+    app.run(host = '0.0.0.0', port=8071, debug=False) #, debug=True  port=8071
