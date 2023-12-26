@@ -117,6 +117,13 @@ def getSelectDay():
     win32gui.ReleaseDC(THS_SELECT_DAY_HWND, dc)
 
     sd = selYear + '-' + selDay[0 : 2] + '-' + selDay[2 : 4]
+    #check is a day
+    sd2 = sd.replace('-', '')
+    if len(sd2) != 8:
+        return '' # invalid day
+    for s in sd2:
+        if s < '0' or s > '9':
+            return '' # invalid day
     #print(sd)
     return sd
 

@@ -26,9 +26,12 @@ class Fiddler:
         if not self.needClose:
             return
         win32gui.EnumWindows(self.cb, self)
-        if self.hwnd:
-            win32gui.PostMessage(self.hwnd, win32con.WM_CLOSE, 0, 0)
-            print('已自动关闭Fiddler')
+        if not self.hwnd:
+            return
+        if win32gui.IsIconic(self.hwnd):
+            win32gui.ShowWindow(self.topWnd, win32con.SW_MAXIMIZE)
+        win32gui.PostMessage(self.hwnd, win32con.WM_CLOSE, 0, 0)
+        print('已自动关闭Fiddler')
 
     @staticmethod
     def cb(hwnd, self):

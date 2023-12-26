@@ -1,5 +1,5 @@
 import peewee as pw
-from orm import THS_Hot, THS_HotZH
+from orm import THS_Hot, THS_HotZH, THS_Newest
 
 def calcHotZHOnDay(day):
     qq = THS_Hot.select(THS_Hot.day, THS_Hot.code, pw.fn.avg(THS_Hot.hotValue), pw.fn.sum(THS_Hot.hotOrder), pw.fn.count()).group_by(THS_Hot.day, THS_Hot.code).where(THS_Hot.day == day).tuples()
@@ -39,3 +39,18 @@ def calcAllHotZHAndSave():
         rowDatas = calcHotZHOnDay(day)
         zhDatas = [THS_HotZH(**d) for d in rowDatas]
         THS_HotZH.bulk_create(zhDatas, 50)
+
+def getNameByCode(code):
+    if type(code) == int:
+        code = f'{code :06d}'
+    name = THS_Newest.select(THS_Newest.name).where(THS_Newest.code == code).scalar()
+    return name
+
+if __name__ == '__main__':
+    # 计算最热的30个股的综合排名
+    hots = calcHotZHOnDay(20231225)
+    for i in range(0, 30):
+        cur = hots[i]
+        cur['code'] = f"{cur['code']:06d}"
+        cur['name'] = getNameByCode(cur['code'])
+        print(cur)

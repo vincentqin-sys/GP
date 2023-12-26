@@ -89,7 +89,7 @@ class SortInfoWindow:
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
         w = win32api.GetSystemMetrics(0) # desktop width
-        self.size = (320, 230)
+        self.size = (350, 230)
         self.wnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
         win32gui.SetWindowPos(self.wnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.SetWindowLong(self.wnd, win32con.GWL_WNDPROC, sortInfoWinProc)
@@ -155,22 +155,25 @@ class SortInfoWindow:
             else:
                 d['count'] = 0
         """
-        qq2 = orm.THS_HotZH.select(orm.THS_HotZH.day, orm.THS_HotZH.zhHotOrder).where(orm.THS_HotZH.code == self.curCode)
+        qq2 = orm.THS_HotZH.select(orm.THS_HotZH.day, orm.THS_HotZH.zhHotOrder, orm.THS_HotZH.avgHotOrder).where(orm.THS_HotZH.code == self.curCode)
         qdata = {}
         for d in qq2.tuples():
-            qdata[d[0]] = d[1]
+            qdata[d[0]] = d[1 : ]
         for d in self.hotData:
             day = d['day']
             if day in qdata:
-                d['zhHotOrder'] = qdata[day]
+                d['zhHotOrder'] = qdata[day][0]
+                d['avgHotOrder'] = qdata[day][1]
             else:
                 d['zhHotOrder'] = 0
+                d['avgHotOrder'] = 0
         if self.hotData and len(self.hotData) > 0:
             last = self.hotData[-1]
             if last['zhHotOrder'] == 0:
                 rd = hot_utils.calcHotZHOnDayCode(last['day'], self.curCode)
                 if rd:
                     last['zhHotOrder'] = rd['zhHotOrder']
+                    last['avgHotOrder'] = rd['avgHotOrder']
         
         if self.wnd and self.size:
             #win32gui.InvalidateRect(self.wnd, (0, 0, *self.size), True)
@@ -253,7 +256,9 @@ class SortInfoWindow:
             day = str(hot['day'])[4 : ]
             day = day[0 : 2] + '.' + day[2 : 4]
             zhHotOrder = '' if hot['zhHotOrder'] == 0 else f"{hot['zhHotOrder'] :>3d}"
-            line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {zhHotOrder}"
+            avgHotOrder = f"{hot['avgHotOrder'] :.1f}"
+            avgHotOrder = avgHotOrder[0 : 3]
+            line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {avgHotOrder :<3s} {zhHotOrder}"
             idx = i - fromIdx
             y = (idx % MAX_ROWS) * H + 2
             x = RW // 2 if idx >= MAX_ROWS else 0

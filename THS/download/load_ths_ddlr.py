@@ -222,7 +222,6 @@ class ThsDdlrDetailData:
         f.close()
 
 def autoLoadOne(code, ddWin):
-    ddWin.showWindow()
     ddWin.grubFocusInSearchBox()
     # clear input text
     for i in range(20):
@@ -247,21 +246,25 @@ def autoLoadTop200Data():
     ddWin = ths.THS_DDWindow()
     ddWin.initWindows()
     if not ddWin.openDDLJ():
-        raise Exception('同花顺的大单页面打开失败')
+        fd.close()
+        raise Exception('[autoLoadTop200Data] 同花顺的大单页面打开失败')
 
-    datas = orm.THS_Hot.select().order_by(orm.THS_Hot.id.desc()).limit(200)
+    MAX_NUM = 200
+    datas = orm.THS_Hot.select().order_by(orm.THS_Hot.id.desc()).limit(MAX_NUM)
     datas = [d for d in datas]
     datas.reverse()
-    successTimes = 0
+    successTimes, failTimes = 0, 0
     for idx, d in enumerate(datas):
         code = f"{d.code :06d}"
         sc = autoLoadOne(code, ddWin)
-        if sc:
-            successTimes += 1
-        #sc = 'Success' if sc else 'Fail'
-        #print(f"[{idx + 1}] Download by fiddler : ", code, sc)
+        if sc: successTimes += 1
+        else: failTimes += 1
+        if failTimes >= 5 and failTimes >= successTimes:
+            break
     fd.close()
-    print('Load 200, Success number:', successTimes)
+    print(f'Load {MAX_NUM}, Success {successTimes}, Fail {failTimes}')
+    if successTimes + failTimes != MAX_NUM:
+        raise Exception('[autoLoadTop200Data] 下载失败')
 
 def test2():
     import win32gui, win32con
@@ -309,7 +312,7 @@ def releaseDesktopGUILock():
 
 if __name__ == '__main__':
     lastDay = None
-
+    runNow = False
     while True:
         today = datetime.datetime.now()
         nowDay = today.strftime('%Y-%m-%d')
@@ -317,9 +320,10 @@ if __name__ == '__main__':
             time.sleep(10 * 60)
             continue
         st = today.strftime('%H:%M')
-        if st >= '18:20' and st < '19:00':
+        if (st >= '18:20' and st < '19:00') or runNow:
             pyautogui.hotkey('win', 'd')
             if run():
                 lastDay = nowDay
+                runNow = False
 
     
