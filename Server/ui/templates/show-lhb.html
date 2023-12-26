@@ -1,0 +1,178 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://unpkg.com/vue@2"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        table {
+            border-collapse: collapse;
+        }
+        td, th {
+            border: 1px solid #000000;
+            padding-left: 5px;
+        }
+        a {
+            text-decoration: none;
+            color: #87b85e;
+        }
+        .sel-row {
+            background-color: rgb(102, 121, 184);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div style="background-color: darkgray; width: 100%; height: 50px;">
+            <textarea v-model="sql"  style="width: 60%;  float: left;" rows=2 placeholder="input sql"> </textarea>
+            <button @click="doQuery">Query</button>
+        </div>
+        <table :data="results" >
+            <tr>
+                <th v-for="col in columns"  v-if="col != 'id' ">
+                    [[ col ]]
+                </th>
+            </tr>
+
+            <tr v-for="(row, ridx) in results" :key="row.id" @click="selectRow($event, ridx)" >
+                <template v-for="(colName, idx) in columns">
+                    <td v-if="colName != 'id' " v-html="buildCell(row, colName)" :style="getStyle(colName)">
+                    </td>
+                </template>
+            </tr>
+        </table>
+
+    </div>
+</body>
+<script>
+    
+
+    function wrapData(colName, colVal) {
+        if (colName.indexOf('_亿') > 0) {
+            let s = '' + colVal;
+            let i = s.indexOf('.');
+            if (i > 0) {
+                s = s.substring(0, i + 2);
+                return parseFloat(s);
+            }
+        }
+        if (colName == '涨跌幅') {
+            return '' + colVal + '%';
+        }
+        return colVal;
+    }
+
+    function lastDate() {
+        let ld = '{{ maxDay }}';
+        return ld;
+        // let d = new Date();
+        // d = d.setDate(d.getDate() - 1);
+        // d = new Date(d);
+        // let m = d.getMonth() + 1;
+        // let dd = d.getDate() > 9 ? d.getDate() : '0' + d.getDate();
+        // return '' + d.getFullYear() + '-' + (m > 9 ? m : '0' + m) + '-' + dd;
+    }
+
+    vue = new Vue({
+      delimiters : ["[[", "]]"],
+      el: '#app',
+      data: {sql : 'select 日期, code, name, 上榜类型, 涨跌幅, 成交额_亿, 买入金额_亿, 卖出金额_亿, 净买额_亿, 知名游资 from tdxlhb where 日期 = "' + lastDate() + '" ', results: [], columns: [], selObj: {}},
+      selRowTR : null,
+      methods: {
+        doQuery: function() {
+            let v = this;
+            v.columns = [];
+            v.results = [];
+            let params = {sql : this.sql};
+            axios.post('queryBySql', params).then(function(res) {
+                console.log(res.data);
+                let rs = res.data;
+                if (rs.status == "success") {
+                    let cols = [];
+                    // let widthInfo = {'上榜类型AA' : 200, '日期':110, 'code':80, 'name': 95, '涨跌幅': 80};
+                    for (i in rs.cols) {
+                        let name = rs.cols[i];
+                        cols.push(name);
+                    }
+                    let dt = [];
+                    let ntrClass = [];
+                    let sumObj = {买入金额_亿 : 0, 卖出金额_亿 : 0, 净买额_亿 : 0};
+                    for (i in rs.data) {
+                        let rr = rs.data[i];
+                        let rv = {};
+                        for (let j = 0; j < rr.length; ++j) {
+                            rv[rs.cols[j]] = wrapData(rs.cols[j], rr[j]);
+                        }
+                        dt.push(rv);
+                        ntrClass.push('');
+                        if (rv['上榜类型'].indexOf('累计') < 0) {
+                            sumObj.买入金额_亿 += rv.买入金额_亿;
+                            sumObj.卖出金额_亿 += rv.卖出金额_亿;
+                            sumObj.净买额_亿 += rv.净买额_亿;
+                        }
+                    }
+                    dt.sort(function(a, b) {
+                        a = a['行业'];
+                        b = b['行业'];
+                        if (!a && !b) {
+                            return 0;
+                        }
+                        if (! a) {
+                            return 1;
+                        }
+                        return a.localeCompare(b);
+                    });
+
+                    
+                    cols.splice(0, 0, 'ID');
+                    for (let i = 0; i < dt.length; i++) {
+                        dt[i]['ID'] = i + 1;
+                    }
+                    dt.splice(0, 0, sumObj);
+                    for (k in sumObj) {
+                        sumObj[k] = wrapData(k, sumObj[k]);
+                    }
+                    v.columns = cols;
+                    v.results = dt;
+                    console.log('-->', v.columns, v.results);
+                } else {
+                }
+            });
+        },
+        buildCell : function(row, colName) {
+            if (colName == 'name') {
+                return '<a href="http://page2.tdx.com.cn:7615/site/tdxsj/html/tdxsj_lhbd_ggxq.html?back=tdxsj_lhbd,龙虎榜个股,' 
+                        + row.code+',' + row.name + '" target="_blank">' + row.name +'  </a>';
+            }
+            return row[colName];
+        },
+        getStyle : function(colName) {
+            let widthInfo = {'上榜类型' : 300, '日期':110, 'code':80, 'name': 95, '涨跌幅': 80, '收盘价': 80};
+            let style = '';
+            if (colName.indexOf('_亿') > 0) {
+                style += "width: 60px;";
+            }
+            if (colName in widthInfo) {
+                style += 'width: ' + widthInfo[colName] + 'px;';
+            }
+            if (colName != '上榜类型' && colName != '知名游资' && colName != '行业') {
+                style += 'text-align: center;';
+            }
+            return style;
+        },
+        selectRow : function(evt, idx) {
+            let p = evt.target;
+            while (p.tagName != 'TR') {
+                p = p.parentElement;
+            }
+            if (this.selRowTR == p) {
+                return;
+            }
+            if (this.selRowTR)
+                this.selRowTR.className = '';
+            this.selRowTR = p;
+            p.className = 'sel-row';
+        }
+      }
+    });
+  </script>
+</html>

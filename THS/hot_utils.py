@@ -1,5 +1,11 @@
 import peewee as pw
-from orm import THS_Hot, THS_HotZH, THS_Newest
+import sys, os
+
+cwd = os.getcwd()
+w = cwd.index('GP')
+cwd = cwd[0 : w + 2]
+sys.path.append(cwd)
+from THS.orm import THS_Hot, THS_HotZH, THS_Newest
 
 def calcHotZHOnDay(day):
     qq = THS_Hot.select(THS_Hot.day, THS_Hot.code, pw.fn.avg(THS_Hot.hotValue), pw.fn.sum(THS_Hot.hotOrder), pw.fn.count()).group_by(THS_Hot.day, THS_Hot.code).where(THS_Hot.day == day).tuples()
@@ -47,6 +53,7 @@ def getNameByCode(code):
     return name
 
 if __name__ == '__main__':
+    print(os.getcwd())
     # 计算最热的30个股的综合排名
     hots = calcHotZHOnDay(20231225)
     for i in range(0, 30):
