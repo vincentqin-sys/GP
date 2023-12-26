@@ -62,6 +62,28 @@ def checkRunCalcHotZH():
         return
     hot_utils.calcAllHotZHAndSave()
 
+def getMoreHot():
+    lastDay = request.args.get('lastDay')
+    num = request.args.get('num')
+    if not lastDay:
+        lastDay = datetime.date.today().strftime('%Y%m%d')
+    num = 200 if not num else int(num)
+    q = orm.THS_HotZH.select(orm.THS_HotZH.day).discinct().order_by(orm.THS_HotZH.day.desc()).tuples()
+    existsDays = [d[0] for d in q]
+    hotLastDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
+    rs = []
+    if (lastDay >= hotLastDay) and (hotLastDay not in existsDays):
+        nn = hot_utils.calcHotZHOnDay(hotLastDay)[0 : num]
+        nn = [hot_utils.getNameByCode(d['code']) for d in nn]
+        rs.append({'day': hotLastDay, 'codes': nn})
+    DAYS_NUM = 5
+    for i in range(0, DAYS_NUM - len(rs)):
+        day = existsDays[i]
+        qd = orm.THS_HotZH.select(orm.THS_HotZH.code).where(orm.THS_HotZH.day == day).order_by(orm.THS_HotZH.zhHotOrder.asc()).limit(num).tuples()
+        nn = [hot_utils.getNameByCode(d[0]) for d in nn]
+        rs.append({'day': day, 'codes': nn})
+    return rs
+
 def startup(app : Flask):
     print('[hot-server]功能: 启动服务, 保存同花顺热点; 保持Chrome始终都启动了。')
     #p = Process(target = sub_process, daemon = True)
@@ -72,3 +94,4 @@ def startup(app : Flask):
 
     app.add_url_rule('/saveHot', view_func=saveHot, methods=['POST'])
     app.add_url_rule('/getHot/<code>', view_func=getHot,  methods = ['GET'])
+    app.add_url_rule('/THS/getMoreHot/<code>', view_func=getHot,  methods = ['GET'])

@@ -1,0 +1,103 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://unpkg.com/vue@2"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        table {
+            border-collapse: collapse;
+        }
+        td, th {
+            border: 1px solid #000000;
+            padding-left: 5px;
+        }
+        a {
+            text-decoration: none;
+            color: #87b85e;
+        }
+        .sel-cell {
+            background-color: rgb(102, 121, 184);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div style="background-color: darkgray; width: 100%; height: 50px;">
+            <button @click="doShowMore">Show More</button>
+        </div>
+        <table :data="results" >
+            <tr>
+                <th>排名</th>
+                <th v-for="col in results" >
+                    [[ col.day ]]
+                </th>
+            </tr>
+
+            <tr v-for="(row, ridx) in rowsInfo" :key="row" >
+                <td> [[ridx + 1]] </td>
+                <template v-for="(col, cidx) in results">
+                    <td v-html="buildCell(ridx, cidx)"
+                            :class="getClassName(ridx, cidx)" @click="selCell($event, ridx, cidx)">
+                    </td>
+                </template>
+            </tr>
+        </table>
+
+    </div>
+</body>
+<script>
+    FIX_ROW_NUM = 200;
+    _rowsInfo = [];
+    for (let i = 0; i < FIX_ROW_NUM; i++) {
+        _rowsInfo[i] = '_R' + i;
+    }
+    vue = new Vue({
+      delimiters : ["[[", "]]"],
+      el: '#app',
+      // restult item is {day: '', codes:[] }
+      data: {results: [], selectName: '', lastDay: '', rowsInfo : [], selectCells: []},
+      methods: {
+        doShowMore: function() {
+            let v = this;
+            let params = {lastDay : this.lastDay, num :FIX_ROW_NUM};
+            axios.post('/THS/moreHotOrders', params).then(function(res) {
+                console.log(res.data);
+                let rs = res.data;
+                for (let i in rs) {
+                    v.results.push(rs[i]);
+                }
+            });
+        },
+        getCellValue: function(ridx, cidx) {
+            let codes = this.results[cidx].codes;
+            if (ridx >= codes.length)
+                return '';
+            return codes[ridx];
+        },
+        buildCell : function(ridx, cidx) {
+            return this.getCellValue(ridx, cidx);
+        },
+        getClassName : function(ridx, cidx) {
+            let cv = this.getCellValue(ridx, cidx);
+            if (this.lastDay && this.lastDay == cv) {
+                return 'sel-cell';
+            }
+            return '';
+        },
+        selCell : function(evt, ridx, cidx) {
+            let nowName = this.getCellValue(ridx, cidx);
+            if (nowName == this.selectName) {
+                return;
+            }
+            for (let i in this.selectCells) {
+                this.selectCells[i].className = '';
+            }
+            this.selectCells.splice(0, this.selectCells.length);
+            let p = evt.target;
+            p.className = 'sel-cell';
+            this.selectCells.push(p);
+        }
+      }
+    });
+  </script>
+</html>
