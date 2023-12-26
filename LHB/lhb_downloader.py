@@ -2,7 +2,13 @@ import peewee as pw
 import threading
 import requests, json, flask
 import datetime, time, sys, os
-import mcore, orm
+
+cwd = os.getcwd()
+w = cwd.index('GP')
+cwd = cwd[0 : w + 2]
+sys.path.append(cwd)
+
+from LHB import orm
 
 # yyyy-mm-dd
 # return [ {code, name}, ... ]

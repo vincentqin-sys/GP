@@ -15,6 +15,7 @@ sys.path.append(cwd)
 
 from THS import hot_server
 from Server import lhb_server
+from LHB import lhb_downloader
 
 app = Flask(__name__, static_folder='ui/static', template_folder='ui/templates')
 cors = CORS(app)
@@ -30,5 +31,6 @@ if __name__ == '__main__':
     hot_server.startup(app)
     # 启动龙虎榜
     lhb_server.startup(app)
+    lhb_downloader.autoLoadTdxLHB()
 
-    app.run(host = '0.0.0.0', port=8070) #, debug=True  port=8071
+    app.run(host = '0.0.0.0', port=8071) #, debug=True  port=8071

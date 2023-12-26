@@ -75,7 +75,7 @@ def queryBySql():
     return rs
 
 def startup(app : Flask):
-    print('功能:启动通达信龙虎榜服务')
+    print('[lhb-server]功能:启动通达信龙虎榜服务')
     app.add_url_rule('/LHB/getLHBInfo', view_func=getLHBInfo, methods = ['POST'])
     app.add_url_rule('/LHB/show-lhb.html', view_func=showLhbDB, methods = ['GET'])
     app.add_url_rule('/LHB/queryBySql', view_func=queryBySql, methods = ['POST'])
