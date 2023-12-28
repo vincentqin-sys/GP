@@ -152,7 +152,7 @@ def init():
 
 #-------------------hot  window ------------
 class HotWindow:
-    DATA_TYPE = ('HOT', 'LHB', 'LS_INFO') # # HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息，含成交额排名) DDLR（大单流入）
+    DATA_TYPE = ('HOT', 'LHB', 'LS_INFO', 'DDLR') # # HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息，含成交额排名) DDLR（大单流入）
 
     def __init__(self):
         self.oldProc = None
@@ -224,6 +224,9 @@ class HotWindow:
         elif self.dataType == 'LS_INFO' and self.lsInfoData:
             days = [d['day'] for d in self.lsInfoData]
             self._drawDataType(hdc, days, self.lsInfoData, DEFAULT_ITEM_WIDTH, self.drawOneDayLSInfo)
+        elif self.dataType == 'DDLR':
+            days = [d['day'] for d in self.ddlrData]
+            self._drawDataType(hdc, days, self.ddlrData, DEFAULT_ITEM_WIDTH, self.drawOneDayDDLR)
 
     # param days: [YYYY-MM-DD, ....]
     # return [startIdx, endIdx)
@@ -452,6 +455,22 @@ class HotWindow:
         win32gui.DeleteObject(hbrBlue)
         win32gui.DeleteObject(hbrYellow)
 
+    def drawOneDayDDLR(self, hdc, data, x, itemWidth, *args):
+        def getRangeOf(name):
+            maxVal, minVal = 0, 0
+            for i in range(startIdx, endIdx):
+                v = self.lsInfoData[i][name]
+                if minVal == 0 and maxVal == 0:
+                    maxVal = minVal = v
+                    continue
+                maxVal = max(maxVal, v)
+                minVal = min(minVal, v)
+            return minVal, maxVal
+
+        idx, startIdx, endIdx, *_ = args
+        
+        pass
+    
     def drawMinMode(self, hdc):
         title = '【我的热点】'
         rr = win32gui.GetClientRect(self.wnd)

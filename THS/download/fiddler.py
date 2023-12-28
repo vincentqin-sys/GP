@@ -23,13 +23,13 @@ class Fiddler:
 
     def close(self):
         # os.system('taskkill /F /IM Fiddler.exe')
-        if not self.needClose:
-            return
+        #if not self.needClose:
+        #    return
         win32gui.EnumWindows(self.cb, self)
         if not self.hwnd:
             return
         if win32gui.IsIconic(self.hwnd):
-            win32gui.ShowWindow(self.topWnd, win32con.SW_MAXIMIZE)
+            win32gui.ShowWindow(self.hwnd, win32con.SW_MAXIMIZE)
         win32gui.SetForegroundWindow(self.hwnd)
         time.sleep(1.5)
         win32gui.PostMessage(self.hwnd, win32con.WM_CLOSE, 0, 0)
