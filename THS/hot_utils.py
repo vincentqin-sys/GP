@@ -5,7 +5,10 @@ cwd = os.getcwd()
 w = cwd.index('GP')
 cwd = cwd[0 : w + 2]
 sys.path.append(cwd)
-from THS.orm import THS_Hot, THS_HotZH, THS_Newest
+if __name__ == '__main__':
+    from orm import THS_Hot, THS_HotZH, THS_Newest
+else:
+    from THS.orm import THS_Hot, THS_HotZH, THS_Newest
 
 def calcHotZHOnDay(day):
     qq = THS_Hot.select(THS_Hot.day, THS_Hot.code, pw.fn.avg(THS_Hot.hotValue), pw.fn.sum(THS_Hot.hotOrder), pw.fn.count()).group_by(THS_Hot.day, THS_Hot.code).where(THS_Hot.day == day).tuples()
@@ -51,6 +54,13 @@ def getNameByCode(code):
         code = f'{code :06d}'
     name = THS_Newest.select(THS_Newest.name).where(THS_Newest.code == code).scalar()
     return name
+
+# 取得有热度排行的交易日期 从小到大排列
+# return [20230101, ...] , item type is int
+def getTradeDaysByHot():
+    q = THS_Hot.select(THS_Hot.day).distinct().order_by(THS_Hot.day.asc()).tuples()
+    days = [d[0] for d in q]
+    return days
 
 if __name__ == '__main__':
     print(os.getcwd())

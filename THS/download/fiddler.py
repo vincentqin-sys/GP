@@ -30,6 +30,8 @@ class Fiddler:
             return
         if win32gui.IsIconic(self.hwnd):
             win32gui.ShowWindow(self.topWnd, win32con.SW_MAXIMIZE)
+        win32gui.SetForegroundWindow(self.hwnd)
+        time.sleep(1.5)
         win32gui.PostMessage(self.hwnd, win32con.WM_CLOSE, 0, 0)
         print('已自动关闭Fiddler')
 

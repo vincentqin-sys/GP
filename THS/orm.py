@@ -130,7 +130,6 @@ def queryFullInfo(code):
 
 db2 = pw.SqliteDatabase(f'{path}GP/db/THS_Hot.db')
 
-
 # 同花顺--个股热度排名
 class THS_Hot(pw.Model):
     day = pw.IntegerField(column_name = '日期') # 刷新日期
