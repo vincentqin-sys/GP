@@ -228,11 +228,20 @@ class HotWindow:
             days = [d['day'] for d in self.ddlrData]
             self._drawDataType(hdc, days, self.ddlrData, DEFAULT_ITEM_WIDTH, self.drawOneDayDDLR)
 
-    # param days: [YYYY-MM-DD, ....]
+    # format day (int, str(8), str(10)) to YYYY-MM-DD
+    def formatDay(self, day):
+        if type(day) == int:
+            return f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
+        if type(day) == str and len(day) == 8:
+            return day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
+        return day
+
+    # param days : int, str(8), str(10)
     # return [startIdx, endIdx)
     def findDrawDaysIndex(self, days, itemWidth):
-        if not days:
+        if not days or len(days) == 0:
             return (0, 0)
+        days = [ self.formatDay(d) for d in days ]
         width = self.rect[2]
         num = width // itemWidth
         if num == 0:
@@ -351,9 +360,10 @@ class HotWindow:
                 win32gui.LineTo(hdc, x + WIDTH - 5, y - 2)
         win32gui.DeleteObject(pen2)
 
-    # day = YYYY-MM-DD
+    # day = int, str(8), str(10)
     def drawDayTitle(self, hdc, x, day, itemWidth):
         WIDTH, HEIGHT = itemWidth, 14
+        day = self.formatDay(day)
         ds = time.strptime(day, '%Y-%m-%d')
         wd = datetime.date(ds[0], ds[1], ds[2]).isoweekday()
         WDS = '一二三四五六日'
@@ -459,7 +469,7 @@ class HotWindow:
         def getRangeOf(name):
             maxVal, minVal = 0, 0
             for i in range(startIdx, endIdx):
-                v = self.lsInfoData[i][name]
+                v = self.ddlrData[i][name]
                 if minVal == 0 and maxVal == 0:
                     maxVal = minVal = v
                     continue
@@ -468,8 +478,31 @@ class HotWindow:
             return minVal, maxVal
 
         idx, startIdx, endIdx, *_ = args
-        
-        pass
+        self.drawDayTitle(hdc, x, data['day'], itemWidth)
+        startY, endY = 60, self.rect[3] - 40
+        hbrRed = win32gui.CreateSolidBrush(0x0000ff)
+        hbrGreen = win32gui.CreateSolidBrush(0x00ff00)
+        buyMin, buyMax  = getRangeOf('buy')
+        sellMin, sellMax = getRangeOf('sell')
+        # buy
+        spY = int(startY + (1 - (data['buy']) / buyMax) * (endY - startY))
+        spX = x + 20
+        win32gui.FillRect(hdc, (spX, spY, spX + 8, endY), hbrRed)
+        info = f'{data["buy"] :+.1f}'
+        win32gui.DrawText(hdc, info, len(info), (spX - 10, spY - 12, spX + 20, spY), win32con.DT_CENTER)
+        # sell
+        spX += 35
+        spY = int(startY + (1 - (data['sell']) / buyMax) * (endY - startY))
+        win32gui.FillRect(hdc, (spX, spY, spX + 8, endY), hbrGreen)
+        info = f'{data["sell"] :.1f}'
+        win32gui.DrawText(hdc, info, len(info), (spX - 10, spY - 12, spX + 20, spY), win32con.DT_CENTER)
+        # 显示当前选中日期的图标
+        if self.formatDay(data['day']) == self.selectDay:
+            hbrBlack = win32gui.CreateSolidBrush(0x000000)
+            win32gui.FillRect(hdc, (x + 40, self.rect[3] - 15, x + 70, self.rect[3] - 10), hbrBlack)
+            win32gui.DeleteObject(hbrBlack)
+        win32gui.DeleteObject(hbrRed)
+        win32gui.DeleteObject(hbrGreen)
     
     def drawMinMode(self, hdc):
         title = '【我的热点】'
@@ -501,6 +534,7 @@ class HotWindow:
         self.updateHotData(code)
         self.updateLHBData(code)
         self.updateLSInfoData(code)
+        self.updateDDLRData(code)
 
     def updateLHBData(self, code):
         ds = orm.TdxLHB.select().where(orm.TdxLHB.code == code)
@@ -546,6 +580,9 @@ class HotWindow:
     def updateDDLRData(self, code):
         ds = orm.THS_DDLR.select().where(orm.THS_DDLR.code == code)
         self.ddlrData = [d.__data__ for d in ds]
+        for d in self.ddlrData:
+            d['buy'] = d['activeIn'] + d['positiveIn']
+            d['sell'] = d['activeOut'] + d['positiveOut']
         self.selectDay = None
         win32gui.InvalidateRect(self.wnd, None, True)
     
