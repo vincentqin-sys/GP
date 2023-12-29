@@ -118,6 +118,13 @@ class THS_DDWindow:
         x, y = rect[0] + 100, rect[1] + 60 # search input box center
         pyautogui.click(x, y)
 
+    def releaseFocus(self):
+        if not self.ddWnd:
+            return
+        rect = win32gui.GetWindowRect(self.ddWnd)
+        x, y = rect[0] + 200, rect[1] + 60 # out search input box 
+        pyautogui.click(x, y)
+
 if __name__ == '__main__':
     dd = THS_DDWindow()
     dd.initWindows()

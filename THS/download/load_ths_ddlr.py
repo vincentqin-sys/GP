@@ -230,6 +230,7 @@ def autoLoadOne(code, ddWin):
     pyautogui.typewrite(code, 0.01)
     pyautogui.press('enter')
     time.sleep(3)
+    ddWin.releaseFocus()
     return codeExists(code)
 
 # 自动下载同花顺热点Top200个股的大单数据

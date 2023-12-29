@@ -6,26 +6,28 @@ class Fiddler:
     def __init__(self) -> None:
         self.pid = None
         self.needClose = False
-        self.hwnd = None
+        self.hwnd = 0
 
     def open(self):
         pids = psutil.pids()
         for pid in pids:
             p = psutil.Process(pid)
-            if 'fiddler' in p.name().lower():
+            if 'fiddler.exe' in p.name().lower():
                 self.pid = pid
                 print('已检测到开启了fiddler')
                 return
         print('未开启fiddler, 自动开启')
-        subprocess.Popen('C:\\Program Files (x86)\\Fiddler\\Fiddler.exe', shell=True)
-        self.needClose = True
+        pp = subprocess.Popen('C:\\Program Files (x86)\\Fiddler\\Fiddler.exe', shell=True)
         time.sleep(5)
+        self.needClose = True
 
     def close(self):
+        print('关闭Fiddler... ')
         # os.system('taskkill /F /IM Fiddler.exe')
         #if not self.needClose:
         #    return
         win32gui.EnumWindows(self.cb, self)
+        print(f'Fiddler hwnd=0x{self.hwnd:X}')
         if not self.hwnd:
             return
         if win32gui.IsIconic(self.hwnd):
@@ -38,10 +40,11 @@ class Fiddler:
     @staticmethod
     def cb(hwnd, self):
         title = win32gui.GetWindowText(hwnd)
-        if self.hwnd or ('Fiddler' not in title):
-            return True
-        threadId, processId = win32process.GetWindowThreadProcessId(hwnd)
-        if processId == self.pid:
+        # print(title)
+        if 'Telerik Fiddler' in title:
+            #threadId, processId = win32process.GetWindowThreadProcessId(hwnd)
+            #p = psutil.Process(processId)
+            #if 'fiddler.exe' in p.name().lower():
             self.hwnd = hwnd
         return True
 

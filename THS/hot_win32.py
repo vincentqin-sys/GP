@@ -226,7 +226,7 @@ class HotWindow:
             self._drawDataType(hdc, days, self.lsInfoData, DEFAULT_ITEM_WIDTH, self.drawOneDayLSInfo)
         elif self.dataType == 'DDLR':
             days = [d['day'] for d in self.ddlrData]
-            self._drawDataType(hdc, days, self.ddlrData, DEFAULT_ITEM_WIDTH, self.drawOneDayDDLR)
+            self._drawDataType(hdc, days, self.ddlrData, DEFAULT_ITEM_WIDTH - 30, self.drawOneDayDDLR)
 
     # format day (int, str(8), str(10)) to YYYY-MM-DD
     def formatDay(self, day):
@@ -484,22 +484,24 @@ class HotWindow:
         hbrGreen = win32gui.CreateSolidBrush(0x00ff00)
         buyMin, buyMax  = getRangeOf('buy')
         sellMin, sellMax = getRangeOf('sell')
+        maxVal = max(buyMax, sellMax)
         # buy
-        spY = int(startY + (1 - (data['buy']) / buyMax) * (endY - startY))
+        spY = int(startY + (1 - (data['buy']) / maxVal) * (endY - startY))
         spX = x + 20
         win32gui.FillRect(hdc, (spX, spY, spX + 8, endY), hbrRed)
         info = f'{data["buy"] :+.1f}'
         win32gui.DrawText(hdc, info, len(info), (spX - 10, spY - 12, spX + 20, spY), win32con.DT_CENTER)
         # sell
         spX += 35
-        spY = int(startY + (1 - (data['sell']) / buyMax) * (endY - startY))
+        spY = int(startY + (1 - (data['sell']) / maxVal) * (endY - startY))
         win32gui.FillRect(hdc, (spX, spY, spX + 8, endY), hbrGreen)
         info = f'{data["sell"] :.1f}'
         win32gui.DrawText(hdc, info, len(info), (spX - 10, spY - 12, spX + 20, spY), win32con.DT_CENTER)
         # 显示当前选中日期的图标
         if self.formatDay(data['day']) == self.selectDay:
             hbrBlack = win32gui.CreateSolidBrush(0x000000)
-            win32gui.FillRect(hdc, (x + 40, self.rect[3] - 15, x + 70, self.rect[3] - 10), hbrBlack)
+            sx = (itemWidth - 30) // 2 + x
+            win32gui.FillRect(hdc, (sx, self.rect[3] - 15, sx + 30, self.rect[3] - 10), hbrBlack)
             win32gui.DeleteObject(hbrBlack)
         win32gui.DeleteObject(hbrRed)
         win32gui.DeleteObject(hbrGreen)
