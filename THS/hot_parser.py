@@ -56,11 +56,14 @@ def getAllHotCodes(day : int):
 def getGrowth(hotsZH):
     if len(hotsZH) >= 2:
         pre, last = hotsZH[-2], hotsZH[-1]
-        orderGrowth = int((pre['zhHotOrder'] - last['zhHotOrder']) / last['zhHotOrder'] * 100)
+        orderGrowth = int(pre['zhHotOrder'] - last['zhHotOrder'])
         valGrowth = int((last['avgHotValue'] - pre['avgHotValue']) / pre['avgHotValue'] * 100)
     else:
         orderGrowth = valGrowth = 1000 # 首次
-    return {'orderGrowth' : orderGrowth, 'valGrowth' : valGrowth}
+    last = hotsZH[-1]
+    rt = {'orderGrowth' : orderGrowth, 'valGrowth' : valGrowth}
+    rt.update(last)
+    return rt
 
 # 计算热度值增长率
 # return [ {code, orderGrowth, valGrowth} ]
@@ -69,13 +72,18 @@ def calcHotGrowth(day : int):
     rs = []
     for code in codes:
         gr = getGrowth(codes[code])
+        if gr['avgHotValue'] < 30: #去除30万热度以下的个股, 热度太低的也没意义
+            continue
         gr['code'] = f'{code :06d}'
         gr['name'] = hot_utils.getNameByCode(code)
         rs.append(gr)
     return rs
 
 if __name__ == '__main__':
-    rs = calcHotGrowth(20231227)
+    rs = calcHotGrowth(20231229)
     rs = sorted(rs, key = lambda it : it['valGrowth'], reverse=True)
+    print('#\tCODE\t  Name\t热度增率\t进位\t平均热度值')
     for i in range(0, len(rs)):
-        print(i, rs[i])
+        code, name, valGrowth, orderGrowth,avgHotValue = rs[i]['code'], str(rs[i]['name']), rs[i]['valGrowth'], rs[i]['orderGrowth'], rs[i]['avgHotValue']
+        hotOrder = rs[i]['zhHotOrder']
+        print(i, f'{code}\t{name}\t{valGrowth:+d}%\t{orderGrowth:+d}({hotOrder})\t{avgHotValue}万\t', sep='\t')

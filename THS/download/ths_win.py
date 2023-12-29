@@ -11,32 +11,23 @@ class THS_Window:
         for pid in pids:
             p = psutil.Process(pid)
             if 'hexin.exe' in p.name().lower():
-                self.pid = pid
-                print('已检测到开启了同花顺')
+                print('已检测到开启了同花顺, pid=', pid)
                 return
         print('未开启同花顺, 自动开启')
         subprocess.Popen('D:\\Program Files\\THS\\hexin.exe', shell=True)
-        self.needClose = True
         time.sleep(8)
 
     def close(self):
-        if not self.needClose:
-            return
         os.system('taskkill /F /IM hexin.exe')
 
     @staticmethod
     def cb(hwnd, self):
         title = win32gui.GetWindowText(hwnd)
-        if self.hwnd or ('同花顺' not in title):
-            return True
-        threadId, processId = win32process.GetWindowThreadProcessId(hwnd)
-        if processId == self.pid:
+        if '同花顺(v' in title:
             self.hwnd = hwnd
         return True
     
     def findWindow(self):
-        if self.hwnd:
-            return self.hwnd
         win32gui.EnumWindows(THS_Window.cb, self)
         return self.hwnd
 
