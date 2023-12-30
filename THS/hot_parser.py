@@ -80,7 +80,7 @@ def calcHotGrowth(day : int):
     return rs
 
 if __name__ == '__main__':
-    rs = calcHotGrowth(20231229)
+    rs = calcHotGrowth(20231204)
     rs = sorted(rs, key = lambda it : it['valGrowth'], reverse=True)
     print('#\tCODE\t  Name\t热度增率\t进位\t平均热度值')
     for i in range(0, len(rs)):

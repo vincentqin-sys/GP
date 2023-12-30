@@ -636,6 +636,8 @@ def hotWinProc(hwnd, msg, wparam, lparam):
 # show-hide sort wnd, liang dian wnd
 def showSortAndLiangDianWindow(show, move):
     liangDianWnd = None # win32gui.FindWindow('smallF10_dlg', '小F10')
+    left, _, right, _ = win32gui.GetWindowRect(THS_TOP_HWND)
+    width = right - left
     if show:
         simpleWindow.show()
         if liangDianWnd:
@@ -647,7 +649,8 @@ def showSortAndLiangDianWindow(show, move):
     if move:
         if liangDianWnd:
             win32gui.SetWindowPos(liangDianWnd, None, 560, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
-        win32gui.SetWindowPos(simpleWindow.wnd, None, 1087, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
+        if width > 1500:
+            win32gui.SetWindowPos(simpleWindow.wnd, None, 1087, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
 
 #----------------------------------------
 hotWindow = HotWindow()
@@ -708,10 +711,12 @@ def work():
                 hotWindow.updateSelectDay(selDay)
                 simpleWindow.changeSelectDay(selDay)
             if (not hotWindow.maxMode): #  and (not isInMyHomeWindow())
-                showSortAndLiangDianWindow(True, False)
+                #showSortAndLiangDianWindow(True, False)
+                pass
         elif isInFenShiWindow():
             if not hotWindow.maxMode:
-                showSortAndLiangDianWindow(True, True)
+                #showSortAndLiangDianWindow(True, True)
+                pass
             pass
         else:
             simpleWindow.hide()
