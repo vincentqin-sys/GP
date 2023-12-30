@@ -4,7 +4,7 @@ from collections import namedtuple
 VIPDOC_BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
 
 class ItemData:
-    DS = ('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股), lbs(连板数), zdt(涨跌停), zhangFu(涨幅)
+    DS = ('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股), lbs(连板数), zdt(涨跌停), tdb(天地板，地天板) zhangFu(涨幅)
     MLS = ('day', 'time', 'open', 'high', 'low', 'close', 'amount', 'vol') # avgPrice 分时均价
     # MA5
 
@@ -34,6 +34,8 @@ class DataFile:
     # @param dataType = DT_DAY  |  DT_MINLINE
     # @param flag = FLAG_NEWEST | FLAG_OLDEST | FLAG_ALL
     def __init__(self, code, dataType, flag):
+        if type(code) == int:
+            code = f'{code :06d}'
         self.code = code
         self.dataType = dataType
         paths = self._getPathByCode(self.code, flag)
@@ -186,6 +188,8 @@ class DataFile:
         if isdtzb: c.zdt = 'DTZB'
         if iszt: c.zdt = 'ZT'
         if isdt: c.zdt = 'DT'
+        if (isztzb or iszt) and (isdt or isdtzb):
+            c.tdb = True
 
     # 计算涨跌停信息
     def calcZDT(self):
@@ -247,7 +251,7 @@ class DataFileUtils:
         rs = sorted(rs, reverse=True)
         return rs
     
-    # 计算fromDay开始的所有日期
+    # 计算fromDay开始的所有交易日期
     # @return list[day, ...]
     @staticmethod
     def calcDays(fromDay, inclueFromDay = False):
