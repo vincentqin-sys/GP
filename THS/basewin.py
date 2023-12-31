@@ -2,7 +2,7 @@ import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 
 class BaseWindow:
-    bindHwnds = {} # {hwnd: KLineView}
+    bindHwnds = {}
 
     def __init__(self) -> None:
         self.hwnd = None
@@ -18,11 +18,12 @@ class BaseWindow:
     def onListen(self, evtName, info):
         pass
 
-    # @param rect = [x, y, width, height]
-    def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD): #  0x00800000 | 
-        self.hwnd = win32gui.CreateWindow('STATIC', 'KLineWindow', style, rect[0], rect[1], rect[2], rect[3], parentWnd, None, None, None)
+    # @param rect = (x, y, width, height)
+    def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''): #  0x00800000 | 
+        self.hwnd = win32gui.CreateWindow(className, title, style, *rect, parentWnd, None, None, None)
         BaseWindow.bindHwnds[self.hwnd] = self
-        win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, BaseWindow._WinProc)
+        self.oldProc = win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, BaseWindow._WinProc)
+        #print('oldProc=', self.oldProc)
     
     # @return [x, y, width, height]
     def getRect(self):
@@ -34,7 +35,7 @@ class BaseWindow:
         if msg == win32con.WM_PAINT:
             self._draw()
             return True
-        if msg == win32con.WM_CLOSE:
+        if msg == win32con.WM_DESTROY:
             win32gui.PostQuitMessage(0)
             return True
         return False
@@ -68,4 +69,5 @@ class BaseWindow:
         self = BaseWindow.bindHwnds[hwnd]
         if self.winProc(hwnd, msg, wParam, lParam):
             return 0
-        return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
+        #return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
+        return win32gui.CallWindowProc(self.oldProc, hwnd, msg, wParam, lParam)

@@ -5,7 +5,7 @@ cwd = os.getcwd()
 w = cwd.index('GP')
 cwd = cwd[0 : w + 2]
 sys.path.append(cwd)
-from UI import basewin
+from THS import basewin
 from Tdx import datafile
 
 class KLineModel(datafile.DataFile):

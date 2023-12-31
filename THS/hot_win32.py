@@ -1,6 +1,7 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 from multiprocessing import Process
+from multiprocessing.shared_memory import SharedMemory
 from PIL import Image  # pip install pillow
 import orm, number_ocr
 import hot_win32_simple, hot_utils
@@ -13,6 +14,16 @@ THS_LEVEL2_CODE_HWND = None
 THS_SELECT_DAY_HWND = None
 
 ocr = number_ocr.NumberOCR()
+#shareMapping = SharedMemory('HOT_WIN32_SHARE', True, 512)
+
+def writeShareData(tag, val):
+    # TODO:
+    return
+    view = shareMapping.buf.cast('i')
+    if tag == 'SEL_DAY' and val:
+        view[0] = 0xDADA
+        view[1] = int(val.replace('-', ''))
+    
 
 def findLevel2CodeWnd(hwnd):
     global THS_LEVEL2_CODE_HWND
@@ -710,6 +721,7 @@ def work():
             if selDay:
                 hotWindow.updateSelectDay(selDay)
                 simpleWindow.changeSelectDay(selDay)
+                writeShareData('SEL_DAY', selDay)
             if (not hotWindow.maxMode): #  and (not isInMyHomeWindow())
                 #showSortAndLiangDianWindow(True, False)
                 pass
