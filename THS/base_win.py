@@ -7,16 +7,15 @@ class BaseWindow:
     def __init__(self) -> None:
         self.hwnd = None
         self.listeners = []
+    
+    # func = function(target, evtName, evtInfo)
+    def addListener(self, target, func):
+        self.listeners.append((target, func))
 
-    def addListener(self, obj):
-        self.listeners.append(obj)
-
-    def notifyListener(self, evtName, info):
-        for s in self.listeners:
-            s.onListen(evtName, info)
-
-    def onListen(self, evtName, info):
-        pass
+    def notifyListener(self, evtName, evtInfo):
+        for ls in self.listeners:
+            obj, func = ls
+            func(obj, evtName, evtInfo)
 
     # @param rect = (x, y, width, height)
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''): #  0x00800000 | 
@@ -69,5 +68,5 @@ class BaseWindow:
         self = BaseWindow.bindHwnds[hwnd]
         if self.winProc(hwnd, msg, wParam, lParam):
             return 0
-        #return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
-        return win32gui.CallWindowProc(self.oldProc, hwnd, msg, wParam, lParam)
+        return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
+        #return win32gui.CallWindowProc(self.oldProc, hwnd, msg, wParam, lParam)

@@ -1,9 +1,9 @@
 import win32gui, win32con , win32api, win32ui, winerror, pyautogui  # pip install pywin32
 import threading, time, datetime, sys, os
 from PIL import Image  # pip install pillow
-import basewin, number_ocr
+import base_win, number_ocr
 
-class SelDayWindow(basewin.BaseWindow):
+class SelDayWindow(base_win.BaseWindow):
     MSG_START = 0xDAEA
 
     def __init__(self) -> None:

@@ -1,7 +1,7 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 import sys
-import orm, hot_utils
+import orm, hot_utils, base_win
 import peewee as pw
 
 #-----------------------------------------------------------
@@ -12,7 +12,6 @@ class ThsSortQuery:
         path = sys.argv[0]
         path = path[0 : path.index('GP') ]
         if not ThsSortQuery.lhbDB:
-            print('Load LHB db')
             ThsSortQuery.lhbDB = pw.SqliteDatabase(f'{path}GP/db/LHB.db')
         
     def getPMTag(self, v):
@@ -72,12 +71,11 @@ class ThsSortQuery:
         return {'info': txt, 'code': code, 'name': name}
 
 #-------------小窗口----------------------------------------------
-class SimpleWindow:
+class SimpleWindow(base_win.BaseWindow):
     DATA_TYPES = ('Sort', 'Hot')
-    bindWnds = {} # {hwnd: SimpleWindow}
 
     def __init__(self) -> None:
-        self.wnd = None
+        super().__init__()
         self.size = None  # 窗口大小 (w, h)
         self.maxMode = True #  是否是最大化的窗口
         self.curCode = None
@@ -91,11 +89,12 @@ class SimpleWindow:
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
         w = win32api.GetSystemMetrics(0) # desktop width
         self.size = (360, 230)
-        self.wnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
-        win32gui.SetWindowPos(self.wnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        win32gui.SetWindowLong(self.wnd, win32con.GWL_WNDPROC, SimpleWindow._WinProc)
-        win32gui.ShowWindow(self.wnd, win32con.SW_NORMAL)
-        SimpleWindow.bindWnds[self.wnd] = self
+        rect = (int(w / 3), 300, *self.size)
+        self.hwnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
+        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        self.oldProc = win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, SimpleWindow._WinProc)
+        SimpleWindow.bindHwnds[self.hwnd] = self
+        win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
 
     # param days (int): [YYYYMMDD, ....]
     # param selDay : int
@@ -138,7 +137,7 @@ class SimpleWindow:
         self.curCode = code
         # load sort data
         self.sortData = self.query.getCodeInfo_THS(self.curCode)
-        win32gui.SetWindowText(self.wnd, f'{self.sortData["code"]} {self.sortData["name"]}')
+        win32gui.SetWindowText(self.hwnd, f'{self.sortData["code"]} {self.sortData["name"]}')
         
         # load hot data
         qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.min(orm.THS_Hot.hotOrder).alias('minOrder'), pw.fn.max(orm.THS_Hot.hotOrder).alias('maxOrder')).where(orm.THS_Hot.code == self.curCode).group_by(orm.THS_Hot.day) #.order_by(orm.THS_Hot.day.desc())
@@ -180,10 +179,10 @@ class SimpleWindow:
                     last['avgHotOrder'] = rd['avgHotOrder']
                     last['avgHotValue'] = rd['avgHotValue']
         
-        if self.wnd and self.size:
+        if self.hwnd and self.size:
             #win32gui.InvalidateRect(self.wnd, (0, 0, *self.size), True)
             #win32gui.UpdateWindow(self.wnd)
-            win32gui.InvalidateRect(self.wnd, None, True)
+            win32gui.InvalidateRect(self.hwnd, None, True)
             #win32gui.PostMessage(self.wnd, win32con.WM_PAINT)
 
     # param selDay yyyy-mm-dd or int 
@@ -195,23 +194,23 @@ class SimpleWindow:
             selDay = int(selDay)
         if self.selectDay != selDay:
             self.selectDay = selDay
-            if self.wnd and self.size:
-                win32gui.InvalidateRect(self.wnd, None, True)
+            if self.hwnd and self.size:
+                win32gui.InvalidateRect(self.hwnd, None, True)
 
     def changeDataType(self):
         idx = (self.DATA_TYPES.index(self.dataType) + 1) % len(self.DATA_TYPES)
         self.dataType = self.DATA_TYPES[idx]
-        if self.wnd and self.size:
-            win32gui.InvalidateRect(self.wnd, None, True)
+        if self.hwnd and self.size:
+            win32gui.InvalidateRect(self.hwnd, None, True)
 
-    def drawDataType(self, hdc):
+    def draw(self, hdc):
         if self.dataType == 'Sort':
             self.drawSort(hdc)
         elif self.dataType == 'Hot':
             self.drawHot(hdc)
 
-    def draw(self):
-        hwnd = self.wnd
+    def draw_xx(self):
+        hwnd = self.hwnd
         hdc, ps = win32gui.BeginPaint(hwnd)
         bk = win32gui.CreateSolidBrush(0x000000)
         win32gui.FillRect(hdc, win32gui.GetClientRect(hwnd), bk)
@@ -246,7 +245,7 @@ class SimpleWindow:
             return
         win32gui.SetTextColor(hdc, 0xdddddd)
         H = 18
-        rect = win32gui.GetClientRect(self.wnd)
+        rect = win32gui.GetClientRect(self.hwnd)
         RH = rect[3] - rect[1]
         RW = rect[2] - rect[0]
         MAX_ROWS = RH // H
@@ -276,17 +275,15 @@ class SimpleWindow:
         win32gui.DeleteObject(pen)
 
     def hide(self):
-        win32gui.ShowWindow(self.wnd, win32con.SW_HIDE)
+        win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
     
     def show(self):
-        if not win32gui.IsWindowVisible(self.wnd):
-            win32gui.ShowWindow(self.wnd, win32con.SW_NORMAL)
+        if not win32gui.IsWindowVisible(self.hwnd):
+            win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
 
-    @staticmethod
-    def _WinProc(hwnd, msg, wParam, lParam):
-        sw = SimpleWindow.bindWnds[hwnd]
-        if msg == win32con.WM_PAINT:
-            sw.draw()
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if super().winProc(hwnd, msg, wParam, lParam):
+            return True
         if msg == win32con.WM_RBUTTONUP or msg == win32con.WM_LBUTTONDBLCLK:
-            sw.changeDataType()
-        return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
+            self.changeDataType()
+        return False
