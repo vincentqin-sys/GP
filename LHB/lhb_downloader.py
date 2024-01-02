@@ -168,7 +168,7 @@ def loadOneDayLHB(day):
             continue
         r = loadOneGP(gp['code'], day, gp['name'])
         result.extend(r)
-    with orm.db.atomic():
+    with orm.db_lhb.atomic():
         for batch in pw.chunked(result, 10):
             dd = orm.TdxLHB.insert_many(batch)
             dd.execute()
@@ -180,7 +180,7 @@ def loadOneDayLHB(day):
 runLock = threading.RLock()
 def loadTdxLHB():
     dayFrom = datetime.date(2023, 1, 1)
-    cursor = orm.db.cursor()
+    cursor = orm.db_lhb.cursor()
     rs = cursor.execute('select min(日期), max(日期) from tdxlhb').fetchall()
     rs = rs[0]
     if rs[0]:

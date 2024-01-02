@@ -5,7 +5,7 @@ cwd = os.getcwd()
 w = cwd.index('GP')
 cwd = cwd[0 : w + 2]
 sys.path.append(cwd)
-from THS import basewin
+from THS import base_win
 from Tdx import datafile
 
 class KLineModel(datafile.DataFile):
@@ -15,7 +15,7 @@ class KLineModel(datafile.DataFile):
     def setDataRange(fromIdx, endIdx):
         pass
 
-class KLineWindow(basewin.BaseWindow):
+class KLineWindow(base_win.BaseWindow):
     LEFT_MARGIN = 5 # 左间距
     RIGHT_MARGIN = 80 # 右间距
     TOP_BOTTOM_MARGIN = 20 # 上下间距
@@ -294,7 +294,7 @@ class KLineWindow(basewin.BaseWindow):
         win32gui.DrawText(hdc, price, len(price), rc, win32con.DT_CENTER)
         win32gui.DeleteObject(hb)
 
-class KLineTipWindow(basewin.BaseWindow):
+class KLineTipWindow(base_win.BaseWindow):
     def __init__(self):
         super().__init__()
         self.data : datafile.ItemData = None
@@ -324,7 +324,7 @@ class KLineTipWindow(basewin.BaseWindow):
             self.data = info['data']
             win32gui.InvalidateRect(self.hwnd, None, True)
 
-class AmountWindow(basewin.BaseWindow):
+class AmountWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
 
@@ -335,7 +335,7 @@ if __name__ == '__main__':
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     tipWin = KLineTipWindow()
     tipWin.createWindow(win.hwnd)
-    win.addListener(tipWin)
+    win.addListener(tipWin, KLineTipWindow.onListen)
     win.loadCode(300093)
     win.makeVisible(-1)
     win32gui.PumpMessages()

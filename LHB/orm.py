@@ -4,7 +4,7 @@ import sys
 path = sys.argv[0]
 path = path[0 : path.index('GP') ]
 
-db = pw.SqliteDatabase(f'{path}/GP/db/LHB.db')
+db_lhb = pw.SqliteDatabase(f'{path}/GP/db/LHB.db')
 db_ths = pw.SqliteDatabase(f'{path}GP/db/THS_F10.db')
 
 class TdxLHB(pw.Model):
@@ -25,10 +25,10 @@ class TdxLHB(pw.Model):
     famous = pw.CharField(column_name = '知名游资' , null=True)
 
     class Meta:
-        database = db
+        database = db_lhb
     
 def init():
-    db.create_tables([TdxLHB])
+    db_lhb.create_tables([TdxLHB])
 
 
 if __name__ == '__main__':

@@ -23,7 +23,7 @@ def toJE(s):
 def getLHBInfo():
     params = request.data
     params = json.loads(params)
-    cs = orm.db.cursor()
+    cs = orm.db_lhb.cursor()
     cs.execute(params['sql'])
     data = cs.fetchall()
     txt = json.dumps(data, ensure_ascii = False) # ensure_ascii = False
@@ -31,7 +31,7 @@ def getLHBInfo():
     return txt
 
 def showLhbDB():
-    cs = orm.db.cursor()
+    cs = orm.db_lhb.cursor()
     cs.execute('select max(日期) from TdxLHB')
     data = cs.fetchone()
     day = data[0]
@@ -40,7 +40,7 @@ def showLhbDB():
 
 def queryBySql():
     try:
-        cs = orm.db.cursor()
+        cs = orm.db_lhb.cursor()
         cs2 = orm.db_ths.cursor()
         params = json.loads(request.data)
         cs.execute(params['sql'])

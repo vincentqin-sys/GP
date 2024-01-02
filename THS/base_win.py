@@ -22,7 +22,7 @@ class BaseWindow:
         self.hwnd = win32gui.CreateWindow(className, title, style, *rect, parentWnd, None, None, None)
         BaseWindow.bindHwnds[self.hwnd] = self
         self.oldProc = win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, BaseWindow._WinProc)
-        if not (style & style):
+        if not (style & win32con.WS_CHILD):
             self.oldProc = None
     
     # @return [x, y, width, height]

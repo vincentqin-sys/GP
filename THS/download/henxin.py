@@ -243,3 +243,6 @@ if __name__ == '__main__':
     print(time.time() / 1200)
     print(url)
     # javascript: window.location.href = 'https://s.thsi.cn/js/chameleon/time.1' + (new Date().getTime() / 1200000) + '.js'
+
+# TOKEN_SERVER_TIME
+# https://s.thsi.cn/js/chameleon/chameleon.min.1704188.js 
