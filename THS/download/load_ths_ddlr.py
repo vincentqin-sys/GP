@@ -2,7 +2,6 @@ import peewee as pw
 from peewee import fn
 import os, json, time, sys, pyautogui, io, datetime
 import fiddler, ths
-import win32api
 
 sys.path.append('.')
 sys.path.append('..')
