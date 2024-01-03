@@ -45,6 +45,40 @@
 </body>
 <script>
     
+    function beautyZMYZ(val) {
+        if (! val) {
+            return '';
+        }
+        cols = val.split(';');
+        rs = [], rsNum = [];
+        for (let i = 0; i < cols.length; i++) {
+            cols[i] = cols[i].trim();
+            if (! cols[i]) {
+                continue;
+            }
+            let m = cols[i].indexOf('(');
+            if (m > 0) {
+                cols[i] = cols[i].substring(0, m);
+            }
+            let mm = rs.indexOf(cols[i]);
+            if (mm < 0) {
+                rs.push(cols[i]);
+                rsNum.push(1);
+            } else {
+                rsNum[mm]++;
+            }
+        }
+        let ss = '';
+        for (let j = 0; j < rs.length; ++j) {
+            ss += rs[j];
+            if (rsNum[j] > 1) {
+                ss +=  '[' + rsNum[j] + ']; ';
+            } else {
+                ss += '; ';
+            }
+        }
+        return ss;
+    }
 
     function wrapData(colName, colVal) {
         if (colName.indexOf('_亿') > 0) {
@@ -57,6 +91,15 @@
         }
         if (colName == '涨跌幅') {
             return '' + colVal + '%';
+        }
+        if (colName == '知名游资') {
+            bs = colVal.split('//');
+            if (bs.length == 0) {
+                return '';
+            }
+            let buy = beautyZMYZ(bs[0]);
+            let sell = beautyZMYZ(bs[1]);
+            return buy + '<span style="color:red">&nbsp;&nbsp;//&nbsp;&nbsp;</span>' + sell;
         }
         return colVal;
     }

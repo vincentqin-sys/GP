@@ -43,7 +43,7 @@ def _workThread():
             #sys.exit(0)  #仅退出当前线程
             os._exit(0) # 退出进程
             break
-        if thsWindow.isInKlineWindow() or thsWindow.isInMyHomeWindow():
+        if True or thsWindow.isInKlineWindow() or thsWindow.isInMyHomeWindow():
             showHotWindow()
             nowCode = thsWindow.findCode()
             if curCode != nowCode:

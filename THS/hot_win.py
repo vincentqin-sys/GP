@@ -68,7 +68,7 @@ class HotWindow(base_win.BaseWindow):
         elif self.dataType == 'LS_INFO' and self.lsInfoData:
             days = [d['day'] for d in self.lsInfoData]
             self._drawDataType(hdc, days, self.lsInfoData, DEFAULT_ITEM_WIDTH, self.drawOneDayLSInfo)
-        elif self.dataType == 'DDLR':
+        elif self.dataType == 'DDLR' and self.ddlrData:
             days = [d['day'] for d in self.ddlrData]
             self._drawDataType(hdc, days, self.ddlrData, DEFAULT_ITEM_WIDTH - 30, self.drawOneDayDDLR)
 

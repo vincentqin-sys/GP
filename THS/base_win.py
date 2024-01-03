@@ -6,6 +6,7 @@ class BaseWindow:
 
     def __init__(self) -> None:
         self.hwnd = None
+        self.oldProc = None
         self.listeners = []
     
     # func = function(target, evtName, evtInfo)
@@ -22,8 +23,7 @@ class BaseWindow:
         self.hwnd = win32gui.CreateWindow(className, title, style, *rect, parentWnd, None, None, None)
         BaseWindow.bindHwnds[self.hwnd] = self
         self.oldProc = win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, BaseWindow._WinProc)
-        if not (style & win32con.WS_CHILD):
-            self.oldProc = None
+        print(f'[BaseWindow.createWindow] self.oldProc=0x{self.oldProc :x}, title=', title)
     
     # @return [x, y, width, height]
     def getRect(self):
@@ -69,6 +69,6 @@ class BaseWindow:
         self = BaseWindow.bindHwnds[hwnd]
         if self.winProc(hwnd, msg, wParam, lParam):
             return 0
-        if self.oldProc:
-            return win32gui.CallWindowProc(self.oldProc, hwnd, msg, wParam, lParam)
+        #if self.oldProc:
+        #    return win32gui.CallWindowProc(self.oldProc, hwnd, msg, wParam, lParam)
         return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)

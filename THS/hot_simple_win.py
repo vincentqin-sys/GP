@@ -90,10 +90,11 @@ class SimpleWindow(base_win.BaseWindow):
         w = win32api.GetSystemMetrics(0) # desktop width
         self.size = (360, 230)
         rect = (int(w / 3), 300, *self.size)
-        self.hwnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
+        #self.hwnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
+        #self.oldProc = win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, SimpleWindow._WinProc)
+        #SimpleWindow.bindHwnds[self.hwnd] = self
+        super().createWindow(parentWnd, rect, style, title='Hot-Simple-Window')
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        self.oldProc = win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, SimpleWindow._WinProc)
-        SimpleWindow.bindHwnds[self.hwnd] = self
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
 
     # param days (int): [YYYYMMDD, ....]
@@ -208,27 +209,6 @@ class SimpleWindow(base_win.BaseWindow):
             self.drawSort(hdc)
         elif self.dataType == 'Hot':
             self.drawHot(hdc)
-
-    def draw_xx(self):
-        hwnd = self.hwnd
-        hdc, ps = win32gui.BeginPaint(hwnd)
-        bk = win32gui.CreateSolidBrush(0x000000)
-        win32gui.FillRect(hdc, win32gui.GetClientRect(hwnd), bk)
-        pen = win32gui.CreatePen(win32con.PS_SOLID, 2, 0xff00ff)
-        win32gui.SelectObject(hdc, pen)
-        win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
-        win32gui.SetTextColor(hdc, 0x0)
-
-        a = win32gui.LOGFONT()
-        a.lfHeight = 14
-        a.lfFaceName = '新宋体'
-        font = win32gui.CreateFontIndirect(a)
-        win32gui.SelectObject(hdc, font)
-        self.drawDataType(hdc)
-        win32gui.EndPaint(hwnd, ps)
-        win32gui.DeleteObject(font)
-        win32gui.DeleteObject(bk)
-        win32gui.DeleteObject(pen)
     
     def drawSort(self, hdc):
         if not self.sortData:
