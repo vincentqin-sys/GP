@@ -99,6 +99,7 @@ class TdxDownloader:
     def run(self):
         if self.checkProcessStarted():
             self.killProcess()
+        pyautogui.hotkey('win', 'd')
         self.startProcess()
         self.login()
         self.openDownloadDialog()
