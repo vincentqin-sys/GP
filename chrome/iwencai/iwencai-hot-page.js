@@ -1,30 +1,28 @@
 console.log('Load Chrome Extension ..');
 
-function loadHotPageError() {
-    let div = document.querySelector('.xuangu-count-line');
-    let li = document.createElement("div");
-    li.style.color = 'green';
-    let newContent = document.createTextNode("源代码已发生变更");
-    li.appendChild(newContent);
-    div.appendChild(li);
+function loadHotPageError(tag) {
+    let txt = '源代码已发生变更，需要修改代码: ' + tag;
+    let info = $("<div style='position:absolute; width: 400px; height:200px; background-color:#ffff00; z-index: 999909999;'> "+ txt + " </div>")
+    $(document.body).append(info);
+    console.log(txt);
 }
 
 function loadHotPage(trs) {
     let heads = document.querySelectorAll('ul.iwc-table-header-ul > li');
     if (heads.length != 4) {
-        loadHotPageError();
+        loadHotPageError('[loadHotPage] A');
         return null;
     }
-    let hotVals = heads[2].innerText.split('\n');
-    let hotOrders = heads[3].innerText.split('\n');
+    let hotVals = heads[3].innerText.split('\n');
+    let hotOrders = heads[2].innerText.split('\n');
     if (hotVals[0] != '个股热度' || hotOrders[0] != '个股热度排名') {
-        loadHotPageError();
+        loadHotPageError('[loadHotPage] B');
         return null;
     }
     let hotDay = hotVals[1].replaceAll('.', '-');
     let dayRe = /^\d{4}-\d{2}-\d{2}$/;
     if (! dayRe.test(hotDay)) {
-        loadHotPageError();
+        loadHotPageError('[loadHotPage] C');
         return null;
     }
 
@@ -32,10 +30,10 @@ function loadHotPage(trs) {
     for (let i = 0; i < trs.length; ++i) {
         let tds = trs[i].querySelectorAll('td');
         if (tds.length != 8) {
-            loadHotPageError();
+            loadHotPageError('[loadHotPage] D');
             return null;
         }
-        let obj = { code: tds[2].innerText, name: tds[3].innerText, hotValue : tds[6].innerText, hotOrder : tds[7].innerText};
+        let obj = { code: tds[2].innerText, name: tds[3].innerText, hotValue : tds[7].innerText, hotOrder : tds[6].innerText};
         obj.hotValue = parseInt(obj.hotValue);
         obj.hotOrder = parseInt(obj.hotOrder);
         vals.push(obj);

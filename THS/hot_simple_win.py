@@ -243,7 +243,7 @@ class SimpleWindow(base_win.BaseWindow):
             avgHotOrder = f"{hot['avgHotOrder'] :.1f}"
             avgHotOrder = avgHotOrder[0 : 3]
             avgHotVal = int(hot['avgHotValue'])
-            line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {zhHotOrder} {avgHotVal :>3d}万"
+            line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {avgHotVal :>3d}万 {zhHotOrder}"
             idx = i - fromIdx
             y = (idx % MAX_ROWS) * H + 2
             x = RW // 2 if idx >= MAX_ROWS else 0
