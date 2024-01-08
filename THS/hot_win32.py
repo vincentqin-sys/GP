@@ -8,9 +8,10 @@ curCode = None
 thsWindow = ths_win.ThsWindow()
 hotWindow = hot_win.HotWindow()
 simpleWindow = hot_simple_win.SimpleWindow()
+thsShareMem = ths_win.ThsShareMemory()
 
 def updateCode(nowCode):
-    global curCode
+    global curCode, thsShareMem
     try:
         icode = int(nowCode)
     except Exception as e:
@@ -20,6 +21,7 @@ def updateCode(nowCode):
     curCode = nowCode
     hotWindow.updateCode(nowCode)
     simpleWindow.changeCode(nowCode)
+    thsShareMem.writeCode(nowCode)
 
 def showHotWindow():
     # check window size changed
@@ -43,25 +45,15 @@ def _workThread():
             #sys.exit(0)  #仅退出当前线程
             os._exit(0) # 退出进程
             break
-        if True or thsWindow.isInKlineWindow() or thsWindow.isInMyHomeWindow():
-            showHotWindow()
-            nowCode = thsWindow.findCode()
-            if curCode != nowCode:
-                updateCode(nowCode)
-            selDay = thsWindow.getSelectDay()
-            if selDay:
-                hotWindow.updateSelectDay(selDay)
-                simpleWindow.changeSelectDay(selDay)
-            if (not hotWindow.maxMode): #  and (not isInMyHomeWindow())
-                #showSortAndLiangDianWindow(True, False)
-                pass
-        elif thsWindow.isInFenShiWindow():
-            if not hotWindow.maxMode:
-                #showSortAndLiangDianWindow(True, True)
-                pass
-            pass
-        else:
-            simpleWindow.hide()
+        showHotWindow()
+        nowCode = thsWindow.findCode()
+        if curCode != nowCode:
+            updateCode(nowCode)
+        selDay = thsWindow.getSelectDay()
+        if selDay:
+            hotWindow.updateSelectDay(selDay)
+            simpleWindow.changeSelectDay(selDay)
+            thsShareMem.writeSelDay(selDay)
 
 # show-hide sort wnd, liang dian wnd
 def showSortAndLiangDianWindow(show, move):
@@ -84,13 +76,15 @@ def showSortAndLiangDianWindow(show, move):
 
 def onListen(target, evtName, evtInfo):
     if target == 'ListenHotWindow' and evtName == 'mode.change':
-        showSortAndLiangDianWindow(not evtInfo['maxMode'], True)
+        #showSortAndLiangDianWindow(not evtInfo['maxMode'], True)
+        pass
 
 def subprocess_main():
     while True:
         if thsWindow.init():
             break
         time.sleep(10)
+    thsShareMem.open()
     hotWindow.createWindow(thsWindow.topHwnd)
     simpleWindow.createWindow(thsWindow.topHwnd)
     hotWindow.addListener('ListenHotWindow', onListen)
@@ -99,6 +93,8 @@ def subprocess_main():
     print('Quit Sub Process')
 
 if __name__ == '__main__':
+    tsm = ths_win.ThsShareMemory(True)
+    tsm.open()
     while True:
         p = Process(target = subprocess_main, daemon = True)
         p.start()

@@ -1,5 +1,5 @@
-import os, sys, requests, json
-import base_win, orm, hot_utils
+import os, sys, requests, json, time
+import base_win, orm, hot_utils, ths_win
 
 cwd = os.getcwd()
 w = cwd.index('GP')
@@ -7,16 +7,6 @@ cwd = cwd[0 : w + 2]
 sys.path.append(cwd)
 
 from Tdx.datafile import DataFile
-from download.henxin import HexinUrl
-
-httpSession = requests.session()
-hexi = HexinUrl(httpSession)
-
-def initCookie(cookie):
-    #cookie = 'other_uid=Ths_iwencai_Xuangu_ubrr9jwfshzhczhpzic14fano2jf57hi; ta_random_userid=rb9hxv5p4r; cid=c0c6ae89b3ef8beacf7bb42884ff26f31680602883; v=A4_rwbwPNhJwdzLusZes_cEvHiictOPWfQjnyqGcK_4FcKXWqYRzJo3YdxWy'
-    for c in cookie.split(';'):
-        kv = c.strip().split('=')
-        httpSession.cookies.set(kv[0], kv[1])
 
 def getHotCodesTop200(day : int):
     hots = hot_utils.calcHotZHOnDay(day)
@@ -24,6 +14,7 @@ def getHotCodesTop200(day : int):
     return hots
 
 def loadTodayData(code):
+    return
     url = hexi.getTodayKLineUrl(code)
     print(url)
     resp = httpSession.get(url)
@@ -60,8 +51,14 @@ def isAccept(code):
 
 
 if __name__ == '__main__':
-    hexi.init()
-    hexi.read('hh.txt')
-    loadTodayData('300093')
-    hexi.write('hh.txt')
+    #loadTodayData('300093')
+    tsm = ths_win.ThsShareMemory()
+    tsm.open()
+    while True:
+        time.sleep(0.5)
+        code = tsm.readCode()
+        day = tsm.readSelDay()
+        print(f'read code={code :06d}  day={day}')
+
+        
     

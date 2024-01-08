@@ -383,6 +383,13 @@ class HotWindow(base_win.BaseWindow):
         self.updateDDLRData(code)
 
     def updateLHBData(self, code):
+        def gn(name : str):
+            if not name: return name
+            name = name.strip()
+            i = name.find('(')
+            if i < 0: return name
+            return name[0 : i]
+
         ds = orm.TdxLHB.select().where(orm.TdxLHB.code == code)
         data = []
         for d in ds:
@@ -392,9 +399,9 @@ class HotWindow(base_win.BaseWindow):
             famous = str(d.famous).split('//')
             if len(famous) == 2:
                 for f in famous[0].strip().split(';'):
-                    if f: r['famous'].append('+ ' + f.strip())
+                    if f: r['famous'].append('+ ' + gn(f))
                 for f in famous[1].strip().split(';'):
-                    if f: r['famous'].append('- ' + f.strip())
+                    if f: r['famous'].append('- ' + gn(f))
             else:
                 r['famous'].append(' 无知名游资')
             data.append(r)

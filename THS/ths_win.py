@@ -1,7 +1,7 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 from multiprocessing import Process
-from multiprocessing.shared_memory import SharedMemory
+from multiprocessing import shared_memory # python 3.8+
 from PIL import Image  # pip install pillow
 import base_win, number_ocr
 
@@ -60,9 +60,9 @@ class ThsWindow(base_win.BaseWindow):
 
     # 查找股票代码
     def findCode(self):
-        if (not self.isInKlineWindow()) and (not self.isInMyHomeWindow()):
+        #if (not self.isInKlineWindow()) and (not self.isInMyHomeWindow()):
             #print('Not in KLine Window')
-            return None
+        #    return None
         # 逐笔成交明细 Level-2
         if not win32gui.IsWindowVisible(self.level2CodeHwnd):
             self.level2CodeHwnd = None
@@ -139,3 +139,54 @@ class ThsWindow(base_win.BaseWindow):
         print('ThsWindow.mainHwnd = %#X' % self.mainHwnd)
         print('ThsWindow.selDayHwnd = %#X' % self.selDayHwnd)
         return True
+
+class ThsShareMemory:
+    POS_CODE = 0
+    POS_SEL_DAY = 1
+
+    def __init__(self, create : bool = False) -> None:
+        self.create = create
+
+    def open(self):
+        if self.create:
+            self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', True, size = 512)
+            buf = self.shm.buf.cast('i')
+            buf[self.POS_CODE] = 0
+            buf[self.POS_SEL_DAY] = 0
+        else:
+            self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', False)
+
+    def writeCode(self, code):
+        try:
+            code = int(code)
+        except:
+            return
+        buf = self.shm.buf.cast('i')
+        buf[self.POS_CODE] = code
+
+    # return int
+    def readCode(self):
+        buf = self.shm.buf.cast('i')
+        code = buf[0]
+        return code
+    
+    def writeSelDay(self, day):
+        if not day:
+            return
+        if type(day) == str:
+            day = day.replace('-', '')
+            day = int(day)
+        buf = self.shm.buf.cast('i')
+        buf[self.POS_SEL_DAY] = day
+
+    # return int
+    def readSelDay(self):
+        buf = self.shm.buf.cast('i')
+        day = buf[self.POS_SEL_DAY]
+        return day
+
+    def close(self):
+        self.shm.close()
+
+    def unlink(self):
+        self.shm.unlink()

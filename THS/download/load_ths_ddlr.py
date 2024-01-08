@@ -235,7 +235,7 @@ def autoLoadOne(code, ddWin):
 # 自动下载同花顺热点Top200个股的大单数据
 def autoLoadTop200Data():
     d = datetime.datetime.today()
-    print(d.strftime('%Y-%m-%d'), ':')
+    print(d.strftime('%Y-%m-%d:%H:%M:%S'), '->')
     print('自动下载Top 200大单买卖数据(同花顺Level-2)')
     print('Fiddler拦截onBeforeResponse, 将数据下载下来')
     fd = fiddler.Fiddler()
@@ -314,6 +314,9 @@ if __name__ == '__main__':
     runNow = False
     while True:
         today = datetime.datetime.now()
+        if today.weekday() >= 5: # 周六周日
+            time.sleep(60 * 60)
+            continue
         nowDay = today.strftime('%Y-%m-%d')
         if lastDay == nowDay:
             time.sleep(10 * 60)
