@@ -1,4 +1,10 @@
-import datetime, time, random, requests, re
+import datetime, time, random, requests, re, json, os, sys
+
+cwd = os.getcwd()
+w = cwd.index('GP')
+cwd = cwd[0 : w + 2]
+sys.path.append(cwd)
+from Tdx import datafile
 
 class Base64:
     def __init__(self):
@@ -51,7 +57,7 @@ class Base64:
             # error
             return 0
         u = t[1]
-        rs = []
+        rs = [0] * 43
         j = 2
         i = 0
         while j < len(t):
@@ -71,7 +77,7 @@ class Base64:
         return 0
 
 class Henxin:
-    def __init__(self, httpSession):
+    def __init__(self):
         self.data = []
         self.base_fileds = [4, 4, 4, 4, 1, 1, 1, 3, 2, 2, 2, 2, 2, 2, 2, 4, 2, 1]
         for i in range(len(self.base_fileds)):
@@ -83,22 +89,24 @@ class Henxin:
         self.mouseWhell = 0
         self.keyDown = 0
         self.tokenServerTime = 0
-        self.httpSession = httpSession
+        self.lastUpdateTime = 0
 
     def init(self):
         self.data[0] = self.ramdom()
         self.data[1] = self.serverTimeNow()
-        self.data[3] = 1486178765; # strhash(navigator.userAgent)
+        self.data[3] = 3539863620 #1486178765; # strhash(navigator.userAgent)
         self.data[4] = 1 # getPlatform
         self.data[5] = 10 # getBrowserIndex
         self.data[6] = 5 # getPluginNum
-        self.data[13] = 2724 # getBrowserFeature
+        self.data[13] = 3748 #2724 # getBrowserFeature
         self.data[15] = 0
         self.data[16] = 0
         self.data[17] = 3
+        self.lastUpdateTime = time.time()
 
     def update(self):
-        self.data[1] = self.serverTimeNow()
+        self.lastUpdateTime = time.time()
+        #self.data[1] = self.serverTimeNow()
         self.data[2] = self.timeNow()
         self.data[7] = self.getMouseMove()
         self.data[8] = self.getMouseClick()
@@ -151,43 +159,41 @@ class Henxin:
                 l >>= 8
         return c
 
+    def diffTime(self):
+        return time.time() - self.lastUpdateTime
+
     def getMouseMove(self):
-        self.mouseMove += int(random.random() * 15)
+        if self.diffTime() >= 30:
+            self.mouseMove += int(random.random() * 15)
         return self.mouseMove
 
     def getMouseClick(self):
-        self.mouseClick += int(random.random() * 15)
+        if self.diffTime() >= 30:
+            self.mouseClick += int(random.random() * 15)
         return self.mouseClick
 
     def getMouseWhell(self):
-        self.mouseWhell += int(random.random() * 15)
+        if self.diffTime() >= 30:
+            self.mouseWhell += int(random.random() * 15)
         return self.mouseWhell
 
     def getKeyDown(self):
-        self.keyDown += int(random.random() * 10)
+        if self.diffTime() >= 30:
+            self.keyDown += int(random.random() * 10)
         return self.keyDown
 
     def getClickPosX(self):
-        return int(random.random() * 1024)
+        if self.diffTime() >= 30:
+            return int(random.random() * 1024)
+        return self.data[11]
 
     def getClickPosY(self):
-        return int(random.random() * 720)
+        if self.diffTime() >= 30:
+            return int(random.random() * 720)
+        return self.data[12]
 
     def serverTimeNow(self):
         return self.timeNow() - 13
-        diff = self.timeNow() - self.tokenServerTime
-        if (diff > 20 * 60): # 20 minuts
-            url = f'https://s.thsi.cn/js/chameleon/chameleon.min.{self.timeNow()}.js'
-            reps = self.httpSession.get(url)
-            txt = reps.content.decode()
-            txt = txt[0 : 100]
-            rs = re.findall('TOKEN_SERVER_TIME\s*=\s*(\d+)', txt)
-            if not rs:
-                print(txt)
-                raise Exception('[Henxin.serverTimeNow] Not find TOKEN_SERVER_TIME')
-            self.tokenServerTime = int(rs[0])
-            #print('tokenTime = ', self.tokenServerTime)
-        return int(self.tokenServerTime)
 
     def timeNow(self):
         return int(time.time())
@@ -209,9 +215,32 @@ class Henxin:
             self.data[i] = int(d)
         f.close()
 
+    def copy(self, param):
+        buf = self.base64.decode(param)
+        self.decodeBuffer(buf)
+
+
 class HexinUrl(Henxin):
-    def __init__(self, httpSession) -> None:
-        super().__init__(httpSession)
+    session = None
+
+    class ItemData(object):
+        def __init__(self):
+            super().__init__()
+
+    def __init__(self) -> None:
+        super().__init__()
+        if not HexinUrl.session:
+            HexinUrl.session = requests.Session()
+        self.setSessionHeaders(HexinUrl.session)
+
+    def setSessionHeaders(self, session):
+        headers = {'Accept': 'text/plain, */*; q=0.01',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Origin': 'http://www.iwencai.com',
+                    'Referer': 'http://www.iwencai.com/',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'Accept-Language': 'zh-CN,zh;q=0.9'}
+        session.headers = headers
 
     def getCodeSH(self, code):
         # 600xxx -> 17;  300xxx 000xxx 002xxx -> 33;   88xxxx -> 48
@@ -247,22 +276,87 @@ class HexinUrl(Henxin):
         url = self._getUrlWithParam(url)
         return url
 
-class HenxinLoader:
-    def __init__(self) -> None:
-        pass
+    # @return data : list, name : str
+    def loadUrlData(self, url):
+        resp = self.session.get(url)
+        if resp.status_code != 200:
+            print('[HexinUrl.loadUrlData] Error:', resp)
+            raise Exception('[HexinUrl.loadUrlData]', resp)
+        txt = resp.content.decode('utf-8')
+        bi = txt.index('(')
+        ei = txt.index(')')
+        txt = txt[bi + 1 : ei]
+        #print(txt)
+        if '/last1800.js' in url:
+            # dayly kline
+            return self.parseDaylyData(txt)
+        if '/today.js' in url:
+            return self.parseTodayData(txt)
+        return None
+    
+    def parseTodayData(self, txt : str):
+        bi = txt.index('{', 3)
+        ei = txt.index('}')
+        txt = txt[bi : ei + 1]
+        js = json.loads(txt)
+        keys = {'day': '1', 'open': '7', 'high':'8', 'low':'9', 'close':'11', 'vol':'13'} # vol: 单位股, amount:单位元 'amount':'19', 'rate':'1968584'
+        item = HexinUrl.ItemData()
+        for k in keys:
+            v = js[keys[k]]
+            if type(v) == str:
+                v = v.replace('.', '')
+            setattr(item, k, int(v))
+        setattr(item, 'amount', int(float(js['19'])))
+        setattr(item, 'rate', float(js['1968584']))
+        setattr(item, 'name', js['name'])
+        return item, js['name']
 
-    def loadFenShiData(text):
-        pass
+    # 解析日线数据
+    def parseDaylyData(self, txt):
+        js = json.loads(txt)
+        name, today = js['name'], js['today']
+        ds = js['data'].split(';')
+        keys = ['day', 'open', 'high', 'low', 'close', 'vol', 'amount', 'rate']; # vol: 单位股, amount:单位元
+        rs = []
+        for d in ds:
+            obj = HexinUrl.ItemData()
+            row = d.split(',')
+            for i, k in enumerate(keys):
+                if i == 0 or i == 5:
+                    setattr(obj, keys[i], int(row[i]))
+                elif i >= 1 and i <= 4:
+                    setattr(obj, keys[i], int(row[i].replace('.', '')))
+                elif i == 6:
+                    setattr(obj, keys[i], int(float(row[i])))
+                elif i == 7 and row[i]:
+                    setattr(obj, keys[i], float(row[i]))
+            rs.append(obj)
+        return rs, name
 
+class ThsDataFile(datafile.DataFile):
+    def __init__(self, code, dataType):
+        #super().__init__(code, datafile.DataFile.DT_DAY, 0)
+        if type(code) == int:
+            code = f'{code :06d}'
+        self.code = code
+        self.dataType = dataType
+        self.data = []
+        self.name = ''
+
+    def loadDataFile(self, hexinUrl : HexinUrl):
+        if self.dataType == datafile.DataFile.DT_DAY:
+            url = hexinUrl.getKLineUrl(self.code)
+            self.data ,self.name = hexinUrl.loadUrlData(url)
 
 if __name__ == '__main__':
-    ss = requests.session()
-    hx = HexinUrl(ss)
-    hx.init()
-    url = hx.getTodayKLineUrl('1A0001')
-    url = hx.getFenShiUrl('002528')
-    print(url)
+    hx = HexinUrl()
+    #hx.copy('A8oAni2gm576FhcyEWD0c9AzG7tpu05WQD_CuVQDdp2oB2RlPEueJRDPEiUn')
+    url = hx.getTodayKLineUrl('000695')
+    hx.loadUrlData(url)
+
+if __name__ == '__main__x':
     # javascript: window.location.href = 'https://s.thsi.cn/js/chameleon/time.1' + (new Date().getTime() / 1200000) + '.js'
+    pass
 
 # TOKEN_SERVER_TIME
 # https://s.thsi.cn/js/chameleon/chameleon.min.1704188.js 

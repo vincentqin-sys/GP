@@ -40,6 +40,7 @@ class DataFile:
         self.dataType = dataType
         paths = self._getPathByCode(self.code, flag)
         self.data = self._loadDataFiles(paths)
+        self.name = ''
 
     @staticmethod
     def loadFromFile(filePath):

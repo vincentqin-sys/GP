@@ -1,5 +1,6 @@
 import os, sys
 import win32gui, win32con
+import requests
 
 cwd = os.getcwd()
 w = cwd.index('GP')
@@ -7,22 +8,28 @@ cwd = cwd[0 : w + 2]
 sys.path.append(cwd)
 from THS import base_win
 from Tdx import datafile
+from THS.download import henxin
 
-class KLineModel(datafile.DataFile):
+class KLineModel_Tdx(datafile.DataFile):
     def __init__(self, code):
         super().__init__(code, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
 
     def setDataRange(fromIdx, endIdx):
         pass
 
+class KLineModel_Ths(henxin.ThsDataFile):
+    def __init__(self, code) -> None:
+        super().__init__(code, datafile.DataFile.DT_DAY)
+
 class KLineWindow(base_win.BaseWindow):
-    LEFT_MARGIN = 5 # 左间距
+    LEFT_MARGIN = 100 # 左间距
     RIGHT_MARGIN = 80 # 右间距
-    TOP_BOTTOM_MARGIN = 20 # 上下间距
+    TOP_MARGIN = 20 # 上间距
+    BOTTOM_MARGIN = 20 # 下间距
 
     def __init__(self):
         super().__init__()
-        self.model : KLineModel = None # KLineModel
+        self.model : KLineModel_Tdx = None # KLineModel
         self.klineWidth = 6 # K线宽度
         self.klineSpace = 2 # K线之间的间距离
         self.visibleRange = None # K线显示范围
@@ -30,8 +37,18 @@ class KLineWindow(base_win.BaseWindow):
         self.selIdx = -1
         self.mouseXY = None
 
-    def loadCode(self, code):
-        self.model = KLineModel(code)
+    def loadCode_Tdx(self, code):
+        self.model = KLineModel_Tdx(code)
+        self.model.calcMA(5)
+        self.model.calcMA(10)
+        self.model.calcZDT()
+        self.model.calcZhangFu()
+        self.visibleRange = None
+        self.priceRange = None
+
+    def loadCode_Ths(self, code, henxinUrl):
+        self.model = KLineModel_Ths(code)
+        self.model.loadDataFile(henxinUrl)
         self.model.calcMA(5)
         self.model.calcMA(10)
         self.model.calcZDT()
@@ -70,6 +87,15 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.InvalidateRect(self.hwnd, None, True)
         #print('[onMouseMove] price=', self.getPriceAtY(y))
 
+    def setSelIdx(self, idx):
+        if not self.visibleRange or idx < 0 or idx >= self.visibleRange[1]:
+            return
+        data = self.model.data[idx]
+        x = self.getCenterX(idx)
+        y = self.getYAtPrice(data.close)
+        self.mouseXY = (x, y)
+        self.updateAttr('selIdx', idx)
+
     def onKeyUp(self, oem):
         if oem == 73: # page up
             pass
@@ -78,19 +104,11 @@ class KLineWindow(base_win.BaseWindow):
         elif oem == 75: # left arrow key
             if self.selIdx > 0:
                 ni = self.selIdx - 1
-                data = self.model.data[ni]
-                x = self.getCenterX(ni)
-                y = self.getYAtPrice(data.close)
-                self.mouseXY = (x, y)
-                self.updateAttr('selIdx', ni)
+                self.setSelIdx(ni)
         elif oem == 77: # right arrow key
             if self.visibleRange and self.selIdx < self.visibleRange[1] - 1:
                 ni = self.selIdx + 1
-                data = self.model.data[ni]
-                x = self.getCenterX(ni)
-                y = self.getYAtPrice(data.close)
-                self.mouseXY = (x, y)
-                self.updateAttr('selIdx', ni)
+                self.setSelIdx(ni)
         elif oem == 72: # up arrow key
             self.klineWidth += 2
             if self.selIdx >= 0:
@@ -109,7 +127,7 @@ class KLineWindow(base_win.BaseWindow):
     # 可见K线的数量
     def getVisibleKLineNum(self):
         *_, w, h = self.getRect()
-        w -= self.RIGHT_MARGIN - self.LEFT_MARGIN
+        w -= self.RIGHT_MARGIN + self.LEFT_MARGIN
         return w // (self.klineWidth + self.klineSpace)
 
     def calcVisibleRange(self, idx):
@@ -152,17 +170,17 @@ class KLineWindow(base_win.BaseWindow):
             return 0
         p = (price - self.priceRange[0]) / (self.priceRange[1] - self.priceRange[0])
         H = self.getRect()[3]
-        p = int(p * (H - self.TOP_BOTTOM_MARGIN * 2))
-        y = H - self.TOP_BOTTOM_MARGIN - p
+        p = int(p * (H - self.BOTTOM_MARGIN - self.TOP_MARGIN))
+        y = H - self.BOTTOM_MARGIN - p
         return y
 
     def getPriceAtY(self, y):
         if not self.priceRange:
             return 0
         h = self.getRect()[3]
-        m = (self.priceRange[1] - self.priceRange[0]) / (h - self.TOP_BOTTOM_MARGIN * 2)
-        z0 = self.TOP_BOTTOM_MARGIN * m + self.priceRange[1]
-        return int(z0 - y * m)
+        m = (self.priceRange[1] - self.priceRange[0]) / (h - self.BOTTOM_MARGIN - self.TOP_MARGIN)
+        y -= self.TOP_MARGIN
+        return int(self.priceRange[1] - y * m)
 
     def getCenterX(self, idx):
         if not self.visibleRange:
@@ -192,8 +210,8 @@ class KLineWindow(base_win.BaseWindow):
         cx = self.getCenterX(idx)
         bx = cx - self.klineWidth // 2
         ex = bx + self.klineWidth
-        rect = (bx, self.getYAtPrice(data.open), ex, self.getYAtPrice(data.close))
-        color = self.getColor(data)
+        rect = (bx, self.getYAtPrice(data.open), ex, self.getYAtPrice(data.close) + 1)
+        color = self.getColor(idx, data)
         win32gui.SelectObject(hdc, pens[color])
         win32gui.MoveToEx(hdc, cx, self.getYAtPrice(data.low))
         win32gui.LineTo(hdc, cx, self.getYAtPrice(data.high))
@@ -203,6 +221,16 @@ class KLineWindow(base_win.BaseWindow):
         else:
             win32gui.FillRect(hdc, rect, hbrs[color])
     
+    def drawSelTip(self, hdc):
+        if self.selIdx < 0 or (not self.model) or (not self.model.data) or self.selIdx >= len(self.model.data):
+            return
+        d = self.model.data[self.selIdx]
+        txt = f'{self.model.code}\n{self.model.name}\n\n时间\n{d.day//10000}\n{d.day%10000:04d}\n\n涨幅\n{d.zhangFu:.2f}%\n\n成交额\n{d.amount/100000000:.02f}亿'
+        rr = self.getRect()
+        rc = (0, 10, self.LEFT_MARGIN, rr[3])
+        win32gui.SetTextColor(hdc, 0xffffff)
+        win32gui.DrawText(hdc, txt, len(txt), rc, win32con.DT_CENTER)
+
     def draw(self, hdc):
         if not self.visibleRange:
             return
@@ -214,6 +242,8 @@ class KLineWindow(base_win.BaseWindow):
         pens['light_green'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xfcfc54)
         pens['blue'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xff0000)
         pens['yellow'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
+        pens['0xff00ff'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xff00ff)
+
         hbrs['white'] = win32gui.CreateSolidBrush(0xffffff)
         hbrs['red'] = win32gui.CreateSolidBrush(0x0000ff)
         hbrs['green'] = win32gui.CreateSolidBrush(0x00ff00)
@@ -221,14 +251,21 @@ class KLineWindow(base_win.BaseWindow):
         hbrs['blue'] = win32gui.CreateSolidBrush(0xff0000)
         hbrs['yellow'] = win32gui.CreateSolidBrush(0x00ffff)
         hbrs['black'] = win32gui.CreateSolidBrush(0x000000)
+        hbrs['0xff00ff'] = win32gui.CreateSolidBrush(0xff00ff)
+        
         for i in range(*self.visibleRange):
             sdc = win32gui.SaveDC(hdc)
             self.drawKLine(hdc, i, pens, hbrs)
             win32gui.RestoreDC(hdc, sdc)
+        sdc = win32gui.SaveDC(hdc)
+        self.drawSelTip(hdc)
+        win32gui.RestoreDC(hdc, sdc)
+
         self.drawMA(hdc, 5)
         self.drawMA(hdc, 10)
         self.drawMouse(hdc, pens)
-        self.drawTipPrice(hdc, self.mouseXY[1], pens, hbrs)
+        if self.mouseXY:
+            self.drawTipPrice(hdc, self.mouseXY[1], pens, hbrs)
         for k in pens:
             win32gui.DeleteObject(pens[k])
         for k in hbrs:
@@ -261,12 +298,17 @@ class KLineWindow(base_win.BaseWindow):
         x, y = self.mouseXY
         *_, w, h = self.getRect()
         win32gui.SelectObject(hdc, pens['white'])
-        win32gui.MoveToEx(hdc, 0, y)
+        win32gui.MoveToEx(hdc, self.LEFT_MARGIN, y)
         win32gui.LineTo(hdc, w, y)
         win32gui.MoveToEx(hdc, x, 0)
         win32gui.LineTo(hdc, x, h)
 
-    def getColor(self, data):
+    def getColor(self, idx, data):
+        if self.model.code[0 : 2] == '88' and idx > 0: # 指数
+            zdfd = abs((self.model.data[idx].close - self.model.data[idx - 1].close) / self.model.data[idx - 1].close * 100)
+            mdfd = abs((max(self.model.data[idx].high, self.model.data[idx - 1].close)- self.model.data[idx].low) / self.model.data[idx - 1].close * 100)
+            if zdfd >= 3.5 or mdfd >= 3.5:
+                return '0xff00ff'
         if getattr(data, 'tdb', False):
             return 'green'
         zdt = getattr(data, 'zdt', None)
@@ -294,36 +336,6 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, price, len(price), rc, win32con.DT_CENTER)
         win32gui.DeleteObject(hb)
 
-class KLineTipWindow(base_win.BaseWindow):
-    def __init__(self):
-        super().__init__()
-        self.data : datafile.ItemData = None
-
-    def createWindow(self, parentWnd):
-        rect = (0, 0, 80, 200)
-        style = win32con.WS_VISIBLE | win32con.WS_POPUP  | win32con.WS_CAPTION
-        super().createWindow(parentWnd, rect, style)
-
-    def updateItemData(self, data):
-        self.data = data
-        win32gui.InvalidateRect(self.hwnd, None, True)
-
-    def draw(self, hdc):
-        if not self.data:
-            return
-        d = self.data
-        txt = f'时间\n{d.day//10000}\n{d.day%10000:04d}\n\n涨幅\n{d.zhangFu:.2f}%\n\n成交额\n{d.amount/100000000:.02f}亿'
-        rr = self.getRect()
-        rc = (0, 10, rr[2], rr[3])
-        win32gui.SetTextColor(hdc, 0xffffff)
-        win32gui.DrawText(hdc, txt, len(txt), rc, win32con.DT_CENTER)
-
-    def onListen(self, evtName, info):
-        #print(evtName, info)
-        if evtName == 'selIdx.changed':
-            self.data = info['data']
-            win32gui.InvalidateRect(self.hwnd, None, True)
-
 class AmountWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -333,9 +345,8 @@ if __name__ == '__main__':
     win = KLineWindow()
     rect = (0, 0, 1000, 500)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    tipWin = KLineTipWindow()
-    tipWin.createWindow(win.hwnd)
-    win.addListener(tipWin, KLineTipWindow.onListen)
-    win.loadCode(300093)
+    #win.loadCode_Tdx(600715)
+    hexinUrl = henxin.HexinUrl()
+    win.loadCode_Ths(600715, hexinUrl)
     win.makeVisible(-1)
     win32gui.PumpMessages()
