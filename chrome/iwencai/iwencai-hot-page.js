@@ -13,8 +13,18 @@ function loadHotPage(trs) {
         loadHotPageError('[loadHotPage] A');
         return null;
     }
-    let hotVals = heads[3].innerText.split('\n');
-    let hotOrders = heads[2].innerText.split('\n');
+    let hotVals = null;
+    let hotOrders = null;
+    let hot1 = heads[2].innerText.split('\n');
+    let hot2 = heads[3].innerText.split('\n');
+    if (hot1[0] == '个股热度' && hot2[0] == '个股热度排名') {
+        hotVals = hot1;
+        hotOrders = hot2;
+    } else if (hot1[0] == '个股热度排名' && hot2[0] == '个股热度') {
+        hotVals = hot2;
+        hotOrders = hot1;
+    }
+
     if (hotVals[0] != '个股热度' || hotOrders[0] != '个股热度排名') {
         loadHotPageError('[loadHotPage] B');
         return null;

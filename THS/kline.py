@@ -297,11 +297,13 @@ class KLineWindow(base_win.BaseWindow):
             return
         x, y = self.mouseXY
         *_, w, h = self.getRect()
-        win32gui.SelectObject(hdc, pens['white'])
+        wp = win32gui.CreatePen(win32con.PS_DASH, 1, 0xffffff)
+        win32gui.SelectObject(hdc, wp)
         win32gui.MoveToEx(hdc, self.LEFT_MARGIN, y)
         win32gui.LineTo(hdc, w, y)
         win32gui.MoveToEx(hdc, x, 0)
         win32gui.LineTo(hdc, x, h)
+        win32gui.DeleteObject(wp)
 
     def getColor(self, idx, data):
         if self.model.code[0 : 2] == '88' and idx > 0: # 指数

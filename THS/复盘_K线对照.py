@@ -22,7 +22,7 @@ def _workThread():
 
 if __name__ == '__main__':
     tsm.open()
-    rect = (0, 0, 1300, 500)
+    rect = (0, 0, 1300, 300)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     henxinUrl = henxin.HexinUrl()
     win.loadCode_Ths(881164, henxinUrl)
