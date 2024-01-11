@@ -322,6 +322,9 @@ class HexinUrl(Henxin):
             obj = HexinUrl.ItemData()
             row = d.split(',')
             for i, k in enumerate(keys):
+                if row[i] == '':
+                    obj = None
+                    break
                 if i == 0 or i == 5:
                     setattr(obj, keys[i], int(row[i]))
                 elif i >= 1 and i <= 4:
@@ -330,7 +333,8 @@ class HexinUrl(Henxin):
                     setattr(obj, keys[i], int(float(row[i])))
                 elif i == 7 and row[i]:
                     setattr(obj, keys[i], float(row[i]))
-            rs.append(obj)
+            if obj:
+                rs.append(obj)
         return rs, name
 
 class ThsDataFile(datafile.DataFile):

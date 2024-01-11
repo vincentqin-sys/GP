@@ -28,7 +28,7 @@ class BaseWindow:
     # @return [x, y, width, height]
     def getRect(self):
         l, t, r, b = win32gui.GetClientRect(self.hwnd)
-        return l, t, r - l, b - t
+        return [l, t, r - l, b - t]
     
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
