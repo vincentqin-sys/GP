@@ -7,47 +7,66 @@ function loadHotPageError(tag) {
     console.log(txt);
 }
 
-function loadHotPage(trs) {
-    let heads = document.querySelectorAll('ul.iwc-table-header-ul > li');
-    if (heads.length != 4) {
-        loadHotPageError('[loadHotPage] A');
-        return null;
+function getColumnIndex(heads, colName) {
+    for (let i = 0; i < heads.length; i++) {
+        let title = heads[i].trim();
+        if (colName == title) {
+            return i;
+        }
+        let ts = title.split('\n');
+        for (let j = 0; j < ts.length; ++j) {
+            if (ts[j].trim() == colName) {
+                return i;
+            }
+        }
     }
-    let hotVals = null;
-    let hotOrders = null;
-    let hot1 = heads[2].innerText.split('\n');
-    let hot2 = heads[3].innerText.split('\n');
-    if (hot1[0] == '个股热度' && hot2[0] == '个股热度排名') {
-        hotVals = hot1;
-        hotOrders = hot2;
-    } else if (hot1[0] == '个股热度排名' && hot2[0] == '个股热度') {
-        hotVals = hot2;
-        hotOrders = hot1;
-    }
+    return -1;
+}
 
-    if (hotVals[0] != '个股热度' || hotOrders[0] != '个股热度排名') {
-        loadHotPageError('[loadHotPage] B');
+function loadHotPage() {
+    let heads1 = document.querySelectorAll('.iwc-table-content .iwc-table-fixed div.iwc-table-header ul > li');
+    let heads2 = document.querySelectorAll('ul.iwc-table-header-ul > li');
+    let tb = document.querySelector('.iwc-table-content .iwc-table-scroll table');
+    let trs = tb.querySelectorAll('tr');
+    let heads = [];
+
+    if (heads1.length == 0 || heads2.length == 0) {
+        loadHotPageError('[loadHotPage] 未找到表格列');
         return null;
     }
-    let hotDay = hotVals[1].replaceAll('.', '-');
+    for (let i = 0; i < heads1.length; i++) {
+        heads.push(heads1[i].innerText.trim());
+    }
+    for (let i = 0; i < heads2.length; i++) {
+        heads.push(heads2[i].innerText.trim());
+    }
+    let codeIdx = getColumnIndex(heads, '股票代码');
+    let nameIdx = getColumnIndex(heads, '股票简称');
+    let hotValsIdx = getColumnIndex(heads, '个股热度');
+    let hotOrderIdx = getColumnIndex(heads, '个股热度排名');
+
+    if (codeIdx < 0 || nameIdx < 0 || hotValsIdx < 0 || hotOrderIdx < 0) {
+        loadHotPageError('[loadHotPage] B 未找到相关列 [股票代码 | 股票简称 | 个股热度 | 个股热度排名]');
+        return null;
+    }
+    let hotVals = heads[hotValsIdx];
+    let hotOrders = heads[hotOrderIdx];
+
+    let hotDay = hotVals.split('\n')[1].replaceAll('.', '-').trim();
     let dayRe = /^\d{4}-\d{2}-\d{2}$/;
     if (! dayRe.test(hotDay)) {
-        loadHotPageError('[loadHotPage] C');
+        loadHotPageError('[loadHotPage] 未找到日期');
         return null;
     }
 
     let vals = [];
     for (let i = 0; i < trs.length; ++i) {
         let tds = trs[i].querySelectorAll('td');
-        if (tds.length != 8) {
-            loadHotPageError('[loadHotPage] D');
-            return null;
-        }
-        let obj = { code: tds[2].innerText, name: tds[3].innerText, hotValue : tds[7].innerText, hotOrder : tds[6].innerText};
+        let obj = { code: tds[codeIdx].innerText, name: tds[nameIdx].innerText, hotValue : tds[hotValsIdx].innerText, hotOrder : tds[hotOrderIdx].innerText};
         obj.hotValue = parseInt(obj.hotValue);
         obj.hotOrder = parseInt(obj.hotOrder);
         vals.push(obj);
-        // console.log(obj);
+        console.log(obj);
     }
     pageInfo.hotDay = hotDay;
 
@@ -55,9 +74,7 @@ function loadHotPage(trs) {
 }
 
 function getPageData(task, resolve) {
-    let tb = document.querySelector('.iwc-table-content .iwc-table-scroll table');
-    let trs = tb.querySelectorAll('tr');
-    let datas = loadHotPage(trs);
+    let datas = loadHotPage();
 
     if (datas[0].hotOrder == task.startOrder) {
         for (let d in datas) {

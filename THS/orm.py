@@ -186,7 +186,7 @@ class TdxLHB(pw.Model):
 
 
 # 大单流入流出情况
-db5 = pw.SqliteDatabase(f'{path}/GP/db/THS-DDBS.db')
+db5 = pw.SqliteDatabase(f'{path}/GP/db/THS_DDBS.db')
 class THS_DDLR(pw.Model):
     day = pw.CharField(max_length = 8) # YYYYMMDD
     code = pw.CharField(max_length = 6)
@@ -227,9 +227,22 @@ class TdxLSModel(pw.Model):
         database = voldb
         table_name = '两市总体情况'        
 
+db_thszs = pw.SqliteDatabase(f'{path}GP/db/THS_ZS.db')
+class THS_ZS(pw.Model):
+    code = pw.CharField() #指数代码
+    name = pw.CharField() #指数名称
+    gnhy = pw.CharField() #概念、行业
+    hydj = pw.CharField(null = True, default = None) #行业等级 二级、三级
+
+    class Meta:
+        database = db_thszs
+        table_name = '同花顺指数'
+
+
 db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC, THS_HYDB_2])
 db2.create_tables([THS_Hot, THS_HotZH])
 db3.create_tables([TaoGuBa_Remark])
 db5.create_tables([THS_DDLR])
+db_thszs.create_tables([THS_ZS])
 
     
