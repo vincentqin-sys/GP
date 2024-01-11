@@ -42,23 +42,27 @@ class BaseWindow:
 
     def _draw(self, fontSize = 14):
         hdc, ps = win32gui.BeginPaint(self.hwnd)
+        l, t, r, b = win32gui.GetClientRect(self.hwnd)
+        w, h = r - l, b - t
+        mdc = win32gui.CreateCompatibleDC(hdc)
+        bmp = win32gui.CreateCompatibleBitmap(hdc, w, h)
+        win32gui.SelectObject(mdc, bmp)
         bk = win32gui.CreateSolidBrush(0x000000)
-        win32gui.FillRect(hdc, win32gui.GetClientRect(self.hwnd), bk)
-        #pen = win32gui.CreatePen(win32con.PS_SOLID, 2, 0xff00ff)
-        #win32gui.SelectObject(hdc, pen)
-        win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
-        win32gui.SetTextColor(hdc, 0x0)
-
+        win32gui.FillRect(mdc, win32gui.GetClientRect(self.hwnd), bk)
+        win32gui.SetBkMode(mdc, win32con.TRANSPARENT)
+        win32gui.SetTextColor(mdc, 0x0)
         a = win32gui.LOGFONT()
         a.lfHeight = fontSize
         a.lfFaceName = '新宋体'
         font = win32gui.CreateFontIndirect(a)
-        win32gui.SelectObject(hdc, font)
-        self.draw(hdc)
+        win32gui.SelectObject(mdc, font)
+        self.draw(mdc)
+        win32gui.BitBlt(hdc, 0, 0, w, h, mdc, 0, 0, win32con.SRCCOPY)
         win32gui.EndPaint(self.hwnd, ps)
         win32gui.DeleteObject(font)
         win32gui.DeleteObject(bk)
-        #win32gui.DeleteObject(pen)
+        win32gui.DeleteObject(bmp)
+        win32gui.DeleteObject(mdc)
         return True
         
     def draw(self, hdc):

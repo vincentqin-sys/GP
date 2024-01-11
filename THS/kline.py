@@ -24,7 +24,7 @@ class KLineModel_Ths(henxin.ThsDataFile):
 class KLineWindow(base_win.BaseWindow):
     FLAG_SHOW_AMOUNT = 1
     FLAG_SHOW_RATE = 2
-    MONEY_RATE_HEIGHT = 120 # 显示高度
+    ZB_HEIGHT = 120 # 显示指标高度
     LEFT_MARGIN, RIGHT_MARGIN = 0, 70
 
     def __init__(self, flags = FLAG_SHOW_AMOUNT | FLAG_SHOW_RATE):
@@ -42,25 +42,34 @@ class KLineWindow(base_win.BaseWindow):
 
     def getKLineRect(self):
         rect = self.getRect()
-        h = self.MONEY_RATE_HEIGHT if self.flags & self.FLAG_SHOW_AMOUNT else 0
-        h += self.MONEY_RATE_HEIGHT if self.flags & self.FLAG_SHOW_RATE else 0
-        TOP_MARGIN, BOTTOM_MARGIN = 30, 0
+        h = self.ZB_HEIGHT if self.flags & self.FLAG_SHOW_AMOUNT else 0
+        h += self.ZB_HEIGHT if self.flags & self.FLAG_SHOW_RATE else 0
+        TOP_MARGIN, BOTTOM_MARGIN = 30, 10
         return [self.LEFT_MARGIN, TOP_MARGIN, rect[2] - self.LEFT_MARGIN - self.RIGHT_MARGIN, rect[3] - TOP_MARGIN - BOTTOM_MARGIN - h]
 
     def getAmountRect(self):
-        if not (self.flags & self.FLAG_SHOW_AMOUNT):
+        if not (self.flags & self.FLAG_SHOW_AMOUNT) or not self.amountRange:
             return [0, 0, 0, 0]
-        *_, w, h = self.getRect()
-        MARGIN_TOP = 20
-        return [self.LEFT_MARGIN, h - self.MONEY_RATE_HEIGHT + MARGIN_TOP, w - self.LEFT_MARGIN - self.RIGHT_MARGIN, self.MONEY_RATE_HEIGHT - MARGIN_TOP]
+        *_, W, H = self.getRect()
+        MARGIN_H = 10
+        x = self.LEFT_MARGIN
+        y = H - self.ZB_HEIGHT + MARGIN_H
+        w = W - self.LEFT_MARGIN - self.RIGHT_MARGIN
+        h = self.ZB_HEIGHT - MARGIN_H * 2
+        return [x, y, w, h]
     
     def getRateRect(self):
-        if not (self.flags & self.FLAG_SHOW_RATE):
+        if not (self.flags & self.FLAG_SHOW_RATE) or not self.rateRange:
             return [0, 0, 0, 0]
-        *_, w, h = self.getRect()
-        mr = self.getAmountRect()
-        MARGIN_TOP = 20
-        return [self.LEFT_MARGIN, h - mr[3] - self.MONEY_RATE_HEIGHT, mr[2], self.MONEY_RATE_HEIGHT - MARGIN_TOP]
+        *_, W, H = self.getRect()
+        mh = self.ZB_HEIGHT if self.flags & self.FLAG_SHOW_AMOUNT else 0
+        rect = self.getRect()
+        MARGIN_H = 10
+        x = self.LEFT_MARGIN
+        y = H - mh - self.ZB_HEIGHT + MARGIN_H
+        w = W - self.LEFT_MARGIN - self.RIGHT_MARGIN
+        h = self.ZB_HEIGHT - MARGIN_H * 2
+        return [x, y, w, h]
 
     def setModel(self, model):
         self.model = model
@@ -128,13 +137,17 @@ class KLineWindow(base_win.BaseWindow):
                 self.setSelIdx(ni)
         elif oem == 72: # up arrow key
             self.klineWidth += 2
+            if self.klineWidth // 2 > self.klineSpace:
+                self.klineSpace = min(self.klineSpace + 1, 2)
             if self.selIdx >= 0:
                 self.makeVisible(self.selIdx)
                 x = self.getCenterX(self.selIdx)
                 self.mouseXY = (x, self.mouseXY[1])
             win32gui.InvalidateRect(self.hwnd, None, True)
         elif oem == 80: # down arrow key
-            self.klineWidth = max(self.klineWidth - 2, 2)
+            self.klineWidth = max(self.klineWidth - 2, 1)
+            if self.klineWidth // 2 < self.klineSpace:
+                self.klineSpace = max(self.klineSpace - 1, 0)
             if self.selIdx >= 0:
                 self.makeVisible(self.selIdx)
                 x = self.getCenterX(self.selIdx)
@@ -233,7 +246,7 @@ class KLineWindow(base_win.BaseWindow):
             val = int(rr[1] - y * m)
             return {'value': val, 'fmtVal': f'{val :.1f}%', 'valType': 'Rate'}
         rect = self.getAmountRect()
-        if y >= rect[1] and y <= rect[1] + rect[3] and self.amountRange: # in money-view
+        if y >= rect[1] and y <= rect[1] + rect[3] and self.amountRange: # in amount-view
             y -= rect[1]
             rr = self.amountRange
             m = (rr[1] - rr[0]) / rect[3]
@@ -382,6 +395,7 @@ class KLineWindow(base_win.BaseWindow):
         hbrs['black'] = win32gui.CreateSolidBrush(0x000000)
         hbrs['0xff00ff'] = win32gui.CreateSolidBrush(0xff00ff)
         
+        self.drawMarkLinesDown(hdc, pens, hbrs)
         fs = (self.drawKLine, self.drawRateView, self.drawAmountView)
         for i in range(*self.visibleRange):
             for ff in fs:
@@ -391,7 +405,7 @@ class KLineWindow(base_win.BaseWindow):
         self.drawMA(hdc, 5)
         self.drawMA(hdc, 10)
         self.drawMouse(hdc, pens)
-        self.drawMarkLines(hdc, pens, hbrs)
+        self.drawMarkLinesUp(hdc, pens, hbrs)
         self.drawSelTip(hdc, pens, hbrs)
 
         if self.mouseXY:
@@ -427,7 +441,7 @@ class KLineWindow(base_win.BaseWindow):
             return
         x, y = self.mouseXY
         *_, w, h = self.getRect()
-        wp = win32gui.CreatePen(win32con.PS_DASH, 1, 0xffffff)
+        wp = win32gui.CreatePen(win32con.PS_DOT, 1, 0xffffff)
         win32gui.SelectObject(hdc, wp)
         win32gui.MoveToEx(hdc, self.LEFT_MARGIN, y)
         win32gui.LineTo(hdc, w, y)
@@ -464,48 +478,120 @@ class KLineWindow(base_win.BaseWindow):
         return 'light_green'
 
     def drawTipPrice(self, hdc, y, pens, hbrs):
-        if not self.priceRange:
-            return
         val = self.getValueAtY(y)
         if not val:
             return
         win32gui.SetTextColor(hdc, 0x0000ff)
         w = self.getRect()[2]
         H = 16
-        rc = (w - 50, y - H // 2, w, y + H // 2)
+        rc = (w - self.RIGHT_MARGIN + 10 + 1, y - H // 2, w, y + H // 2)
         hb = win32gui.CreateSolidBrush(0x800040)
         win32gui.FillRect(hdc, rc, hb)
         win32gui.DrawText(hdc, val['fmtVal'], len(val['fmtVal']), rc, win32con.DT_CENTER)
         win32gui.DeleteObject(hb)
 
-    def drawMarkLines(self, hdc, pens, hbrs):
+    def drawMarkLinesDown(self, hdc, pens, hbrs):
         sdc = win32gui.SaveDC(hdc)
-        *_, w, h = self.getRect()
+        xred = win32gui.CreatePen(win32con.PS_DOT, 1, 0x000055)
+        win32gui.SelectObject(hdc, xred)
+        *_, W, H = self.getRect()
+        klineRect = self.getKLineRect()
+        SP = klineRect[3] // 4
+        for i in range(0, 4):
+            w = klineRect[2]
+            y = klineRect[1] + SP * i
+            win32gui.MoveToEx(hdc, 0, y)
+            win32gui.LineTo(hdc, w, y)
+            price = self.getValueAtY(y)
+            if price:
+                price = price['fmtVal']
+                win32gui.SetTextColor(hdc, 0xab34de)
+                rt = (W - self.RIGHT_MARGIN + 15, y - 8, W, y + 8)
+                win32gui.DrawText(hdc, price, len(price), rt, win32con.DT_LEFT)
+
+        rateRect = self.getRateRect()
+        if rateRect[3] > 0:
+            w = rateRect[2]
+            y = self.getYAtRate(self.rateRange[1])
+            win32gui.MoveToEx(hdc, 0, y)
+            win32gui.LineTo(hdc, w, y)
+            win32gui.SetTextColor(hdc, 0xab34de)
+            txt = f'{self.rateRange[1] :.1f}%'
+            rt = (W - self.RIGHT_MARGIN + 15, y - 8, W, y + 8)
+            win32gui.DrawText(hdc, txt, len(txt), rt, win32con.DT_LEFT)
+        amountRect = self.getAmountRect()
+        if amountRect[3] > 0:
+            w = amountRect[2]
+            y = self.getYAtAmount(self.amountRange[1])
+            win32gui.MoveToEx(hdc, 0, y)
+            win32gui.LineTo(hdc, w, y)
+            win32gui.SetTextColor(hdc, 0xab34de)
+            txt = f'{self.amountRange[1] / 100000000 :.1f}亿'
+            rt = (W - self.RIGHT_MARGIN + 15, y - 8, W, y + 8)
+            win32gui.DrawText(hdc, txt, len(txt), rt, win32con.DT_LEFT)
+        win32gui.RestoreDC(hdc, sdc)
+        win32gui.DeleteObject(xred)
+
+    def drawMarkLinesUp(self, hdc, pens, hbrs):
+        sdc = win32gui.SaveDC(hdc)
+        *_, W, H = self.getRect()
         dred = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x0000aa) # 暗红色
         dred2 = win32gui.CreatePen(win32con.PS_SOLID, 2, 0x0000aa) # 暗红色
         win32gui.SelectObject(hdc, dred)
         # 右边竖线
-        win32gui.MoveToEx(hdc, w - self.RIGHT_MARGIN + 10, 0)
-        win32gui.LineTo(hdc, w - self.RIGHT_MARGIN + 10, h)
+        win32gui.MoveToEx(hdc, W - self.RIGHT_MARGIN + 10, 0)
+        win32gui.LineTo(hdc, W - self.RIGHT_MARGIN + 10, H)
         # KLine图下方的横线
         win32gui.SelectObject(hdc, dred2)
         klineRect = self.getKLineRect()
         y = klineRect[1] + klineRect[3] + 4
         win32gui.MoveToEx(hdc, 0, y)
-        win32gui.LineTo(hdc, w, y)
+        win32gui.LineTo(hdc, W, y)
         # Rate下方横线
         rateRect = self.getRateRect()
         if rateRect[3] > 0:
+            w = rateRect[2]
             win32gui.SelectObject(hdc, dred)
             y = rateRect[1] + rateRect[3] + 2
             win32gui.MoveToEx(hdc, 0, y)
             win32gui.LineTo(hdc, w, y)
+            if self.rateRange[1] >= 5:
+                win32gui.SelectObject(hdc, pens['blue'])
+                y = self.getYAtRate(5)
+                win32gui.MoveToEx(hdc, 0, y)
+                win32gui.LineTo(hdc, w, y)
+            if self.rateRange[1] >= 10:
+                win32gui.SelectObject(hdc, pens['0xff00ff'])
+                y = self.getYAtRate(10)
+                win32gui.MoveToEx(hdc, 0, y)
+                win32gui.LineTo(hdc, w, y)
+            if self.rateRange[1] >= 20:
+                win32gui.SelectObject(hdc, pens['yellow'])
+                y = self.getYAtRate(20)
+                win32gui.MoveToEx(hdc, 0, y)
+                win32gui.LineTo(hdc, w, y)
         amountRect = self.getAmountRect()
         if amountRect[3] > 0:
+            w = amountRect[2]
             win32gui.SelectObject(hdc, dred)
             y = amountRect[1] + amountRect[3] + 2
             win32gui.MoveToEx(hdc, 0, y)
             win32gui.LineTo(hdc, w, y)
+            if self.amountRange[1] >= 5 * 100000000:
+                win32gui.SelectObject(hdc, pens['blue'])
+                y = self.getYAtAmount(5 * 100000000)
+                win32gui.MoveToEx(hdc, 0, y)
+                win32gui.LineTo(hdc, w, y)
+            if self.amountRange[1] >= 15 * 100000000:
+                win32gui.SelectObject(hdc, pens['0xff00ff'])
+                y = self.getYAtAmount(15 * 100000000)
+                win32gui.MoveToEx(hdc, 0, y)
+                win32gui.LineTo(hdc, w, y)
+            if self.amountRange[1] >= 30 * 100000000:
+                win32gui.SelectObject(hdc, pens['yellow'])
+                y = self.getYAtAmount(30 * 100000000)
+                win32gui.MoveToEx(hdc, 0, y)
+                win32gui.LineTo(hdc, w, y)
 
         win32gui.RestoreDC(hdc, sdc)
         win32gui.DeleteObject(dred)
@@ -513,7 +599,7 @@ class KLineWindow(base_win.BaseWindow):
 
 if __name__ == '__main__':
     win = KLineWindow()
-    rect = (0, 0, 1000, 500)
+    rect = (0, 0, 1000, 650)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     hexinUrl = henxin.HexinUrl()
     model = KLineModel_Ths('002682')
