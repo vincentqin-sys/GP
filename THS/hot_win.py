@@ -6,7 +6,8 @@ from PIL import Image  # pip install pillow
 import orm, hot_simple_win, base_win, ths_win
 
 class HotWindow(base_win.BaseWindow):
-    DATA_TYPE = ('HOT', 'LHB', 'LS_INFO', 'DDLR') # # HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息，含成交额排名) DDLR（大单流入）
+    #  HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息) DDLR（大单流入） ZT_FUPAN(涨停复盘)
+    DATA_TYPE = ('HOT', 'LHB', 'LS_INFO', 'DDLR', 'ZT_FUPAN') 
 
     def __init__(self):
         super().__init__()
@@ -16,7 +17,8 @@ class HotWindow(base_win.BaseWindow):
         self.hotData = None # 热点数据
         self.lhbData = None # 龙虎榜数据
         self.ddlrData = None # 大单流入数据
-        self.lsInfoData = None # 成交额排名
+        self.lsInfoData = None # 两市信息
+        self.ztFuPanData = None # 涨停复盘
         self.dataType = HotWindow.DATA_TYPE[0]
         self.selectDay = '' # YYYY-MM-DD
 
@@ -71,6 +73,9 @@ class HotWindow(base_win.BaseWindow):
         elif self.dataType == 'DDLR' and self.ddlrData:
             days = [d['day'] for d in self.ddlrData]
             self._drawDataType(hdc, days, self.ddlrData, DEFAULT_ITEM_WIDTH - 30, self.drawOneDayDDLR)
+        elif self.dataType == 'ZT_FUPAN' and self.ztFuPanData:
+            days = [d['day'] for d in self.ztFuPanData]
+            self._drawDataType(hdc, days, self.ztFuPanData, DEFAULT_ITEM_WIDTH, self.drawOneDayZTFuPan)
 
     # format day (int, str(8), str(10)) to YYYY-MM-DD
     def formatDay(self, day):
@@ -329,6 +334,7 @@ class HotWindow(base_win.BaseWindow):
         buyMin, buyMax  = getRangeOf('buy')
         sellMin, sellMax = getRangeOf('sell')
         maxVal = max(buyMax, sellMax)
+        
         # buy
         spY = int(startY + (1 - (data['buy']) / maxVal) * (endY - startY))
         spX = x + 20
@@ -341,6 +347,14 @@ class HotWindow(base_win.BaseWindow):
         win32gui.FillRect(hdc, (spX, spY, spX + 8, endY), hbrGreen)
         info = f'{data["sell"] :.1f}'
         win32gui.DrawText(hdc, info, len(info), (spX - 10, spY - 12, spX + 20, spY), win32con.DT_CENTER)
+        # rate
+        if data['amount']:
+            spX = x + 40
+            spY = 40
+            bb = max(data['buy'], data['sell'])
+            rate = int(bb / data['amount'] * 100)
+            rate = f'占 {rate}%'
+            win32gui.DrawText(hdc, rate, len(rate), (spX - 15, spY - 12, spX + 25, spY), win32con.DT_CENTER)
         # 显示当前选中日期的图标
         if self.formatDay(data['day']) == self.selectDay:
             hbrBlack = win32gui.CreateSolidBrush(0x000000)
@@ -350,6 +364,12 @@ class HotWindow(base_win.BaseWindow):
         win32gui.DeleteObject(hbrRed)
         win32gui.DeleteObject(hbrGreen)
     
+    def drawOneDayZTFuPan(self, hdc, data, x, itemWidth, *args):
+        idx, startIdx, endIdx, *_ = args
+        self.drawDayTitle(hdc, x, data['day'], itemWidth)
+        info = f'{data["ztTime"]}\n\n{data["status"]}\n\n{data["ztReason"]}\n\n{data["tag"]}'
+        win32gui.DrawText(hdc, info, len(info), (x, 40, x + itemWidth, 150), win32con.DT_CENTER)
+
     def drawMinMode(self, hdc):
         title = '【我的热点】'
         rr = win32gui.GetClientRect(self.hwnd)
@@ -381,6 +401,7 @@ class HotWindow(base_win.BaseWindow):
         self.updateLHBData(code)
         self.updateLSInfoData(code)
         self.updateDDLRData(code)
+        self.updateZtFuPanData(code)
 
     def updateLHBData(self, code):
         def gn(name : str):
@@ -465,6 +486,12 @@ class HotWindow(base_win.BaseWindow):
             item['pm'] = pm
             dd.append(item)
         self.lsInfoData = dd
+        self.selectDay = None
+        win32gui.InvalidateRect(self.hwnd, None, True)
+
+    def updateZtFuPanData(self, code):
+        ds = orm.THS_ZT_FuPan.select().where(orm.THS_ZT_FuPan.code == code).order_by(orm.THS_ZT_FuPan.day.asc())
+        self.ztFuPanData = [d.__data__ for d in ds]
         self.selectDay = None
         win32gui.InvalidateRect(self.hwnd, None, True)
 

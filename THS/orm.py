@@ -239,11 +239,26 @@ class THS_ZS(pw.Model):
         database = db_thszs
         table_name = '同花顺指数'
 
+db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/ZT_FuPan.db')
+class THS_ZT_FuPan(pw.Model):
+    code = pw.CharField()
+    name = pw.CharField(null = True)
+    day = pw.CharField()
+    ztTime = pw.CharField(null = True, column_name='涨停时间')
+    status = pw.CharField(null = True, column_name='状态')
+    ztReason = pw.CharField(null = True, column_name='涨停原因')
+    tag = pw.CharField(null=True)
+
+    class Meta:
+        database = db_ztfupan
+        table_name = '开盘啦涨停复盘'
+
 
 db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC, THS_HYDB_2])
 db2.create_tables([THS_Hot, THS_HotZH])
 db3.create_tables([TaoGuBa_Remark])
 db5.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS])
+db_ztfupan.create_tables([THS_ZT_FuPan])
 
     
