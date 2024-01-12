@@ -196,6 +196,7 @@ class THS_DDLR(pw.Model):
     positiveIn = pw.DecimalField(column_name = '被动买入_亿' , null=True, decimal_places = 1, max_digits = 10) #  (亿元)
     positiveOut = pw.DecimalField(column_name = '被动卖出_亿' , null=True, decimal_places = 1, max_digits = 10) #  (亿元)
     total = pw.DecimalField(column_name = '净流入_亿' , null=True, decimal_places = 1, max_digits = 10) # 亿元
+    amount = pw.DecimalField(column_name='成交额_亿', null=True, decimal_places = 1, max_digits = 10)
     class Meta:
         database = db5
         table_name = '个股大单买卖'

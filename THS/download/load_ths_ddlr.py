@@ -3,9 +3,14 @@ from peewee import fn
 import os, json, time, sys, pyautogui, io, datetime
 import fiddler, ths
 
-sys.path.append('.')
-sys.path.append('..')
-import orm
+#sys.path.append('.')
+#sys.path.append('..')
+cwd = os.getcwd()
+w = cwd.index('GP')
+cwd = cwd[0 : w + 2]
+sys.path.append(cwd)
+from THS import orm
+from Tdx import datafile
 
 BASE_STRUCT_PATH = 'D:/ThsData/ddlr-struct/'
 BASE_DETAIL_PATH = 'D:/ThsData/ddlr-detail-src/'
@@ -294,6 +299,19 @@ def run():
         rs = False
     releaseDesktopGUILock()
     return rs
+
+def checkDDLR_Amount():
+    query = orm.THS_DDLR.select(orm.THS_DDLR.code).distinct().where(orm.THS_DDLR.amount.is_null(True) | (orm.THS_DDLR.amount == 0) ).tuples()
+    for q in query:
+        code = q[0]
+        df = datafile.DataFile(code, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
+        cs = orm.THS_DDLR.select().where(orm.THS_DDLR.code == code)
+        for ddlr in cs:
+            if not ddlr.amount:
+                ad = df.getItemData(ddlr.day)
+                if ad:
+                    ddlr.amount = ad.amount / 100000000
+                    ddlr.save()
     
 def getDesktopGUILock():
     LOCK_NAME = 'D:/__Desktop_GUI_Lock__'
@@ -319,13 +337,16 @@ if __name__ == '__main__':
             continue
         nowDay = today.strftime('%Y-%m-%d')
         if lastDay == nowDay:
-            time.sleep(10 * 60)
+            time.sleep(60 * 60)
+            checkDDLR_Amount()
             continue
         st = today.strftime('%H:%M')
-        if (st >= '18:20' and st < '19:00') or runNow:
+        if (st >= '18:15' and st < '19:00') or runNow:
             pyautogui.hotkey('win', 'd')
             if run():
                 lastDay = nowDay
                 runNow = False
+            checkDDLR_Amount()
+            time.sleep(5 * 60)
 
     

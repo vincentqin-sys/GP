@@ -52,6 +52,11 @@ class DataFile:
         return datafile
 
     def getItemIdx(self, day):
+        if not self.data:
+            return -1
+        if type(day) == str:
+            day = day.replace('-', '')
+            day = int(day)
         left, right = 0, len(self.data) - 1
         idx = -1
         while left <= right:

@@ -323,8 +323,7 @@ class HexinUrl(Henxin):
             row = d.split(',')
             for i, k in enumerate(keys):
                 if row[i] == '':
-                    obj = None
-                    break
+                    row[i] = '0' # fix bug
                 if i == 0 or i == 5:
                     setattr(obj, keys[i], int(row[i]))
                 elif i >= 1 and i <= 4:
@@ -347,10 +346,11 @@ class ThsDataFile(datafile.DataFile):
         self.data = []
         self.name = ''
 
-    def loadDataFile(self, hexinUrl : HexinUrl):
+    def loadDataFile(self):
         if self.dataType == datafile.DataFile.DT_DAY:
-            url = hexinUrl.getKLineUrl(self.code)
-            self.data ,self.name = hexinUrl.loadUrlData(url)
+            hx = HexinUrl()
+            url = hx.getKLineUrl(self.code)
+            self.data ,self.name = hx.loadUrlData(url)
 
 if __name__ == '__main__':
     hx = HexinUrl()

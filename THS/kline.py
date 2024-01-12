@@ -208,22 +208,22 @@ class KLineWindow(base_win.BaseWindow):
     
     def getYAtAmount(self, amount):
         rect = self.getAmountRect()
-        if not self.amountRange:
+        if not self.amountRange or (not self.amountRange[1]):
             return rect[1]
         if amount < self.amountRange[0] or amount > self.amountRange[1]:
             return rect[1]
-        p = (amount - self.amountRange[0]) / (self.amountRange[1] - self.amountRange[0])
+        p = (amount - self.amountRange[0]) / self.amountRange[1]
         H = rect[3]
         y = H - int(p * H)
         return y + rect[1]
     
     def getYAtRate(self, rate):
         rect = self.getRateRect()
-        if not self.rateRange:
+        if not self.rateRange or (not self.rateRange[1]):
             return rect[1]
         if rate < self.rateRange[0] or rate > self.rateRange[1]:
             return rect[1]
-        p = (rate - self.rateRange[0]) / (self.rateRange[1] - self.rateRange[0])
+        p = (rate - self.rateRange[0]) / (self.rateRange[1])
         H = rect[3]
         y = H - int(p * H)
         return y + rect[1]
@@ -572,24 +572,25 @@ class KLineWindow(base_win.BaseWindow):
                 win32gui.LineTo(hdc, w, y)
         amountRect = self.getAmountRect()
         if amountRect[3] > 0:
+            亿 = 100000000
             w = amountRect[2]
             win32gui.SelectObject(hdc, dred)
             y = amountRect[1] + amountRect[3] + 2
             win32gui.MoveToEx(hdc, 0, y)
             win32gui.LineTo(hdc, w, y)
-            if self.amountRange[1] >= 5 * 100000000:
+            if self.amountRange[1] >= 5 * 亿 and 5 * 亿  >= self.amountRange[0]:
                 win32gui.SelectObject(hdc, pens['blue'])
-                y = self.getYAtAmount(5 * 100000000)
+                y = self.getYAtAmount(5 * 亿)
                 win32gui.MoveToEx(hdc, 0, y)
                 win32gui.LineTo(hdc, w, y)
-            if self.amountRange[1] >= 15 * 100000000:
+            if self.amountRange[1] >= 15 * 亿 and 15 * 亿  >= self.amountRange[0]:
                 win32gui.SelectObject(hdc, pens['0xff00ff'])
-                y = self.getYAtAmount(15 * 100000000)
+                y = self.getYAtAmount(15 * 亿)
                 win32gui.MoveToEx(hdc, 0, y)
                 win32gui.LineTo(hdc, w, y)
-            if self.amountRange[1] >= 30 * 100000000:
+            if self.amountRange[1] >= 30 * 亿 and 30 * 亿  >= self.amountRange[0]:
                 win32gui.SelectObject(hdc, pens['yellow'])
-                y = self.getYAtAmount(30 * 100000000)
+                y = self.getYAtAmount(30 * 亿)
                 win32gui.MoveToEx(hdc, 0, y)
                 win32gui.LineTo(hdc, w, y)
 
@@ -601,9 +602,8 @@ if __name__ == '__main__':
     win = KLineWindow()
     rect = (0, 0, 1000, 650)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    hexinUrl = henxin.HexinUrl()
     model = KLineModel_Ths('002682')
-    model.loadDataFile(hexinUrl)
+    model.loadDataFile()
     win.setModel(model)
     win.makeVisible(-1)
     win32gui.PumpMessages()
