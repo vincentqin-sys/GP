@@ -180,6 +180,8 @@ class KPL_RowImage(KPL_Image):
     def __init__(self, imgPIL: PIL_Image):
         super().__init__(imgPIL)
         self.model = {}
+        self.nameRect = None
+        self.codeRect = None
 
     def parse(self):
         self.splitColName()
@@ -233,10 +235,10 @@ class KPL_RowImage(KPL_Image):
             if self.rowColorIs(*self.COL_NAME, y, 0xffffff):
                 break
             y += 1
-        nameRect = [self.COL_NAME[0], 0, self.COL_NAME[1], y]
-        codeRect = [self.COL_NAME[0], y + 1, self.COL_NAME[1], self.height]
-        nameItemsRect = self.splitVertical(nameRect)
-        codeItemRect = self.splitVertical(codeRect)
+        self.nameRect = [self.COL_NAME[0], 0, self.COL_NAME[1], y]
+        self.codeRect = [self.COL_NAME[0], y + 1, self.COL_NAME[1], self.height]
+        nameItemsRect = self.splitVertical(self.nameRect)
+        codeItemRect = self.splitVertical(self.codeRect)
         for i in range(0, len(nameItemsRect)):
             self.parseTag(nameItemsRect[i])
         #for i in range(0, len(codeItemRect)):
@@ -304,8 +306,8 @@ class OCRUtil:
         self.kimg.splitRows()
         for r in self.kimg.rowsRect:
             nimg = self.kimg.copyImage(r)
-            it = KPL_RowImage(nimg)
-            model = self.parseRow(it)
+            rowImg = KPL_RowImage(nimg)
+            model = self.parseRow(rowImg)
             model['day'] = self.curDay
             self.addModel(model)
         self.compareModels()
@@ -341,7 +343,7 @@ class OCRUtil:
             if file:
                 file.flush()
     
-    def priteModels(self):
+    def printeModels(self):
         self.writeModels(None)
 
     def isSameModel(self, model1, model2):
@@ -355,10 +357,24 @@ class OCRUtil:
 
     def parseRow(self, img : KPL_RowImage):
         img.parse()
+        codePilImg = img.copyImage(img.codeRect)
+        code = self.parseCodeRect(codePilImg)
+        img.fillBox(img.codeRect, 0xffffff)
+        self.parseNameRect(img)
+        img.model['code'] = code
+    
+    def parseCodeRect(self, pilImg):
+        pilImg.save(TMP_FILE)
+        result = ocr.readtext(TMP_FILE)
+        if result < 1:
+            raise Exception('[parseCodeRect] fail :', result)
+        return result[0][1][0 : 6]
+
+    def parseNameRect(self, img):
         #img.imgPIL.show()
         img.imgPIL.save(TMP_FILE)
         result = ocr.readtext(TMP_FILE)
-        if len(result) < 5:
+        if len(result) < 4:
             raise Exception('[parseRow] fail :', result)
         img.model['name'] = result[0][1]
         img.model['ztTime'] = result[1][1]
@@ -367,7 +383,6 @@ class OCRUtil:
         if (rz[-1] == '1') and (')' not in rz):
             rz = rz[0 : -1] + ')'
         img.model['ztReason'] = rz
-        img.model['code'] = result[4][1][0 : 6]
         tag = ''
         if 'R' in img.model:
             tag += '(融)'
@@ -464,16 +479,16 @@ def main():
         opt = input('input select: ').strip()
         if opt == 're':
             util = OCRUtil()
-            kpl = KPL_Image.dump(hwnd) 
-            #kpl.save('D:/a.bmp')
-            #kpl.show()
-            util.updateImage(kpl)
-            util.priteModels()
+            pilImage = KPL_Image.dump(hwnd) 
+            #pilImage.save('D:/a.bmp')
+            #pilImage.show()
+            util.updateImage(pilImage)
+            util.printeModels()
             print('restart....end')
         elif opt == 'n':
-            kpl = KPL_Image.dump(hwnd)
-            util.updateImage(kpl)
-            util.priteModels()
+            pilImage = KPL_Image.dump(hwnd)
+            util.updateImage(pilImage)
+            util.printeModels()
             print('next...end')
         elif opt == 's':
             file = open('D:/kpl-ocr.txt', 'a')
