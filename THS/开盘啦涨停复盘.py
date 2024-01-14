@@ -91,7 +91,7 @@ class KPL_Image:
                 return False
         return True
 
-    def splitRows(self, ROW_HEIGHT = 55):
+    def splitRows(self, MIN_ROW_HEIGHT = 50):
         rs = []
         startY = self.getRowOfColors(0, 30, 0, self.height, [0xf3f3f3, 0xeeeeee, 0xffffff])
         if startY < 0:
@@ -105,7 +105,7 @@ class KPL_Image:
                 continue
             rowRect = [0, startY, self.width, y]
             startY = y + 1
-            if rowRect[3] - rowRect[1] >= ROW_HEIGHT:
+            if rowRect[3] - rowRect[1] >= MIN_ROW_HEIGHT:
                 self.rowsRect.append(rowRect)
                 #print(rowRect, rowRect[3] - rowRect[1])
             y += 1
@@ -132,14 +132,21 @@ class KPL_Image:
         val = matchNum * 100 / (tW * tH)
         return val
 
-    # :param img is EImage object
-    # :return an index, not find return -1
-    def findSameAs(self, img, rect, similarVal = 100):
-        for idx, rc in enumerate(self.itemsRect):
-            sval = self.similar(rc, img, rect)
-            if sval >= similarVal:
-                return idx
-        return -1
+    def rectIsColor(self, rect, color):
+        for x in range(rect[0], rect[2], 1):
+            for y in range(rect[1], rect[3], 1):
+                if self.getPixel(x, y) != color:
+                    return False
+        return True
+
+    # :return (x, y), not find return None
+    def findRectIsColor(self, srcRect, size, color):
+        w, h = size
+        for x in range(srcRect[0], srcRect[2]- w, 1):
+            for y in range(srcRect[1], srcRect[3] - h, 1):
+                if self.rectIsColor((x, y, x + w, y + h), color):
+                    return (x, y, x + w, y + h)
+        return None
         
     @staticmethod
     def dump(hwnd):
@@ -272,35 +279,6 @@ class KPL_RowImage(KPL_Image):
                     nb += 1
         return nb
 
-def format(day, txt):
-    lines = txt.splitlines()
-    codeNum = 0
-    rs = []
-    for i, line in enumerate(lines):
-        line = line.strip()
-        if not line:
-            continue
-        if len(line) == 5:
-            break
-        m = re.match('(.*?)\s*(\d+)\s*(.*)', line)
-        name, code, tag = m.groups()
-        rs.append([name, code, tag])
-        codeNum += 1
-
-    lines = lines[i : ]
-    if len(lines) % codeNum != 0:
-        raise Exception('error')
-    times = lines[0 : codeNum]
-    status = lines[codeNum : codeNum * 2]
-    reason = lines[codeNum * 2: codeNum * 3]
-    for i, r in enumerate(rs):
-        r.append(times[i])
-        r.append(status[i])
-        r.append(reason[i])
-        r.append(day)
-        print(r)
-    return rs
-
 def save(day, code, name, ztTime, status, ztReason, tag):
     count = orm.THS_ZT_FuPan.select(pw.fn.count(orm.THS_ZT_FuPan.code)).where(orm.THS_ZT_FuPan.code == code, orm.THS_ZT_FuPan.day == day)
     #print(count.sql())
@@ -310,12 +288,73 @@ def save(day, code, name, ztTime, status, ztReason, tag):
     else:
         print('重复项：', day, code, name, ztTime, status, ztReason, tag)
 
-def parseRow(img):
-    img.parse()
-    #img.imgPIL.show()
-    img.imgPIL.save(TMP_FILE)
-    result = ocr.readtext(TMP_FILE)
-    if len(result) >= 5:
+class OCRUtil:
+    def __init__(self):
+        self.kimg = None
+        self.curDay = ''
+        self.readHeadLineY = -1
+        self.leftArrow = None
+        self.rightArrow = None
+        self.models = []
+
+    def updateImage(self, pilImage):
+        self.kimg = KPL_Image(pilImage)
+        self.calcReadHeadLineY()
+        self.calcLeftRightArrow()
+        self.calcCurrentDay()
+        self.kimg.splitRows()
+        for r in self.kimg.rowsRect:
+            nimg = self.kimg.copyImage(r)
+            it = KPL_RowImage(nimg)
+            model = self.parseRow(it)
+            model['day'] = self.curDay
+            self.addModel(model)
+        self.compareModels()
+
+    def compareModels(self):
+        for model in self.models:
+            if '_success' not in model:
+                rs = self.checkModel(model)
+                model['_success'] = rs
+        for i in range(0, len(self.models) - 1):
+            for j in range(i + 1, len(self.models), 1):
+                if self.isSameModel(self.models[i], self.models[j]):
+                    self.models[j]['_exists'] = True
+        for i in range(len(self.models) - 1, -1, -1):
+            if '_exists' in self.models[i]:
+                self.models.pop(i)
+
+    def writeModels(self, file):
+        def fmtName(name):
+            apd = 0
+            for n in name:
+                apd = apd + (1 if ord(n) < 255 else 2)
+            return name + ' ' * (8 - apd)
+        for model in self.models:
+            info = f"{model['day']}\t{fmtName(model['name'])}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}\t{model['tag']}"
+            print(info)
+            file.write(info + '\n')
+            if not model['_success']:
+                print('\tMay be error')
+                file.write( '\tMay be error\n')
+            file.flush()
+
+    def isSameModel(self, model1, model2):
+        return (model1['name'] == model2['name']) and (model1['code'] == model2['code']) and (model1['day'] == model2['day'])
+
+    def addModel(self, model):
+        for m in self.models:
+            if self.isSameModel(model, m):
+                return
+        self.models.append(model)
+
+    def parseRow(self, img : KPL_RowImage):
+        img.parse()
+        #img.imgPIL.show()
+        img.imgPIL.save(TMP_FILE)
+        result = ocr.readtext(TMP_FILE)
+        if len(result) < 5:
+            raise Exception('[parseRow] fail :', result)
         img.model['name'] = result[0][1]
         img.model['ztTime'] = result[1][1]
         img.model['status'] = result[2][1]
@@ -330,71 +369,93 @@ def parseRow(img):
         if 'HF' in img.model:
             tag += '回封'
         img.model['tag'] = tag
-    return img.model
+        return img.model
 
-def checkModel(model):
-    mc = model['code']
-    if len(mc) != 6:
+    def checkModel(self, model):
+        mc = model['code']
+        if len(mc) != 6:
+            return False
+        obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == mc)
+        if obj and obj.name == model['name']:
+            return True
+        *_, name = hx.loadUrlData(hx.getTodayKLineUrl(mc))
+        if model['name'] == name:
+            return True
+        obj = orm.THS_Newest.get_or_none(orm.THS_Newest.name == model['name'])
+        if not obj:
+            return False
+        # check code 
+        flag = True
+        for i, c in enumerate(obj.code):
+            f = (c == mc[i]) or (c == '1' and mc[i] == '7') or (c == '7' and mc[i] == '1')
+            flag = flag and f
+        
+        if flag:
+            model['code'] = obj.code # use sugguest code
+            return True
         return False
-    obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == mc)
-    if obj and obj.name == model['name']:
-        return True
-    *_, name = hx.loadUrlData(hx.getTodayKLineUrl(mc))
-    if model['name'] == name:
-        return True
-    obj = orm.THS_Newest.get_or_none(orm.THS_Newest.name == model['name'])
-    if not obj:
-        return False
-    # check code 
-    flag = True
-    for i, c in enumerate(obj.code):
-        f = (c == mc[i]) or (c == '1' and mc[i] == '7') or (c == '7' and mc[i] == '1')
-        flag = flag and f
-    
-    if flag:
-        model['code'] = obj.code # use sugguest code
-        return True
-    return False
 
-def getCurrentDay(img):
-    kimg = KPL_Image(img)
-    sy = kimg.getRowOfColors(kimg.width // 2, kimg.width // 2 + 100, 1, 100, [0xe93030, 0xf17777, 0xffffff])
-    if sy < 0:
-        raise Exception('[getCurrentDay] fail not find current day line')
-    sy += 3
-    sx = kimg.width // 2
-    ey = kimg.getRowOfColors(sx, sx + 50, sy, sy + 100, [0xf8f8f8])
-    if ey < 0:
-        ey = sy + 100
-    rect = [sx, sy, kimg.width, ey]
-    dimg = kimg.copyImage(rect)
-    #dimg.show()
-    dimg.save(TMP_FILE)
-    rs = ocr.readtext(TMP_FILE)
-    for r in rs:
-        txt = r[1]
-        if len(txt) == 10:
-            return txt
-    raise Exception('[getCurrentDay] not find current day')
+    def calcReadHeadLineY(self):
+        sy = self.kimg.getRowOfColors(self.kimg.width // 2, self.kimg.width // 2 + 100, 1, 100, [0xe93030, 0xf17777, 0xffffff])
+        if sy < 0:
+            raise Exception('[calcReadHeadLineY] fail not find current day line')
+        self.readHeadLineY = sy + 3
 
-def main():    
-    path = r'C:\Users\Administrator\Desktop\b.png'
-    pimg = PIL_Image.open(path)
-    curDay = getCurrentDay(pimg)
-    print('curDay=', curDay)
-    img = KPL_Image(pimg)
-    img.splitRows()
-    for r in img.rowsRect:
-        nimg = img.copyImage(r)
-        it = KPL_RowImage(nimg)
-        model = parseRow(it)
-        model['day'] = curDay
-        rs = checkModel(model)
-        #save(**model)
-        info = f"{model['day']}\t{model['name']}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}\t{model['tag']}"
-        print(info)
-        if not rs:
-            print('\tMay be error')
+    def calcCurrentDay(self):
+        sy = self.readHeadLineY
+        sx = self.kimg.width // 2
+        ey = self.kimg.getRowOfColors(sx, sx + 50, sy, sy + 100, [0xf8f8f8])
+        if ey < 0:
+            ey = sy + 100
+        rect = [sx, sy, self.kimg.width, ey]
+        dimg = self.kimg.copyImage(rect)
+        #dimg.show()
+        dimg.save(TMP_FILE)
+        rs = ocr.readtext(TMP_FILE)
+        for r in rs:
+            txt = r[1]
+            if len(txt) == 10:
+                self.curDay = txt
+                return
+        raise Exception('[calcCurrentDay] not find current day')
+
+    def calcLeftRightArrow(self):
+        sy = self.readHeadLineY
+        sx = self.kimg.width // 2
+        rect = [sx, sy, self.kimg.width, sy + 100]
+        self.leftArrow = self.kimg.findRectIsColor(rect, (10, 10), 0xDADEE5)
+        if not self.leftArrow:
+            raise Exception('[calcLeftRightArrow] not find leftArrow of day')
+        rect[0] = self.leftArrow[0] + 50
+        self.rightArrow = self.kimg.findRectIsColor(rect, (10, 10), 0xDADEE5)
+        if not self.rightArrow:
+            raise Exception('[calcLeftRightArrow] not find rightArrow of day')
+        #self.kimg.fillBox(self.leftArrow, 0xff0000)
+        #self.kimg.fillBox(self.rightArrow, 0xff0000)
+        #self.kimg.imgPIL.show()
+
+def main():
+    #path = r'C:\Users\Administrator\Desktop\b.png'
+    #pimg = PIL_Image.open(path)
+    hwnd = 0x00 # 开盘拉窗口
+    print('opetions: \n\t"re" = restart  \n\t"n" = next page down  \n\t"s" = save to file\n')
+    util = OCRUtil()
+    while True:
+        opt = input('input select: ').strip()
+        if opt == 're':
+            util = OCRUtil()
+            kpl = KPL_Image.dump(hwnd)
+            util.updateImage(kpl)
+            print('restart....end')
+        elif opt == 'n':
+            kpl = KPL_Image.dump(hwnd)
+            util.updateImage(kpl)
+            print('next...end')
+        elif opt == 's':
+            file = open('D:/kpl-ocr.txt', 'a')
+            util.writeModels(file)
+            file.close()
+            print('save success')
         
 if __name__ == '__main__':
     main()
