@@ -183,6 +183,11 @@ class KPL_RowImage(KPL_Image):
         self.nameRect = None
         self.codeRect = None
 
+    def isValid(self):
+        # last row may be white name
+        white = self.rectIsColor((5, 5, self.COL_NAME[1], self.height - 5), 0xffffff)
+        return not white
+
     def parse(self):
         self.splitColName()
 
@@ -307,6 +312,8 @@ class OCRUtil:
         for r in self.kimg.rowsRect:
             nimg = self.kimg.copyImage(r)
             rowImg = KPL_RowImage(nimg)
+            if not rowImg.isValid():
+                continue
             model = self.parseRow(rowImg)
             model['day'] = self.curDay
             self.addModel(model)
@@ -342,6 +349,7 @@ class OCRUtil:
                     file.write( '\tMay be error\n')
             if file:
                 file.flush()
+        print('sum =', len(self.models))
     
     def printeModels(self):
         self.writeModels(None)
@@ -360,17 +368,19 @@ class OCRUtil:
         codePilImg = img.copyImage(img.codeRect)
         code = self.parseCodeRect(codePilImg)
         img.fillBox(img.codeRect, 0xffffff)
-        self.parseNameRect(img)
-        img.model['code'] = code
+        model = self.parseRowImage(img)
+        model['code'] = code
+        print('[OCRUtil.parseRow]', model)
+        return model
     
     def parseCodeRect(self, pilImg):
         pilImg.save(TMP_FILE)
         result = ocr.readtext(TMP_FILE)
-        if result < 1:
+        if len(result) < 1:
             raise Exception('[parseCodeRect] fail :', result)
         return result[0][1][0 : 6]
 
-    def parseNameRect(self, img):
+    def parseRowImage(self, img):
         #img.imgPIL.show()
         img.imgPIL.save(TMP_FILE)
         result = ocr.readtext(TMP_FILE)
@@ -398,7 +408,10 @@ class OCRUtil:
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == mc)
         if obj and obj.name == model['name']:
             return True
-        *_, name = hx.loadUrlData(hx.getTodayKLineUrl(mc))
+        try:
+            *_, name = hx.loadUrlData(hx.getTodayKLineUrl(mc))
+        except:
+            return False
         if model['name'] == name:
             return True
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.name == model['name'])
