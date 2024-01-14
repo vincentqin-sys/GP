@@ -93,7 +93,7 @@ class KPL_Image:
 
     def splitRows(self, MIN_ROW_HEIGHT = 50):
         rs = []
-        startY = self.getRowOfColors(0, 30, 0, self.height, [0xf3f3f3, 0xeeeeee, 0xffffff])
+        startY = self.getRowOfColors(140, 160, 0, self.height, [0xf3f3f3, 0xeeeeee, 0xffffff])
         if startY < 0:
             raise Exception('[KPL_Image.splitRows] startY=', startY)
         startY += 2
@@ -151,10 +151,9 @@ class KPL_Image:
     @staticmethod
     def dump(hwnd):
         dc = win32gui.GetWindowDC(hwnd)
-        #mdc = win.CreateCompatibleDC(dc)
-        mfcDC = win32gui.CreateDCFromHandle(dc)
+        mfcDC = win32ui.CreateDCFromHandle(dc)
         saveDC = mfcDC.CreateCompatibleDC()
-        saveBitMap = win32gui.CreateBitmap()
+        saveBitMap = win32ui.CreateBitmap()
         rect = win32gui.GetClientRect(hwnd)
         w = rect[2] - rect[0]
         h = rect[3] - rect[1]
@@ -164,14 +163,14 @@ class KPL_Image:
         srcPos = (0, 0)
         saveDC.BitBlt((0, 0), srcSize, mfcDC, srcPos, win32con.SRCCOPY)
         bmpinfo = saveBitMap.GetInfo()
-        bmpstr = saveBitMap.GetBitmapBits(True)
-        img_PIL = PIL_Image.frombuffer('RGB',(w, h), bmpstr, 'raw', 'BGRX', 0, 1) # bmpinfo['bmWidth']
+        bits = saveBitMap.GetBitmapBits(True)
+        img_PIL = PIL_Image.frombuffer('RGB',(w, h), bits, 'raw', 'BGRX', 0, 1) # bmpinfo['bmWidth']
         # destory
         win32gui.DeleteObject(saveBitMap.GetHandle())
         saveDC.DeleteDC()
         mfcDC.DeleteDC()
         win32gui.ReleaseDC(hwnd, dc)
-        return KPL_Image(img_PIL)
+        return img_PIL
 
 class KPL_RowImage(KPL_Image):
     # 股票名称、涨停时间、状态、涨停原因
@@ -333,11 +332,17 @@ class OCRUtil:
         for model in self.models:
             info = f"{model['day']}\t{fmtName(model['name'])}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}\t{model['tag']}"
             print(info)
-            file.write(info + '\n')
+            if file:
+                file.write(info + '\n')
             if not model['_success']:
                 print('\tMay be error')
-                file.write( '\tMay be error\n')
-            file.flush()
+                if file:
+                    file.write( '\tMay be error\n')
+            if file:
+                file.flush()
+    
+    def priteModels(self):
+        self.writeModels(None)
 
     def isSameModel(self, model1, model2):
         return (model1['name'] == model2['name']) and (model1['code'] == model2['code']) and (model1['day'] == model2['day'])
@@ -396,7 +401,9 @@ class OCRUtil:
         return False
 
     def calcReadHeadLineY(self):
-        sy = self.kimg.getRowOfColors(self.kimg.width // 2, self.kimg.width // 2 + 100, 1, 100, [0xe93030, 0xf17777, 0xffffff])
+        color = self.kimg.getPixel(self.kimg.width //2, 80)
+        #print(f'{color:x}')
+        sy = self.kimg.getRowOfColors(self.kimg.width // 2, self.kimg.width // 2 + 100, 1, 100, [0xffffff])
         if sy < 0:
             raise Exception('[calcReadHeadLineY] fail not find current day line')
         self.readHeadLineY = sy + 3
@@ -428,8 +435,6 @@ class OCRUtil:
             raise Exception('[calcLeftRightArrow] not find leftArrow of day')
         rect[0] = self.leftArrow[0] + 50
         self.rightArrow = self.kimg.findRectIsColor(rect, (10, 10), 0xDADEE5)
-        if not self.rightArrow:
-            raise Exception('[calcLeftRightArrow] not find rightArrow of day')
         #self.kimg.fillBox(self.leftArrow, 0xff0000)
         #self.kimg.fillBox(self.rightArrow, 0xff0000)
         #self.kimg.imgPIL.show()
@@ -439,8 +444,13 @@ def findXiaoYaoWnd():
     if not xiaoYaoWnd:
         print('Not find 逍遥模拟器')
         return None
-    hwnd = win32gui.FindWindowEx(xiaoYaoWnd, None, 'subWin', 'sub')
-    hwnd = win32gui.GetWindow(hwnd, win32con.GW_CHILD)
+    print(f'逍遥模拟器 top hwnd=0x{xiaoYaoWnd :x}')
+    hwnd = win32gui.FindWindowEx(xiaoYaoWnd, None, 'Qt5QWindowIcon', 'MainWindowWindow')
+    hwnd = win32gui.FindWindowEx(hwnd, None, 'Qt5QWindowIcon', 'CenterWidgetWindow')
+    hwnd = win32gui.FindWindowEx(hwnd, None, 'Qt5QWindowIcon', 'RenderWindowWindow')
+    hwnd = win32gui.FindWindowEx(hwnd, None, 'subWin', 'sub')
+    hwnd = win32gui.FindWindowEx(hwnd, None, 'subWin', 'sub')
+    print(f'逍遥模拟器 sub hwnd=0x{hwnd :x}')
     return hwnd
 
 def main():
@@ -454,12 +464,16 @@ def main():
         opt = input('input select: ').strip()
         if opt == 're':
             util = OCRUtil()
-            kpl = KPL_Image.dump(hwnd)
+            kpl = KPL_Image.dump(hwnd) 
+            #kpl.save('D:/a.bmp')
+            #kpl.show()
             util.updateImage(kpl)
+            util.priteModels()
             print('restart....end')
         elif opt == 'n':
             kpl = KPL_Image.dump(hwnd)
             util.updateImage(kpl)
+            util.priteModels()
             print('next...end')
         elif opt == 's':
             file = open('D:/kpl-ocr.txt', 'a')
