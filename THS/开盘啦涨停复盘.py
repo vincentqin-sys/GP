@@ -434,10 +434,20 @@ class OCRUtil:
         #self.kimg.fillBox(self.rightArrow, 0xff0000)
         #self.kimg.imgPIL.show()
 
+def findXiaoYaoWnd():
+    xiaoYaoWnd = win32gui.FindWindow('Qt5QWindowIcon', '逍遥模拟器')
+    if not xiaoYaoWnd:
+        print('Not find 逍遥模拟器')
+        return None
+    hwnd = win32gui.FindWindowEx(xiaoYaoWnd, None, 'subWin', 'sub')
+    hwnd = win32gui.GetWindow(hwnd, win32con.GW_CHILD)
+    return hwnd
+
 def main():
     #path = r'C:\Users\Administrator\Desktop\b.png'
     #pimg = PIL_Image.open(path)
-    hwnd = 0x00 # 开盘拉窗口
+    hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
+    print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
     print('opetions: \n\t"re" = restart  \n\t"n" = next page down  \n\t"s" = save to file\n')
     util = OCRUtil()
     while True:
