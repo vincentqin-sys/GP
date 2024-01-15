@@ -10,6 +10,7 @@ hx = henxin.HexinUrl()
 ocr = easyocr.Reader(['ch_sim','en'])
 
 TMP_FILE = 'D:/_kpl_.bmp'
+KPL_OCR_FILE = 'D:/kpl-ocr.txt'
 
 # 开盘啦截图
 class KPL_Image:
@@ -311,12 +312,13 @@ class KPL_RowImage(KPL_Image):
                     nb += 1
         return nb
 
-def save(day, code, name, ztTime, status, ztReason, tag):
+def saveToDB(day, code, name, ztTime, status, ztReason, tag):
     count = orm.THS_ZT_FuPan.select(pw.fn.count(orm.THS_ZT_FuPan.code)).where(orm.THS_ZT_FuPan.code == code, orm.THS_ZT_FuPan.day == day)
     #print(count.sql())
     count = count.scalar()
     if not count:
         orm.THS_ZT_FuPan.create(name=name, code=code, tag=tag, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
+        print('Save success: ', day, name, code)
     else:
         print('重复项：', day, code, name, ztTime, status, ztReason, tag)
 
@@ -374,7 +376,7 @@ class OCRUtil:
                 if '_exception' in model: ex = model['_exception']
                 print('\tMay be error ' + ex)
                 if file:
-                    file.write( '\tMay be error\n')
+                    file.write( '\tMay be error'  + ex + '\n')
             if file:
                 file.flush()
         print('sum =', len(self.models))
@@ -439,25 +441,28 @@ class OCRUtil:
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == mc)
         if obj and obj.name == model['name']:
             return True
+        obj = orm.THS_Newest.get_or_none(orm.THS_Newest.name == model['name'])
+        if obj:
+            flag = True
+            for i, c in enumerate(obj.code):
+                f = (c == mc[i]) or (c == '1' and mc[i] == '7') or (c == '7' and mc[i] == '1') or (c == '8' and mc[i] == '3') or (c == '3' and mc[i] == '8')
+                flag = flag and f
+            if flag:
+                model['code'] = obj.code # use sugguest code
+                return True
+            model['_exception'] = ' Maybe is ' + obj.code + '? '
+            return False
+        
         try:
             *_, name = hx.loadUrlData(hx.getTodayKLineUrl(mc))
         except Exception as e:
-            model['_exception'] = 'Net check ' + str(e)
+            model['_exception'] = ' Net check ' + str(e)
             return False
         if model['name'] == name:
             return True
-        obj = orm.THS_Newest.get_or_none(orm.THS_Newest.name == model['name'])
-        if not obj:
+        else:
+            model['_exception'] = ' Maybe is ' + name + '? '
             return False
-        # check code 
-        flag = True
-        for i, c in enumerate(obj.code):
-            f = (c == mc[i]) or (c == '1' and mc[i] == '7') or (c == '7' and mc[i] == '1')
-            flag = flag and f
-        
-        if flag:
-            model['code'] = obj.code # use sugguest code
-            return True
         return False
 
     def calcReadHeadLineY(self):
@@ -521,6 +526,17 @@ def findXiaoYaoWnd():
     print(f'逍遥模拟器 sub hwnd=0x{hwnd :x}')
     return hwnd
 
+def main_loadFile():
+    file = open(KPL_OCR_FILE, encoding='gbk')
+    while True:
+        line = file.readline().strip()
+        if not line:
+            break
+        its = line.split('\t')
+        for i in range(len(its)): its[i] = its[i].strip()
+        day, name, code, ztTime, status, ztReason, *_ = its
+        saveToDB(day, code, name, ztTime, status, ztReason, '')
+
 def main():
     #txt = ocr.readtext(TMP_FILE)
     #print(txt)
@@ -528,7 +544,7 @@ def main():
     hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
     print('定位到[市场情绪->股票列表->涨停原因排序] ')
     print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
-    print('opetions: \n\t"r" = restart  \n\t"n" = next page down  \n\t"s" = save to file\n')
+    print('opetions: \n\t"r" = restart  \n\t"n" = next page down  \n\t"s" = save to file\n\t"e" = exit')
     util = OCRUtil()
     while True:
         opt = input('input select: ').strip()
@@ -544,11 +560,15 @@ def main():
             util.printeModels()
             print('next...end')
         elif opt == 's':
-            file = open('D:/kpl-ocr.txt', 'a')
+            file = open(KPL_OCR_FILE, 'a')
             util.writeModels(file)
             util.clearModels()
             file.close()
             print('save success')
+        elif opt == 'e':
+            print('exit')
+            break
         
 if __name__ == '__main__':
     main()
+    main_loadFile()
