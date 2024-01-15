@@ -370,13 +370,18 @@ class OCRUtil:
             if file:
                 file.write(info + '\n')
             if not model['_success']:
-                print('\tMay be error')
+                ex = ''
+                if '_exception' in model: ex = model['_exception']
+                print('\tMay be error ' + ex)
                 if file:
                     file.write( '\tMay be error\n')
             if file:
                 file.flush()
         print('sum =', len(self.models))
     
+    def clearModels(self):
+        self.models = []
+
     def printeModels(self):
         self.writeModels(None)
 
@@ -436,7 +441,8 @@ class OCRUtil:
             return True
         try:
             *_, name = hx.loadUrlData(hx.getTodayKLineUrl(mc))
-        except:
+        except Exception as e:
+            model['_exception'] = 'Net check ' + str(e)
             return False
         if model['name'] == name:
             return True
@@ -471,7 +477,6 @@ class OCRUtil:
         ex = self.rightArrow[0] - 10 if self.rightArrow else self.kimg.width
         rect = [sx, sy, ex, ey]
         upLineRect = self.kimg.findRectNotExistsColor2(rect, (80, 1), 0xffffff)
-        self.kimg.fillBox(upLineRect, 0xff0000)
         rect2= [upLineRect[0], upLineRect[1] + 10, ex, ey]
         downLineRect = self.kimg.findRectNotExistsColor2(rect2, (80, 1), 0xffffff)
         rect = [upLineRect[0] + 2, upLineRect[1] + 2, ex, downLineRect[3] - 2]
@@ -485,8 +490,9 @@ class OCRUtil:
             txt = r[1]
             if len(txt) == 10:
                 self.curDay = txt
+                print('[OCRUtil.calcCurrentDay] curDay=', txt)
                 return
-        raise Exception('[calcCurrentDay] not find current day')
+        raise Exception('[OCRUtil.calcCurrentDay] not find current day')
 
     def calcLeftRightArrow(self):
         sy = self.readHeadLineY
@@ -520,16 +526,15 @@ def main():
     #print(txt)
     #return
     hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
+    print('定位到[市场情绪->股票列表->涨停原因排序] ')
     print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
-    print('opetions: \n\t"re" = restart  \n\t"n" = next page down  \n\t"s" = save to file\n')
+    print('opetions: \n\t"r" = restart  \n\t"n" = next page down  \n\t"s" = save to file\n')
     util = OCRUtil()
     while True:
         opt = input('input select: ').strip()
-        if opt == 're':
+        if opt == 'r':
             util = OCRUtil()
-            pilImage = KPL_Image.dump(hwnd) 
-            #pilImage.save('D:/a.bmp')
-            #pilImage.show()
+            pilImage = KPL_Image.dump(hwnd)
             util.updateImage(pilImage)
             util.printeModels()
             print('restart....end')
@@ -541,6 +546,7 @@ def main():
         elif opt == 's':
             file = open('D:/kpl-ocr.txt', 'a')
             util.writeModels(file)
+            util.clearModels()
             file.close()
             print('save success')
         
