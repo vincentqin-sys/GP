@@ -138,8 +138,15 @@ class KPL_Image:
                 if self.getPixel(x, y) != color:
                     return False
         return True
+    
+    def rectExistsColor(self, rect, color):
+        for x in range(rect[0], rect[2], 1):
+            for y in range(rect[1], rect[3], 1):
+                if self.getPixel(x, y) == color:
+                    return True
+        return False
 
-    # :return (x, y), not find return None
+    # :return (sx, sy, ex, ey), not find return None
     def findRectIsColor(self, srcRect, size, color):
         w, h = size
         for x in range(srcRect[0], srcRect[2]- w, 1):
@@ -147,7 +154,26 @@ class KPL_Image:
                 if self.rectIsColor((x, y, x + w, y + h), color):
                     return (x, y, x + w, y + h)
         return None
+    
+    #横向优先查找
+    def findRectNotExistsColor(self, srcRect, size, color):
+        w, h = size
+        for x in range(srcRect[0], srcRect[2]- w, 1):
+            for y in range(srcRect[1], srcRect[3] - h, 1):
+                if not self.rectExistsColor((x, y, x + w, y + h), color):
+                    return (x, y, x + w, y + h)
+        return None
+    
+    #竖向优先查找
+    def findRectNotExistsColor2(self, srcRect, size, color):
+        w, h = size
+        for y in range(srcRect[1], srcRect[3] - h, 1):
+            for x in range(srcRect[0], srcRect[2]- w, 1):
+                if not self.rectExistsColor((x, y, x + w, y + h), color):
+                    return (x, y, x + w, y + h)
+        return None
         
+    
     @staticmethod
     def dump(hwnd):
         dc = win32gui.GetWindowDC(hwnd)
@@ -429,7 +455,7 @@ class OCRUtil:
         return False
 
     def calcReadHeadLineY(self):
-        color = self.kimg.getPixel(self.kimg.width //2, 80)
+        #color = self.kimg.getPixel(self.kimg.width //2, 80)
         #print(f'{color:x}')
         sy = self.kimg.getRowOfColors(self.kimg.width // 2, self.kimg.width // 2 + 100, 1, 100, [0xffffff])
         if sy < 0:
@@ -438,11 +464,19 @@ class OCRUtil:
 
     def calcCurrentDay(self):
         sy = self.readHeadLineY
-        sx = self.kimg.width // 2
+        sx = self.leftArrow[2] + 10
         ey = self.kimg.getRowOfColors(sx, sx + 50, sy, sy + 100, [0xf8f8f8])
         if ey < 0:
-            ey = sy + 100
-        rect = [sx, sy, self.kimg.width, ey]
+            ey = sy + 75
+        ex = self.rightArrow[0] - 10 if self.rightArrow else self.kimg.width
+        rect = [sx, sy, ex, ey]
+        upLineRect = self.kimg.findRectNotExistsColor2(rect, (80, 1), 0xffffff)
+        self.kimg.fillBox(upLineRect, 0xff0000)
+        rect2= [upLineRect[0], upLineRect[1] + 10, ex, ey]
+        downLineRect = self.kimg.findRectNotExistsColor2(rect2, (80, 1), 0xffffff)
+        rect = [upLineRect[0] + 2, upLineRect[1] + 2, ex, downLineRect[3] - 2]
+        rightLineRect = self.kimg.findRectNotExistsColor2(rect, (15, 1), 0xffffff)
+        rect[2] = rightLineRect[0] - 3
         dimg = self.kimg.copyImage(rect)
         #dimg.show()
         dimg.save(TMP_FILE)
@@ -482,8 +516,9 @@ def findXiaoYaoWnd():
     return hwnd
 
 def main():
-    #path = r'C:\Users\Administrator\Desktop\b.png'
-    #pimg = PIL_Image.open(path)
+    #txt = ocr.readtext(TMP_FILE)
+    #print(txt)
+    #return
     hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
     print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
     print('opetions: \n\t"re" = restart  \n\t"n" = next page down  \n\t"s" = save to file\n')
