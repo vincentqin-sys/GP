@@ -544,7 +544,7 @@ def main():
     hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
     print('定位到[市场情绪->股票列表->涨停原因排序] ')
     print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
-    print('opetions: \n\t"r" = restart  \n\t"n" = next page down  \n\t"s" = save to file\n\t"e" = exit')
+    print('opetions: \n\t"r" = restart  \n\t"n" = next page down  \n\t"s" = save to file\n\t"l" = load file, save to database')
     util = OCRUtil()
     while True:
         opt = input('input select: ').strip()
@@ -565,10 +565,8 @@ def main():
             util.clearModels()
             file.close()
             print('save success')
-        elif opt == 'e':
-            print('exit')
-            break
+        elif opt == 'l':
+            main_loadFile()
         
 if __name__ == '__main__':
     main()
-    main_loadFile()

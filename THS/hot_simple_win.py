@@ -72,7 +72,7 @@ class ThsSortQuery:
 
 #-------------小窗口----------------------------------------------
 class SimpleWindow(base_win.BaseWindow):
-    DATA_TYPES = ('Sort', 'Hot')
+    DATA_TYPES = ('Sort', 'Hot', 'KPL_ZT')  # KPL_ZT 开盘啦涨停信息
 
     def __init__(self) -> None:
         super().__init__()
@@ -81,6 +81,7 @@ class SimpleWindow(base_win.BaseWindow):
         self.curCode = None
         self.sortData = None
         self.hotData = None
+        self.kplZTData = None
         self.query = ThsSortQuery()
         self.dataType = SimpleWindow.DATA_TYPES[0]
         self.selectDay = 0
@@ -113,7 +114,7 @@ class SimpleWindow(base_win.BaseWindow):
         #最右
         if selDay >= days[len(days) - 1]:
             return (len(days) - maxNum, len(days))
-
+        
         idx = 0
         for i in range(len(days) - 1): # skip last day
             if (selDay >= days[i]) and (selDay < days[i + 1]):
@@ -144,19 +145,6 @@ class SimpleWindow(base_win.BaseWindow):
         qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.min(orm.THS_Hot.hotOrder).alias('minOrder'), pw.fn.max(orm.THS_Hot.hotOrder).alias('maxOrder')).where(orm.THS_Hot.code == self.curCode).group_by(orm.THS_Hot.day) #.order_by(orm.THS_Hot.day.desc())
         #print(qq.sql())
         self.hotData = [d for d in qq.dicts()]
-        # 每日前10名的个数
-        """qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.count().alias('_count')).where(orm.THS_Hot.code == self.curCode, orm.THS_Hot.hotOrder <= 10).group_by(orm.THS_Hot.day).order_by(orm.THS_Hot.day.desc())
-        #print(qq.sql())
-        qdata = {}
-        for d in qq.tuples():
-            qdata[d[0]] = d[1]
-        for d in self.hotData:
-            day = d['day']
-            if day in qdata:
-                d['count'] = qdata[day]
-            else:
-                d['count'] = 0
-        """
         qq2 = orm.THS_HotZH.select(orm.THS_HotZH.day, orm.THS_HotZH.zhHotOrder, orm.THS_HotZH.avgHotOrder, orm.THS_HotZH.avgHotValue).where(orm.THS_HotZH.code == self.curCode)
         qdata = {}
         for d in qq2.tuples():
@@ -180,6 +168,12 @@ class SimpleWindow(base_win.BaseWindow):
                     last['avgHotOrder'] = rd['avgHotOrder']
                     last['avgHotValue'] = rd['avgHotValue']
         
+        qq3 = orm.THS_ZT_FuPan.select().where(orm.THS_ZT_FuPan.code == self.curCode).order_by(orm.THS_ZT_FuPan.day.asc())
+        def fmtDay(d): 
+            d['day'] = d['day'].replace('-', '')
+            return d
+        self.kplZTData = [fmtDay(d) for d in qq3.dicts()]
+
         if self.hwnd and self.size:
             #win32gui.InvalidateRect(self.wnd, (0, 0, *self.size), True)
             #win32gui.UpdateWindow(self.wnd)
@@ -209,6 +203,8 @@ class SimpleWindow(base_win.BaseWindow):
             self.drawSort(hdc)
         elif self.dataType == 'Hot':
             self.drawHot(hdc)
+        elif self.dataType == 'KPL_ZT':
+            self.drawKPL_ZT(hdc)
     
     def drawSort(self, hdc):
         if not self.sortData:
@@ -244,6 +240,35 @@ class SimpleWindow(base_win.BaseWindow):
             avgHotOrder = avgHotOrder[0 : 3]
             avgHotVal = int(hot['avgHotValue'])
             line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {avgHotVal :>3d}万 {zhHotOrder}"
+            idx = i - fromIdx
+            y = (idx % MAX_ROWS) * H + 2
+            x = RW // 2 if idx >= MAX_ROWS else 0
+            win32gui.DrawText(hdc, line, len(line), (x + 2, y, x + RW // 2, y + H), win32con.DT_LEFT)
+        pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
+        win32gui.SelectObject(hdc, pen)
+        win32gui.MoveToEx(hdc, RW // 2, 0)
+        win32gui.LineTo(hdc, RW // 2, self.size[1])
+        win32gui.DeleteObject(pen)
+
+    def drawKPL_ZT(self, hdc):
+        if not self.kplZTData:
+            return
+        win32gui.SetTextColor(hdc, 0xdddddd)
+        H = 18
+        rect = win32gui.GetClientRect(self.hwnd)
+        RH = rect[3] - rect[1]
+        RW = rect[2] - rect[0]
+        MAX_ROWS = RH // H
+        days = [d['day'] for d in self.kplZTData]
+        fromIdx, endIdx = self.findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
+        for i in range(fromIdx, endIdx):
+            kpl = self.kplZTData[i]
+            if kpl['day'] == str(self.selectDay):
+                win32gui.SetTextColor(hdc, 0x0000ff)
+            else:
+                win32gui.SetTextColor(hdc, 0xdddddd)
+            day = kpl['day'][4 : ]
+            line = f"{day[0:2]}.{day[2:4]} {kpl['ztReason']}"
             idx = i - fromIdx
             y = (idx % MAX_ROWS) * H + 2
             x = RW // 2 if idx >= MAX_ROWS else 0
