@@ -244,11 +244,13 @@ class HexinUrl(Henxin):
 
     def getCodeSH(self, code):
         # 600xxx -> 17;  300xxx 000xxx 002xxx -> 33;   88xxxx -> 48
-        if code[0] == '8': #指数
+        if code[0 : 2] == '88': #指数
             return '48'
         if code[0] == '6':
             return '17'
-        return '33'
+        if code[0] == '0' or code[0] == 3:
+            return '33'
+        raise Exception('[HexinUrl.getCodeSH] unknow url for code :', code)
     
     def _getUrlWithParam(self, url):
         param = self.update()

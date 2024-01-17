@@ -7,7 +7,7 @@ import orm, hot_simple_win, base_win, ths_win
 
 class HotWindow(base_win.BaseWindow):
     #  HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息) DDLR（大单流入） ZT_FUPAN(涨停复盘)
-    DATA_TYPE = ('HOT', 'LHB', 'LS_INFO', 'DDLR', 'ZT_FUPAN') 
+    DATA_TYPE = ('HOT', 'LHB', 'LS_INFO', 'DDLR') 
 
     def __init__(self):
         super().__init__()
@@ -27,11 +27,11 @@ class HotWindow(base_win.BaseWindow):
         print('THS top window: ', rr)
         HEIGHT = 265 #285
         x = 0
-        y = rr[3] - rr[1] - HEIGHT
+        y = rr[3] - rr[1] - HEIGHT + 20
         #w = rr[2] - rr[0]
         w = win32api.GetSystemMetrics(0) # desktop width
         self.rect = (x, y, w, HEIGHT)
-        style = win32con.WS_BORDER | win32con.WS_VISIBLE | win32con.WS_CHILD
+        style = (win32con.WS_VISIBLE | win32con.WS_POPUP)  # | win32con.WS_CAPTION & ~win32con.WS_SYSMENU | win32con.WS_BORDER | 
         super().createWindow(topHwnd, self.rect, style, title='HOT-Window')
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.SendMessage(self.hwnd, win32con.WM_PAINT)
@@ -381,7 +381,8 @@ class HotWindow(base_win.BaseWindow):
         if self.maxMode:
             WIDTH, HEIGHT = 150, 20
             y = self.rect[1] + self.rect[3] - HEIGHT
-            win32gui.SetWindowPos(self.hwnd, 0, 0, y, WIDTH, HEIGHT, 0)
+            x = self.rect[2] // 2
+            win32gui.SetWindowPos(self.hwnd, 0, x, y, WIDTH, HEIGHT, 0)
         else:
             win32gui.SetWindowPos(self.hwnd, 0, self.rect[0], self.rect[1], self.rect[2], self.rect[3], 0)
         self.maxMode = not self.maxMode
@@ -515,5 +516,8 @@ class HotWindow(base_win.BaseWindow):
             return True
         elif msg == win32con.WM_RBUTTONUP:
             self.changeDataType()
+            return True
+        elif msg == win32con.WM_LBUTTONDOWN:
+            win32gui.SendMessage(self.hwnd, win32con.WM_NCLBUTTONDOWN, 2, 0)
             return True
         return False

@@ -1,7 +1,7 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
-import threading, time, datetime, sys, os
+import threading, time, datetime, sys, os, threading
 import sys
-import orm, hot_utils, base_win
+import orm, hot_utils, base_win, download.henxin as henxin
 import peewee as pw
 
 #-----------------------------------------------------------
@@ -72,7 +72,7 @@ class ThsSortQuery:
 
 #-------------小窗口----------------------------------------------
 class SimpleWindow(base_win.BaseWindow):
-    DATA_TYPES = ('Sort', 'Hot', 'KPL_ZT')  # KPL_ZT 开盘啦涨停信息
+    DATA_TYPES = ('Sort', 'Hot', 'KPL_ZT', 'HotZH')  # KPL_ZT 开盘啦涨停信息  HotZH(综合热度排名)
 
     def __init__(self) -> None:
         super().__init__()
@@ -97,6 +97,7 @@ class SimpleWindow(base_win.BaseWindow):
         super().createWindow(parentWnd, rect, style, title='Hot-Simple-Window')
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
+        self.hotZHView = HotZHView(self.hwnd)
 
     # param days (int): [YYYYMMDD, ....]
     # param selDay : int
@@ -205,6 +206,8 @@ class SimpleWindow(base_win.BaseWindow):
             self.drawHot(hdc)
         elif self.dataType == 'KPL_ZT':
             self.drawKPL_ZT(hdc)
+        elif self.dataType == 'HotZH':
+            self.hotZHView.draw(hdc)
     
     def drawSort(self, hdc):
         if not self.sortData:
@@ -289,6 +292,134 @@ class SimpleWindow(base_win.BaseWindow):
     def winProc(self, hwnd, msg, wParam, lParam):
         if super().winProc(hwnd, msg, wParam, lParam):
             return True
-        if msg == win32con.WM_RBUTTONUP or msg == win32con.WM_LBUTTONDBLCLK:
+        if msg == win32con.WM_RBUTTONUP:
             self.changeDataType()
+            return True
+        if self.dataType == 'HotZH':
+            return self.hotZHView.winProc(hwnd, msg, wParam, lParam)
+        return False
+
+class Thread:
+    def __init__(self) -> None:
+        self.tasks = []
+        self.stoped = False
+        self.thread = threading.Thread(target = Thread._run, args=(self,))
+
+    def addTask(self, fun, args):
+        self.tasks.append((fun, args))
+
+    def start(self):
+        self.thread.start()
+
+    def stop(self):
+        self.stoped = True
+    
+    @staticmethod
+    def _run(self):
+        while not self.stoped:
+            if len(self.tasks) > 0:
+                task = self.tasks.pop(0)
+                fun, args = task
+                fun(*args)
+            else:
+                time.sleep(1)
+
+class HotZHView:
+    ROW_HEIGHT = 18
+
+    def __init__(self, hwnd) -> None:
+        self.hwnd = hwnd
+        self.data = None
+        self.pageIdx = 0
+        self.codeNameMap = {}
+        qr = orm.THS_Newest.select()
+        for q in qr:
+            self.codeNameMap[q.code] = q.name
+        self.thread = Thread()
+        self.thread.start()
+        self.henxinUrl = henxin.HexinUrl()
+
+    def uploadData(self):
+        maxHotDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
+        maxHotZhDay = orm.THS_HotZH.select(pw.fn.max(orm.THS_HotZH.day)).scalar()
+        if maxHotDay == maxHotZhDay:
+            qr = orm.THS_HotZH.select().where(orm.THS_HotZH.day == maxHotZhDay).order_by(orm.THS_HotZH.zhHotOrder.asc())
+            self.data = [d.__data__ for d in qr]
+        else:
+            self.data = hot_utils.calcHotZHOnDay(maxHotDay)
+        for d in self.data:
+            code = d['code']
+            if code not in self.codeNameMap or not self.codeNameMap[code]:
+                self.thread.addTask(self.loadNameByCode, (code, ))
+
+    def loadNameByCode(self, code):
+        name = self.codeNameMap.get(code, None)
+        if name:
+            return
+        try:
+            if type(code) == int:
+                code = f"{code :06d}"
+            url = self.henxinUrl.getTodayKLineUrl(code)
+            *_, name = self.henxinUrl.loadUrlData(url)
+            self.codeNameMap[code] = name
+        except Exception as e:
+            print(e, code)
+
+    def drawItem(self, hdc, data, idx):
+        rect = win32gui.GetClientRect(self.hwnd)
+        w = rect[2] - rect[0]
+        pz = self.getPageSize()
+        if idx < pz // 2:
+            sx = 0
+            sy = idx * self.ROW_HEIGHT
+        else:
+            sx = w // 2 + 1
+            sy = (idx - pz // 2) * self.ROW_HEIGHT
+        ex = sx + w // 2
+        ey = sy + self.ROW_HEIGHT
+        code = f"{data['code'] :06d}"
+        name = self.codeNameMap.get(code, '')
+        info = f"{data['zhHotOrder']:>3d} {code} {name}"
+        win32gui.DrawText(hdc, info, len(info), (sx, sy, ex, ey), win32con.DT_LEFT)
+
+    def draw(self, hdc):
+        self.uploadData()
+        if not self.data:
+            return
+        win32gui.SetTextColor(hdc, 0xdddddd)
+        rect = win32gui.GetClientRect(self.hwnd)
+        w = rect[2] - rect[0]
+        vr = self.getVisibleRange()
+        for i in range(*vr):
+            self.drawItem(hdc, self.data[i], i - vr[0])
+
+    def getVisibleRange(self):
+        pz = self.getPageSize()
+        start = pz * self.pageIdx
+        end = (self.pageIdx + 1) * pz
+        start = min(start, len(self.data) - 1)
+        end = min(end, len(self.data) - 1)
+        return start, end
+    
+    def getPageSize(self):
+        rect = win32gui.GetClientRect(self.hwnd)
+        h = rect[3] - rect[1]
+        return (h // HotZHView.ROW_HEIGHT) * 2
+
+    def getMaxPageNum(self):
+        if not self.data:
+            return 0
+        return (len(self.data) + self.getPageSize()) // self.getPageSize()
+    
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_MOUSEWHEEL:
+            wParam = (wParam >> 16) & 0xffff
+            if wParam & 0x8000:
+                wParam = wParam - 0xffff + 1
+            if wParam > 0: # up
+                self.pageIdx = max(self.pageIdx - 1, 0)
+            else:
+                self.pageIdx = min(self.pageIdx + 1, self.getMaxPageNum() - 1)
+            win32gui.InvalidateRect(self.hwnd, None, True)
+            return True
         return False

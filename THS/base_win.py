@@ -27,6 +27,8 @@ class BaseWindow:
     
     # @return [x, y, width, height]
     def getRect(self):
+        if not self.hwnd:
+            return None
         l, t, r, b = win32gui.GetClientRect(self.hwnd)
         return [l, t, r - l, b - t]
     
@@ -71,8 +73,11 @@ class BaseWindow:
     @staticmethod
     def _WinProc(hwnd, msg, wParam, lParam):
         self = BaseWindow.bindHwnds[hwnd]
-        if self.winProc(hwnd, msg, wParam, lParam):
+        rs = self.winProc(hwnd, msg, wParam, lParam)
+        if rs == True:
             return 0
+        if rs != False:
+            return rs
         #if self.oldProc:
         #    return win32gui.CallWindowProc(self.oldProc, hwnd, msg, wParam, lParam)
         return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
