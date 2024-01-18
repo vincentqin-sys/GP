@@ -80,16 +80,16 @@ class SimpleWindow(base_win.BaseWindow):
         self.maxMode = True #  是否是最大化的窗口
         self.curCode = None
         self.sortData = None
-        self.hotData = None
         self.kplZTData = None
         self.query = ThsSortQuery()
         self.dataType = SimpleWindow.DATA_TYPES[0]
         self.selectDay = 0
+        self.hotDetailView = HotDetailView(self)
 
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
         w = win32api.GetSystemMetrics(0) # desktop width
-        self.size = (360, 230)
+        self.size = (380, 230)
         rect = (int(w / 3), 300, *self.size)
         #self.hwnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
         #self.oldProc = win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, SimpleWindow._WinProc)
@@ -142,34 +142,9 @@ class SimpleWindow(base_win.BaseWindow):
         self.sortData = self.query.getCodeInfo_THS(self.curCode)
         win32gui.SetWindowText(self.hwnd, f'{self.sortData["code"]} {self.sortData["name"]}')
         
-        # load hot data
-        qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.min(orm.THS_Hot.hotOrder).alias('minOrder'), pw.fn.max(orm.THS_Hot.hotOrder).alias('maxOrder')).where(orm.THS_Hot.code == self.curCode).group_by(orm.THS_Hot.day) #.order_by(orm.THS_Hot.day.desc())
-        #print(qq.sql())
-        self.hotData = [d for d in qq.dicts()]
-        qq2 = orm.THS_HotZH.select(orm.THS_HotZH.day, orm.THS_HotZH.zhHotOrder, orm.THS_HotZH.avgHotOrder, orm.THS_HotZH.avgHotValue).where(orm.THS_HotZH.code == self.curCode)
-        qdata = {}
-        for d in qq2.tuples():
-            qdata[d[0]] = d[1 : ]
-        for d in self.hotData:
-            day = d['day']
-            if day in qdata:
-                d['zhHotOrder'] = qdata[day][0]
-                d['avgHotOrder'] = qdata[day][1]
-                d['avgHotValue'] = qdata[day][2]
-            else:
-                d['zhHotOrder'] = 0
-                d['avgHotOrder'] = 0
-                d['avgHotValue'] = 0
-        if self.hotData and len(self.hotData) > 0:
-            last = self.hotData[-1]
-            if last['zhHotOrder'] == 0:
-                rd = hot_utils.calcHotZHOnDayCode(last['day'], self.curCode)
-                if rd:
-                    last['zhHotOrder'] = rd['zhHotOrder']
-                    last['avgHotOrder'] = rd['avgHotOrder']
-                    last['avgHotValue'] = rd['avgHotValue']
+        self.hotDetailView.changeCode(code)
         
-        qq3 = orm.THS_ZT_FuPan.select().where(orm.THS_ZT_FuPan.code == self.curCode).order_by(orm.THS_ZT_FuPan.day.asc())
+        qq3 = orm.KPL_ZT_FuPan.select().where(orm.KPL_ZT_FuPan.code == self.curCode).order_by(orm.KPL_ZT_FuPan.day.asc())
         def fmtDay(d): 
             d['day'] = d['day'].replace('-', '')
             return d
@@ -203,12 +178,12 @@ class SimpleWindow(base_win.BaseWindow):
         if self.dataType == 'Sort':
             self.drawSort(hdc)
         elif self.dataType == 'Hot':
-            self.drawHot(hdc)
+            self.hotDetailView.draw(hdc)
         elif self.dataType == 'KPL_ZT':
             self.drawKPL_ZT(hdc)
         elif self.dataType == 'HotZH':
             self.hotZHView.draw(hdc)
-    
+
     def drawSort(self, hdc):
         if not self.sortData:
             return
@@ -222,36 +197,7 @@ class SimpleWindow(base_win.BaseWindow):
     def drawHot(self, hdc):
         if not self.hotData:
             return
-        win32gui.SetTextColor(hdc, 0xdddddd)
-        H = 18
-        rect = win32gui.GetClientRect(self.hwnd)
-        RH = rect[3] - rect[1]
-        RW = rect[2] - rect[0]
-        MAX_ROWS = RH // H
-        days = [d['day'] for d in self.hotData]
-        fromIdx, endIdx = self.findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
-        for i in range(fromIdx, endIdx):
-            hot = self.hotData[i]
-            if hot['day'] == self.selectDay:
-                win32gui.SetTextColor(hdc, 0x0000ff)
-            else:
-                win32gui.SetTextColor(hdc, 0xdddddd)
-            day = str(hot['day'])[4 : ]
-            day = day[0 : 2] + '.' + day[2 : 4]
-            zhHotOrder = '' if hot['zhHotOrder'] == 0 else f"{hot['zhHotOrder'] :>3d}"
-            avgHotOrder = f"{hot['avgHotOrder'] :.1f}"
-            avgHotOrder = avgHotOrder[0 : 3]
-            avgHotVal = int(hot['avgHotValue'])
-            line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {avgHotVal :>3d}万 {zhHotOrder}"
-            idx = i - fromIdx
-            y = (idx % MAX_ROWS) * H + 2
-            x = RW // 2 if idx >= MAX_ROWS else 0
-            win32gui.DrawText(hdc, line, len(line), (x + 2, y, x + RW // 2, y + H), win32con.DT_LEFT)
-        pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
-        win32gui.SelectObject(hdc, pen)
-        win32gui.MoveToEx(hdc, RW // 2, 0)
-        win32gui.LineTo(hdc, RW // 2, self.size[1])
-        win32gui.DeleteObject(pen)
+        
 
     def drawKPL_ZT(self, hdc):
         if not self.kplZTData:
@@ -297,6 +243,8 @@ class SimpleWindow(base_win.BaseWindow):
             return True
         if self.dataType == 'HotZH':
             return self.hotZHView.winProc(hwnd, msg, wParam, lParam)
+        if self.dataType == 'Hot':
+            return self.hotDetailView.winProc(hwnd, msg, wParam, lParam)
         return False
 
 class Thread:
@@ -305,8 +253,11 @@ class Thread:
         self.stoped = False
         self.thread = threading.Thread(target = Thread._run, args=(self,))
 
-    def addTask(self, fun, args):
-        self.tasks.append((fun, args))
+    def addTask(self, _type, fun, args):
+        for tk in self.tasks:
+            if tk[2] == _type:
+                return
+        self.tasks.append((fun, args, _type))
 
     def start(self):
         self.thread.start()
@@ -318,9 +269,10 @@ class Thread:
     def _run(self):
         while not self.stoped:
             if len(self.tasks) > 0:
-                task = self.tasks.pop(0)
-                fun, args = task
+                task = self.tasks[0]
+                fun, args, *_ = task
                 fun(*args)
+                self.tasks.pop(0)
             else:
                 time.sleep(1)
 
@@ -331,10 +283,10 @@ class HotZHView:
         self.hwnd = hwnd
         self.data = None
         self.pageIdx = 0
-        self.codeNameMap = {}
+        self.codeInfos = {}
         qr = orm.THS_Newest.select()
         for q in qr:
-            self.codeNameMap[q.code] = q.name
+            self.codeInfos[q.code] = {'name': q.name}
         self.thread = Thread()
         self.thread.start()
         self.henxinUrl = henxin.HexinUrl()
@@ -347,23 +299,51 @@ class HotZHView:
             self.data = [d.__data__ for d in qr]
         else:
             self.data = hot_utils.calcHotZHOnDay(maxHotDay)
-        for d in self.data:
-            code = d['code']
-            if code not in self.codeNameMap or not self.codeNameMap[code]:
-                self.thread.addTask(self.loadNameByCode, (code, ))
 
-    def loadNameByCode(self, code):
-        name = self.codeNameMap.get(code, None)
-        if name:
-            return
+    def loadCodeInfo(self, code):
         try:
             if type(code) == int:
-                code = f"{code :06d}"
-            url = self.henxinUrl.getTodayKLineUrl(code)
-            *_, name = self.henxinUrl.loadUrlData(url)
-            self.codeNameMap[code] = name
+                code = f'{code :06d}'
+            data = self.codeInfos.get(code, None)
+            if not data:
+                self.codeInfos[code] = data = {}
+            url = self.henxinUrl.getFenShiUrl(code)
+            obj = self.henxinUrl.loadUrlData(url)
+            data['name'] = obj['name']
+            dts = obj['data'].split(';')
+            if len(dts) != 0:
+                dt = dts[-1].split(',')
+                curTime = int(dt[0])
+                curPrice = float(dt[1])
+                data['HX_curTime'] = curTime
+                data['HX_curPrice'] = curPrice
+                data['HX_prePrice'] = float(obj['pre'])
+                pre = data['HX_prePrice']
+                data['HX_zhangFu'] = (curPrice - pre) / pre * 100
+            else:
+                now = datetime.datetime.now()
+                data['HX_curTime'] = now.hour * 100 + now.minute
+            win32gui.InvalidateRect(self.hwnd, None, True)
         except Exception as e:
-            print(e, code)
+            print('[HotZHView.loadCodeInfo]', data, e)
+
+    def getCodeInfo(self, code):
+        if type(code) == int:
+            code = f'{code :06d}'
+        data = self.codeInfos.get(code, None)
+        if not data or 'HX_curTime' not in data:
+            self.thread.addTask(code, self.loadCodeInfo, (code, ))
+            return data
+        ct = data['HX_curTime']
+        ds = datetime.datetime.now()
+        ct2 = ds.hour * 100 + ds.minute
+        if ct2 < ct:
+            self.thread.addTask(code, self.loadCodeInfo, (code, ))
+            return data
+        if ct2 - ct >= 2: # 2分钟
+            self.thread.addTask(code, self.loadCodeInfo, (code, ))
+            return data
+        return data
 
     def drawItem(self, hdc, data, idx):
         rect = win32gui.GetClientRect(self.hwnd)
@@ -378,15 +358,27 @@ class HotZHView:
         ex = sx + w // 2
         ey = sy + self.ROW_HEIGHT
         code = f"{data['code'] :06d}"
-        name = self.codeNameMap.get(code, '')
-        info = f"{data['zhHotOrder']:>3d} {code} {name}"
-        win32gui.DrawText(hdc, info, len(info), (sx, sy, ex, ey), win32con.DT_LEFT)
+        info = self.getCodeInfo(code)
+        name = ''
+        zf = ''
+        if info:
+            name = info.get('name', '')
+            zf = info.get('HX_zhangFu', None)
+            if zf != None:
+                zf = f'{zf :.2f}%'
+        txt = f"{data['zhHotOrder']:>3d} {code} {name}"
+        win32gui.SetTextColor(hdc, 0xdddddd)
+        win32gui.DrawText(hdc, txt, len(txt), (sx, sy, ex, ey), win32con.DT_LEFT)
+        if zf:
+            color = 0x00ff00 if  '-' in zf else 0x0000ff
+            win32gui.SetTextColor(hdc, color)
+            win32gui.DrawText(hdc, zf, len(zf), (sx, sy, ex, ey), win32con.DT_RIGHT)
 
     def draw(self, hdc):
         self.uploadData()
         if not self.data:
             return
-        win32gui.SetTextColor(hdc, 0xdddddd)
+        
         rect = win32gui.GetClientRect(self.hwnd)
         w = rect[2] - rect[0]
         vr = self.getVisibleRange()
@@ -423,3 +415,159 @@ class HotZHView:
             win32gui.InvalidateRect(self.hwnd, None, True)
             return True
         return False
+    
+class HotDetailView:
+    ROW_HEIGHT = 18
+
+    def __init__(self, simpleWin):
+        self.simpleWin = simpleWin
+        self.hotData = None
+        self.rectInfo = [None] * 50
+        self.tipRect = None
+        self.tipObj = None
+        self.tipOrgRect = None
+        self.showStartIdx = 0
+
+    def draw(self, hdc):
+        rr = win32gui.GetClientRect(self.simpleWin.hwnd)
+        win32gui.SetTextColor(hdc, 0xdddddd)
+        H = 18
+        rect = win32gui.GetClientRect(self.simpleWin.hwnd)
+        RH = rect[3] - rect[1]
+        RW = rect[2] - rect[0]
+        MAX_ROWS = RH // H
+        days = [d['day'] for d in self.hotData]
+        fromIdx, endIdx = self.simpleWin.findDrawDaysIndex(days, self.simpleWin.selectDay, MAX_ROWS * 2)
+        for i in range(fromIdx, endIdx):
+            hot = self.hotData[i]
+            if hot['day'] == self.simpleWin.selectDay:
+                win32gui.SetTextColor(hdc, 0x0000ff)
+            else:
+                win32gui.SetTextColor(hdc, 0xdddddd)
+            day = str(hot['day'])[4 : ]
+            day = day[0 : 2] + '.' + day[2 : 4]
+            zhHotOrder = '' if hot['zhHotOrder'] == 0 else f"{hot['zhHotOrder'] :>3d}"
+            avgHotOrder = f"{hot['avgHotOrder'] :.1f}"
+            avgHotOrder = avgHotOrder[0 : 3]
+            avgHotVal = int(hot['avgHotValue'])
+            line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {avgHotVal :>3d}万 {zhHotOrder}"
+            idx = i - fromIdx
+            y = (idx % MAX_ROWS) * H + 2
+            x = RW // 2 if idx >= MAX_ROWS else 0
+            rect = (x + 2, y, x + RW // 2, y + H)
+            win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT)
+            self.rectInfo[i - fromIdx] = {'data': hot, 'rect': rect}
+        pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
+        win32gui.SelectObject(hdc, pen)
+        win32gui.MoveToEx(hdc, RW // 2, 0)
+        win32gui.LineTo(hdc, RW // 2, rr[3])
+        self.drawTip(hdc)
+        win32gui.DeleteObject(pen)
+
+    def drawTip(self, hdc):
+        if (not self.tipObj) or (not self.tipRect):
+            return
+        hotDetail = self.tipObj.get('detail', None)
+        if not hotDetail:
+            return
+        bk = win32gui.CreateSolidBrush(0)
+        ps = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
+        win32gui.SelectObject(hdc, ps)
+        win32gui.SelectObject(hdc, bk)
+        win32gui.Rectangle(hdc, *self.tipRect)
+        si1 = max(self.showStartIdx, 0)
+        si2 = max(0, len(hotDetail) - 5)
+        si = min(si1, si2)
+        self.showStartIdx = si
+        win32gui.SetTextColor(hdc, 0x247FFF)
+        for i in range(si, len(hotDetail)):
+            hot = hotDetail[i]
+            txt = f" {hot['time'] // 100 :02d}:{hot['time'] % 100 :02d}  {hot['hotValue'] :>3d}万  {hot['hotOrder'] :>3d}"
+            y = (i - si) * self.ROW_HEIGHT + 5
+            rc = (self.tipRect[0], y, self.tipRect[2], y + self.ROW_HEIGHT)
+            win32gui.DrawText(hdc, txt, len(txt), rc, win32con.DT_LEFT)
+        rc = self.tipOrgRect
+        win32gui.MoveToEx(hdc, rc[0], rc[3] - 2)
+        win32gui.LineTo(hdc, rc[2], rc[3] - 2)
+        win32gui.DeleteObject(bk)
+        win32gui.DeleteObject(ps)
+
+    def changeCode(self, code):
+        self.showStartIdx = 0
+        self.tipObj = None
+        self.tipRect = None
+        self.tipOrgRect = None
+        self.code = code if type(code) == int else int(code)
+        # load hot data
+        qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.min(orm.THS_Hot.hotOrder).alias('minOrder'), pw.fn.max(orm.THS_Hot.hotOrder).alias('maxOrder')).where(orm.THS_Hot.code == code).group_by(orm.THS_Hot.day) #.order_by(orm.THS_Hot.day.desc())
+        #print(qq.sql())
+        self.hotData = [d for d in qq.dicts()]
+        qq2 = orm.THS_HotZH.select(orm.THS_HotZH.day, orm.THS_HotZH.zhHotOrder, orm.THS_HotZH.avgHotOrder, orm.THS_HotZH.avgHotValue).where(orm.THS_HotZH.code == code)
+        qdata = {}
+        for d in qq2.tuples():
+            qdata[d[0]] = d[1 : ]
+        for d in self.hotData:
+            day = d['day']
+            if day in qdata:
+                d['zhHotOrder'] = qdata[day][0]
+                d['avgHotOrder'] = qdata[day][1]
+                d['avgHotValue'] = qdata[day][2]
+            else:
+                d['zhHotOrder'] = 0
+                d['avgHotOrder'] = 0
+                d['avgHotValue'] = 0
+
+        if self.hotData and len(self.hotData) > 0:
+            last = self.hotData[-1]
+            if last['zhHotOrder'] == 0:
+                rd = hot_utils.calcHotZHOnDayCode(last['day'], self.curCode)
+                if rd:
+                    last['zhHotOrder'] = rd['zhHotOrder']
+                    last['avgHotOrder'] = rd['avgHotOrder']
+                    last['avgHotValue'] = rd['avgHotValue']
+
+    def isInRect(self, x, y, rect):
+        if not rect:
+            return False
+        f1 = x >= rect[0] and x < rect[2]
+        f2 = y >= rect[1] and y < rect[3]
+        return f1 and f2
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONUP:
+            self.showStartIdx = 0
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            if self.isInRect(x, y, self.tipRect):
+                self.tipObj = None
+                self.tipRect = None
+                win32gui.InvalidateRect(hwnd, None, True)
+                return True
+            for ri in self.rectInfo:
+                if ri and self.isInRect(x, y, ri['rect']):
+                    self.setTip(ri)
+                    win32gui.InvalidateRect(hwnd, None, True)
+                    return True
+        if msg == win32con.WM_MOUSEWHEEL:
+            delta = (wParam >> 16) & 0xffff
+            if delta & 0x8000:
+                self.showStartIdx += 5
+            else:
+                self.showStartIdx -= 5
+            win32gui.InvalidateRect(hwnd, None, True)
+            return True
+        return False
+    
+    def setTip(self, ri):
+        self.tipObj = ri['data']
+        self.tipOrgRect = ri['rect']
+        rr = win32gui.GetClientRect(self.simpleWin.hwnd)
+        w, h = rr[2], rr[3]
+        if (ri['rect'][0] + ri['rect'][2]) >= w:
+            self.tipRect = (0, 0, 130, h)
+        else:
+            self.tipRect = (w // 2, 0, w // 2 + 130, h)
+        if 'detail' not in self.tipObj:
+            info = orm.THS_Hot.select().where(orm.THS_Hot.code == self.code, orm.THS_Hot.day == self.tipObj['day'])
+            self.tipObj['detail'] = [d.__data__ for d in info]
+
+

@@ -3,7 +3,7 @@ import threading, time, datetime, sys, os
 from multiprocessing import Process
 from multiprocessing.shared_memory import SharedMemory
 from PIL import Image  # pip install pillow
-import orm, hot_simple_win, base_win, ths_win
+import orm, THS.hot_win_small as hot_win_small, base_win, ths_win
 
 class HotWindow(base_win.BaseWindow):
     #  HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息) DDLR（大单流入） ZT_FUPAN(涨停复盘)
@@ -224,18 +224,18 @@ class HotWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
         return sdc
 
-    def drawOneDayLSInfo(self, hdc, data, x, itemWidth, *args):
-        def getRangeOf(name):
-            maxVal, minVal = 0, 0
-            for i in range(startIdx, endIdx):
-                v = self.lsInfoData[i][name]
-                if minVal == 0 and maxVal == 0:
-                    maxVal = minVal = v
-                    continue
+    def getRangeOf(self, datas, name, startIdx, endIdx):
+        maxVal, minVal = 0, 0
+        for i in range(max(startIdx, 0), min(len(datas), endIdx)):
+            v = datas[i][name]
+            if minVal == 0 and maxVal == 0:
+                maxVal = minVal = v
+            else:
                 maxVal = max(maxVal, v)
                 minVal = min(minVal, v)
-            return minVal, maxVal
+        return minVal, maxVal
 
+    def drawOneDayLSInfo(self, hdc, data, x, itemWidth, *args):
         idx, startIdx, endIdx, *_ = args
         if idx <= 0:
             return
@@ -258,7 +258,7 @@ class HotWindow(base_win.BaseWindow):
         win32gui.FillRect(hdc, (x + 5, spY, x + 10, endY), hbrGreen)
         # 涨跌停数量图表
         ztX, ztStartY = x + 20, startY + 30
-        ztMin, ztMax = getRangeOf('ztNum')
+        ztMin, ztMax = self.getRangeOf(self.lsInfoData, 'ztNum', startIdx, endIdx)
         ZT_NUM_BASE = ztMin // 2
         ztY = int(ztStartY + (1 - (data['ztNum'] - ZT_NUM_BASE) / (ztMax - ZT_NUM_BASE)) * (endY - ztStartY))
         win32gui.FillRect(hdc, (ztX, ztY, ztX + 5, endY), hbrBlue)
@@ -284,7 +284,7 @@ class HotWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, info, len(info), (dtX - 4, dtY - 12, dtX + 8, dtY), win32con.DT_CENTER)
         #下跌超过7%的个股数量图表
         d7X = dtX + 15
-        _, d7Max = getRangeOf('down7Num')
+        _, d7Max = self.getRangeOf(self.lsInfoData, 'down7Num', startIdx, endIdx)
         d7Max = max(d7Max, ztMax)
         d7Y = int(ztStartY + (1 - (data['down7Num']) / d7Max) * (endY - ztStartY))
         win32gui.FillRect(hdc, (d7X, d7Y, d7X + 5, endY), hbrYellow2)
@@ -315,24 +315,13 @@ class HotWindow(base_win.BaseWindow):
         win32gui.DeleteObject(hbrYellow)
 
     def drawOneDayDDLR(self, hdc, data, x, itemWidth, *args):
-        def getRangeOf(name):
-            maxVal, minVal = 0, 0
-            for i in range(startIdx, endIdx):
-                v = self.ddlrData[i][name]
-                if minVal == 0 and maxVal == 0:
-                    maxVal = minVal = v
-                    continue
-                maxVal = max(maxVal, v)
-                minVal = min(minVal, v)
-            return minVal, maxVal
-
         idx, startIdx, endIdx, *_ = args
         self.drawDayTitle(hdc, x, data['day'], itemWidth)
         startY, endY = 60, self.rect[3] - 40
         hbrRed = win32gui.CreateSolidBrush(0x0000ff)
         hbrGreen = win32gui.CreateSolidBrush(0x00ff00)
-        buyMin, buyMax  = getRangeOf('buy')
-        sellMin, sellMax = getRangeOf('sell')
+        buyMin, buyMax  = self.getRangeOf(self.ddlrData, 'buy', startIdx, endIdx)
+        sellMin, sellMax = self.getRangeOf(self.ddlrData, 'sell', startIdx, endIdx)
         maxVal = max(buyMax, sellMax)
         
         # buy
@@ -491,7 +480,7 @@ class HotWindow(base_win.BaseWindow):
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def updateZtFuPanData(self, code):
-        ds = orm.THS_ZT_FuPan.select().where(orm.THS_ZT_FuPan.code == code).order_by(orm.THS_ZT_FuPan.day.asc())
+        ds = orm.KPL_ZT_FuPan.select().where(orm.KPL_ZT_FuPan.code == code).order_by(orm.KPL_ZT_FuPan.day.asc())
         self.ztFuPanData = [d.__data__ for d in ds]
         self.selectDay = None
         win32gui.InvalidateRect(self.hwnd, None, True)

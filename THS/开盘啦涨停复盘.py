@@ -313,11 +313,11 @@ class KPL_RowImage(KPL_Image):
         return nb
 
 def saveToDB(day, code, name, ztTime, status, ztReason, tag):
-    count = orm.THS_ZT_FuPan.select(pw.fn.count(orm.THS_ZT_FuPan.code)).where(orm.THS_ZT_FuPan.code == code, orm.THS_ZT_FuPan.day == day)
+    count = orm.KPL_ZT_FuPan.select(pw.fn.count(orm.KPL_ZT_FuPan.code)).where(orm.KPL_ZT_FuPan.code == code, orm.KPL_ZT_FuPan.day == day)
     #print(count.sql())
     count = count.scalar()
     if not count:
-        orm.THS_ZT_FuPan.create(name=name, code=code, tag=tag, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
+        orm.KPL_ZT_FuPan.create(name=name, code=code, tag=tag, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
         print('Save success: ', day, name, code)
     else:
         print('重复项：', day, code, name, ztTime, status, ztReason, tag)
@@ -544,7 +544,8 @@ def main():
     hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
     print('定位到[市场情绪->股票列表->涨停原因排序] ')
     print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
-    print('opetions: \n\t"r" = restart  \n\t"n" = next page down  \n\t"s" = save to file\n\t"l" = load file, save to database')
+    tip = 'select options: \n\tr = restart  \n\tn = next page down  \n\ts = save to file\n\tl = load file, save to database\n\to = use notepad++ open data file\n\th = print tip'
+    print(tip)
     util = OCRUtil()
     while True:
         opt = input('input select: ').strip()
@@ -567,6 +568,12 @@ def main():
             print('save success')
         elif opt == 'l':
             main_loadFile()
+        elif opt == 'h':
+            print(tip)
+        elif opt == 'o':
+            notepad = r'C:\Program Files\Notepad++\notepad++.exe'
+            win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
+            pass
         
 if __name__ == '__main__':
     main()

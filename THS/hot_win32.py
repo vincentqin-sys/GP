@@ -2,12 +2,12 @@ import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 from multiprocessing import Process
 from multiprocessing.shared_memory import SharedMemory
-import hot_simple_win, ths_win, hot_win
+import hot_win_small, ths_win, hot_win
 
 curCode = None
 thsWindow = ths_win.ThsWindow()
 hotWindow = hot_win.HotWindow()
-simpleWindow = hot_simple_win.SimpleWindow()
+simpleWindow = hot_win_small.SimpleWindow()
 thsShareMem = ths_win.ThsShareMemory()
 
 def updateCode(nowCode):

@@ -239,8 +239,8 @@ class THS_ZS(pw.Model):
         database = db_thszs
         table_name = '同花顺指数'
 
-db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/ZT_FuPan.db')
-class THS_ZT_FuPan(pw.Model):
+db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/KPL_ZT_FuPan.db')
+class KPL_ZT_FuPan(pw.Model):
     code = pw.CharField()
     name = pw.CharField(null = True)
     day = pw.CharField()
@@ -259,6 +259,6 @@ db2.create_tables([THS_Hot, THS_HotZH])
 db3.create_tables([TaoGuBa_Remark])
 db5.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS])
-db_ztfupan.create_tables([THS_ZT_FuPan])
+db_ztfupan.create_tables([KPL_ZT_FuPan])
 
     

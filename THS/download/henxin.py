@@ -248,7 +248,7 @@ class HexinUrl(Henxin):
             return '48'
         if code[0] == '6':
             return '17'
-        if code[0] == '0' or code[0] == 3:
+        if code[0] == '0' or code[0] == '3':
             return '33'
         raise Exception('[HexinUrl.getCodeSH] unknow url for code :', code)
     
@@ -294,13 +294,15 @@ class HexinUrl(Henxin):
             return self.parseDaylyData(txt)
         if '/today.js' in url:
             return self.parseTodayData(txt)
+        if '/last.js' in url:
+            return self.parseFenShiData(txt)
         return None
     
     def parseTodayData(self, txt : str):
-        bi = txt.index('{', 3)
-        ei = txt.index('}')
-        txt = txt[bi : ei + 1]
         js = json.loads(txt)
+        for k in js:
+            js = js[k]
+            break
         keys = {'day': '1', 'open': '7', 'high':'8', 'low':'9', 'close':'11', 'vol':'13'} # vol: 单位股, amount:单位元 'amount':'19', 'rate':'1968584'
         item = HexinUrl.ItemData()
         for k in keys:
@@ -311,7 +313,8 @@ class HexinUrl(Henxin):
         setattr(item, 'amount', int(float(js['19'])))
         setattr(item, 'rate', float(js['1968584']))
         setattr(item, 'name', js['name'])
-        return item, js['name']
+        rs = {'name': js['name'], 'data': item}
+        return rs
 
     # 解析日线数据
     def parseDaylyData(self, txt):
@@ -336,7 +339,15 @@ class HexinUrl(Henxin):
                     setattr(obj, keys[i], float(row[i]))
             if obj:
                 rs.append(obj)
-        return rs, name
+        rv = {'name': name, 'today': today,  'data': rs}
+        return rv
+
+    def parseFenShiData(self, txt):
+        js = json.loads(txt)
+        for k in js:
+            js = js[k]
+            break
+        return js
 
 class ThsDataFile(datafile.DataFile):
     def __init__(self, code, dataType):
@@ -357,8 +368,11 @@ class ThsDataFile(datafile.DataFile):
 if __name__ == '__main__':
     hx = HexinUrl()
     #hx.copy('A8oAni2gm576FhcyEWD0c9AzG7tpu05WQD_CuVQDdp2oB2RlPEueJRDPEiUn')
-    url = hx.getTodayKLineUrl('000695')
-    hx.loadUrlData(url)
+    url = hx.getFenShiUrl('603628')
+    #url = hx.getTodayKLineUrl('603628')
+    #url = hx.getKLineUrl('603628')
+    rs = hx.loadUrlData(url)
+    print(rs)
 
 if __name__ == '__main__x':
     # javascript: window.location.href = 'https://s.thsi.cn/js/chameleon/time.1' + (new Date().getTime() / 1200000) + '.js'
