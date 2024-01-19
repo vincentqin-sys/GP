@@ -1,5 +1,5 @@
 import sys, os, pyautogui, win32gui, win32con, time, datetime
-import io, psutil, subprocess, win32process
+import io, psutil, subprocess, win32process, win32event, win32api, winerror
 from pywinauto.controls.common_controls import DateTimePickerWrapper # pip install pywinauto
 import start_ls_info
 
@@ -107,7 +107,8 @@ class TdxDownloader:
         self.killProcess()
 
 def work():
-    if not getDesktopGUILock():
+    lock = getDesktopGUILock()
+    if not lock:
         return False
     # 下载
     tdx = TdxDownloader()
@@ -119,22 +120,20 @@ def work():
     #计算两市行情信息
     t = start_ls_info.TdxLSTools()
     t.calcInfo()
-    releaseDesktopGUILock()
+    releaseDesktopGUILock(lock)
     return True
 
 def getDesktopGUILock():
     LOCK_NAME = 'D:/__Desktop_GUI_Lock__'
-    import os
-    if os.path.exists(LOCK_NAME):
-        return False
-    f = open(LOCK_NAME, 'w')
-    f.close()
-    return True
+    mux = win32event.CreateMutex(None, False, LOCK_NAME)
+    if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
+        win32api.CloseHandle(mux)
+        return None
+    return mux
 
-def releaseDesktopGUILock():
-    LOCK_NAME = 'D:/__Desktop_GUI_Lock__'
-    if os.path.exists(LOCK_NAME):
-        os.remove(LOCK_NAME)    
+def releaseDesktopGUILock(lock):
+    if lock:
+        win32api.CloseHandle(lock)
 
 if __name__ == '__main__':
     lastDay = 0

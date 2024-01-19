@@ -1,6 +1,6 @@
 import peewee as pw
 from peewee import fn
-import os, json, time, sys, pyautogui, io, datetime
+import os, json, time, sys, pyautogui, io, datetime, win32api, win32event, winerror
 import fiddler, ths
 
 #sys.path.append('.')
@@ -284,7 +284,8 @@ def test2():
     win32gui.EnumChildWindows(MAIN_WIN, enumCallback, 'WWX')
 
 def run():
-    if not getDesktopGUILock():
+    lock = getDesktopGUILock()
+    if not lock:
         return False
     try:
         autoLoadTop200Data()
@@ -297,7 +298,7 @@ def run():
     except Exception as e:
         print('Occur Exception: ', e)
         rs = False
-    releaseDesktopGUILock()
+    releaseDesktopGUILock(lock)
     return rs
 
 def checkDDLR_Amount():
@@ -315,17 +316,15 @@ def checkDDLR_Amount():
     
 def getDesktopGUILock():
     LOCK_NAME = 'D:/__Desktop_GUI_Lock__'
-    import os
-    if os.path.exists(LOCK_NAME):
-        return False
-    f = open(LOCK_NAME, 'w')
-    f.close()
-    return True
+    mux = win32event.CreateMutex(None, False, LOCK_NAME)
+    if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
+        win32api.CloseHandle(mux)
+        return None
+    return mux
 
-def releaseDesktopGUILock():
-    LOCK_NAME = 'D:/__Desktop_GUI_Lock__'
-    if os.path.exists(LOCK_NAME):
-        os.remove(LOCK_NAME)
+def releaseDesktopGUILock(lock):
+    if lock:
+        win32api.CloseHandle(lock)
 
 if __name__ == '__main__':
     lastDay = None
