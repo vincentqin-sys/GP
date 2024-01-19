@@ -9,6 +9,7 @@ thsWindow = ths_win.ThsWindow()
 hotWindow = hot_win.HotWindow()
 simpleWindow = hot_win_small.SimpleWindow()
 thsShareMem = ths_win.ThsShareMemory()
+simpleHotZHWindow = hot_win_small.SimpleHotZHWindow()
 
 def updateCode(nowCode):
     global curCode, thsShareMem
@@ -87,6 +88,7 @@ def subprocess_main():
     thsShareMem.open()
     hotWindow.createWindow(thsWindow.topHwnd)
     simpleWindow.createWindow(thsWindow.topHwnd)
+    simpleHotZHWindow.createWindow(thsWindow.topHwnd)
     hotWindow.addListener('ListenHotWindow', onListen)
     threading.Thread(target = _workThread).start()
     win32gui.PumpMessages()

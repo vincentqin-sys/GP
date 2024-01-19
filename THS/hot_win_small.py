@@ -72,7 +72,7 @@ class ThsSortQuery:
 
 #-------------小窗口----------------------------------------------
 class SimpleWindow(base_win.BaseWindow):
-    DATA_TYPES = ('Sort', 'Hot', 'KPL_ZT', 'HotZH')  # KPL_ZT 开盘啦涨停信息  HotZH(综合热度排名)
+    DATA_TYPES = ('Sort', 'Hot', 'KPL_ZT')  # KPL_ZT 开盘啦涨停信息 
 
     def __init__(self) -> None:
         super().__init__()
@@ -91,13 +91,9 @@ class SimpleWindow(base_win.BaseWindow):
         w = win32api.GetSystemMetrics(0) # desktop width
         self.size = (380, 230)
         rect = (int(w / 3), 300, *self.size)
-        #self.hwnd = win32gui.CreateWindowEx(win32con.WS_EX_TOOLWINDOW, 'STATIC', '', style, int(w / 3), 300, *self.size, parentWnd, None, None, None)
-        #self.oldProc = win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, SimpleWindow._WinProc)
-        #SimpleWindow.bindHwnds[self.hwnd] = self
-        super().createWindow(parentWnd, rect, style, title='Hot-Simple-Window')
+        super().createWindow(parentWnd, rect, style, title='SimpleWindow')
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
-        self.hotZHView = HotZHView(self.hwnd)
 
     # param days (int): [YYYYMMDD, ....]
     # param selDay : int
@@ -181,8 +177,6 @@ class SimpleWindow(base_win.BaseWindow):
             self.hotDetailView.draw(hdc)
         elif self.dataType == 'KPL_ZT':
             self.drawKPL_ZT(hdc)
-        elif self.dataType == 'HotZH':
-            self.hotZHView.draw(hdc)
 
     def drawSort(self, hdc):
         if not self.sortData:
@@ -239,8 +233,6 @@ class SimpleWindow(base_win.BaseWindow):
         if msg == win32con.WM_RBUTTONUP:
             self.changeDataType()
             return True
-        if self.dataType == 'HotZH':
-            return self.hotZHView.winProc(hwnd, msg, wParam, lParam)
         if self.dataType == 'Hot':
             return self.hotDetailView.winProc(hwnd, msg, wParam, lParam)
         return False
@@ -274,177 +266,6 @@ class Thread:
             else:
                 time.sleep(1)
 
-class HotZHView:
-    ROW_HEIGHT = 18
-
-    def __init__(self, hwnd) -> None:
-        self.hwnd = hwnd
-        self.data = None
-        self.pageIdx = 0
-        self.codeInfos = {}
-        qr = orm.THS_Newest.select()
-        for q in qr:
-            self.codeInfos[q.code] = {'name': q.name}
-        self.thread = Thread()
-        self.thread.start()
-        self.henxinUrl = henxin.HexinUrl()
-        self.selIdx = -1
-
-    def uploadData(self):
-        maxHotDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
-        maxHotZhDay = orm.THS_HotZH.select(pw.fn.max(orm.THS_HotZH.day)).scalar()
-        if maxHotDay == maxHotZhDay:
-            qr = orm.THS_HotZH.select().where(orm.THS_HotZH.day == maxHotZhDay).order_by(orm.THS_HotZH.zhHotOrder.asc())
-            self.data = [d.__data__ for d in qr]
-        else:
-            self.data = hot_utils.calcHotZHOnDay(maxHotDay)
-
-    def loadCodeInfo(self, code):
-        try:
-            if type(code) == int:
-                code = f'{code :06d}'
-            data = self.codeInfos.get(code, None)
-            if not data:
-                self.codeInfos[code] = data = {}
-            url = self.henxinUrl.getFenShiUrl(code)
-            obj = self.henxinUrl.loadUrlData(url)
-            data['name'] = obj['name']
-            dts = obj['data'].split(';')
-            if len(dts) != 0:
-                dt = dts[-1].split(',')
-                curTime = int(dt[0])
-                curPrice = float(dt[1])
-                data['HX_curTime'] = curTime
-                data['HX_curPrice'] = curPrice
-                data['HX_prePrice'] = float(obj['pre'])
-                pre = data['HX_prePrice']
-                data['HX_zhangFu'] = (curPrice - pre) / pre * 100
-            else:
-                now = datetime.datetime.now()
-                data['HX_curTime'] = now.hour * 100 + now.minute
-            win32gui.InvalidateRect(self.hwnd, None, True)
-        except Exception as e:
-            print('[HotZHView.loadCodeInfo]', data, e)
-
-    def getCodeInfo(self, code):
-        if type(code) == int:
-            code = f'{code :06d}'
-        data = self.codeInfos.get(code, None)
-        if not data or 'HX_curTime' not in data:
-            self.thread.addTask(code, self.loadCodeInfo, (code, ))
-            return data
-        ct = data['HX_curTime']
-        ds = datetime.datetime.now()
-        ct2 = ds.hour * 100 + ds.minute
-        if ct2 < ct:
-            self.thread.addTask(code, self.loadCodeInfo, (code, ))
-            return data
-        if ct2 - ct >= 2: # 2分钟
-            self.thread.addTask(code, self.loadCodeInfo, (code, ))
-            return data
-        return data
-    
-    def getItemRect(self, idx):
-        rect = win32gui.GetClientRect(self.hwnd)
-        w = rect[2] - rect[0]
-        pz = self.getPageSize()
-        if idx < pz // 2:
-            sx = 0
-            sy = idx * self.ROW_HEIGHT
-        else:
-            sx = w // 2 + 1
-            sy = (idx - pz // 2) * self.ROW_HEIGHT
-        ex = sx + w // 2
-        ey = sy + self.ROW_HEIGHT
-        return (sx, sy, ex, ey)
-
-    def getItemIdx(self, x, y):
-        rect = win32gui.GetClientRect(self.hwnd)
-        w = rect[2] - rect[0]
-        idx = 0
-        if x >= w // 2:
-            idx += self.getPageSize() // 2
-        idx += y // self.ROW_HEIGHT
-        idx += self.getPageSize() * self.pageIdx
-        return idx
-
-    def drawItem(self, hdc, data, idx, idx2):
-        rect = self.getItemRect(idx)
-        code = f"{data['code'] :06d}"
-        info = self.getCodeInfo(code)
-        name = ''
-        zf = ''
-        if info:
-            name = info.get('name', '')
-            zf = info.get('HX_zhangFu', None)
-            if zf != None:
-                zf = f'{zf :.2f}%'
-        txt = f"{data['zhHotOrder']:>3d} {code} {name}"
-        win32gui.SetTextColor(hdc, 0xdddddd)
-        win32gui.DrawText(hdc, txt, len(txt), rect, win32con.DT_LEFT)
-        if zf:
-            color = 0x00ff00 if  '-' in zf else 0x0000ff
-            win32gui.SetTextColor(hdc, color)
-            win32gui.DrawText(hdc, zf, len(zf), rect, win32con.DT_RIGHT)
-        if self.selIdx == idx2:
-            ps = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
-            win32gui.SelectObject(hdc, ps)
-            win32gui.MoveToEx(hdc, rect[0], rect[3] - 2)
-            win32gui.LineTo(hdc, rect[2], rect[3] - 2)
-            win32gui.DeleteObject(ps)
-
-    def draw(self, hdc):
-        self.uploadData()
-        if not self.data:
-            return
-        rect = win32gui.GetClientRect(self.hwnd)
-        w = rect[2] - rect[0]
-        vr = self.getVisibleRange()
-        for i in range(*vr):
-            self.drawItem(hdc, self.data[i], i - vr[0], i)
-
-        ps = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
-        win32gui.SelectObject(hdc, ps)
-        win32gui.MoveToEx(hdc, w // 2, 0)
-        win32gui.LineTo(hdc, w // 2, rect[3])
-        win32gui.DeleteObject(ps)
-
-    def getVisibleRange(self):
-        pz = self.getPageSize()
-        start = pz * self.pageIdx
-        end = (self.pageIdx + 1) * pz
-        start = min(start, len(self.data) - 1)
-        end = min(end, len(self.data) - 1)
-        return start, end
-    
-    def getPageSize(self):
-        rect = win32gui.GetClientRect(self.hwnd)
-        h = rect[3] - rect[1]
-        return (h // HotZHView.ROW_HEIGHT) * 2
-
-    def getMaxPageNum(self):
-        if not self.data:
-            return 0
-        return (len(self.data) + self.getPageSize()) // self.getPageSize()
-    
-    def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_MOUSEWHEEL:
-            wParam = (wParam >> 16) & 0xffff
-            if wParam & 0x8000:
-                wParam = wParam - 0xffff + 1
-            if wParam > 0: # up
-                self.pageIdx = max(self.pageIdx - 1, 0)
-            else:
-                self.pageIdx = min(self.pageIdx + 1, self.getMaxPageNum() - 1)
-            win32gui.InvalidateRect(self.hwnd, None, True)
-            return True
-        if msg == win32con.WM_LBUTTONUP:
-            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            self.selIdx = self.getItemIdx(x, y)
-            win32gui.InvalidateRect(self.hwnd, None, True)
-            return True
-        return False
-    
 class HotDetailView:
     ROW_HEIGHT = 18
 
@@ -600,3 +421,225 @@ class HotDetailView:
             self.tipObj['detail'] = [d.__data__ for d in info]
 
 
+#-------------小窗口（全热度）----------------------------------------------
+class HotZHView:
+    ROW_HEIGHT = 18
+
+    def __init__(self, hwnd) -> None:
+        self.hwnd = hwnd
+        self.data = None
+        self.pageIdx = 0
+        self.codeInfos = {}
+        qr = orm.THS_Newest.select()
+        for q in qr:
+            self.codeInfos[q.code] = {'name': q.name}
+        self.thread = Thread()
+        self.thread.start()
+        self.henxinUrl = henxin.HexinUrl()
+        self.selIdx = -1
+
+    def uploadData(self):
+        maxHotDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
+        maxHotZhDay = orm.THS_HotZH.select(pw.fn.max(orm.THS_HotZH.day)).scalar()
+        if maxHotDay == maxHotZhDay:
+            qr = orm.THS_HotZH.select().where(orm.THS_HotZH.day == maxHotZhDay).order_by(orm.THS_HotZH.zhHotOrder.asc())
+            self.data = [d.__data__ for d in qr]
+        else:
+            self.data = hot_utils.calcHotZHOnDay(maxHotDay)
+
+    def loadCodeInfo(self, code):
+        try:
+            if type(code) == int:
+                code = f'{code :06d}'
+            data = self.codeInfos.get(code, None)
+            if not data:
+                self.codeInfos[code] = data = {}
+            url = self.henxinUrl.getFenShiUrl(code)
+            obj = self.henxinUrl.loadUrlData(url)
+            data['name'] = obj['name']
+            dts = obj['data'].split(';')
+            if len(dts) != 0:
+                dt = dts[-1].split(',')
+                curTime = int(dt[0])
+                curPrice = float(dt[1])
+                data['HX_curTime'] = curTime
+                data['HX_curPrice'] = curPrice
+                data['HX_prePrice'] = float(obj['pre'])
+                pre = data['HX_prePrice']
+                data['HX_zhangFu'] = (curPrice - pre) / pre * 100
+            else:
+                now = datetime.datetime.now()
+                data['HX_curTime'] = now.hour * 100 + now.minute
+            win32gui.InvalidateRect(self.hwnd, None, True)
+        except Exception as e:
+            print('[HotZHView.loadCodeInfo]', data, e)
+
+    def getCodeInfo(self, code):
+        if type(code) == int:
+            code = f'{code :06d}'
+        data = self.codeInfos.get(code, None)
+        if not data or 'HX_curTime' not in data:
+            self.thread.addTask(code, self.loadCodeInfo, (code, ))
+            return data
+        ct = data['HX_curTime']
+        ds = datetime.datetime.now()
+        ct2 = ds.hour * 100 + ds.minute
+        if ct2 < ct:
+            self.thread.addTask(code, self.loadCodeInfo, (code, ))
+            return data
+        if ct2 - ct >= 2: # 2分钟
+            self.thread.addTask(code, self.loadCodeInfo, (code, ))
+            return data
+        return data
+    
+    def getColumnNum(self):
+        rect = win32gui.GetClientRect(self.hwnd)
+        return max(rect[2] // 200, 1)
+    
+    def getColumnWidth(self):
+        n = self.getColumnNum()
+        w = win32gui.GetClientRect(self.hwnd)[2]
+        return w // n
+
+    def getRowNum(self):
+        rect = win32gui.GetClientRect(self.hwnd)
+        h = rect[3] - rect[1]
+        return h // HotZHView.ROW_HEIGHT
+    
+    def getPageSize(self):
+        return self.getRowNum() * self.getColumnNum()
+
+    def getMaxPageNum(self):
+        if not self.data:
+            return 0
+        return (len(self.data) + self.getPageSize() - 1) // self.getPageSize()
+
+    def getItemRect(self, showIdx):
+        pz = self.getPageSize()
+        if showIdx < 0 or showIdx >= pz:
+            return None
+        c = showIdx // self.getRowNum()
+        cw = self.getColumnWidth()
+        sx, ex = c * cw, (c + 1) * cw
+        sy = (showIdx % self.getRowNum()) * self.ROW_HEIGHT
+        ey = sy + self.ROW_HEIGHT
+        return (sx, sy + 2, ex, ey + 2)
+
+    def getItemIdx(self, x, y):
+        c = x // self.getColumnWidth()
+        r = y // self.ROW_HEIGHT
+        idx = c * self.getRowNum() + r
+        idx += self.getPageSize() * self.pageIdx
+        return idx
+
+    def drawItem(self, hdc, data, idx, idx2):
+        rect = self.getItemRect(idx)
+        code = f"{data['code'] :06d}"
+        info = self.getCodeInfo(code)
+        name = ''
+        zf = ''
+        if info:
+            name = info.get('name', '')
+            zf = info.get('HX_zhangFu', None)
+            if zf != None:
+                zf = f'{zf :.2f}% '
+        txt = f"{data['zhHotOrder']:>3d} {code} {name}"
+        win32gui.SetTextColor(hdc, 0xdddddd)
+        win32gui.DrawText(hdc, txt, len(txt), rect, win32con.DT_LEFT)
+        if zf:
+            color = 0x00ff00 if  '-' in zf else 0x0000ff
+            win32gui.SetTextColor(hdc, color)
+            win32gui.DrawText(hdc, zf, len(zf), rect, win32con.DT_RIGHT)
+        if self.selIdx == idx2:
+            ps = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
+            win32gui.SelectObject(hdc, ps)
+            win32gui.MoveToEx(hdc, rect[0], rect[3] - 2)
+            win32gui.LineTo(hdc, rect[2], rect[3] - 2)
+            win32gui.DeleteObject(ps)
+
+    def draw(self, hdc):
+        self.uploadData()
+        if not self.data:
+            return
+        rect = win32gui.GetClientRect(self.hwnd)
+        vr = self.getVisibleRange()
+        for i in range(*vr):
+            self.drawItem(hdc, self.data[i], i - vr[0], i)
+
+        for i in range(1, self.getColumnNum()):
+            ps = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
+            win32gui.SelectObject(hdc, ps)
+            x = i * self.getColumnWidth()
+            win32gui.MoveToEx(hdc, x, 0)
+            win32gui.LineTo(hdc, x, rect[3])
+            win32gui.DeleteObject(ps)
+
+    def getVisibleRange(self):
+        pz = self.getPageSize()
+        start = pz * self.pageIdx
+        end = (self.pageIdx + 1) * pz
+        start = min(start, len(self.data) - 1)
+        end = min(end, len(self.data) - 1)
+        return start, end
+    
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_MOUSEWHEEL:
+            wParam = (wParam >> 16) & 0xffff
+            if wParam & 0x8000:
+                wParam = wParam - 0xffff + 1
+            if wParam > 0: # up
+                self.pageIdx = max(self.pageIdx - 1, 0)
+            else:
+                self.pageIdx = min(self.pageIdx + 1, self.getMaxPageNum() - 1)
+            win32gui.InvalidateRect(self.hwnd, None, True)
+            return True
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            self.selIdx = self.getItemIdx(x, y)
+            win32gui.InvalidateRect(self.hwnd, None, True)
+            return True
+        return False
+
+class SimpleHotZHWindow(base_win.BaseWindow):
+    MAX_SIZE = (220, 310)
+    MIN_SIZE = (220, 60)
+    TITLE_HEIGHT = 30
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.maxMode = True #  是否是最大化的窗口
+        self.hotZHView = None
+
+    def createWindow(self, parentWnd):
+        style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
+        w = win32api.GetSystemMetrics(0) # desktop width
+        rect = (w - self.MAX_SIZE[0], 300, *self.MAX_SIZE)
+        super().createWindow(parentWnd, rect, style, title='HotZH')
+        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
+        self.hotZHView = HotZHView(self.hwnd)
+
+    def draw(self, hdc):
+        ps = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
+        bk = win32gui.CreateSolidBrush(0x00)
+        rect = self.getRect()
+        win32gui.SelectObject(hdc, ps)
+        win32gui.SelectObject(hdc, bk)
+        win32gui.Rectangle(hdc, 0, 0, rect[2] - 1, rect[3] - 1)
+        if self.maxMode:
+            self.hotZHView.draw(hdc)
+        win32gui.DeleteObject(ps)
+        win32gui.DeleteObject(bk)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONDBLCLK:
+            self.maxMode = not self.maxMode
+            if self.maxMode:
+                win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, *self.MAX_SIZE, win32con.SWP_NOMOVE)
+            else:
+                win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, *self.MIN_SIZE, win32con.SWP_NOMOVE)
+            return True
+        if self.maxMode and self.hotZHView:
+            if self.hotZHView.winProc(hwnd, msg, wParam, lParam):
+                return True
+        return super().winProc(hwnd, msg, wParam, lParam)

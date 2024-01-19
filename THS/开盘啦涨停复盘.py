@@ -367,7 +367,7 @@ class OCRUtil:
                 apd = apd + (1 if ord(n) < 255 else 2)
             return name + ' ' * (8 - apd)
         for model in self.models:
-            info = f"{model['day']}\t{fmtName(model['name'])}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}\t{model['tag']}"
+            info = f"{model['day']}\t{fmtName(model['name'])}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}"
             print(info)
             if file:
                 file.write(info + '\n')
@@ -421,6 +421,7 @@ class OCRUtil:
             raise Exception('[parseRow] fail :', result)
         img.model['name'] = result[0][1]
         img.model['ztTime'] = result[1][1]
+        img.model['ztTime'] = img.model['ztTime'].replace('.', ':')
         img.model['status'] = result[2][1]
         rz = result[3][1]
         if (rz[-1] == '1') and (')' not in rz):
