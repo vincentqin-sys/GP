@@ -193,18 +193,16 @@ class SimpleWindow(base_win.BaseWindow):
             H = 18
             y = i * H + 2
             win32gui.DrawText(hdc, line, len(line), (2, y, self.size[0], y + H), 0)
-    
-    def drawHot(self, hdc):
-        if not self.hotData:
-            return
-        
 
     def drawKPL_ZT(self, hdc):
-        if not self.kplZTData:
-            return
         win32gui.SetTextColor(hdc, 0xdddddd)
-        H = 18
         rect = win32gui.GetClientRect(self.hwnd)
+        if not self.kplZTData:
+            line = '无开盘啦涨停信息'
+            win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_CENTER)
+            return
+        
+        H = 18
         RH = rect[3] - rect[1]
         RW = rect[2] - rect[0]
         MAX_ROWS = RH // H
@@ -290,6 +288,7 @@ class HotZHView:
         self.thread = Thread()
         self.thread.start()
         self.henxinUrl = henxin.HexinUrl()
+        self.selIdx = -1
 
     def uploadData(self):
         maxHotDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
@@ -344,8 +343,8 @@ class HotZHView:
             self.thread.addTask(code, self.loadCodeInfo, (code, ))
             return data
         return data
-
-    def drawItem(self, hdc, data, idx):
+    
+    def getItemRect(self, idx):
         rect = win32gui.GetClientRect(self.hwnd)
         w = rect[2] - rect[0]
         pz = self.getPageSize()
@@ -357,6 +356,20 @@ class HotZHView:
             sy = (idx - pz // 2) * self.ROW_HEIGHT
         ex = sx + w // 2
         ey = sy + self.ROW_HEIGHT
+        return (sx, sy, ex, ey)
+
+    def getItemIdx(self, x, y):
+        rect = win32gui.GetClientRect(self.hwnd)
+        w = rect[2] - rect[0]
+        idx = 0
+        if x >= w // 2:
+            idx += self.getPageSize() // 2
+        idx += y // self.ROW_HEIGHT
+        idx += self.getPageSize() * self.pageIdx
+        return idx
+
+    def drawItem(self, hdc, data, idx, idx2):
+        rect = self.getItemRect(idx)
         code = f"{data['code'] :06d}"
         info = self.getCodeInfo(code)
         name = ''
@@ -368,22 +381,33 @@ class HotZHView:
                 zf = f'{zf :.2f}%'
         txt = f"{data['zhHotOrder']:>3d} {code} {name}"
         win32gui.SetTextColor(hdc, 0xdddddd)
-        win32gui.DrawText(hdc, txt, len(txt), (sx, sy, ex, ey), win32con.DT_LEFT)
+        win32gui.DrawText(hdc, txt, len(txt), rect, win32con.DT_LEFT)
         if zf:
             color = 0x00ff00 if  '-' in zf else 0x0000ff
             win32gui.SetTextColor(hdc, color)
-            win32gui.DrawText(hdc, zf, len(zf), (sx, sy, ex, ey), win32con.DT_RIGHT)
+            win32gui.DrawText(hdc, zf, len(zf), rect, win32con.DT_RIGHT)
+        if self.selIdx == idx2:
+            ps = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
+            win32gui.SelectObject(hdc, ps)
+            win32gui.MoveToEx(hdc, rect[0], rect[3] - 2)
+            win32gui.LineTo(hdc, rect[2], rect[3] - 2)
+            win32gui.DeleteObject(ps)
 
     def draw(self, hdc):
         self.uploadData()
         if not self.data:
             return
-        
         rect = win32gui.GetClientRect(self.hwnd)
         w = rect[2] - rect[0]
         vr = self.getVisibleRange()
         for i in range(*vr):
-            self.drawItem(hdc, self.data[i], i - vr[0])
+            self.drawItem(hdc, self.data[i], i - vr[0], i)
+
+        ps = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
+        win32gui.SelectObject(hdc, ps)
+        win32gui.MoveToEx(hdc, w // 2, 0)
+        win32gui.LineTo(hdc, w // 2, rect[3])
+        win32gui.DeleteObject(ps)
 
     def getVisibleRange(self):
         pz = self.getPageSize()
@@ -412,6 +436,11 @@ class HotZHView:
                 self.pageIdx = max(self.pageIdx - 1, 0)
             else:
                 self.pageIdx = min(self.pageIdx + 1, self.getMaxPageNum() - 1)
+            win32gui.InvalidateRect(self.hwnd, None, True)
+            return True
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            self.selIdx = self.getItemIdx(x, y)
             win32gui.InvalidateRect(self.hwnd, None, True)
             return True
         return False
@@ -479,13 +508,13 @@ class HotDetailView:
         si2 = max(0, len(hotDetail) - 5)
         si = min(si1, si2)
         self.showStartIdx = si
-        win32gui.SetTextColor(hdc, 0x247FFF)
+        win32gui.SetTextColor(hdc, 0x3333CD)
         for i in range(si, len(hotDetail)):
             hot = hotDetail[i]
             txt = f" {hot['time'] // 100 :02d}:{hot['time'] % 100 :02d}  {hot['hotValue'] :>3d}万  {hot['hotOrder'] :>3d}"
             y = (i - si) * self.ROW_HEIGHT + 5
             rc = (self.tipRect[0], y, self.tipRect[2], y + self.ROW_HEIGHT)
-            win32gui.DrawText(hdc, txt, len(txt), rc, win32con.DT_LEFT)
+            win32gui.DrawText(hdc, txt, len(txt), rc, win32con.DT_CENTER)
         rc = self.tipOrgRect
         win32gui.MoveToEx(hdc, rc[0], rc[3] - 2)
         win32gui.LineTo(hdc, rc[2], rc[3] - 2)
@@ -520,7 +549,7 @@ class HotDetailView:
         if self.hotData and len(self.hotData) > 0:
             last = self.hotData[-1]
             if last['zhHotOrder'] == 0:
-                rd = hot_utils.calcHotZHOnDayCode(last['day'], self.curCode)
+                rd = hot_utils.calcHotZHOnDayCode(last['day'], code)
                 if rd:
                     last['zhHotOrder'] = rd['zhHotOrder']
                     last['avgHotOrder'] = rd['avgHotOrder']
@@ -563,9 +592,9 @@ class HotDetailView:
         rr = win32gui.GetClientRect(self.simpleWin.hwnd)
         w, h = rr[2], rr[3]
         if (ri['rect'][0] + ri['rect'][2]) >= w:
-            self.tipRect = (0, 0, 130, h)
+            self.tipRect = (0, 0, w // 2, h)
         else:
-            self.tipRect = (w // 2, 0, w // 2 + 130, h)
+            self.tipRect = (w // 2, 0, w, h)
         if 'detail' not in self.tipObj:
             info = orm.THS_Hot.select().where(orm.THS_Hot.code == self.code, orm.THS_Hot.day == self.tipObj['day'])
             self.tipObj['detail'] = [d.__data__ for d in info]

@@ -68,10 +68,13 @@ def findMaxDieFu(fromDay : int, endDay : int):
 
 if __name__ == '__main__':
     #findMaxDieFu(20231227, 20231229)
-    while True:
-        win32gui.ShowWindow(0xd08f2, win32con.SW_SHOW)
-        time.sleep(0.3)
+    #while True:
+    #    win32gui.ShowWindow(0xd08f2, win32con.SW_SHOW)
+    #    time.sleep(0.3)
     #tsm.open()
+    time.sleep(20)
+
+
 
 
 

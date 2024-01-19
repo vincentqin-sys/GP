@@ -374,9 +374,9 @@ class OCRUtil:
             if not model['_success']:
                 ex = ''
                 if '_exception' in model: ex = model['_exception']
-                print('\tMay be error ' + ex)
+                print('\tMaybe error ' + ex)
                 if file:
-                    file.write( '\tMay be error'  + ex + '\n')
+                    file.write( '\tMaybe error'  + ex + '\n')
             if file:
                 file.flush()
         print('sum =', len(self.models))
@@ -425,6 +425,11 @@ class OCRUtil:
         rz = result[3][1]
         if (rz[-1] == '1') and (')' not in rz):
             rz = rz[0 : -1] + ')'
+        rz = rz.replace('」', ')')
+        rz = rz.replace('}', ')')
+        rz = rz.replace(']', ')')
+        rz = rz.replace('[', '(')
+        rz = rz.replace('{', '(')
         img.model['ztReason'] = rz
         tag = ''
         if 'R' in img.model:
@@ -454,7 +459,8 @@ class OCRUtil:
             return False
         
         try:
-            *_, name = hx.loadUrlData(hx.getTodayKLineUrl(mc))
+            obj = hx.loadUrlData(hx.getTodayKLineUrl(mc))
+            name = obj['name']
         except Exception as e:
             model['_exception'] = ' Net check ' + str(e)
             return False
