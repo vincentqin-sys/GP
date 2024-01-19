@@ -73,10 +73,11 @@ class ThsSortQuery:
 #-------------小窗口----------------------------------------------
 class SimpleWindow(base_win.BaseWindow):
     DATA_TYPES = ('Sort', 'Hot', 'KPL_ZT')  # KPL_ZT 开盘啦涨停信息 
+    MAX_SIZE = (380, 230)
+    MIN_SIZE = (380, 30)
 
     def __init__(self) -> None:
         super().__init__()
-        self.size = None  # 窗口大小 (w, h)
         self.maxMode = True #  是否是最大化的窗口
         self.curCode = None
         self.sortData = None
@@ -89,8 +90,7 @@ class SimpleWindow(base_win.BaseWindow):
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
         w = win32api.GetSystemMetrics(0) # desktop width
-        self.size = (380, 230)
-        rect = (int(w / 3), 300, *self.size)
+        rect = (int(w / 3), 300, *self.MAX_SIZE)
         super().createWindow(parentWnd, rect, style, title='SimpleWindow')
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
@@ -146,7 +146,7 @@ class SimpleWindow(base_win.BaseWindow):
             return d
         self.kplZTData = [fmtDay(d) for d in qq3.dicts()]
 
-        if self.hwnd and self.size:
+        if self.hwnd:
             #win32gui.InvalidateRect(self.wnd, (0, 0, *self.size), True)
             #win32gui.UpdateWindow(self.wnd)
             win32gui.InvalidateRect(self.hwnd, None, True)
@@ -161,16 +161,18 @@ class SimpleWindow(base_win.BaseWindow):
             selDay = int(selDay)
         if self.selectDay != selDay:
             self.selectDay = selDay
-            if self.hwnd and self.size:
+            if self.hwnd:
                 win32gui.InvalidateRect(self.hwnd, None, True)
 
     def changeDataType(self):
         idx = (self.DATA_TYPES.index(self.dataType) + 1) % len(self.DATA_TYPES)
         self.dataType = self.DATA_TYPES[idx]
-        if self.hwnd and self.size:
+        if self.hwnd:
             win32gui.InvalidateRect(self.hwnd, None, True)
 
     def draw(self, hdc):
+        if not self.maxMode:
+            return
         if self.dataType == 'Sort':
             self.drawSort(hdc)
         elif self.dataType == 'Hot':
@@ -183,10 +185,11 @@ class SimpleWindow(base_win.BaseWindow):
             return
         win32gui.SetTextColor(hdc, 0xdddddd)
         lines = self.sortData['info'].split('\n')
+        rect = self.getRect()
         for i, line in enumerate(lines):
             H = 18
             y = i * H + 2
-            win32gui.DrawText(hdc, line, len(line), (2, y, self.size[0], y + H), 0)
+            win32gui.DrawText(hdc, line, len(line), (2, y, rect[2], y + H), 0)
 
     def drawKPL_ZT(self, hdc):
         win32gui.SetTextColor(hdc, 0xdddddd)
@@ -217,7 +220,7 @@ class SimpleWindow(base_win.BaseWindow):
         pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
         win32gui.SelectObject(hdc, pen)
         win32gui.MoveToEx(hdc, RW // 2, 0)
-        win32gui.LineTo(hdc, RW // 2, self.size[1])
+        win32gui.LineTo(hdc, RW // 2, rect[3])
         win32gui.DeleteObject(pen)
 
     def hide(self):
@@ -230,11 +233,19 @@ class SimpleWindow(base_win.BaseWindow):
     def winProc(self, hwnd, msg, wParam, lParam):
         if super().winProc(hwnd, msg, wParam, lParam):
             return True
+        if msg == win32con.WM_NCLBUTTONDBLCLK:
+            self.maxMode = not self.maxMode
+            if self.maxMode:
+                win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, *self.MAX_SIZE, win32con.SWP_NOMOVE)
+            else:
+                win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, *self.MIN_SIZE, win32con.SWP_NOMOVE)
+            return True
         if msg == win32con.WM_RBUTTONUP:
             self.changeDataType()
             return True
         if self.dataType == 'Hot':
             return self.hotDetailView.winProc(hwnd, msg, wParam, lParam)
+        
         return False
 
 class Thread:
@@ -602,7 +613,7 @@ class HotZHView:
 
 class SimpleHotZHWindow(base_win.BaseWindow):
     MAX_SIZE = (220, 310)
-    MIN_SIZE = (220, 60)
+    MIN_SIZE = (220, 30)
     TITLE_HEIGHT = 30
 
     def __init__(self) -> None:
@@ -632,7 +643,7 @@ class SimpleHotZHWindow(base_win.BaseWindow):
         win32gui.DeleteObject(bk)
 
     def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_LBUTTONDBLCLK:
+        if msg == win32con.WM_NCLBUTTONDBLCLK:
             self.maxMode = not self.maxMode
             if self.maxMode:
                 win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, *self.MAX_SIZE, win32con.SWP_NOMOVE)
