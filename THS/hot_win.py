@@ -1,7 +1,6 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 from multiprocessing import Process
-from multiprocessing.shared_memory import SharedMemory
 from PIL import Image  # pip install pillow
 import orm, THS.hot_win_small as hot_win_small, base_win, ths_win
 
@@ -40,7 +39,7 @@ class HotWindow(base_win.BaseWindow):
     def destroy(self):
         win32gui.DestroyWindow(self.hwnd)
     
-    def draw(self):
+    def onDraw(self):
         hdc, ps = win32gui.BeginPaint(self.hwnd)
         bk = win32gui.CreateSolidBrush(0xffffff)
         win32gui.FillRect(hdc, win32gui.GetClientRect(self.hwnd), bk)
@@ -494,7 +493,7 @@ class HotWindow(base_win.BaseWindow):
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_PAINT:
-            self.draw()
+            self.onDraw()
             return True
         elif msg == win32con.WM_DESTROY:
             win32gui.PostQuitMessage(0)

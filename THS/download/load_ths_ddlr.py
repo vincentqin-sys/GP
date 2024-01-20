@@ -1,7 +1,6 @@
 import peewee as pw
 from peewee import fn
 import os, json, time, sys, pyautogui, io, datetime, win32api, win32event, winerror
-import fiddler, ths
 
 #sys.path.append('.')
 #sys.path.append('..')
@@ -11,6 +10,7 @@ cwd = cwd[0 : w + 2]
 sys.path.append(cwd)
 from THS import orm
 from Tdx import datafile
+from THS.download import fiddler, ths
 
 BASE_STRUCT_PATH = 'D:/ThsData/ddlr-struct/'
 BASE_DETAIL_PATH = 'D:/ThsData/ddlr-detail-src/'
@@ -162,7 +162,7 @@ class LoadThsDdlrDetail:
                 continue
             sio.write(tradeDay + ';')
             for d in ld['data']:
-                v = d['firstTime'][0 : 4] + ',' + str(d['stats']) + ',' + str(int(d['totalMoney'] / 10000 + 0.5)) + ';'
+                v = d['firstTime'][0 : 6] + ',' + str(d['stats']) + ',' + str(int(d['totalMoney'] / 10000 + 0.5)) + ',' + str(d['tradeVol']) + ';'
                 sio.write(v)
             sio.write('\n')
             i += 2
@@ -175,10 +175,12 @@ class ThsDdlrDetailData:
 
     def __init__(self, code) -> None:
         self.code = code
-        self.data = []  # [{day :'YYYY-MM-DD', data: [(minutes, bs, money), ...], ... ]   # minutes int value . eg: 930 ==> '09:30' ; bs -> 1:主动买 2:被动买 3:主动卖 4:被动卖;  money :万元
+        self.data = []  # [{day :'YYYY-MM-DD', data: [(minutes, bs, money, vol?), ...], ... ]   # minutes int value . eg: 930 ==> '09:30' ; bs -> 1:主动买 2:被动买 3:主动卖 4:被动卖;  money :万元
         self._loadFile()
 
     def getDataAtDay(self, day):
+        if type(day) == int:
+            day = f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
         for item in self.data:
             if item['day'] == day:
                 return item['data']
@@ -203,10 +205,12 @@ class ThsDdlrDetailData:
         md = None
         for i in range(1, len(spec)):
             items = spec[i].split(',')
-            if len(items) != 3:
-                break
-            _time, bs, money = items
-            rs['data'].append((int(_time), int(bs), int(money)))
+            if len(items) == 3:
+                _time, bs, money = items
+                vol = 0
+            elif len(items) == 4:
+                _time, bs, money, vol = items
+            rs['data'].append((int(_time), int(bs), int(money), int(vol)))
         return rs
 
     def _loadFile(self):

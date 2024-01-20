@@ -8,6 +8,10 @@ class BaseWindow:
         self.hwnd = None
         self.oldProc = None
         self.listeners = []
+        self.drawer = Drawer.instance()
+        self._bitmap = None
+        self._bitmapSize = None
+        self.cacheBitmap = False
     
     # func = function(target, evtName, evtInfo)
     def addListener(self, target, func):
@@ -46,27 +50,28 @@ class BaseWindow:
         l, t, r, b = win32gui.GetClientRect(self.hwnd)
         w, h = r - l, b - t
         mdc = win32gui.CreateCompatibleDC(hdc)
-        bmp = win32gui.CreateCompatibleBitmap(hdc, w, h)
+        if (not self._bitmap) or (w != self._bitmapSize[0]) or (h != self._bitmapSize[1]):
+            if self._bitmap: win32gui.DeleteObject(self._bitmap)
+            self._bitmap = bmp = win32gui.CreateCompatibleBitmap(hdc, w, h)
+            self._bitmapSize = (w, h)
+        else:
+            bmp = self._bitmap
         win32gui.SelectObject(mdc, bmp)
-        bk = win32gui.CreateSolidBrush(0x000000)
-        win32gui.FillRect(mdc, win32gui.GetClientRect(self.hwnd), bk)
+        self.drawer.fillRect(mdc, win32gui.GetClientRect(self.hwnd), 0x000000)
         win32gui.SetBkMode(mdc, win32con.TRANSPARENT)
-        win32gui.SetTextColor(mdc, 0x0)
-        a = win32gui.LOGFONT()
-        a.lfHeight = fontSize
-        a.lfFaceName = '新宋体'
-        font = win32gui.CreateFontIndirect(a)
-        win32gui.SelectObject(mdc, font)
-        self.draw(mdc)
+        win32gui.SetTextColor(mdc, 0xffffff)
+        self.drawer.use(mdc, self.drawer.getFont(fontSize = 14))
+        self.onDraw(mdc)
         win32gui.BitBlt(hdc, 0, 0, w, h, mdc, 0, 0, win32con.SRCCOPY)
         win32gui.EndPaint(self.hwnd, ps)
-        win32gui.DeleteObject(font)
-        win32gui.DeleteObject(bk)
-        win32gui.DeleteObject(bmp)
         win32gui.DeleteObject(mdc)
+        if not self.cacheBitmap:
+            win32gui.DeleteObject(self._bitmap)
+            self._bitmap = None
+            self._bitmapSize = None
         return True
         
-    def draw(self, hdc):
+    def onDraw(self, hdc):
         pass
 
     @staticmethod
@@ -85,7 +90,7 @@ class BaseWindow:
 class CardView:
     def __init__(self, hwnd):
         self.hwnd = hwnd
-    def draw(self, hdc):
+    def onDraw(self, hdc):
         pass
     def winProc(self, hwnd, msg, wParam, lParam):
         return False
@@ -104,10 +109,10 @@ class CardWindow(BaseWindow):
     def addCardView(self, cardView):
         self.cardViews.append(cardView)
 
-    def draw(self, hdc):
+    def onDraw(self, hdc):
         if self.maxMode and self.curCardViewIdx < len(self.cardViews):
             cardView = self.cardViews[self.curCardViewIdx]
-            cardView.draw(hdc)
+            cardView.onDraw(hdc)
     
     def changeCardView(self):
         idx = self.curCardViewIdx
@@ -167,4 +172,104 @@ class Thread:
                 self.tasks.pop(0)
                 print('run task taskId=', taskId)
 
+class Drawer:
+    _instance = None
+
+    @staticmethod
+    def instance():
+        if not Drawer._instance:
+            Drawer._instance = Drawer()
+        return Drawer._instance
+
+    def __init__(self) -> None:
+        self.pens = {}
+        self.hbrs = {}
+        self.fonts = {}
+
+    def getPen(self, color, style = win32con.PS_SOLID, width = 1):
+        if type(color) == int:
+            name = f'{style}-{color :06d}-{width}'
+            ps = self.pens.get(name, None)
+            if not ps:
+                ps = self.pens[name] = win32gui.CreatePen(style, width, color)
+            return ps
+        return None
+
+    def getBrush(self, color):
+        if type(color) == int:
+            name = f'solid-{color :06d}'
+            ps = self.hbrs.get(name, None)
+            if not ps:
+                ps = self.hbrs[name] = win32gui.CreateSolidBrush(color)
+            return ps
+        return None
+
+    def getFont(self, name = '新宋体', fontSize = 14):
+        key = f'{name}:{fontSize}'
+        font = self.fonts.get(key, None)
+        if not font:
+            a = win32gui.LOGFONT()
+            a.lfHeight = fontSize
+            a.lfFaceName = name
+            self.fonts[key] = font = win32gui.CreateFontIndirect(a)
+        return font
+
+    def use(self, hdc, obj):
+        if obj:
+            win32gui.SelectObject(hdc, obj)
+
+    # rgb = int 0xrrggbb  -> 0xbbggrr
+    @staticmethod
+    def rgbToColor(rgb):
+        r = (rgb >> 16) & 0xff
+        g = (rgb >> 8) & 0xff
+        b = rgb & 0xff
+        return (b << 16) | (g << 8) | r
+
+    # color = int(0xbbggrr color)
+    def drawLine(self, hdc, sx, sy, ex, ey, color, style = win32con.PS_SOLID, width = 1):
+        ps = self.getPen(color, style, width)
+        self.use(hdc, ps)
+        win32gui.MoveToEx(hdc, sx, sy)
+        win32gui.LineTo(hdc, ex, ey)
+
+    # only draw borders
+    # rect = list or tuple (left, top, right, bottom)
+    def drawRect(self, hdc, rect, pen):
+        if not rect:
+            return
+        self.use(hdc, pen)
+        hbr = win32gui.GetStockObject(win32con.NULL_BRUSH)
+        win32gui.SelectObject(hdc, hbr)
+        win32gui.Rectangle(hdc, *rect)
+
+    # rect = list or tuple (left, top, right, botton)
+    # color = int (0xbbggrr color)
+    def fillRect(self, hdc, rect, color):
+        if not rect:
+            return
+        if type(rect) == list:
+            rect = tuple(rect)
+        hbr = self.getBrush(color)
+        win32gui.FillRect(hdc, rect, hbr)
     
+    # rect = list or tuple (left, top, right, botton)
+    # color = int(0xbbggrr color) | None(not set color)
+    def drawText(self, hdc, text, rect, color = None, align = win32con.DT_CENTER):
+        if not text or not rect:
+            return
+        if type(color) == int:
+            win32gui.SetTextColor(hdc, color)
+        if type(rect) == list:
+            rect = tuple(rect)
+        win32gui.DrawText(hdc, text, len(text), rect, align)
+
+    # rect = list or tuple (left, top, right, bottom)
+    def fillCycle(self, hdc, rect, color):
+        if not rect:
+            return
+        win32gui.SelectObject(hdc, win32gui.GetStockObject(win32con.NULL_PEN))
+        self.use(hdc, self.getBrush(color))
+        win32gui.Ellipse(hdc, *rect)
+        
+

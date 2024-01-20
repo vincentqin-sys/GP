@@ -117,7 +117,7 @@ class SortCardView(base_win.CardView):
         self.sortData = self.query.getCodeInfo_THS(code)
         win32gui.SetWindowText(self.hwnd, f'{self.sortData["code"]} {self.sortData["name"]}')
 
-    def draw(self, hdc):
+    def onDraw(self, hdc):
         if not self.sortData:
             return
         win32gui.SetTextColor(hdc, 0xdddddd)
@@ -147,7 +147,7 @@ class HotCardView(base_win.CardView):
     def updateSelectDay(self, selDay):
         self.selectDay = selDay
 
-    def draw(self, hdc):
+    def onDraw(self, hdc):
         rr = win32gui.GetClientRect(self.hwnd)
         win32gui.SetTextColor(hdc, 0xdddddd)
         H = 18
@@ -316,7 +316,7 @@ class KPLCardView(base_win.CardView):
             return d
         self.kplZTData = [fmtDay(d) for d in qq.dicts()]
 
-    def draw(self, hdc):
+    def onDraw(self, hdc):
         win32gui.SetTextColor(hdc, 0xdddddd)
         rect = win32gui.GetClientRect(self.hwnd)
         if not self.kplZTData:
@@ -414,8 +414,13 @@ class HotZHCardView(base_win.CardView):
         self.thread.start()
         self.henxinUrl = henxin.HexinUrl()
         self.selIdx = -1
+        self.updateDataTime = 0
 
-    def uploadData(self):
+    def updateData(self):
+        lt = time.time()
+        if lt - self.updateDataTime < 60:
+            return
+        self.updateDataTime = lt
         maxHotDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
         maxHotZhDay = orm.THS_HotZH.select(pw.fn.max(orm.THS_HotZH.day)).scalar()
         if maxHotDay == maxHotZhDay:
@@ -527,8 +532,8 @@ class HotZHCardView(base_win.CardView):
             win32gui.LineTo(hdc, rect[2], rect[3] - 2)
             win32gui.DeleteObject(ps)
 
-    def draw(self, hdc):
-        self.uploadData()
+    def onDraw(self, hdc):
+        self.updateData()
         if not self.data:
             return
         rect = win32gui.GetClientRect(self.hwnd)
@@ -584,8 +589,8 @@ class SimpleHotZHWindow(base_win.CardWindow):
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
         self.addCardView(HotZHCardView(self.hwnd))
 
-    def draw(self, hdc):
-        super().draw(hdc)
+    def onDraw(self, hdc):
+        super().onDraw(hdc)
         ps = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
         bk = win32gui.GetStockObject(win32con.NULL_BRUSH)
         size = self.getClientSize()

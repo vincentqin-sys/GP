@@ -573,7 +573,7 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, txt, len(txt), rc, win32con.DT_CENTER)
         win32gui.RestoreDC(hdc, sdc)
 
-    def draw(self, hdc):
+    def onDraw(self, hdc):
         pens = {}
         hbrs = {}
         pens['white'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xffffff)
