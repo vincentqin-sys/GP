@@ -139,7 +139,7 @@ class LoadThsDdlrDetail:
                 self.loadFileData(fp, destfp)
                 os.remove(fp)
     
-    # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
+    # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,结束时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
     def loadFileData(self, fileName, destfp):
         f = open(fileName, 'r', encoding= 'utf8')
         lines = f.readlines()
@@ -162,7 +162,7 @@ class LoadThsDdlrDetail:
                 continue
             sio.write(tradeDay + ';')
             for d in ld['data']:
-                v = d['firstTime'][0 : 6] + ',' + str(d['stats']) + ',' + str(int(d['totalMoney'] / 10000 + 0.5)) + ',' + str(d['tradeVol']) + ';'
+                v = d['firstTime'][0 : 6] + ',' + d['lastTime'][0 : 6] + ',' + str(d['stats']) + ',' + str(int(d['totalMoney'] / 10000 + 0.5)) + ',' + str(d['tradeVol'] // 100) + ';'
                 sio.write(v)
             sio.write('\n')
             i += 2
@@ -175,7 +175,9 @@ class ThsDdlrDetailData:
 
     def __init__(self, code) -> None:
         self.code = code
-        self.data = []  # [{day :'YYYY-MM-DD', data: [(minutes, bs, money, vol?), ...], ... ]   # minutes int value . eg: 930 ==> '09:30' ; bs -> 1:主动买 2:被动买 3:主动卖 4:被动卖;  money :万元
+        # [{day :'YYYY-MM-DD', data: [(minutes, bs, money, vol), ...], ... ]   
+        # minutes int value . eg: 930 ==> '09:30' ; bs -> 1:主动买 2:被动买 3:主动卖 4:被动卖;  money :万元 vol:手
+        self.data = []
         self._loadFile()
 
     def getDataAtDay(self, day):
@@ -206,11 +208,14 @@ class ThsDdlrDetailData:
         for i in range(1, len(spec)):
             items = spec[i].split(',')
             if len(items) == 3:
-                _time, bs, money = items
+                _btime, bs, money = items
                 vol = 0
-            elif len(items) == 4:
-                _time, bs, money, vol = items
-            rs['data'].append((int(_time), int(bs), int(money), int(vol)))
+                _etime = _btime
+            elif len(items) == 5:
+                _btime, _etime, bs, money, vol = items
+            rs['data'].append((int(_btime), int(_etime), int(bs), int(money), int(vol)))
+        # sort data by end time
+        rs['data'] = sorted(rs['data'], key= lambda d : d[1])
         return rs
 
     def _loadFile(self):
