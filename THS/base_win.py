@@ -86,7 +86,6 @@ class BaseWindow:
         #    return win32gui.CallWindowProc(self.oldProc, hwnd, msg, wParam, lParam)
         return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
 
-
 class CardView:
     def __init__(self, hwnd):
         self.hwnd = hwnd
@@ -272,4 +271,24 @@ class Drawer:
         self.use(hdc, self.getBrush(color))
         win32gui.Ellipse(hdc, *rect)
         
+class GridLayout:
+    # templateRows = 分行, 设置高度  整数固定: 200 ; 自动: 'auto'; 片段: 1fr | 2fr; 百分比: 15% 
+    #       Eg: (200, 'auto', '15%')
+    # templateColumns = 分列, 设置宽度  整数固定: 200 ; 自动: 'auto'; 片段: 1fr | 2fr; 百分比: 15% 
+    #       Eg: (200, '1fr', '2fr' '15%')
+    # gaps = (行间隙, 列间隙)  Eg:  (5, 10)
+    def __init__(self, templateRows, templateColumns, gaps):
+        self.templateRows = templateRows
+        self.templateColumns = templateColumns
+        self.gaps = gaps
+        self.width = 0
+        self.height = 0
+        self.wins = []
+    
+    def setSize(self, width, height):
+        self.width = width
+        self.height = height
+
+    def setContent(self, row, col, win):
+        pass
 
