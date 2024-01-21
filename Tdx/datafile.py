@@ -148,6 +148,7 @@ class DataFile:
                 d0 = y * 10000 + m * 100 + r
                 d1 = (item[1] // 60) * 100 + (item[1] % 60)
                 item = ItemData(d0, d1, T(item[2]), T(item[3]), T(item[4]), T(item[5]), item[6], item[7])
+                #item._time = item[1]
             if item.day >= self.FROM_DAY:
                 rs.append(item)
         f.close()
@@ -171,7 +172,7 @@ class DataFile:
             d = self.data[idx]
             sumamount += d.amount
             sumVol += d.vol
-            d.avgPrice = sumamount / sumVol
+            d.avgPrice = int(sumamount / sumVol * 100 + 0.5)
             idx += 1
 
     def calcMA(self, N):

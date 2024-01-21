@@ -51,6 +51,14 @@ class FenShiModel:
                     break
             self.dataFile.calcAvgPriceOfDay(int(day))
             self.fsData = self.dataFile.data[fromIdx : endIdx]
+            # insert 9:30 data 通达信合并了9:30和9:31的数据
+            c930 = copy.copy(self.fsData[0])
+            c930.time = 930
+            c930.amount = c930.vol = 0
+            c930.avgPrice = c930.close = c930.open
+            self.fsData.insert(0, c930)
+            #for i in self.fsData:
+            #    print(i)
             self.ddlrData = self.ddlrFile.getDataAtDay(day)
             self.groupDDLRByTime()
             if fromIdx > 0:
@@ -169,22 +177,15 @@ class FenShiWindow(base_win.BaseWindow):
         w = self.minutesRect[2] - self.minutesRect[0]
         sw = w / 240
         idx = int(x / sw)
-        if idx > len(self.model.fsData):
+        if idx >= len(self.model.fsData):
             return -1
         return idx
 
     def getMinuteData(self, idx):
-        if idx < 0:
-            return None
         fds = self.model.fsData
-        if not fds:
+        if idx < 0 or not fds:
             return None
-        if idx == 0:
-            d = copy.copy(fds[0])
-            d.close = d.open
-            d.time = 930
-            return d
-        return fds[idx - 1]
+        return fds[idx]
     
     def drawBackground(self, hdc):
         if not self.model.fsData:
@@ -221,21 +222,23 @@ class FenShiWindow(base_win.BaseWindow):
         if not fsd:
             return
         self.drawer.use(hdc, self.drawer.getPen(0x888888, width=2))
-        # minute data is begin from 09:31
-        # draw 09:30
-        price = fsd[0].open
-        win32gui.MoveToEx(hdc, self.getMinuteX(0), self.getMinuteY(price))
+        # draw minutes
         for i, d in enumerate(fsd):
-            x = self.getMinuteX(i + 1)
+            x = self.getMinuteX(i)
             y = self.getMinuteY(d.close)
-            win32gui.LineTo(hdc, x, y)
+            if i == 0:
+                win32gui.MoveToEx(hdc, x, y)
+            else:
+                win32gui.LineTo(hdc, x, y)
         # draw avg price
         self.drawer.use(hdc, self.drawer.getPen(0x4782AE, width=2))
-        win32gui.MoveToEx(hdc, self.getMinuteX(0), self.getMinuteY(price))
         for i, d in enumerate(fsd):
-            x = self.getMinuteX(i + 1)
-            y = self.getMinuteY(d.avgPrice * 100)
-            win32gui.LineTo(hdc, x, y)
+            x = self.getMinuteX(i)
+            y = self.getMinuteY(d.avgPrice)
+            if i == 0:
+                win32gui.MoveToEx(hdc, x, y)
+            else:
+                win32gui.LineTo(hdc, x, y)
 
     def drawMouse(self, hdc):
         fsd = self.model.fsData
@@ -246,6 +249,7 @@ class FenShiWindow(base_win.BaseWindow):
         idx = self.getMinuteIdx(x)
         if idx < 0:
             return
+        x = self.getMinuteX(idx)
         md = self.getMinuteData(idx)
         price = md.close
         my = self.getMinuteY(price)
@@ -278,6 +282,8 @@ class FenShiWindow(base_win.BaseWindow):
             self.drawDDLRItemCycle(hdc, d)
 
     def getCycleWidth(self, money):
+        if money == 0:
+            return 0
         if money >= 1000:
             return 16
         if money >= 500:
@@ -310,13 +316,11 @@ class FenShiWindow(base_win.BaseWindow):
         buyRc = (sx, sy, sx + buyWidth, sy + buyWidth)
         sx, sy = x - sellWidth // 2, y - sellWidth // 2
         sellRc = (sx, sy, sx + sellWidth, sy + sellWidth)
-        if buy >= sell:
-            self.drawer.fillCycle(hdc, buyRc, 0x2524A1)
-        else:
-            self.drawer.fillCycle(hdc, sellRc, 0x088809)
-            #vs = win32gui.SetROP2(hdc, win32con.R2_MASKPEN)
-            #self.drawer.fillCycle(hdc, buyRc, 0x3333ff)
-        #win32gui.SetROP2(hdc, vs)
+
+        self.drawer.fillCycle(hdc, buyRc,  0x2524A1) # 0x2524A1  0x2E2FFF
+        vs = win32gui.SetROP2(hdc, win32con.R2_MERGEPEN)
+        self.drawer.fillCycle(hdc, sellRc, 0x0F570E) # 0x0F570E 0x00D600
+        win32gui.SetROP2(hdc, vs)
 
     def onClick(self, x, y):
         idx = self.getMinuteIdx(x)
@@ -400,10 +404,9 @@ class TableWindow(base_win.BaseWindow):
                 self.drawer.drawText(hdc, str(vals[j]), rc, color)
             sy += ch
 
-
     def getVisibleRange(self):
-        rowNum = self.getMaxRowNum()
-        return (self.startIdx, min(self.startIdx + rowNum, len(self.data) - 1))
+        rowNum = self.getMaxRowNum() - 1
+        return (self.startIdx, min(self.startIdx + rowNum, len(self.data)))
     
     def drawRowItem(self, hdc, sy, data, cw):
         _time, bs, money, vol = data
@@ -483,7 +486,7 @@ class TableWindow(base_win.BaseWindow):
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def onClick(self, x, y):
-        win32gui.SetFocus(self.hwnd)
+        #win32gui.SetFocus(self.hwnd)
         if y > self.HEAD_HEIGHT and y < self.getClientSize()[1] - self.TAIL_HEIGHT:
             y -= self.HEAD_HEIGHT
             self.selIdx = y // self.ROW_HEIGHT + self.startIdx
@@ -559,6 +562,122 @@ class GroupButton(base_win.BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
+class DDMoneyWindow(base_win.BaseWindow):
+    def __init__(self):
+        super().__init__()
+        self.MARGINS = (60, 50, 60, 30)
+        self.data = None
+        self.jhjjData = None #竟价数据
+        self.buyMax = 0
+        self.sellMax = 0
+    
+    def setData(self, data):
+        if not data:
+            self.data = None
+            return
+        self.data = []
+        for i in range(0, 241):
+            self.data.append({'buy': 0, 'sell': 0, 'time': 0})
+        self.jhjjData = {'buy': 0, 'sell': 0, 'time': 0}
+        for ds in data:
+            _time = ds[0][0]
+            if _time < 930:
+                rs = self.jhjjData
+            else:
+                idx = self.timeToIdx(_time)
+                rs = self.data[idx]
+            rs['time'] = _time
+            for d in ds:
+                _t, bs, money, *_ = d
+                if bs <= 2:
+                    rs['buy'] += money
+                else:
+                    rs['sell'] += money
+        buyMax, sellMax = 0, 0
+        for d in self.data:
+            buyMax = max(d['buy'], buyMax)
+            sellMax = max(d['sell'], sellMax)
+        self.buyMax = buyMax
+        self.sellMax = sellMax
+        win32gui.InvalidateRect(self.hwnd, None, True)
+
+    def getMainRect(self):
+        sz = self.getClientSize()
+        return (self.MARGINS[0], self.MARGINS[1], sz[0] - self.MARGINS[2], sz[1] - self.MARGINS[3])
+
+    def timeToIdx(self, _time):
+        if _time <= 930:
+            return 0
+        hour = _time // 100
+        minute = _time % 100
+        ds = 0
+        if hour <= 11:
+            ds = 60 * (hour - 9) + minute - 30
+            return ds
+        ds = 120
+        ds += minute + (hour - 13) * 60
+        return ds
+
+    def getMinuteX(self, idx):
+        mr = self.getMainRect()
+        w = mr[2] - mr[0]
+        sw = w / 240
+        return int(sw * idx) + mr[0]
+
+    def getMinuteIdx(self, x):
+        if not self.data:
+            return -1
+        mr = self.getMainRect()
+        if x < mr[0]:
+            return -1
+        x -= mr[0]
+        w = mr[2] - mr[0]
+        sw = w / 240
+        idx = int(x / sw)
+        if idx >= 240:
+            return -1
+        return idx
+
+    def getMinuteData(self, idx):
+        fds = self.model.fsData
+        if idx < 0 or not fds:
+            return None
+        return fds[idx]
+
+    def drawMain(self, hdc):
+        if not self.data:
+            return
+        mc = self.getMainRect()
+        w, h = mc[2] - mc[0], mc[3] - mc[1]
+        zeroY = mc[1] + int(self.buyMax / (self.buyMax + self.sellMax) * h)
+        self.drawer.drawLine(hdc, mc[0], zeroY, mc[2], zeroY, 0xdddddd)
+        for i, d in enumerate(self.data):
+            if not (d['buy'] > 0 or d['sell'] > 0):
+                continue
+            x = self.getMinuteX(i)
+            if d['buy'] > 0:
+                hx = int(d['buy'] / (self.buyMax + self.sellMax) * h)
+                rc = (x, zeroY - hx, x + 2, zeroY)
+                self.drawer.fillRect(hdc, rc, 0x3333ff)
+            if d['sell'] > 0:
+                hx = int(d['sell'] / (self.buyMax + self.sellMax) * h)
+                rc = (x, zeroY, x + 2, zeroY + hx)
+                self.drawer.fillRect(hdc, rc, 0x33ff33)
+
+    def onDraw(self, hdc):
+        self.drawer.drawRect(hdc, (0, 0, *self.getClientSize()), self.drawer.getPen(0xdddddd))
+        rect = self.getMainRect()
+        if not self.data:
+            return
+        self.drawMain(hdc)
+
+
+    def getMoneyRange(self):
+        pass
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        return super().winProc(hwnd, msg, wParam, lParam)
+
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -569,7 +688,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.henxi = henxin.HexinUrl()
 
     def create(self):
-        self.shareMem.open()
+        #self.shareMem.open()
         style = win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE
         rect = (0, 0, 1000, 500)
         super().createWindow(None, rect, style, title = '大单复盘')
@@ -599,10 +718,19 @@ class FuPanMgrWindow(base_win.BaseWindow):
         refreshBtn.createWindow(self.hwnd, rc4)
         refreshBtn.addListener(None, self.onListenRefresh)
 
+        self.moneyWin = DDMoneyWindow()
+        rc5 = (rc[2] + 5, rc2[3] + 10, size[0] - rc[2] - 10, size[1] - rc2[3]- 30)
+        self.moneyWin.createWindow(self.hwnd, rc5)
+
+        # TODO: remove 
+        self.updateCodeDay('601096', 20240119)
+
     def onListenMoney(self, target, evtName, evtInfo):
         group = evtInfo['group']
         ds = self.fsWin.model.filterDDLR(group['val'])
         self.tableWin.setData(ds, group['desc'])
+        self.moneyWin.setData(ds)
+        win32gui.InvalidateRect(self.fsWin.hwnd, None, True)
 
     def onListenRefresh(self, target, evtName, evtInfo):
         code = self.shareMem.readCode()
@@ -610,12 +738,27 @@ class FuPanMgrWindow(base_win.BaseWindow):
         if not code or not day:
             return
         code = f'{code :06d}'
+        self.updateCodeDay(code, day)
+
+    def updateCodeDay(self, code, day):
         #url = self.henxi.getTodayKLineUrl(code)
         #data = self.henxi.loadUrlData(url)
-        win32gui.SetWindowText(self.hwnd, f'大单复盘 ({code} / {day})')
+        xx = orm.THS_Newest.get_or_none(orm.THS_Newest.code == code)
+        name = xx.name if xx else ''
+        win32gui.SetWindowText(self.hwnd, f'大单复盘 -- {code} {name} / {day}')
         self.fsWin.update(code, day)
-        self.fsWin.model.filterDDLR(50)
+        ds = self.fsWin.model.filterDDLR(50)
+        gp0 = self.moneyBtns.groups[0]
+        self.moneyBtns.setSelGroup(0)
+        self.tableWin.setData(ds, gp0['desc'])
+        self.moneyWin.setData(ds)
+        win32gui.InvalidateRect(self.fsWin.hwnd, None, True)
 
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_MOUSEWHEEL:
+            win32gui.SendMessage(self.tableWin.hwnd, msg, wParam, lParam)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
 
 if __name__ == '__main__':
     mgr = FuPanMgrWindow()
