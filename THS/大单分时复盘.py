@@ -316,11 +316,16 @@ class FenShiWindow(base_win.BaseWindow):
         buyRc = (sx, sy, sx + buyWidth, sy + buyWidth)
         sx, sy = x - sellWidth // 2, y - sellWidth // 2
         sellRc = (sx, sy, sx + sellWidth, sy + sellWidth)
-
-        self.drawer.fillCycle(hdc, buyRc,  0x2524A1) # 0x2524A1  0x2E2FFF
-        vs = win32gui.SetROP2(hdc, win32con.R2_MERGEPEN)
-        self.drawer.fillCycle(hdc, sellRc, 0x0F570E) # 0x0F570E 0x00D600
-        win32gui.SetROP2(hdc, vs)
+        if buyWidth >= sellWidth:
+            self.drawer.fillCycle(hdc, buyRc,  0x2524A1) # 0x2524A1  0x2E2FFF
+            vs = win32gui.SetROP2(hdc, win32con.R2_MERGEPEN)
+            self.drawer.fillCycle(hdc, sellRc, 0x0F570E) # 0x0F570E 0x00D600
+            win32gui.SetROP2(hdc, vs)
+        else:
+            self.drawer.fillCycle(hdc, sellRc, 0x0F570E) # 0x0F570E 0x00D600
+            vs = win32gui.SetROP2(hdc, win32con.R2_MERGEPEN)
+            self.drawer.fillCycle(hdc, buyRc,  0x2524A1) # 0x2524A1  0x2E2FFF
+            win32gui.SetROP2(hdc, vs)
 
     def onClick(self, x, y):
         idx = self.getMinuteIdx(x)
@@ -565,24 +570,29 @@ class GroupButton(base_win.BaseWindow):
 class DDMoneyWindow(base_win.BaseWindow):
     def __init__(self):
         super().__init__()
-        self.MARGINS = (60, 50, 60, 30)
-        self.data = None
-        self.jhjjData = None #竟价数据
+        self.MARGINS = (51, 50, 60, 30)
+        self.data = None #连续数据
+        self.jjData = None #竟价数据 9:25 - 9:30
         self.buyMax = 0
         self.sellMax = 0
+        self.jjBuyMax = 0
+        self.jjSellMax = 0
+        self.mouseXY = None
     
     def setData(self, data):
         if not data:
             self.data = None
             return
         self.data = []
-        for i in range(0, 241):
+        self.jjData = []
+        for i in range(0, 250):
             self.data.append({'buy': 0, 'sell': 0, 'time': 0})
-        self.jhjjData = {'buy': 0, 'sell': 0, 'time': 0}
+        for i in range(0, 10):
+            self.jjData.append({'buy': 0, 'sell': 0, 'time': 0})
         for ds in data:
             _time = ds[0][0]
-            if _time < 930:
-                rs = self.jhjjData
+            if _time <= 930:
+                rs = self.jjData[_time - 925]
             else:
                 idx = self.timeToIdx(_time)
                 rs = self.data[idx]
@@ -599,6 +609,13 @@ class DDMoneyWindow(base_win.BaseWindow):
             sellMax = max(d['sell'], sellMax)
         self.buyMax = buyMax
         self.sellMax = sellMax
+
+        buyMax, sellMax = 0, 0
+        for d in self.jjData:
+            buyMax = max(d['buy'], buyMax)
+            sellMax = max(d['sell'], sellMax)
+        self.jjBuyMax = buyMax
+        self.jjSellMax = sellMax
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def getMainRect(self):
@@ -644,13 +661,57 @@ class DDMoneyWindow(base_win.BaseWindow):
             return None
         return fds[idx]
 
+    def formatMoney(self, money):
+        if money < 10000:
+            return f'{money}万'
+        return f'{money / 10000 :.02f}亿'
+
+    def drawBackground(self, hdc):
+        mc = self.getMainRect()
+        self.drawer.drawRect(hdc, mc, self.drawer.getPen(0x36332E))
+        ms = (1000, 1030, 1100, 1300, 1330, 1400, 1430)
+        for m in ms:
+            idx = self.timeToIdx(m)
+            x = self.getMinuteX(idx)
+            self.drawer.drawLine(hdc, x, mc[1], x, mc[3], 0x36332E, style=win32con.PS_DOT)
+        bm = self.formatMoney(self.buyMax)
+        sm = self.formatMoney(self.sellMax)
+        bmRc = (mc[2] + 3, mc[0] - 10, mc[2] + 50, mc[0] + 10)
+        smRc = (mc[2] + 3, mc[3] - 10, mc[2] + 50, mc[3] + 10)
+        self.drawer.drawText(hdc, bm, bmRc, 0x3333ff, align=win32con.DT_LEFT)
+        self.drawer.drawText(hdc, sm, smRc, 0x33ff33, align=win32con.DT_LEFT)
+
+    def getZeroY(self, jj):
+        mc = self.getMainRect()
+        w, h = mc[2] - mc[0], mc[3] - mc[1]
+        if jj:
+            return mc[1] + int(self.jjBuyMax / (self.jjBuyMax + self.jjSellMax) * h)
+        return mc[1] + int(self.buyMax / (self.buyMax + self.sellMax) * h)
+
     def drawMain(self, hdc):
         if not self.data:
             return
         mc = self.getMainRect()
         w, h = mc[2] - mc[0], mc[3] - mc[1]
-        zeroY = mc[1] + int(self.buyMax / (self.buyMax + self.sellMax) * h)
-        self.drawer.drawLine(hdc, mc[0], zeroY, mc[2], zeroY, 0xdddddd)
+        zeroY = self.getZeroY(False)
+        self.drawer.drawLine(hdc, mc[0], zeroY, mc[2], zeroY, 0x36332E)
+
+        # draw jj data
+        jjZeroY = self.getZeroY(True)
+        sz = self.getClientSize()
+        jjH = sz[1]
+        jjX = mc[0] - 20
+        for jj in self.jjData:
+            if jj['time'] == 0:
+                continue
+            h925 = int(jj['buy'] / (self.jjBuyMax + self.jjSellMax) * jjH)
+            rc = (jjX, jjZeroY - h925, jjX + 5, jjZeroY)
+            self.drawer.fillRect(hdc, rc, 0x3333ff)
+            h925 = int(jj['sell'] / (self.jjBuyMax + self.jjSellMax) * jjH)
+            rc = (jjX, jjZeroY, jjX + 5, jjZeroY + h925)
+            self.drawer.fillRect(hdc, rc, 0x33ff33)
+            jjX += 10
+
         for i, d in enumerate(self.data):
             if not (d['buy'] > 0 or d['sell'] > 0):
                 continue
@@ -669,13 +730,19 @@ class DDMoneyWindow(base_win.BaseWindow):
         rect = self.getMainRect()
         if not self.data:
             return
+        self.drawBackground(hdc)
         self.drawMain(hdc)
 
+    def onMouseMove(self, x, y):
+        self.mouseXY = (x, y)
 
-    def getMoneyRange(self):
         pass
 
     def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_MOUSEMOVE:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            self.onMouseMove(x, y)
+            return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
 
@@ -719,7 +786,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         refreshBtn.addListener(None, self.onListenRefresh)
 
         self.moneyWin = DDMoneyWindow()
-        rc5 = (rc[2] + 5, rc2[3] + 10, size[0] - rc[2] - 10, size[1] - rc2[3]- 30)
+        rc5 = (rc[2] + 5, rc2[3] + 10, size[0] - rc[2] - 10, size[1] - rc2[3]- 15)
         self.moneyWin.createWindow(self.hwnd, rc5)
 
         # TODO: remove 
