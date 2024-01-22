@@ -13,6 +13,7 @@ from THS import orm, base_win, ths_win
 
 class FenShiModel:
     def __init__(self):
+        self.henxi = henxin.HexinUrl()
         self.dataFile = None
         self.ddlrFile = None
         self.fsData = None # 当日分时线数据
@@ -37,6 +38,16 @@ class FenShiModel:
             self.code = code
             self.dataFile = datafile.DataFile(code, datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL)
             self.ddlrFile = load_ths_ddlr.ThsDdlrDetailData(code)
+            try:
+                #url = self.henxi.getFenShiUrl(code)
+                #todayData = self.henxi.loadUrlData(url)
+                #if not self.dataFile.data or self.dataFile.data[-1].day != int(todayData['date']):
+                    # append data
+                #    pass
+                #print(todayData)
+                pass
+            except Exception as e:
+                print('[FenShiModel.update] fail', code, day)
         if day and self.day != day:
             self.day = day
             fromIdx = self.dataFile.getItemIdx(day)
@@ -791,10 +802,9 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.fsWin = None
         self.tableWin = None
         self.shareMem = ths_win.ThsShareMemory(False)
-        self.henxi = henxin.HexinUrl()
 
     def create(self):
-        #self.shareMem.open()
+        self.shareMem.open()
         style = win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE
         rect = (0, 0, 1000, 500)
         super().createWindow(None, rect, style, title = '大单复盘')
@@ -829,7 +839,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.moneyWin.createWindow(self.hwnd, rc5)
 
         # TODO: remove 
-        self.updateCodeDay('601096', 20240119)
+        #self.updateCodeDay('601096', 20240119)
 
     def onListenMoney(self, target, evtName, evtInfo):
         group = evtInfo['group']
@@ -847,8 +857,6 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.updateCodeDay(code, day)
 
     def updateCodeDay(self, code, day):
-        #url = self.henxi.getTodayKLineUrl(code)
-        #data = self.henxi.loadUrlData(url)
         xx = orm.THS_Newest.get_or_none(orm.THS_Newest.code == code)
         name = xx.name if xx else ''
         win32gui.SetWindowText(self.hwnd, f'大单复盘 -- {code} {name} / {day}')
