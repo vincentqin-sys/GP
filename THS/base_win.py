@@ -302,8 +302,12 @@ class GridLayout:
             defaultStyle.update(style)
         self.winsInfo[(row, col)] = {'win' : win, 'style' : defaultStyle, 'content': True, 'position': (row, col)}
 
-    def resize(self, width, height):
+    def resize(self, x, y, width, height):
         self.calcLayout(width, height)
+        for k in self.layouts:
+            winInfo = self.layouts[k]
+            if winInfo['content']:
+                self.adjustContentRect(x, y, winInfo)
 
     def parseTemplate(self, template, wh, gap):
         num = len(template)
@@ -426,7 +430,7 @@ class GridLayout:
         rect = self.calcRect(row, col, endRow, endCol)
         return rect
 
-    def getPosition(self, row, col):
+    def getLeftTop(self, row, col):
         y = row * self.gaps[0]
         x = col * self.gaps[1]
         for r in range(0, row):
@@ -437,13 +441,59 @@ class GridLayout:
 
     # return (l, t, r, b)
     def calcRect(self, row, col, endRow, endCol):
-        left, top = self.getPosition(row, col)
-        right, bottom = self.getPosition(endRow, endCol)
+        left, top = self.getLeftTop(row, col)
+        right, bottom = self.getLeftTop(endRow, endCol)
         right += self.cols[endCol]
         bottom += self.rows[endRow]
         return (left, top, right, bottom)
 
-def testLayout():
+    def adjustContentRect(self, x, y, winInfo):
+        style = winInfo['style']
+        win = winInfo['win']
+        rect = winInfo.get('rect')
+        if not win or not rect:
+            return
+        w, h = rect[2] - rect[0], rect[3] - rect[1]
+        x += rect[0]
+        y += rect[1]
+        if style['autoFit']:
+            if isinstance(win, BaseWindow):
+                win32gui.SetWindowPos(win.hwnd, None, x, y, w, h, win32con.SWP_NOZORDER)
+            elif type(win) == int:
+                # is HWND object
+                win32gui.SetWindowPos(win, None, x, y, w, h, win32con.SWP_NOZORDER)
+            elif getattr(win, 'resize', None): 
+                # its a Layout object and has .resize() method
+                win.resize(x, y, w, h)
+            else:
+                print('[GridLayout.adjustContentRect] unsport win type: ', winInfo)
+
+class AbsLayout:
+    def __init__(self) -> None:
+        self.winsInfo = []
+
+    # win = BaseWindow, HWND, unsupport Layout
+    def setContent(self, x, y, win):
+        if win:
+            self.winsInfo.append({'win': win, 'x' : x, 'y': y})
+
+    def resize(self, x, y, width, height):
+        for it in self.winsInfo:
+            self.adjustContentRect(x, y, it)
+
+    def adjustContentRect(self, x, y, winInfo):
+        win = winInfo['win']
+        x += winInfo['x']
+        y += winInfo['y']
+        if isinstance(win, BaseWindow):
+            win32gui.SetWindowPos(win.hwnd, None, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
+        elif type(win) == int:
+            win32gui.SetWindowPos(win, None, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
+        else:
+            print('[AbsLayout.adjustContentRect] unsupport win type :', winInfo)
+
+
+def testGridLayout():
     class TestMain(BaseWindow):
         def __init__(self, gl) -> None:
             super().__init__()
@@ -457,7 +507,6 @@ def testLayout():
                 ws = gl.layouts[pos]
                 style = ws['style']
                 rc = ws['rect']
-                print('oDraw', ws)
                 self.drawer.fillRect(hdc, rc, colors[i % len(colors)])
                 txt = f'{pos} \n horExpand={style["horExpand"]} \n verExpand={style["verExpand"]}'
                 self.drawer.drawText(hdc, txt, rc)
@@ -465,8 +514,8 @@ def testLayout():
             for k in self.gl.layouts:
                 ly = self.gl.layouts[k]
                 if ly and not ly['content']:
-                    x, y = self.gl.getPosition(*k)
-                    self.drawer.fillRect(hdc, (x, y, x + 10, y + 10), 0x0000ff)
+                    x, y = self.gl.getLeftTop(*k)
+                    #self.drawer.fillRect(hdc, (x, y, x + 10, y + 10), 0x0000ff)
 
     rowtp = (50, '20%', '1fr', '2fr', 60, 50, 100)
     coltp = (100, 'auto', '30%', '10%', 60, '10%')
@@ -488,9 +537,9 @@ def testLayout():
     main.createWindow(None, (0, 0, 1002, 602), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW)
     rc = win32gui.GetClientRect(main.hwnd)
     print(rc)
-    gl.resize(rc[2], rc[3])
+    gl.resize(*rc)
     win32gui.PumpMessages()
 
 
 if __name__ == '__main__':
-    testLayout()
+    testGridLayout()
