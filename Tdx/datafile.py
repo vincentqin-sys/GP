@@ -271,6 +271,28 @@ class DataFileUtils:
                 days.append(df.data[i].day)
         return days
     
+    @staticmethod
+    def getLDayDirs():
+        allDirs = []
+        for tag in ('sh', 'sz'):
+            sh = os.path.join(VIPDOC_BASE_PATH, tag)
+            for ld in os.listdir(sh):
+                if 'lday-' in ld:
+                    allDirs.append(os.path.join(sh, ld))
+        allDirs.sort()
+        return allDirs
+    
+    @staticmethod
+    def getMinlineDirs():
+        allDirs = []
+        for tag in ('sh', 'sz'):
+            sh = os.path.join(VIPDOC_BASE_PATH, tag)
+            for ld in os.listdir(sh):
+                if 'minline-' in ld:
+                    allDirs.append(os.path.join(sh, ld))
+        allDirs.sort()
+        return allDirs
+
 if __name__ == '__main__':
     pass
     

@@ -277,7 +277,10 @@ class HotWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, info, len(info), (zgbX - 4, zgbY - 12, zgbX + 8, zgbY), win32con.DT_CENTER)
         #跌停数量图表
         dtX = zgbX + 15
-        dtY = int(ztStartY + (1 - (data['dtNum']) / ztMax) * (endY - ztStartY))
+        dtMin, dtMax = self.getRangeOf(self.lsInfoData, 'dtNum', startIdx, endIdx)
+        dtMax = max(ztMax, dtMax)
+        dtY = int(ztStartY + (1 - (data['dtNum']) / dtMax) * (endY - ztStartY))
+        #dtY = max(dtY, ztStartY)
         win32gui.FillRect(hdc, (dtX, dtY, dtX + 5, endY), hbrYellow)
         info = str(data['dtNum'])
         win32gui.DrawText(hdc, info, len(info), (dtX - 4, dtY - 12, dtX + 8, dtY), win32con.DT_CENTER)

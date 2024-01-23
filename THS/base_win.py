@@ -286,17 +286,17 @@ class GridLayout:
         self.layouts = {}
     
     # @param style = {  autoFit: True(is default), 
-    #            horExpand : False( is default) | int(expand num), 
-    #            verExpand: False(is default) | int(expand num),
-    #            verExpandFirst : True( is default)
+    #            horExpand : int; 0 ( is default) | -1 : right expand all columns |  int(expand num)
+    #            verExpand: int;  0 (is default)  | -1 : down expand all rows     |  int(expand num)
+    #            priority: 100 (default) 越小越优先计算
     #    }
     # align : left|top|right|bottom
     # @param winType  'HWND', 'Layout', None
-    def setContent(self, row, col, win, winType = None, style = None):
-        defaultStyle = {'autoFit' : True, 'horExpand' : False, 'verExpand' : False, 'horExpandFirst' : True}
+    def setContent(self, row, col, win, style = None):
+        defaultStyle = {'autoFit' : True, 'horExpand' : 0, 'verExpand' : 0, 'priority': 100}
         if style:
             defaultStyle.update(style)
-        self.winsInfo[(row, col)] = {'win' : win, 'winType': winType, 'style' : defaultStyle, 'content': True}
+        self.winsInfo[(row, col)] = {'win' : win, 'style' : defaultStyle, 'content': True, 'position': (row, col)}
 
     def resize(self, width, height):
         self.calcLayout(width, height)
@@ -313,7 +313,7 @@ class GridLayout:
                 raise Exception('Error: unknow template of ', tp)
             tp = tp.strip()
             if '%' == tp[-1]:
-                tp = float(tp[0 : -1])
+                tp = float(tp[0 : -1]) / 100
                 vals[i] = int(wh * tp)
                 continue
             if tp[-2 : ] == 'fr':
@@ -325,15 +325,16 @@ class GridLayout:
         if less <= 0:
             return vals
         for i, tp in enumerate(template):
+            if type(tp) != str:
+                continue
             tp = tp.strip()
             if tp[-2 : ] == 'fr':
                 tp = int(tp[0 : -2])
                 vals[i] = int(tp * less / allTp)
-                less -= vals[i]
         for i, tp in enumerate(template):
-            tp = tp.strip()
+            if type(tp) == str:
+                tp = tp.strip()
             if tp == 'auto':
-                tp = int(tp[0 : -2])
                 vals[i] = max(less, 0)
                 break
         return vals
@@ -342,55 +343,48 @@ class GridLayout:
         self.rows = self.parseTemplate(self.templateRows, height, self.gaps[0])
         self.cols = self.parseTemplate(self.templateColumns, width, self.gaps[1])
         self.layouts.clear()
-        self.layouts.update(self.winsInfo)
+        self.layouts.update(copy.deepcopy(self.winsInfo))
+        ls = []
         for r in range(len(self.rows)):
             for c in range(len(self.cols)):
                 k = (r, c)
-                ws = self.winsInfo.get(k)
-                if not ws:
-                    continue
-                self.calcContentSize(r, c, ws)
+                ws = self.layouts.get(k)
+                if ws: ls.append(ws)
+        ls.sort(key = lambda d : d['style']['priority'])
+        for item in ls:
+            pos = item['position']
+            item['rect'] = self.calcContentRect(*pos, item)
 
-    def getHorVerExpandEnd(self, row, col, horExpand, verExpand, horExpandFirst, fill):
-        if not horExpand or not verExpand:
-            return (row, col)
-        er1, ec1 = self.getHorExpandEnd(row, col, horExpand, False)
-        er2, ec2 = self.getVerExpandEnd(row, col, verExpand, False)
-        if horExpandFirst:
-            irx = row
-            for i in range(row, er2 + 1, 1):
-                ir, ic = self.getHorExpandEnd(i, col, horExpand, False)
-                if ir == i and ic == ec1:
-                    irx = i
-                else:
+    def getHorVerExpandEnd(self, row, col, horExpand, verExpand, fill):
+        maxCol = len(self.cols) if horExpand < 0 else min(len(self.cols), col + horExpand + 1)
+        maxRow = len(self.rows) if verExpand < 0 else min(len(self.rows), row + verExpand + 1)
+        if horExpand > 0 or (horExpand < 0 and verExpand < 0 and horExpand < verExpand): # hor first search
+            _, endCol = self.getHorExpandEnd(row, col, horExpand, False)
+            endRow = row
+            for r in range(row + 1, maxRow, 1):
+                _, _c = self.getHorExpandEnd(r, col, horExpand, False)
+                if _c != endCol:
                     break
-            end = (irx, ec1)
-        else:
-            icx = col
-            for i in range(col, ec1 + 1, 1):
-                ir, ic = self.getHorExpandEnd(row, i, verExpand, False)
-                if ir == er2 and ic == i:
-                    irx = i
-                else:
+                endRow = r
+        else: # ver first search
+            endRow, _ = self.getVerExpandEnd(row, col, verExpand, False)
+            endCol = col
+            for c in range(col + 1, maxCol, 1):
+                _r, _ = self.getVerExpandEnd(row, c, verExpand, False)
+                if _r != endRow:
                     break
-            end = (ec2, irx)
+                endCol = c
         if not fill:
-            return end
-        for r in (row, end[0] + 1):
-            for c in (col, end[1] + 1):
+            return (endRow, endCol)
+        for r in range(row, endRow + 1):
+            for c in range(col, endCol + 1):
                 if r == row and c == col:
                     continue
                 self.layouts[(r, c)] = {'win' : None, 'name': f'expand-hor-ver-item({row, col})', 'content': False}
-        return end
+        return (endRow, endCol)
 
     def getHorExpandEnd(self, row, col, horExpand, fill):
-        if not horExpand:
-            return (row, col)
-        maxCol = len(self.cols)
-        if horExpand == True:
-            maxCol = maxCol
-        elif type(horExpand) == int:
-            maxCol = min(maxCol, col + horExpand + 1)
+        maxCol = len(self.cols) if horExpand < 0 else min(len(self.cols), col + horExpand + 1)
         rc = col
         for c in range(col + 1, maxCol, 1):
             k = (row, c)
@@ -402,13 +396,7 @@ class GridLayout:
         return (row, rc)
 
     def getVerExpandEnd(self, row, col, verExpand, fill):
-        if not verExpand:
-            return (row, col)
-        maxRow = len(self.rows)
-        if verExpand == True:
-            maxRow = maxRow
-        elif type(verExpand) == int:
-            maxRow = min(maxRow, row + verExpand + 1)
+        maxRow = len(self.rows) if verExpand < 0 else min(len(self.rows), row + verExpand + 1)
         rr = row
         for r in range(row + 1, maxRow, 1):
             k = (r, col)
@@ -419,28 +407,86 @@ class GridLayout:
             rr = r
         return (rr, col)
 
-    def calcContentSize(self, row, col, winInfo):
+    def calcContentRect(self, row, col, winInfo):
         style = winInfo['style']
         horExpand = style['horExpand']
         verExpand = style['verExpand']
-        horExpandFirst = style['horExpandFirst']
-        if horExpand and verExpand:
-            endRow, endCol = self.getHorVerExpandEnd(row, col, horExpand, verExpand, horExpandFirst, True)
-        elif horExpand and not verExpand:
+        if horExpand != 0 and verExpand != 0:
+            endRow, endCol = self.getHorVerExpandEnd(row, col, horExpand, verExpand, True)
+        elif horExpand != 0 and verExpand == 0:
             endRow, endCol = self.getHorExpandEnd(row, col, horExpand, True)
-        elif not horExpand and verExpand:
+        elif horExpand == 0 and verExpand != 0:
             endRow, endCol = self.getVerExpandEnd(row, col, verExpand, True)
         else:
             endRow, endCol = row, col
-        size = self.calcSize(row, col, endRow, endCol)
-        winInfo['size'] = size
+        rect = self.calcRect(row, col, endRow, endCol)
+        return rect
 
-    # return (width, height)
-    def calcSize(self, row, col, endRow, endCol):
-        height = (endRow - row) * self.gaps[0]
-        width = (endCol - col) * self.gaps[1]
-        for r in range(row, endRow + 1):
-            height += self.rows[r]
-        for c in range(col, endCol + 1):
-            width += self.cols[c]
-        return (width, height)
+    def getPosition(self, row, col):
+        y = row * self.gaps[0]
+        x = col * self.gaps[1]
+        for r in range(0, row):
+            y += self.rows[r]
+        for c in range(0, col):
+            x += self.cols[c]
+        return (x, y)
+
+    # return (l, t, r, b)
+    def calcRect(self, row, col, endRow, endCol):
+        left, top = self.getPosition(row, col)
+        right, bottom = self.getPosition(endRow, endCol)
+        right += self.cols[endCol]
+        bottom += self.rows[endRow]
+        return (left, top, right, bottom)
+
+def testLayout():    
+    class TestMain(BaseWindow):
+        def __init__(self, gl) -> None:
+            super().__init__()
+            self.gl = gl
+
+        def onDraw(self, hdc):
+            win32gui.SetTextColor(hdc, 0)
+            colors = (0xadef22, 0xfeaefe, 0x329f3c, 0xef89ca, 0x9efacc)
+            for i, k in enumerate(self.gl.winsInfo):
+                pos = gl.winsInfo[k]['position']
+                ws = gl.layouts[pos]
+                style = ws['style']
+                rc = ws['rect']
+                print('oDraw', ws)
+                self.drawer.fillRect(hdc, rc, colors[i % len(colors)])
+                txt = f'{pos} \n horExpand={style["horExpand"]} \n verExpand={style["verExpand"]}'
+                self.drawer.drawText(hdc, txt, rc)
+
+            for k in self.gl.layouts:
+                ly = self.gl.layouts[k]
+                if ly and not ly['content']:
+                    x, y = self.gl.getPosition(*k)
+                    self.drawer.fillRect(hdc, (x, y, x + 10, y + 10), 0x0000ff)
+
+    rowtp = (50, '20%', '1fr', '2fr', 60, 50, 100)
+    coltp = (100, 'auto', '30%', '10%', 60, '10%')
+    gl = GridLayout(rowtp, coltp, (5, 10))
+    gl.setContent(0, 0, None, style={})
+    gl.setContent(0, 1, None, style={'horExpand' : 0})
+    gl.setContent(0, 2, None, style={'horExpand' : 0})
+    gl.setContent(0, 3, None, style={'horExpand' : 0})
+    gl.setContent(0, 5, None, style={'horExpand' : 0})
+    
+    gl.setContent(2, 0, None, style={'verExpand' : -1})
+    gl.setContent(1, 1, None, style={'horExpand' : -1, 'verExpand' : -1})
+    gl.setContent(6, 1, None, style={'horExpand' : 1, 'priority': 30})
+    gl.setContent(2, 3, None, style={'priority': 30})
+    #gl.setContent(3, 2, None, style={'priority': 30})
+    gl.setContent(5, 4, None, style={'priority': 30})
+
+    main = TestMain(gl)
+    main.createWindow(None, (0, 0, 1002, 602), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW)
+    rc = win32gui.GetClientRect(main.hwnd)
+    print(rc)
+    gl.resize(rc[2], rc[3])
+    win32gui.PumpMessages()
+
+
+if __name__ == '__main__':
+    testLayout()
