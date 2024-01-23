@@ -51,6 +51,9 @@ class FenShiModel:
         if day and self.day != day:
             self.day = day
             fromIdx = self.dataFile.getItemIdx(day)
+            if fromIdx < 0:
+                self.fsData = None
+                return
             endIdx = fromIdx + 240 - 1
             while True:
                 if endIdx >= len(self.dataFile.data):
@@ -93,6 +96,8 @@ class FenShiModel:
     
     def filterDDLR(self, money):
         self.ddlrFilterData = []
+        if not self.ddlrGroupData:
+            return self.ddlrFilterData
         for ds in self.ddlrGroupData:
             rd = []
             for d in ds:
@@ -426,11 +431,9 @@ class TableWindow(base_win.BaseWindow):
     
     def drawRowItem(self, hdc, sy, data, cw):
         _btime, _etime, bs, money, vol = data
-        if _etime < 9999:
-            _etime *= 100
         sy += (self.ROW_HEIGHT - 14) // 2
         rc = [0, sy, cw, sy + self.ROW_HEIGHT]
-        self.drawer.drawText(hdc, f'{_etime // 10000 :02d}:{_etime//100%100 :02d}:{_etime%100 :02d}', rc, color=0xffffff)
+        self.drawer.drawText(hdc, f'{_etime // 100 :02d}:{_etime % 100 :02d}', rc, color=0xffffff)
         
         colors = (0x2E2FFF, 0x0F1CBA, 0x00D600, 0x279F3D)
         color = colors[bs - 1]
@@ -695,6 +698,8 @@ class DDMoneyWindow(base_win.BaseWindow):
     def getZeroY(self, jj):
         mc = self.getMainRect()
         w, h = mc[2] - mc[0], mc[3] - mc[1]
+        if self.jjBuyMax + self.jjSellMax == 0:
+            return mc[1]
         if jj:
             return mc[1] + int(self.jjBuyMax / (self.jjBuyMax + self.jjSellMax) * h)
         return mc[1] + int(self.buyMax / (self.buyMax + self.sellMax) * h)

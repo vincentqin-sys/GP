@@ -241,6 +241,10 @@ class Drawer:
         hbr = win32gui.GetStockObject(win32con.NULL_BRUSH)
         win32gui.SelectObject(hdc, hbr)
         win32gui.Rectangle(hdc, *rect)
+    
+    def drawRect2(self, hdc, rect, penColor, penStyle = win32con.PS_SOLID, penWidth = 1):
+        pen = self.getPen(penColor, penStyle, penWidth)
+        self.drawRect(hdc, rect, pen)
 
     # rect = list or tuple (left, top, right, botton)
     # color = int (0xbbggrr color)
@@ -439,7 +443,7 @@ class GridLayout:
         bottom += self.rows[endRow]
         return (left, top, right, bottom)
 
-def testLayout():    
+def testLayout():
     class TestMain(BaseWindow):
         def __init__(self, gl) -> None:
             super().__init__()
@@ -477,7 +481,7 @@ def testLayout():
     gl.setContent(1, 1, None, style={'horExpand' : -1, 'verExpand' : -1})
     gl.setContent(6, 1, None, style={'horExpand' : 1, 'priority': 30})
     gl.setContent(2, 3, None, style={'priority': 30})
-    #gl.setContent(3, 2, None, style={'priority': 30})
+    gl.setContent(3, 2, None, style={'priority': 30})
     gl.setContent(5, 4, None, style={'priority': 30})
 
     main = TestMain(gl)

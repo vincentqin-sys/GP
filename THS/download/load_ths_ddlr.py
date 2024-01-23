@@ -213,6 +213,8 @@ class ThsDdlrDetailData:
                 _etime = _btime
             elif len(items) == 5:
                 _btime, _etime, bs, money, vol = items
+                _btime = int(_btime) // 100
+                _etime = int(_etime) // 100
             rs['data'].append((int(_btime), int(_etime), int(bs), int(money), int(vol)))
         # sort data by end time
         rs['data'] = sorted(rs['data'], key= lambda d : d[1])

@@ -573,6 +573,8 @@ def main():
             util.clearModels()
             file.close()
             print('save success')
+            notepad = r'C:\Program Files\Notepad++\notepad++.exe'
+            win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
         elif opt == 'l':
             main_loadFile()
         elif opt == 'h':

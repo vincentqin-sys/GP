@@ -277,7 +277,7 @@ class DataFileUtils:
         for tag in ('sh', 'sz'):
             sh = os.path.join(VIPDOC_BASE_PATH, tag)
             for ld in os.listdir(sh):
-                if 'lday-' in ld:
+                if 'lday' in ld:
                     allDirs.append(os.path.join(sh, ld))
         allDirs.sort()
         return allDirs
@@ -288,7 +288,7 @@ class DataFileUtils:
         for tag in ('sh', 'sz'):
             sh = os.path.join(VIPDOC_BASE_PATH, tag)
             for ld in os.listdir(sh):
-                if 'minline-' in ld:
+                if 'minline' in ld:
                     allDirs.append(os.path.join(sh, ld))
         allDirs.sort()
         return allDirs
