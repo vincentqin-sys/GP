@@ -337,6 +337,14 @@ def releaseDesktopGUILock(lock):
     if lock:
         win32api.CloseHandle(lock)
 
+# seconds
+def checkUserNoInputTime():
+    a = win32api.GetLastInputInfo()
+    cur = win32api.GetTickCount()
+    diff = cur - a
+    sec = diff / 1000
+    return sec >= 5 * 60
+
 if __name__ == '__main__':
     lastDay = None
     runNow = False
@@ -351,9 +359,9 @@ if __name__ == '__main__':
             checkDDLR_Amount()
             continue
         st = today.strftime('%H:%M')
-        if (st >= '18:15' and st < '19:00') or runNow:
+        if (st >= '18:15' ) or runNow: # runNow and st < '19:00'
             pyautogui.hotkey('win', 'd')
-            if run():
+            if checkUserNoInputTime() and run():
                 lastDay = nowDay
                 runNow = False
             checkDDLR_Amount()

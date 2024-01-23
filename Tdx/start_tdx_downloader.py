@@ -72,21 +72,25 @@ class TdxDownloader:
 
     def getStartDayForDay(self):
         dirs = datafile.DataFileUtils.getLDayDirs()
-        dirs.remove('lday')
         maxday = None
         for d in dirs:
+            d = os.path.basename(d)
+            if '-' not in d:
+                continue
             lday = d.split('-')[-1]
             if not maxday or maxday < lday:
                 maxday = lday
         dt = datetime.datetime.strptime(maxday, '%Y%m%d')
         dt = dt + datetime.timedelta(days = 1)
-        return dt
+        return dt    
     
     def getStartDayForTimemimute(self):
         dirs = datafile.DataFileUtils.getMinlineDirs()
-        dirs.remove('minline')
         maxday = None
         for d in dirs:
+            d = os.path.basename(d)
+            if '-' not in d:
+                continue
             lday = d.split('-')[-1]
             if not maxday or maxday < lday:
                 maxday = lday
@@ -192,6 +196,14 @@ def releaseDesktopGUILock(lock):
     if lock:
         win32api.CloseHandle(lock)
 
+# seconds
+def checkUserNoInputTime():
+    a = win32api.GetLastInputInfo()
+    cur = win32api.GetTickCount()
+    diff = cur - a
+    sec = diff / 1000
+    return sec >= 5 * 60
+
 if __name__ == '__main__':
     lastDay = 0
     while True:
@@ -206,6 +218,6 @@ if __name__ == '__main__':
         if ts < '18:00':
             time.sleep(3 * 60)
             continue
-        if work():
+        if checkUserNoInputTime() and work():
             lastDay = today.day
         

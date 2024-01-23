@@ -294,5 +294,6 @@ class DataFileUtils:
         return allDirs
 
 if __name__ == '__main__':
+    DataFileUtils.getLDayDirs()
     pass
     
