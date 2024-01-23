@@ -433,7 +433,7 @@ class TableWindow(base_win.BaseWindow):
         _btime, _etime, bs, money, vol = data
         sy += (self.ROW_HEIGHT - 14) // 2
         rc = [0, sy, cw, sy + self.ROW_HEIGHT]
-        self.drawer.drawText(hdc, f'{_etime // 100 :02d}:{_etime % 100 :02d}', rc, color=0xffffff)
+        self.drawer.drawText(hdc, f'{_btime // 100 :02d}:{_btime % 100 :02d}', rc, color=0xffffff)
         
         colors = (0x2E2FFF, 0x0F1CBA, 0x00D600, 0x279F3D)
         color = colors[bs - 1]
@@ -604,7 +604,7 @@ class DDMoneyWindow(base_win.BaseWindow):
         for i in range(0, 10):
             self.jjData.append({'buy': 0, 'sell': 0, 'time': 0})
         for ds in data:
-            _time = ds[0][1]
+            _time = ds[0][0]
             if _time <= 930:
                 rs = self.jjData[_time - 925]
             else:
