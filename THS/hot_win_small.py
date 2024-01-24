@@ -73,10 +73,15 @@ class ThsSortQuery:
 class ThsZSQuery:
     def __init__(self) -> None:
         pass
-        orm.THS_ZS_ZD.select(orm.THS_ZS_ZD.day).distinct()
 
     def getZSInfo(self, zsCode):
-        pass
+        if type(zsCode) == int:
+            zsCode = f'{zsCode :06d}'
+        qr = orm.THS_ZS_ZD.select(orm.THS_ZS_ZD.code == zsCode).where().order_by(orm.THS_ZS_ZD.day.asc())
+        data = [d.__data__ for d in qr]
+        for d in data:
+            d['day'] = int(d['day'].replace('-', ''))
+        return data
 
 # param days (int): [YYYYMMDD, ....]
 # param selDay : int
@@ -90,7 +95,7 @@ def findDrawDaysIndex(days, selDay, maxNum):
         return (len(days) - maxNum, len(days))
     if type(days[0]) != int:
         for i in range(len(days)):
-            days[i] = int(days[i])
+            days[i] = int(days[i].replace('-', '.'))
     #最左
     if selDay <= days[0]:
         return (0, maxNum)
@@ -121,16 +126,29 @@ class SortCardView(base_win.CardView):
     def __init__(self, hwnd):
         super().__init__(hwnd)
         self.query = ThsSortQuery()
+        self.zsQuery = ThsZSQuery()
         self.sortData = None
+        self.zsData = None
+        self.selectDay = 0
+
+    def updateSelectDay(self, selDay):
+        self.selectDay = selDay
 
     def updateCode(self, code):
-        # load sort data
-        self.sortData = self.query.getCodeInfo_THS(code)
-        win32gui.SetWindowText(self.hwnd, f'{self.sortData["code"]} {self.sortData["name"]}')
+        if type(code) == int:
+            code = f'{code :06d}'
+        if code[0 : 2] != '88':
+            # load sort data
+            self.zsData = None
+            self.sortData = self.query.getCodeInfo_THS(code)
+            win32gui.SetWindowText(self.hwnd, f'{self.sortData["code"]} {self.sortData["name"]}')
+        else:
+            self.sortData = None
+            self.zsData = self.zsQuery.getZSInfo(code)
+            name = self.zsData[0]['name'] if self.zsData else ''
+            win32gui.SetWindowText(self.hwnd, f'{code} {name}')
 
-    def onDraw(self, hdc):
-        if not self.sortData:
-            return
+    def drawSortData(self, hdc):
         win32gui.SetTextColor(hdc, 0xdddddd)
         lines = self.sortData['info'].split('\n')
         rect = win32gui.GetClientRect(self.hwnd)
@@ -138,6 +156,41 @@ class SortCardView(base_win.CardView):
             H = 18
             y = i * H + 2
             win32gui.DrawText(hdc, line, len(line), (2, y, rect[2], y + H), win32con.DT_LEFT)
+
+    def drawZSData(self, hdc):
+        H = 18
+        rect = win32gui.GetClientRect(self.hwnd)
+        RH = rect[3] - rect[1]
+        RW = rect[2] - rect[0]
+        MAX_ROWS = RH // H
+        days = [d['day'] for d in self.zsData]
+        fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
+        for i in range(fromIdx, endIdx):
+            zs = self.zsData[i]
+            if zs['day'] == self.selectDay:
+                win32gui.SetTextColor(hdc, 0x0000ff)
+            else:
+                win32gui.SetTextColor(hdc, 0xdddddd)
+            day = str(zs['day'])[4 : ]
+            day = day[0 : 2] + '.' + day[2 : 4]
+            idx = i - fromIdx
+            y = (idx % MAX_ROWS) * H + 2
+            x = RW // 2 if idx >= MAX_ROWS else 0
+            rect = (x + 2, y, x + RW // 2, y + H)
+            line = f'{day} 全{zs["zdf_PM"] :<3d}  {zs["zdf_50PM"] :>3d}'
+            win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT)
+        pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
+        win32gui.SelectObject(hdc, pen)
+        win32gui.MoveToEx(hdc, RW // 2, 0)
+        win32gui.LineTo(hdc, RW // 2, rect[3])
+        win32gui.DeleteObject(pen)
+
+    def onDraw(self, hdc):
+        if self.sortData:
+            self.drawSortData(hdc)
+        elif self.zsData:
+            self.drawZSData(hdc)
+        
 
 class HotCardView(base_win.CardView):
     def __init__(self, hwnd):
