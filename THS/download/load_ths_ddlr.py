@@ -192,9 +192,9 @@ class ThsDdlrDetailData:
     def getMiniteDataRange(self, dayData, fromIdx):
         if fromIdx < 0 or fromIdx >= len(dayData):
             return None
-        minute = dayData[fromIdx][0]
+        minute = dayData[fromIdx]['beginTime']
         for i in range(fromIdx, len(dayData)):
-            if minute != dayData[i][0]:
+            if minute != dayData[i]['beginTime']:
                 break
             i += 1
         return (fromIdx, i)
@@ -215,9 +215,11 @@ class ThsDdlrDetailData:
                 _btime, _etime, bs, money, vol = items
                 _btime = int(_btime) // 100
                 _etime = int(_etime) // 100
-            rs['data'].append((int(_btime), int(_etime), int(bs), int(money), int(vol)))
+            obj = {'beginTime': int(_btime), 'endTime':int(_etime), 'bs': int(bs), 'money': int(money), 'vol': int(vol) }
+            rs['data'].append(obj)
+            #rs['data'].append((int(_btime), int(_etime), int(bs), int(money), int(vol)))
         # sort data by end time
-        rs['data'] = sorted(rs['data'], key= lambda d : d[1])
+        rs['data'] = sorted(rs['data'], key= lambda d : d['beginTime'])
         return rs
 
     def _loadFile(self):
@@ -299,6 +301,7 @@ def run():
     if not lock:
         return False
     try:
+        pyautogui.hotkey('win', 'd')
         autoLoadTop200Data()
         lds = LoadThsDdlrStruct()
         lds.loadAllFileData()
@@ -360,8 +363,7 @@ if __name__ == '__main__':
             continue
         st = today.strftime('%H:%M')
         if (st >= '18:15' ) or runNow: # runNow and st < '19:00'
-            pyautogui.hotkey('win', 'd')
-            if checkUserNoInputTime() and run():
+            if  run(): # checkUserNoInputTime() and
                 lastDay = nowDay
                 runNow = False
             checkDDLR_Amount()

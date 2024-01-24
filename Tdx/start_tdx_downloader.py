@@ -112,18 +112,21 @@ class TdxDownloader:
             raise Exception('Not find fromDayCtrl')
         fromDayCtrl = DateTimePickerWrapper(fromDayCtrl)
         startDay = self.getStartDayForDay()
-        fromDayCtrl.set_time(year=startDay.year, month=startDay.month, day = startDay.day)
+        fromDayCtrl.set_time(year = startDay.year, month = startDay.month, day = startDay.day)
+
         startBtn = win32gui.FindWindowEx(hwnd, None, 'Button', '开始下载')
         startBtnPos = self.getScreenPos(hwnd, 440, 400, False)
         pyautogui.click(*startBtnPos, duration = 0.3) # 点击下载
         # wait for download end
-        time.sleep(30)
+        statusCtrl = win32gui.GetDlgItem(hwnd, 0x4C8) 
+        time.sleep(2)
         if win32gui.GetWindowText(startBtn) != '取消下载':
             raise Exception('start download Fail')
         while True:
             time.sleep(60)
             if win32gui.GetWindowText(startBtn) == '开始下载':
                 break
+        pyautogui.click(*selBtnPos, duration = 0.3)
 
     def startDownloadForTimeMinute(self):
         hwnd = win32gui.FindWindow('#32770', '盘后数据下载')
@@ -148,7 +151,7 @@ class TdxDownloader:
         startBtnPos = self.getScreenPos(hwnd, 440, 400, False)
         pyautogui.click(*startBtnPos, duration = 0.3) # 点击下载
         # wait for download end
-        time.sleep(30)
+        time.sleep(2)
         if win32gui.GetWindowText(startBtn) != '取消下载':
             raise Exception('start download Fail')
         while True:
@@ -218,6 +221,6 @@ if __name__ == '__main__':
         if ts < '18:00':
             time.sleep(3 * 60)
             continue
-        if checkUserNoInputTime() and work():
+        if  work(): #checkUserNoInputTime() and
             lastDay = today.day
         

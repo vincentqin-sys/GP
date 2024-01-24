@@ -80,6 +80,9 @@ def findDrawDaysIndex(days, selDay, maxNum):
         return (0, len(days))
     if not selDay:
         return (len(days) - maxNum, len(days))
+    if type(days[0]) != int:
+        for i in range(len(days)):
+            days[i] = int(days[i])
     #最左
     if selDay <= days[0]:
         return (0, maxNum)

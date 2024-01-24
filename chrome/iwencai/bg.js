@@ -54,15 +54,31 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             cl = true;
             setLoginInfo(data);
         }
-    } else if (cmd == 'SET_TOP_VOL') {
+    } else if (cmd == 'SET_ZS_INFO') {
         cl = true;
-        setTopVol(data);
+        sendZSToServer(data);
     }
 	
 	if (cl && sendResponse) {
 		sendResponse('OK');
 	}
 });
+
+function sendZSToServer(data) {
+    $.ajax({
+        url: 'http://localhost:8071/saveZS',
+        method: 'POST',
+        dataType: 'json',
+        contentType : 'application/json',
+        data: JSON.stringify(data),
+        success: function (res) {
+            mlog('Success: Send ZS info to server success ', res, data);
+        },
+        error: function (res) {
+            mlog('Fail: Send ZS info to server fail ', data);
+        }
+    });
+}
 
 function setHotInfo(data) {
     if (! proc_info.hotWindowId) {
@@ -145,6 +161,7 @@ function hot_run() {
     let ft = formatTime(new Date());
     let jtTime = (ft >= '09:30' && ft < '11:35') || (ft >= '13:00' && ft < '15:05');
     let jtTime2 = (ft >= '08:00' && ft < '15:20');
+    let jtTime3 = (ft >= '15:30' && ft < '16:00'); // 下载指数数据时间
     let day = new Date();
     let jtDay = day.getDay() != 0 && day.getDay() != 6; // not 周六周日
     let holidays = ['2023-05-01', '2023-05-02', '2023-05-03', '2023-06-22', '2023-06-23', '2023-09-29', '2023-10-02', '2023-10-03', '2023-10-04', '2023-10-05', '2023-10-06'];
@@ -173,6 +190,11 @@ function hot_run() {
             }
         }
     }
+    if (jtTime3) {
+        if ((Date.now() - proc_info.lastOpenHotPageTime) / 1000 / 60 >= 60) { // 60 minutes, used for save ZS
+            openZSPage('FOR-LOGIN');
+        }
+    }
 }
 
 function openHotPage(openReason) {
@@ -190,7 +212,20 @@ function openHotPage(openReason) {
     });
 }
 
-
+function openZSPage(openReason) {
+    let url = 'https://www.iwencai.com/unifiedwap/result?w=%E5%90%8C%E8%8A%B1%E9%A1%BA%E6%A6%82%E5%BF%B5%E6%8C%87%E6%95%B0%E6%88%96%E5%90%8C%E8%8A%B1%E9%A1%BA%E8%A1%8C%E4%B8%9A%E6%8C%87%E6%95%B0%E6%8C%89%E6%B6%A8%E8%B7%8C%E5%B9%85%E6%8E%92%E5%BA%8F&querytype=zhishu&openReason=' + openReason;
+    needSave = openReason == 'FOR-SAVE';
+    
+    chrome.windows.create({ url: url, type: 'panel' }, function (window) {
+        // callback
+        proc_info.hotWindowId = window.id;
+        proc_info.needSave = needSave;
+        proc_info.lastOpenHotPageTime = Date.now();
+        if (needSave) {
+            proc_info.lastOpenHotPageTimeForSave = Date.now();
+        }
+    });
+}
 
 setInterval(hot_run, 1000 * 20); // 20 seconds
 

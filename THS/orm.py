@@ -239,6 +239,22 @@ class THS_ZS(pw.Model):
         database = db_thszs
         table_name = '同花顺指数'
 
+class THS_ZS_ZD(pw.Model):
+    day = pw.CharField()
+    code = pw.CharField() #指数代码
+    name = pw.CharField() #指数名称
+    close = pw.FloatField()
+    open = pw.FloatField()
+    high = pw.FloatField()
+    rate = pw.FloatField()
+    money = pw.FloatField() #亿(元)
+    vol = pw.FloatField() # 亿(股)
+    zdf = pw.FloatField() #涨跌幅
+
+    class Meta:
+        database = db_thszs
+        table_name = '同花顺指数涨跌信息'        
+
 db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/KPL_ZT_FuPan.db')
 class KPL_ZT_FuPan(pw.Model):
     code = pw.CharField()
@@ -258,7 +274,7 @@ db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_Newest, THS_GNTC, THS_HYDB_2])
 db2.create_tables([THS_Hot, THS_HotZH])
 db3.create_tables([TaoGuBa_Remark])
 db5.create_tables([THS_DDLR])
-db_thszs.create_tables([THS_ZS])
+db_thszs.create_tables([THS_ZS, THS_ZS_ZD])
 db_ztfupan.create_tables([KPL_ZT_FuPan])
 
     

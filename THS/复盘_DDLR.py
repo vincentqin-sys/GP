@@ -34,52 +34,52 @@ class FenShiModel:
             return
         if type(code) == int:
             code = f'{code :06d}'
-        if self.code != code:
-            self.code = code
-            self.dataFile = datafile.DataFile(code, datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL)
-            self.ddlrFile = load_ths_ddlr.ThsDdlrDetailData(code)
-            try:
-                #url = self.henxi.getFenShiUrl(code)
-                #todayData = self.henxi.loadUrlData(url)
-                #if not self.dataFile.data or self.dataFile.data[-1].day != int(todayData['date']):
-                    # append data
-                #    pass
-                #print(todayData)
-                pass
-            except Exception as e:
-                print('[FenShiModel.update] fail', code, day)
-        if day and self.day != day:
-            self.day = day
-            fromIdx = self.dataFile.getItemIdx(day)
-            if fromIdx < 0:
-                self.fsData = None
-                return
-            endIdx = fromIdx + 240 - 1
-            while True:
-                if endIdx >= len(self.dataFile.data):
-                    break
-                m = self.dataFile.data[endIdx]
-                if m.day == day:
-                    endIdx += 1
-                else:
-                    break
-            self.dataFile.calcAvgPriceOfDay(int(day))
-            self.fsData = self.dataFile.data[fromIdx : endIdx]
-            # insert 9:30 data 通达信合并了9:30和9:31的数据
-            c930 = copy.copy(self.fsData[0])
-            c930.time = 930
-            c930.amount = c930.vol = 0
-            c930.avgPrice = c930.close = c930.open
-            self.fsData.insert(0, c930)
-            #for i in self.fsData:
-            #    print(i)
-            self.ddlrData = self.ddlrFile.getDataAtDay(day)
-            self.groupDDLRByTime()
-            if fromIdx > 0:
-                self.pre = self.dataFile.data[fromIdx - 1].close
+        #if self.code != code:
+        self.code = code
+        self.dataFile = datafile.DataFile(code, datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL)
+        self.ddlrFile = load_ths_ddlr.ThsDdlrDetailData(code)
+        try:
+            #url = self.henxi.getFenShiUrl(code)
+            #todayData = self.henxi.loadUrlData(url)
+            #if not self.dataFile.data or self.dataFile.data[-1].day != int(todayData['date']):
+                # append data
+            #    pass
+            #print(todayData)
+            pass
+        except Exception as e:
+            print('[FenShiModel.update] fail', code, day)
+        #if day and self.day != day:
+        self.day = day
+        fromIdx = self.dataFile.getItemIdx(day)
+        if fromIdx < 0:
+            self.fsData = None
+            return
+        endIdx = fromIdx + 240 - 1
+        while True:
+            if endIdx >= len(self.dataFile.data):
+                break
+            m = self.dataFile.data[endIdx]
+            if m.day == day:
+                endIdx += 1
             else:
-                self.pre = self.dataFile.data[fromIdx].open
-            self.priceRange = None
+                break
+        self.dataFile.calcAvgPriceOfDay(int(day))
+        self.fsData = self.dataFile.data[fromIdx : endIdx]
+        # insert 9:30 data 通达信合并了9:30和9:31的数据
+        c930 = copy.copy(self.fsData[0])
+        c930.time = 930
+        c930.amount = c930.vol = 0
+        c930.avgPrice = c930.close = c930.open
+        self.fsData.insert(0, c930)
+        #for i in self.fsData:
+        #    print(i)
+        self.ddlrData = self.ddlrFile.getDataAtDay(day)
+        self.groupDDLRByTime()
+        if fromIdx > 0:
+            self.pre = self.dataFile.data[fromIdx - 1].close
+        else:
+            self.pre = self.dataFile.data[fromIdx].open
+        self.priceRange = None
 
     def getTimeData(self, time_):
         pass
@@ -313,7 +313,7 @@ class FenShiWindow(base_win.BaseWindow):
     def drawDDLRItemCycle(self, hdc, ds):
         if not ds:
             return
-        _time = ds[0][0]
+        _time = ds[0]['beginTime']
         idx = self.timeToIdx(_time)
         data = self.getMinuteData(idx)
         price = data.close
@@ -321,7 +321,7 @@ class FenShiWindow(base_win.BaseWindow):
         y = self.getMinuteY(price)
         buy = sell = 0
         for d in ds:
-            bt, et, bs, money, vol = d
+            bs, money = d['bs'], d['money']
             if bs <= 2:
                 buy += money
             else:
@@ -430,7 +430,10 @@ class TableWindow(base_win.BaseWindow):
         return (self.startIdx, min(self.startIdx + rowNum, len(self.data)))
     
     def drawRowItem(self, hdc, sy, data, cw):
-        _btime, _etime, bs, money, vol = data
+        _btime = data['beginTime']
+        bs = data['bs']
+        money = data['money']
+        vol = data['vol']
         sy += (self.ROW_HEIGHT - 14) // 2
         rc = [0, sy, cw, sy + self.ROW_HEIGHT]
         self.drawer.drawText(hdc, f'{_btime // 100 :02d}:{_btime % 100 :02d}', rc, color=0xffffff)
@@ -457,7 +460,7 @@ class TableWindow(base_win.BaseWindow):
         if not self.data:
             return -1
         for i, d in enumerate(self.data):
-            if d[0] >= _time:
+            if d['beginTime'] >= _time:
                 return i
         return -1
 
@@ -604,7 +607,7 @@ class DDMoneyWindow(base_win.BaseWindow):
         for i in range(0, 10):
             self.jjData.append({'buy': 0, 'sell': 0, 'time': 0})
         for ds in data:
-            _time = ds[0][0]
+            _time = ds[0]['beginTime']
             if _time <= 930:
                 rs = self.jjData[_time - 925]
             else:
@@ -612,7 +615,7 @@ class DDMoneyWindow(base_win.BaseWindow):
                 rs = self.data[idx]
             rs['time'] = _time
             for d in ds:
-                _bt, _et, bs, money, vol = d
+                bs, money = d['bs'], d['money']
                 if bs <= 2:
                     rs['buy'] += money
                 else:

@@ -18,15 +18,15 @@
 	],
 	
 	"background": {
-		"scripts": ["jquery-3.6.min.js", "bg.js", "bg2.js"],
+		"scripts": ["jquery-3.6.min.js", "bg.js"],
 		"persistent": true
 	},
 	
     "content_scripts": [
         {
-			"matches": ["http://www.iwencai.com/unifiedwap/result*"],
+			"matches": ["http://www.iwencai.com/unifiedwap/result*", "https://www.iwencai.com/unifiedwap/result*"],
             "run_at": "document_idle",
-            "js": ["jquery-3.6.min.js", "thread.js", "iwencai-hot-page.js", "iwencai-vol-page.js"],
+            "js": ["jquery-3.6.min.js", "thread.js", "iwencai-hot-page.js", "iwencai-zs-page.js"],
 			"all_frames" : true
 		},
 		{

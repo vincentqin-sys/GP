@@ -100,6 +100,16 @@ def getMoreHotOrders():
         rs.append({'day': day, 'codes': news})
     return rs
 
+def saveZS():
+    data = request.json
+    if len(data) > 0:
+        datas = [orm.THS_ZS_ZD(**d) for d in data]
+        orm.THS_ZS_ZD.bulk_create(datas, 100)
+        print(f"Save ZS success, insert {data[0]['day']} {len(data)} num")
+    else:
+        print(f"Save ZS, no data ")
+    return {"status": "OK"}
+
 def startup(app : Flask):
     print('[hot-server]功能: 启动服务, 保存同花顺热点; 保持Chrome始终都启动了。')
     #p = Process(target = sub_process, daemon = True)
@@ -111,3 +121,4 @@ def startup(app : Flask):
     app.add_url_rule('/saveHot', view_func=saveHot, methods=['POST'])
     app.add_url_rule('/getHot/<code>', view_func=getHot,  methods = ['GET'])
     app.add_url_rule('/moreHotOrders', view_func=getMoreHotOrders,  methods = ['GET'])
+    app.add_url_rule('/saveZS', view_func=saveZS, methods=['POST'])
