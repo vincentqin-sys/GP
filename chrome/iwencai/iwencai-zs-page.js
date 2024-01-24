@@ -153,6 +153,28 @@ function getPageNum() {
 
 function loadFinished() {
     console.log('[loadFinished] load data length: ', pageInfo['data'].length);
+    data = pageInfo['data'];
+    data50 = [];
+    for (let i = 0; i < data.length; i++) {
+        let dt = data[i];
+        if (dt['money'] >= 50) {
+            data50.push(dt);
+        }
+        if (i <= data.length / 2) {
+            dt['zdf_PM'] = i + 1;
+        } else {
+            dt['zdf_PM'] = i - data.length;
+        }
+    }
+    for (let i = 0; i < data50.length; i++) {
+        let dt = data50[i];
+        if (i <= data50.length / 2) {
+            dt['zdf_50PM'] = i + 1;
+        } else {
+            dt['zdf_50PM'] = i - data50.length;
+        }
+    }
+
     let msg = { cmd: 'SET_ZS_INFO', data:  pageInfo['data']};
     chrome.runtime.sendMessage(msg
         // function(response) {

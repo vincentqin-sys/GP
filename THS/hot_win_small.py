@@ -70,6 +70,14 @@ class ThsSortQuery:
         
         return {'info': txt, 'code': code, 'name': name}
 
+class ThsZSQuery:
+    def __init__(self) -> None:
+        pass
+        orm.THS_ZS_ZD.select(orm.THS_ZS_ZD.day).distinct()
+
+    def getZSInfo(self, zsCode):
+        pass
+
 # param days (int): [YYYYMMDD, ....]
 # param selDay : int
 # return [startIdx, endIdx)

@@ -250,6 +250,8 @@ class THS_ZS_ZD(pw.Model):
     money = pw.FloatField() #亿(元)
     vol = pw.FloatField() # 亿(股)
     zdf = pw.FloatField() #涨跌幅
+    zdf_50PM = pw.IntegerField(default = 0) # 50亿以上排名
+    zdf_PM = pw.IntegerField(default = 0) # 全部排名
 
     class Meta:
         database = db_thszs
