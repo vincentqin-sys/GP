@@ -101,7 +101,7 @@ class FenShiModel:
         for ds in self.ddlrGroupData:
             rd = []
             for d in ds:
-                if d[3] >= money:
+                if d['money'] >= money:
                     rd.append(d)
             if len(rd) > 0:
                 self.ddlrFilterData.append(rd)
@@ -495,7 +495,7 @@ class TableWindow(base_win.BaseWindow):
         buy = {'name': '买单', 'num' : 0, 'money': 0, 'zdMoney': 0, 'bdMoney': 0}
         sell = {'name': '卖单','num' : 0, 'money': 0, 'zdMoney': 0, 'bdMoney': 0}
         for d in self.data:
-            _bt, _et, bs, money, vol = d
+            bs, money = d['bs'], d['money']
             rr = buy if bs <= 2 else sell
             rr['num'] += 1
             rr['money'] += money
@@ -701,10 +701,12 @@ class DDMoneyWindow(base_win.BaseWindow):
     def getZeroY(self, jj):
         mc = self.getMainRect()
         w, h = mc[2] - mc[0], mc[3] - mc[1]
-        if self.jjBuyMax + self.jjSellMax == 0:
-            return mc[1]
         if jj:
+            if self.jjBuyMax + self.jjSellMax == 0:
+                return mc[1]
             return mc[1] + int(self.jjBuyMax / (self.jjBuyMax + self.jjSellMax) * h)
+        if self.buyMax + self.sellMax == 0:
+            return mc[1]
         return mc[1] + int(self.buyMax / (self.buyMax + self.sellMax) * h)
 
     def drawJJ(self, hdc):
@@ -714,10 +716,12 @@ class DDMoneyWindow(base_win.BaseWindow):
         jjZeroY = self.getZeroY(True)
         sz = self.getClientSize()
         jjH = sz[1]
-        jjX = 5
         for jj in self.jjData:
             if jj['time'] == 0:
                 continue
+            jjX = 5 # 925
+            if jj['time'] == 930:
+                jjX = 35
             h925 = int(jj['buy'] / (self.jjBuyMax + self.jjSellMax) * jjH)
             rc = (jjX, jjZeroY - h925, jjX + 5, jjZeroY)
             self.drawer.fillRect(hdc, rc, 0x3333ff)
@@ -731,7 +735,6 @@ class DDMoneyWindow(base_win.BaseWindow):
             y = min(rc[3] + 20, sz[1])
             rc2 = (jjX, y - 20, jjX + 50, y)
             self.drawer.drawText(hdc, self.formatMoney(jj['sell']), rc2, 0xdddddd)
-            jjX += 30
 
     def drawMain(self, hdc):
         if not self.data:

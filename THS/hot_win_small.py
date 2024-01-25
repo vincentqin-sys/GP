@@ -481,7 +481,6 @@ class SimpleWindow(CardWindow):
         self.curCode = None
         self.selectDay = 0
         self.zsCardView = None
-        self.cardViews_ = None
 
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
@@ -494,7 +493,18 @@ class SimpleWindow(CardWindow):
         self.addCardView(HotCardView(self.hwnd))
         self.addCardView(KPLCardView(self.hwnd))
         self.zsCardView = ZSCardView(self.hwnd)
-        self.cardViews_ = self.cardViews[0 : ]
+
+    def changeCardView(self):
+        scode = f'{self.curCode :06d}' if type(self.curCode) == int else self.curCode
+        if scode and scode[0 : 2] == '88':
+            return
+        super().changeCardView()
+
+    def getCurCardView(self):
+        scode = f'{self.curCode :06d}' if type(self.curCode) == int else self.curCode
+        if scode and scode[0 : 2] == '88':
+            return self.zsCardView
+        return super().getCurCardView()
 
     def changeCode(self, code):
         if (self.curCode == code) or (not code):
@@ -502,15 +512,11 @@ class SimpleWindow(CardWindow):
         self.curCode = code
         scode = f'{code :06d}' if type(code) == int else code
         if scode[0 : 2] == '88':
-            self.cardViews.clear()
-            self.curCardViewIdx = 0
-            self.addCardView(self.zsCardView)
+            self.zsCardView.updateCode(code)
         else:
-            self.cardViews.clear()
-            self.cardViews.extend(self.cardViews_)
-        for cv in self.cardViews:
-            cc =  getattr(cv, 'updateCode')
-            if cc: cc(code)
+            for cv in self.cardViews:
+                cc =  getattr(cv, 'updateCode')
+                if cc: cc(code)
         if self.hwnd:
             win32gui.InvalidateRect(self.hwnd, None, True)
 

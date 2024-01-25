@@ -215,6 +215,8 @@ class ThsDdlrDetailData:
                 _btime, _etime, bs, money, vol = items
                 _btime = int(_btime) // 100
                 _etime = int(_etime) // 100
+            else:
+                raise Exception('[ThsDdlrDetailData._loadOneLine], Error Data:', items)
             obj = {'beginTime': int(_btime), 'endTime':int(_etime), 'bs': int(bs), 'money': int(money), 'vol': int(vol) }
             rs['data'].append(obj)
             #rs['data'].append((int(_btime), int(_etime), int(bs), int(money), int(vol)))
