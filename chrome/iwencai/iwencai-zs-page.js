@@ -95,8 +95,8 @@ function parseCell(colName, val) {
 
 function loadTableData() {
 	let trs = $('.iwc-table-content.isTwoLine > .iwc-table-scroll > .iwc-table-body > table tr');
-    //if (trs.length != pageInfo['pageSize']) {
-    //    let msg = '[loadTableData] error, load data length = ' + rs.length + ', but page-size is ' + pageInfo['pageSize'];
+    //if (trs.length != zsPageInfo['pageSize']) {
+    //    let msg = '[loadTableData] error, load data length = ' + rs.length + ', but page-size is ' + zsPageInfo['pageSize'];
     //    console.log(msg);
     //    throw msg;
     //}
@@ -110,7 +110,7 @@ function loadTableData() {
 			let val = tds.eq(idx).text().replace(',', '');
 			item[k] = parseCell(k, val);
 		}
-		pageInfo['data'].push(item);
+		zsPageInfo['data'].push(item);
 	}
     console.log('[loadTableData] load data num: ' + trs.length);
 }
@@ -152,8 +152,8 @@ function getPageNum() {
 }
 
 function loadFinished() {
-    console.log('[loadFinished] load data length: ', pageInfo['data'].length);
-    data = pageInfo['data'];
+    console.log('[loadFinished] load data length: ', zsPageInfo['data'].length);
+    data = zsPageInfo['data'];
     data50 = [];
     for (let i = 0; i < data.length; i++) {
         let dt = data[i];
@@ -175,7 +175,7 @@ function loadFinished() {
         }
     }
 
-    let msg = { cmd: 'SET_ZS_INFO', data:  pageInfo['data']};
+    let msg = { cmd: 'SET_ZS_INFO', data:  zsPageInfo['data']};
     chrome.runtime.sendMessage(msg
         // function(response) {
         // 	console.log('收到来自后台的回复：' + response);
@@ -184,17 +184,17 @@ function loadFinished() {
 }
 
 
-pageInfo = {};
+zsPageInfo = {};
 thread = new Thread();
 headInstance = new HeadNames();
 
 function initPage() {
     headInstance.init();
-    pageInfo['pageSize'] = getPageSize();
-    pageInfo['pageNum'] = getPageNum();
+    zsPageInfo['pageSize'] = getPageSize();
+    zsPageInfo['pageNum'] = getPageNum();
     console.log(headInstance);
 
-    for (let i = 0; i < pageInfo['pageNum']; i++) {
+    for (let i = 0; i < zsPageInfo['pageNum']; i++) {
         if (i != 0) {
             let task2 = new Task('Click Page ' + (i + 1), 5 * 1000, function(task, resolve) {clickNextPage(); resolve();  } );
             thread.addTask(task2);
@@ -207,7 +207,7 @@ function initPage() {
 
 
 function beginLoadPageData() {
-    pageInfo['data'] = [];
+    zsPageInfo['data'] = [];
     thread.addTask(new Task('HeadNames.init', 10 * 1000, function(task, resolve) {initPage();  resolve(); }));
     thread.start();
 }

@@ -165,21 +165,25 @@ class Henxin:
     def getMouseMove(self):
         if self.diffTime() >= 30:
             self.mouseMove += int(random.random() * 15)
+            self.mouseMove %= 1300
         return self.mouseMove
 
     def getMouseClick(self):
         if self.diffTime() >= 30:
             self.mouseClick += int(random.random() * 15)
+        self.mouseClick %= 1200
         return self.mouseClick
 
     def getMouseWhell(self):
         if self.diffTime() >= 30:
             self.mouseWhell += int(random.random() * 15)
+        self.mouseWhell %= 1200
         return self.mouseWhell
 
     def getKeyDown(self):
         if self.diffTime() >= 30:
             self.keyDown += int(random.random() * 10)
+        self.keyDown %= 1200
         return self.keyDown
 
     def getClickPosX(self):

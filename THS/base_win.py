@@ -85,58 +85,9 @@ class BaseWindow:
         #if self.oldProc:
         #    return win32gui.CallWindowProc(self.oldProc, hwnd, msg, wParam, lParam)
         return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
-
-class CardView:
-    def __init__(self, hwnd):
-        self.hwnd = hwnd
-    def onDraw(self, hdc):
-        pass
-    def winProc(self, hwnd, msg, wParam, lParam):
-        return False
-
-class CardWindow(BaseWindow):
-    # maxSize = (width, height)
-    # minSize = (width, height)
-    def __init__(self, maxSize, minSize) -> None:
-        super().__init__()
-        self.cardViews = []
-        self.MAX_SIZE = maxSize
-        self.MIN_SIZE = minSize
-        self.maxMode = True
-        self.curCardViewIdx = 0
-
-    def addCardView(self, cardView):
-        self.cardViews.append(cardView)
-
-    def onDraw(self, hdc):
-        if self.maxMode and self.curCardViewIdx < len(self.cardViews):
-            cardView = self.cardViews[self.curCardViewIdx]
-            cardView.onDraw(hdc)
     
-    def changeCardView(self):
-        idx = self.curCardViewIdx
-        self.curCardViewIdx = (idx + 1) % len(self.cardViews)
-        if self.curCardViewIdx != idx:
-            win32gui.InvalidateRect(self.hwnd, None, True)
-
-    def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_NCLBUTTONDBLCLK:
-            self.maxMode = not self.maxMode
-            if self.maxMode:
-                win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, *self.MAX_SIZE, win32con.SWP_NOMOVE)
-            else:
-                win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, *self.MIN_SIZE, win32con.SWP_NOMOVE)
-            return True
-        if msg == win32con.WM_RBUTTONUP:
-            self.changeCardView()
-            return True
-
-        if self.maxMode and self.curCardViewIdx < len(self.cardViews):
-            cardView = self.cardViews[self.curCardViewIdx]
-            r = cardView.winProc(hwnd, msg, wParam, lParam)
-            if r != False:
-                return r
-        return super().winProc(hwnd, msg, wParam, lParam)
+    def invalidWindow(self):
+        win32gui.InvalidateRect(self.hwnd, None, True)
 
 class Thread:
     def __init__(self) -> None:
@@ -492,6 +443,109 @@ class AbsLayout:
         else:
             print('[AbsLayout.adjustContentRect] unsupport win type :', winInfo)
 
+class TableModel:
+    pass
+
+class TableWindow(BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.rowHeight = 18
+        self.columnHeadHeight = 20
+        self.tailHeight = 0
+        self.columnCount = 1
+
+    def getColumnWidth(self, colIdx):
+        w, h = self.getClientSize()
+        return w // self.columnCount
+    
+    def drawColumnHeads(self, hdc):
+        if self.columnHeadHeight <= 0:
+            return
+    def drawRow(self, hdc, rowIdx, rect):
+        pass
+    def drawTail(self, hdc, rect):
+        pass
+    def getVisibleRange(self):
+        pass
+    
+    def onDraw(self, hdc):
+        self.drawColumnHeads(hdc)
+
+    
+
+class ColumnWindow(BaseWindow):
+    def __init__(self):
+        super().__init__()
+        self.columnHeadHeight = 0
+        self.rowHeight = 18
+        self.columnCount = 1
+        self.data = None
+        self.columnHead = None # title
+
+    def getColumnHead(self, columnIdx):
+        return self.columnHead
+    
+    def setData(self, data):
+        self.data = data
+
+    def getRowNum(self):
+        w, h = self.getClientSize()
+        h -= self.columnHeadHeight
+        return h // self.rowHeight
+    
+    def getColumnWidth(self):
+        w, h = self.getClientSize()
+        return w // self.columnCount
+
+    def drawColumnHead(self, hdc, columnIdx):
+        if not self.data:
+            return
+        title = self.getColumnHead(columnIdx)
+        cw = self.getColumnWidth()
+        rc = (columnIdx * cw, 0, (columnIdx + 1) * cw, self.columnHeadHeight)
+        self.drawer.drawText(hdc, title, rc, 0xdddddd)
+        self.drawer.drawLine(hdc, rc[0], rc[3] - 1, rc[2], rc[3] - 1, 0xcccccc)
+
+    def drawItemData(self, hdc, columnIdx, rowIdx, idx, data):
+        rc = self.getItemRect(columnIdx, rowIdx)
+        pass
+
+    def getItemRect(self, col, row):
+        sx = col * self.rowHeight
+        ex = sx + self.getColumnWidth()
+        sy = self.rowHeight * row + self.columnHeadHeight
+        ey = sy + self.rowHeight
+        return (sx, sy, ex, ey)
+
+    def getVisibleRange(self):
+        if not self.data:
+            return (0, 0)
+        rowNum = self.getRowNum()
+        colNum = self.columnCount
+        maxNum = rowNum * colNum
+        # only show last maxNum items
+        dlen = len(self.data)
+        if dlen <= maxNum:
+            return (0, maxNum)
+        return (dlen - maxNum, dlen)
+
+    def onDraw(self, hdc):
+        if not self.data:
+            return
+        rowNum = self.getRowNum()
+        colNum = self.columnCount
+        begin, end = self.getVisibleRange()
+        for i in range(begin, end):
+            idx = i - begin
+            colIdx = idx // rowNum
+            rowIdx = idx % rowNum
+            if colIdx >= colNum:
+                continue
+            itemData = self.data[i]
+            self.drawItemData(hdc, colIdx, rowIdx, i, itemData)
+        for i in range(0, colNum):
+            self.drawColumnHead(hdc, i)
+        
 
 def testGridLayout():
     class TestMain(BaseWindow):
