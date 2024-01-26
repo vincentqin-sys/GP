@@ -225,14 +225,22 @@ class Drawer:
         win32gui.SelectObject(hdc, win32gui.GetStockObject(win32con.NULL_PEN))
         self.use(hdc, self.getBrush(color))
         win32gui.Ellipse(hdc, *rect)
-        
-class GridLayout:
+
+class Layout:
+    def __init__(self) -> None:
+        self.rect = None
+
+    def resize(self, x, y, width, height):
+        self.rect = (x, y, width, height)
+
+class GridLayout(Layout):
     # templateRows = 分行, 设置高度  整数固定: 200 ; 自动: 'auto'; 片段: 1fr | 2fr; 百分比: 15% 
     #       Eg: (200, 'auto', '15%')  fr与auto不能同时出现, auto最多只能有一个
     # templateColumns = 分列, 设置宽度  整数固定: 200 ; 自动: 'auto'; 片段: 1fr | 2fr; 百分比: 15% 
     #       Eg: (200, '1fr', '2fr' '15%')
     # gaps = (行间隙, 列间隙)  Eg:  (5, 10)
     def __init__(self, templateRows, templateColumns, gaps):
+        super().__init__()
         self.templateRows = templateRows
         self.templateColumns = templateColumns
         if not gaps: gaps = (0, 0)
@@ -254,6 +262,7 @@ class GridLayout:
         self.winsInfo[(row, col)] = {'win' : win, 'style' : defaultStyle, 'content': True, 'position': (row, col)}
 
     def resize(self, x, y, width, height):
+        super().resize(x, y, width, height)
         self.calcLayout(width, height)
         for k in self.layouts:
             winInfo = self.layouts[k]
@@ -302,7 +311,7 @@ class GridLayout:
         self.rows = self.parseTemplate(self.templateRows, height, self.gaps[0])
         self.cols = self.parseTemplate(self.templateColumns, width, self.gaps[1])
         self.layouts.clear()
-        self.layouts.update(copy.deepcopy(self.winsInfo))
+        self.layouts.update(copy.copy(self.winsInfo))
         ls = []
         for r in range(len(self.rows)):
             for c in range(len(self.cols)):
@@ -413,14 +422,14 @@ class GridLayout:
             elif type(win) == int:
                 # is HWND object
                 win32gui.SetWindowPos(win, None, x, y, w, h, win32con.SWP_NOZORDER)
-            elif getattr(win, 'resize', None): 
-                # its a Layout object and has .resize() method
+            elif isinstance(win, Layout):
                 win.resize(x, y, w, h)
             else:
                 print('[GridLayout.adjustContentRect] unsport win type: ', winInfo)
 
-class AbsLayout:
+class AbsLayout(Layout):
     def __init__(self) -> None:
+        super().__init__()
         self.winsInfo = []
 
     # win = BaseWindow, HWND, unsupport Layout
@@ -429,6 +438,7 @@ class AbsLayout:
             self.winsInfo.append({'win': win, 'x' : x, 'y': y})
 
     def resize(self, x, y, width, height):
+        super().resize(x, y, width, height)
         for it in self.winsInfo:
             self.adjustContentRect(x, y, it)
 
@@ -440,6 +450,8 @@ class AbsLayout:
             win32gui.SetWindowPos(win.hwnd, None, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
         elif type(win) == int:
             win32gui.SetWindowPos(win, None, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
+        elif isinstance(win, Layout):
+            win.resize(x, y, win.rect[2], win.rect[3])
         else:
             print('[AbsLayout.adjustContentRect] unsupport win type :', winInfo)
 

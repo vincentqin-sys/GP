@@ -63,9 +63,12 @@ class THS_DDWindow:
         self.ddWnd = win32gui.FindWindow(None, '大单棱镜')
         if self.ddWnd:
             return
-        pyautogui.typewrite('600000', 0.02)
+        time.sleep(1)
+        pyautogui.press('F6', interval=0.5) # 进入我的自选股
+        time.sleep(2)
+        pyautogui.typewrite('600000', 0.05)
         pyautogui.press('enter')
-        time.sleep(3)
+        time.sleep(1)
         rt = {'val': None}
         win32gui.EnumChildWindows(self.topWnd, self._enumChild, rt)
         hwnd = rt['val']
@@ -101,6 +104,7 @@ class THS_DDWindow:
             return
         if win32gui.IsIconic(self.topWnd):
             win32gui.ShowWindow(self.topWnd, win32con.SW_MAXIMIZE)
+        win32gui.SetForegroundWindow(self.topWnd)
 
     def grubFocusInSearchBox(self):
         if not self.ddWnd:

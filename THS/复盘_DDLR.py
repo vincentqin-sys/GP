@@ -813,6 +813,9 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.fsWin = None
         self.tableWin = None
         self.shareMem = ths_win.ThsShareMemory(False)
+        trs = (40, 340, 'auto')
+        tcs = (250, 'auto')
+        self.gridLayout = base_win.GridLayout(trs, tcs, (10, 5))
 
     def create(self):
         self.shareMem.open()
@@ -849,6 +852,15 @@ class FuPanMgrWindow(base_win.BaseWindow):
         rc5 = (rc[2] + 5, rc2[3] + 10, size[0] - rc[2] - 10, size[1] - rc2[3]- 15)
         self.moneyWin.createWindow(self.hwnd, rc5)
 
+        absLayout = base_win.AbsLayout()
+        absLayout.setContent(rc4[0], rc4[1], refreshBtn)
+        absLayout.setContent(rc3[0], rc3[1], self.moneyBtns)
+        self.gridLayout.setContent(0, 0, absLayout, {'autoFit' : False})
+        self.gridLayout.setContent(1, 0, self.tableWin, {'verExpand': True})
+        self.gridLayout.setContent(0, 1, self.fsWin, {'verExpand' : 1})
+        self.gridLayout.setContent(2, 1, self.moneyWin)
+        self.gridLayout.resize(0, 0, size[0], size[1])
+
         # TODO: remove 
         #self.updateCodeDay('601096', 20240119)
 
@@ -879,9 +891,17 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.moneyWin.setData(ds)
         win32gui.InvalidateRect(self.fsWin.hwnd, None, True)
 
+    def onSize(self):
+        size = self.getClientSize()
+        self.gridLayout.resize(0, 0, size[0], size[1])
+        self.invalidWindow()
+
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_MOUSEWHEEL:
             win32gui.SendMessage(self.tableWin.hwnd, msg, wParam, lParam)
+            return True
+        if msg == win32con.WM_SIZE:
+            self.onSize()
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
