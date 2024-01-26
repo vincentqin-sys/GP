@@ -53,26 +53,25 @@ class FenShiModel:
         fromIdx = self.dataFile.getItemIdx(day)
         if fromIdx < 0:
             self.fsData = None
-            return
-        endIdx = fromIdx + 240 - 1
-        while True:
-            if endIdx >= len(self.dataFile.data):
-                break
-            m = self.dataFile.data[endIdx]
-            if m.day == day:
-                endIdx += 1
-            else:
-                break
-        self.dataFile.calcAvgPriceOfDay(int(day))
-        self.fsData = self.dataFile.data[fromIdx : endIdx]
-        # insert 9:30 data 通达信合并了9:30和9:31的数据
-        c930 = copy.copy(self.fsData[0])
-        c930.time = 930
-        c930.amount = c930.vol = 0
-        c930.avgPrice = c930.close = c930.open
-        self.fsData.insert(0, c930)
-        #for i in self.fsData:
-        #    print(i)
+        else:
+            endIdx = fromIdx + 240 - 1
+            while True:
+                if endIdx >= len(self.dataFile.data):
+                    break
+                m = self.dataFile.data[endIdx]
+                if m.day == day:
+                    endIdx += 1
+                else:
+                    break
+            self.dataFile.calcAvgPriceOfDay(int(day))
+            self.fsData = self.dataFile.data[fromIdx : endIdx]
+            # insert 9:30 data 通达信合并了9:30和9:31的数据
+            c930 = copy.copy(self.fsData[0])
+            c930.time = 930
+            c930.amount = c930.vol = 0
+            c930.avgPrice = c930.close = c930.open
+            self.fsData.insert(0, c930)
+
         self.ddlrData = self.ddlrFile.getDataAtDay(day)
         self.groupDDLRByTime()
         if fromIdx > 0:

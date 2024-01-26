@@ -75,11 +75,11 @@ class THS_DDWindow:
         if not hwnd:
             return
         print(f'hwnd=0x{hwnd: X}')
-        _, y, x, _ = win32gui.GetWindowRect(hwnd)
-        y += 5
-        x -= 40
-        #pyautogui.moveTo(x, y)
-        pyautogui.click(x, y, interval = 0.5)
+        *_, w, h = win32gui.GetClientRect(hwnd)
+        x = w - 50
+        win32gui.PostMessage(hwnd, win32con.WM_LBUTTONDOWN, 0, 0x000a0000 | x)
+        time.sleep(0.01)
+        win32gui.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, 0x000a0000 | x)
         time.sleep(3)
         self.ddWnd = win32gui.FindWindow(None, '大单棱镜')
     

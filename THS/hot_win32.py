@@ -6,6 +6,7 @@ import hot_win_small, ths_win, hot_win
 
 curCode = None
 thsWindow = ths_win.ThsWindow()
+thsFPWindow = ths_win.ThsFuPingWindow()
 hotWindow = hot_win.HotWindow()
 simpleWindow = hot_win_small.SimpleWindow()
 thsShareMem = ths_win.ThsShareMemory()
@@ -36,21 +37,23 @@ def showHotWindow():
     win32gui.SetWindowPos(hotWindow.hwnd, 0, x, y, 0, 0, 0x0010|0x0200|0x0001|0x0004)
     hotWindow.rect = (x, y, hotWindow.rect[2], hotWindow.rect[3])
 
-def _workThread():
+def _workThread(thsWin):
     global curCode
     while True:
         time.sleep(0.5)
         #mywin.eyeWindow.show()
-        if not win32gui.IsWindow(thsWindow.topHwnd):
+        if not win32gui.IsWindow(thsWin.topHwnd):
             #win32gui.PostQuitMessage(0)
             #sys.exit(0)  #仅退出当前线程
             os._exit(0) # 退出进程
             break
-        showHotWindow()
-        nowCode = thsWindow.findCode()
+        #showHotWindow()
+        if win32gui.GetForegroundWindow() != thsWin.topHwnd:
+            continue
+        nowCode = thsWin.findCode()
         if curCode != nowCode:
             updateCode(nowCode)
-        selDay = thsWindow.getSelectDay()
+        selDay = thsWin.getSelectDay()
         if selDay:
             hotWindow.updateSelectDay(selDay)
             simpleWindow.changeSelectDay(selDay)
@@ -90,13 +93,39 @@ def subprocess_main():
     simpleWindow.createWindow(thsWindow.topHwnd)
     simpleHotZHWindow.createWindow(thsWindow.topHwnd)
     hotWindow.addListener('ListenHotWindow', onListen)
-    threading.Thread(target = _workThread).start()
+    threading.Thread(target = _workThread, args=(thsWindow, )).start()
     win32gui.PumpMessages()
     print('Quit Sub Process')
+
+def subprocess_main_fp():
+    while True:
+        if thsFPWindow.init():
+            break
+        time.sleep(10)
+    thsShareMem.open()
+    hotWindow.createWindow(thsFPWindow.topHwnd)
+    simpleWindow.createWindow(thsFPWindow.topHwnd)
+    simpleHotZHWindow.createWindow(thsFPWindow.topHwnd)
+    threading.Thread(target = _workThread, args=(thsFPWindow, )).start()
+    win32gui.PumpMessages()
+    print('Quit Sub Process(THS FU PING)')    
+
+
+def listen_ThsFuPing_Process():
+    print('open listen fu ping prcess')
+    while True:
+        p = Process(target = subprocess_main_fp, daemon = True)
+        p.start()
+        print('start a new sub process(FU PING), pid=', p.pid)
+        p.join()
 
 if __name__ == '__main__':
     tsm = ths_win.ThsShareMemory(True)
     tsm.open()
+    # listen ths fu ping
+    p = Process(target = listen_ThsFuPing_Process, daemon = False)
+    p.start()
+
     while True:
         p = Process(target = subprocess_main, daemon = True)
         p.start()

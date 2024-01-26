@@ -126,7 +126,7 @@ class ThsWindow(base_win.BaseWindow):
     def init(self):
         def callback(hwnd, lparam):
             title = win32gui.GetWindowText(hwnd)
-            if '同花顺(v' in title:
+            if ('同花顺(v' in title) and ('副屏1' not in title):
                 self.topHwnd = hwnd
             return True
         win32gui.EnumWindows(callback, None)
@@ -139,6 +139,27 @@ class ThsWindow(base_win.BaseWindow):
         print('ThsWindow.mainHwnd = %#X' % self.mainHwnd)
         print('ThsWindow.selDayHwnd = %#X' % self.selDayHwnd)
         return True
+
+class ThsFuPingWindow(ThsWindow):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def init(self):
+        def callback(hwnd, lparam):
+            title = win32gui.GetWindowText(hwnd)
+            if ('同花顺(v' in title) and ('副屏1' in title):
+                self.topHwnd = hwnd
+            return True
+        win32gui.EnumWindows(callback, None)
+        self.mainHwnd =  win32gui.FindWindowEx(self.topHwnd, None, 'AfxFrameOrView140s', None)
+        self.selDayHwnd = self.findSelectDayWnd()
+
+        if (not self.mainHwnd) or (not self.topHwnd) or (not self.selDayHwnd):
+            return False
+        print('ThsFuPingWindow.topHwnd = %#X' % self.topHwnd)
+        print('ThsFuPingWindow.mainHwnd = %#X' % self.mainHwnd)
+        print('ThsFuPingWindow.selDayHwnd = %#X' % self.selDayHwnd)
+        return True  
 
 class ThsShareMemory:
     POS_CODE = 0
