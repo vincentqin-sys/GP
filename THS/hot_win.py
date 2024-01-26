@@ -262,7 +262,7 @@ class HotWindow(base_win.BaseWindow):
         ztY = int(ztStartY + (1 - (data['ztNum'] - ZT_NUM_BASE) / (ztMax - ZT_NUM_BASE)) * (endY - ztStartY))
         win32gui.FillRect(hdc, (ztX, ztY, ztX + 5, endY), hbrBlue)
         info = str(data['ztNum'])
-        win32gui.DrawText(hdc, info, len(info), (ztX - 4, ztY - 12, ztX + 8, ztY), win32con.DT_CENTER)
+        win32gui.DrawText(hdc, info, len(info), (ztX - 10, ztY - 12, ztX + 8, ztY), win32con.DT_CENTER)
         #连板数量图表
         lbX = ztX + 15
         lbY = int(ztStartY + (1 - (data['lbNum']) / ztMax) * (endY - ztStartY))
@@ -291,7 +291,7 @@ class HotWindow(base_win.BaseWindow):
         d7Y = int(ztStartY + (1 - (data['down7Num']) / d7Max) * (endY - ztStartY))
         win32gui.FillRect(hdc, (d7X, d7Y, d7X + 5, endY), hbrYellow2)
         info = str(data['down7Num'])
-        win32gui.DrawText(hdc, info, len(info), (d7X - 4, d7Y - 12, d7X + 12, d7Y), win32con.DT_CENTER)
+        win32gui.DrawText(hdc, info, len(info), (d7X - 8, d7Y - 12, d7X + 15, d7Y), win32con.DT_CENTER)
         # 成交额图表
         BASE_VOL = 6000 #基准成交额为6000亿
         lsvol = max(data['amount'] - BASE_VOL, 100)
@@ -371,7 +371,7 @@ class HotWindow(base_win.BaseWindow):
     def changeMode(self):
         if self.maxMode:
             WIDTH, HEIGHT = 150, 20
-            y = self.rect[1] + self.rect[3] - HEIGHT
+            y = self.rect[1] + self.rect[3] - HEIGHT - 20
             x = self.rect[2] // 2
             win32gui.SetWindowPos(self.hwnd, 0, x, y, WIDTH, HEIGHT, 0)
         else:

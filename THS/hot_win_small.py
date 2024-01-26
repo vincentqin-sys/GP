@@ -29,6 +29,21 @@ class ThsSortQuery:
         cc.close()
         txt = f'龙虎榜 {count}次'
         return txt
+    
+    def getMaxHotInfo(self, code):
+        code = int(code)
+        maxHotZH = orm.THS_HotZH.select(pw.fn.min(orm.THS_HotZH.zhHotOrder), orm.THS_HotZH.day).where(orm.THS_HotZH.code == code).tuples()
+        maxHot = orm.THS_Hot.select(pw.fn.min(orm.THS_Hot.hotOrder), orm.THS_Hot.day).where(orm.THS_Hot.code == code).tuples()
+        info = ''
+        for d in maxHotZH:
+            if d[0]:
+                info = f'最高热度综合排名: {d[0] :> 3d}  {d[1] // 10000}.{d[1] // 100 % 100:02d}.{d[1]%100:02d}'
+            break
+        for d in maxHot:
+            if d[0]:
+                info += f'\n    最高热度排名: {d[0] :> 3d}  {d[1] // 10000}.{d[1] // 100 % 100:02d}.{d[1]%100:02d}'
+            break
+        return info
 
     def getCodeInfo_THS(self, code):
         code = int(code)
@@ -67,6 +82,7 @@ class ThsSortQuery:
         txt = hyName + '\n' + jg + '\n' + hy
         # 龙虎榜信息
         txt += self.getLhbInfo(code)
+        txt += '\n' + self.getMaxHotInfo(code)
         
         return {'info': txt, 'code': code, 'name': name}
 

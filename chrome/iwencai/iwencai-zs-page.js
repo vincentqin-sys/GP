@@ -203,6 +203,7 @@ function initPage() {
         thread.addTask(task);
     }
     thread.addTask(new Task('Load Finished', 1000, function(task, resolve) { loadFinished(); resolve(); }));
+    thread.addTask(new Task('CloseWindow', 3000, function(task, resolve) { window.close(); resolve(); }));
 }
 
 

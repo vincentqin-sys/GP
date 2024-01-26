@@ -367,7 +367,10 @@ class ThsDataFile(datafile.DataFile):
         if self.dataType == datafile.DataFile.DT_DAY:
             hx = HexinUrl()
             url = hx.getKLineUrl(self.code)
-            self.data ,self.name = hx.loadUrlData(url)
+            #{'name': name, 'today': today,  'data': rs}
+            rs = hx.loadUrlData(url)
+            self.data = rs['data']
+            self.name = rs['name']
 
 if __name__ == '__main__':
     hx = HexinUrl()

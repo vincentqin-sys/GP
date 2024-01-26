@@ -2,6 +2,7 @@ proc_info = {
     hotWindowId: 0,
     lastOpenHotPageTime: 0,
     lastOpenHotPageTimeForSave: 0,
+    lastOpenZSPageTime : 0,
     needSave: false,
     hotInfos: [],
     isLogined: false,
@@ -161,7 +162,7 @@ function hot_run() {
     let ft = formatTime(new Date());
     let jtTime = (ft >= '09:30' && ft < '11:35') || (ft >= '13:00' && ft < '15:05');
     let jtTime2 = (ft >= '08:00' && ft < '15:20');
-    let jtTime3 = (ft >= '15:30' && ft < '16:00'); // 下载指数数据时间
+    let jtTime3 = (ft >= '15:30' && ft < '16:30'); // 下载指数数据时间
     let day = new Date();
     let jtDay = day.getDay() != 0 && day.getDay() != 6; // not 周六周日
     let holidays = ['2023-05-01', '2023-05-02', '2023-05-03', '2023-06-22', '2023-06-23', '2023-09-29', '2023-10-02', '2023-10-03', '2023-10-04', '2023-10-05', '2023-10-06'];
@@ -191,8 +192,8 @@ function hot_run() {
         }
     }
     if (jtTime3) {
-        if ((Date.now() - proc_info.lastOpenHotPageTime) / 1000 / 60 >= 60) { // 60 minutes, used for save ZS
-            openZSPage('FOR-LOGIN');
+        if ((Date.now() - proc_info.lastOpenZSPageTime) / 1000 / 60 >= 90) { // 90 minutes, used for save ZS
+            openZSPage('FOR-SAVE');
         }
     }
 }
@@ -218,11 +219,8 @@ function openZSPage(openReason) {
     
     chrome.windows.create({ url: url, type: 'panel' }, function (window) {
         // callback
-        proc_info.hotWindowId = window.id;
-        proc_info.needSave = needSave;
-        proc_info.lastOpenHotPageTime = Date.now();
         if (needSave) {
-            proc_info.lastOpenHotPageTimeForSave = Date.now();
+            proc_info.lastOpenZSPageTime = Date.now();
         }
     });
 }
