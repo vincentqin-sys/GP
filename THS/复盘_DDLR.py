@@ -805,7 +805,6 @@ class DDMoneyWindow(base_win.BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()

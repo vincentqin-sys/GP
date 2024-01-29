@@ -458,37 +458,141 @@ class AbsLayout(Layout):
 class TableWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
+        self.style = {}
         self.rowHeight = 18
         self.headHeight = 20
         self.tailHeight = 0
         self.columnCount = 1
         self.startIdx = 0
-        self.data = None # a data array
+        self.selRow = -1
+        self.data = None # a data array, [{colName1: xx, colName2: xxx}, ...]
 
-    def getValueAt(self, row, col):
+    # over-write
+    # return [{title:xx, name:xxx}, ...]  '#idx' is index row column
+    def getHeaders(self):
         return None
 
-    def getColumnWidth(self, colIdx):
+    # over-write
+    def getValueAt(self, row, col, colName):
+        if not self.data:
+            return None
+        if colName == '#idx':
+            return row + 1
+        if row < len(self.data):
+            return self.data[row][colName]
+        return None
+
+    def getColumnWidth(self, colIdx, colName):
         w, h = self.getClientSize()
         return w // self.columnCount
+
+    def getPageSize(self):
+        h = self.getClientSize()[1]
+        h -= self.headHeight + self.tailHeight
+        maxRowCount = (h + self.rowHeight - 1) // self.rowHeight
+        return maxRowCount
     
-    def drawColumnHeads(self, hdc):
-        if self.headHeight <= 0:
-            return
-
-    def drawRow(self, hdc, rowIdx, rect):
-        pass
-
-    def drawTail(self, hdc, rect):
-        pass
-
+    # [startIdx, end)
     def getVisibleRange(self):
-        pass
+        if not self.data:
+            return (0, 0)
+        num = len(self.data)
+        maxRowCount = self.getPageSize()
+        end = self.startIdx + maxRowCount
+        end = min(end, num)
+        return (self.startIdx, end)
+    
+    # delta > 0 : up scroll
+    # delta < 0 : down scroll
+    def scroll(self, delta):
+        if delta >= 0:
+            self.startIdx = max(self.startIdx - delta, 0)
+            self.invalidWindow()
+            return
+        delta = -delta
+        vr = self.getVisibleRange()
+        psz = self.getPageSize()
+        nn = vr[1] - vr[0]
+        if nn <= psz // 2:
+            return
+        mx = nn - psz // 2
+        delta = min(delta, mx)
+        self.startIdx += delta
+        self.invalidWindow()
     
     def onDraw(self, hdc):
-        self.drawColumnHeads(hdc)
+        self.drawer.fillRect(hdc, (0, 0, *self.getClientSize()), 0x151313)
+        self.drawHeaders(hdc)
+        if not self.data or not self.getHeaders():
+            return
+        vr = self.getVisibleRange()
+        if not vr:
+            return
+        w = self.getClientSize()[0]
+        sy = self.headHeight
+        for i in range(vr[1] - vr[0]):
+            rc = (0, sy + i * self.rowHeight, w, sy + (i + 1) * self.rowHeight)
+            self.drawRow(hdc, i, i + vr[0], rc)
 
-    
+    def drawHeaders(self, hdc):
+        hds = self.getHeaders()
+        if self.headHeight <= 0:
+            return
+        w = self.getClientSize()[0]
+        self.drawer.fillRect(hdc, (0, 0, w, self.headHeight), 0x191919)
+        rc = [0, 0, 0, self.headHeight]
+        for i, hd in enumerate(hds):
+            rc[2] = self.getColumnWidth(i, hd['name'])
+            self.drawer.drawRect2(hdc, rc, 0x888888)
+            self.drawer.drawText(hdc, hd['title'], rc)
+            rc[0] = rc[2]
+        
+    def drawCell(self, hdc, row, col, colName, value, rect):
+        self.drawer.drawText(hdc, str(value), rect, 0xffffff, align=win32con.DT_LEFT)
+
+    def drawRow(self, hdc, showIdx, row, rect):
+        rc = [0, rect[1], 0, rect[3]]
+        hds = self.getHeaders()
+        if not hds:
+            return
+        if row == self.selRow:
+            self.drawer.fillRect(hdc, rect, 0x393533)
+        for i in range(len(hds)):
+            colName = hds[i]['name']
+            rc[2] += self.getColumnWidth(i, colName)
+            val = self.getValueAt(row, i, colName)
+            self.drawCell(hdc, row, i, colName, val, rc)
+            rc[0] = rc[2]
+
+    def drawTail(self, hdc, rect):
+        if self.tailHeight <= 0:
+            return
+
+    def onClick(self, x, y):
+        #win32gui.SetFocus(self.hwnd)
+        if y > self.headHeight and y < self.getClientSize()[1] - self.TAIL_HEIGHT:
+            y -= self.headHeight
+            self.selRow = y // self.rowHeight + self.startIdx
+            win32gui.InvalidateRect(self.hwnd, None, True)
+
+    def onMouseWheel(self, delta):
+        if not self.data:
+            return
+        if delta & 0x8000:
+            delta = delta - 0xffff - 1
+        delta = -delta // 120
+        self.scroll(delta * 5)
+        win32gui.InvalidateRect(self.hwnd, None, True)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONDOWN:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            self.onClick(x, y)
+            return True
+        if msg == win32con.WM_MOUSEWHEEL:
+            self.onMouseWheel((wParam >> 16) & 0xffff)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
 
 class ColumnWindow(BaseWindow):
     def __init__(self):
@@ -562,7 +666,72 @@ class ColumnWindow(BaseWindow):
             self.drawItemData(hdc, colIdx, rowIdx, i, itemData)
         for i in range(0, colNum):
             self.drawColumnHead(hdc, i)
-        
+
+class GroupButton(BaseWindow):
+    def __init__(self, groups, enableGroup = True) -> None:
+        super().__init__()
+        self.groups = groups
+        self.selGroupIdx = -1
+        self.enableGroup = enableGroup
+    
+    # group = int, is group idx or group object
+    def setSelGroup(self, group):
+        if not self.enableGroup:
+            return
+        if type(group) == int:
+            self.selGroupIdx = group
+        win32gui.InvalidateRect(self.hwnd, None, True)
+
+    def onDraw(self, hdc):
+        w, h = self.getClientSize()
+        cw = w / len(self.groups)
+        for i in range(len(self.groups)):
+            item = self.groups[i]
+            color = 0x00008C if self.enableGroup and i == self.selGroupIdx else 0x333333
+            rc = [int(cw * i), 0,  int((i + 1) * cw), h]
+            self.drawer.fillRect(hdc, rc, color)
+            self.drawer.drawRect(hdc, rc, self.drawer.getPen(0x202020))
+            rc[1] = (h - 16) // 2
+            self.drawer.drawText(hdc, item['title'], rc, 0x2fffff)
+
+    def onClick(self, x, y):
+        w, h = self.getClientSize()
+        cw = w / len(self.groups)
+        idx = int(x / cw)
+        if self.enableGroup:
+            self.selGroupIdx = idx
+        self.notifyListener('click', {'group': self.groups[idx], 'groupIdx': idx})
+        win32gui.InvalidateRect(self.hwnd, None, True)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            self.onClick(x, y)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)        
+
+class Button(BaseWindow):
+    # btnInfo = {name: xxx, title: xxx}
+    def __init__(self, btnInfo) -> None:
+        super().__init__()
+        self.info = btnInfo
+    
+    def onDraw(self, hdc):
+        w, h = self.getClientSize()
+        rc = [0, 0,  w, h]
+        self.drawer.fillRect(hdc, rc, 0x333333)
+        self.drawer.drawRect2(hdc, rc, 0x202020)
+        self.drawer.drawText(hdc, self.info['title'], rc, 0x2fffff)
+
+    def onClick(self, x, y):
+        self.notifyListener('click', self.info)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            self.onClick(x, y)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
 
 def testGridLayout():
     class TestMain(BaseWindow):
