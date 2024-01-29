@@ -228,7 +228,7 @@ class Drawer:
 
 class Layout:
     def __init__(self) -> None:
-        self.rect = None
+        self.rect = None # (x, y, width, height)
 
     def resize(self, x, y, width, height):
         self.rect = (x, y, width, height)
@@ -455,28 +455,33 @@ class AbsLayout(Layout):
         else:
             print('[AbsLayout.adjustContentRect] unsupport win type :', winInfo)
 
-class TableModel:
-    pass
-
 class TableWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.rowHeight = 18
-        self.columnHeadHeight = 20
+        self.headHeight = 20
         self.tailHeight = 0
         self.columnCount = 1
+        self.startIdx = 0
+        self.data = None # a data array
+
+    def getValueAt(self, row, col):
+        return None
 
     def getColumnWidth(self, colIdx):
         w, h = self.getClientSize()
         return w // self.columnCount
     
     def drawColumnHeads(self, hdc):
-        if self.columnHeadHeight <= 0:
+        if self.headHeight <= 0:
             return
+
     def drawRow(self, hdc, rowIdx, rect):
         pass
+
     def drawTail(self, hdc, rect):
         pass
+
     def getVisibleRange(self):
         pass
     
