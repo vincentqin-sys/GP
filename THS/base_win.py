@@ -718,9 +718,11 @@ class Button(BaseWindow):
     
     def onDraw(self, hdc):
         w, h = self.getClientSize()
-        rc = [0, 0,  w, h]
+        TH = 14
+        rc = (0, 0,  w, h)
         self.drawer.fillRect(hdc, rc, 0x333333)
         self.drawer.drawRect2(hdc, rc, 0x202020)
+        rc = (0, (h - TH) // 2,  w, h - (h - TH) // 2)
         self.drawer.drawText(hdc, self.info['title'], rc, 0x2fffff)
 
     def onClick(self, x, y):

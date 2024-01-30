@@ -183,6 +183,22 @@ class DataFile:
                 ap += self.data[j].close
             setattr(self.data[i], name, ap / N)
     
+    def calcMA_Amount(self, N):
+        name = 'MA_Amount' + str(N)
+        for i in range(N - 1, len(self.data)):
+            ap = 0
+            for j in range(i + 1 - N, i + 1):
+                ap += self.data[j].amount
+            setattr(self.data[i], name, ap / N)
+
+    def calcMA_Vol(self, N):
+        name = 'MA_Vol' + str(N)
+        for i in range(N - 1, len(self.data)):
+            ap = 0
+            for j in range(i + 1 - N, i + 1):
+                ap += self.data[j].vol
+            setattr(self.data[i], name, ap / N)
+    
     def _calcZDTInfo(self, pre, c):
         is20p = (self.code[0:3] == '688') or (self.code[0:2] == '30')
         is20p = is20p and c.day >= 20200824

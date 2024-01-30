@@ -407,6 +407,7 @@ class KLineWindow(base_win.BaseWindow):
     def __init__(self):
         super().__init__()
         self.model = None
+        self.showSelTip = True # 是否显示选中K线时的竖向提示框
         self.klineWidth = 6 # K线宽度
         self.klineSpace = 2 # K线之间的间距离
         self.selIdx = -1
@@ -429,7 +430,7 @@ class KLineWindow(base_win.BaseWindow):
             self.indicators.append(idt)
 
     def calcIndicatorsRect(self):
-        *_, w, h = self.getRect()
+        w, h = self.getClientSize()
         fixHeight = 0
         for i in range(0, len(self.indicators)):
             cf = self.indicators[i]
@@ -506,6 +507,8 @@ class KLineWindow(base_win.BaseWindow):
         #print('[onMouseMove] price=', self.getPriceAtY(y))
 
     def setSelIdx(self, idx):
+        if not self.indicators:
+            return
         idt : Indicator = self.indicators[0] # KlineIndictor
         if not idt.visibleRange or idx < 0 or idx >= idt.visibleRange[1]:
             return
@@ -558,6 +561,8 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def drawSelTip(self, hdc, pens, hbrs):
+        if not self.showSelTip:
+            return
         if self.selIdx < 0 or (not self.model) or (not self.model.data) or self.selIdx >= len(self.model.data):
             return
         sdc = win32gui.SaveDC(hdc)
@@ -596,7 +601,7 @@ class KLineWindow(base_win.BaseWindow):
         hbrs['black'] = win32gui.CreateSolidBrush(0x000000)
         hbrs['0xff00ff'] = win32gui.CreateSolidBrush(0xff00ff)
         
-        *_, w, h = self.getRect()
+        w, h = self.getClientSize()
         for i, idt in enumerate(self.indicators):
             sdc = win32gui.SaveDC(hdc)
             win32gui.SetViewportOrgEx(hdc, idt.x, idt.y)
@@ -627,7 +632,7 @@ class KLineWindow(base_win.BaseWindow):
         if not self.mouseXY:
             return
         x, y = self.mouseXY
-        *_, w, h = self.getRect()
+        w, h = self.getClientSize()
         wp = win32gui.CreatePen(win32con.PS_DOT, 1, 0xffffff)
         win32gui.SelectObject(hdc, wp)
         win32gui.MoveToEx(hdc, self.LEFT_MARGIN, y)
@@ -648,7 +653,7 @@ class KLineWindow(base_win.BaseWindow):
         if not val:
             return
         win32gui.SetTextColor(hdc, 0x0000ff)
-        w = self.getRect()[2]
+        w = self.getClientSize()[0]
         H = 16
         rc = (w - self.RIGHT_MARGIN + 10 + 1, y - H // 2, w, y + H // 2)
         hb = win32gui.CreateSolidBrush(0x800040)
@@ -658,7 +663,8 @@ class KLineWindow(base_win.BaseWindow):
 
 if __name__ == '__main__':
     win = KLineWindow()
-    win.addDefaultIndicator()
+    win.showSelTip = False
+    win.addDefaultIndicator(KLineWindow.INDICATOR_KLINE)
     rect = (0, 0, 1000, 650)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     model = KLineModel_Ths('002682')

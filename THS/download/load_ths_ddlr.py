@@ -270,36 +270,34 @@ def autoLoadTop200Data():
     if not ddWin.openDDLJ():
         fd.close()
         raise Exception('[autoLoadTop200Data] 同花顺的大单页面打开失败')
-
-    MAX_NUM = 200
-    datas = orm.THS_Hot.select().order_by(orm.THS_Hot.id.desc()).limit(MAX_NUM)
-    datas = [d for d in datas]
-    datas.reverse()
+    
+    curDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
+    datas = orm.THS_Hot.select(orm.THS_Hot.code).distinct().where(orm.THS_Hot.day == curDay).tuples()
+    datas = [d[0] for d in datas]
+    MAX_NUM = datas.length
     successTimes, failTimes = 0, 0
-    for idx, d in enumerate(datas):
-        code = f"{d.code :06d}"
+    fails = []
+    for idx, code in enumerate(datas):
+        code = f"{code :06d}"
         sc = autoLoadOne(code, ddWin)
-        if sc: successTimes += 1
-        else: failTimes += 1
+        if sc: 
+            successTimes += 1
+        else: 
+            failTimes += 1
+            fails.append(code)
         if failTimes >= 5 and failTimes >= successTimes:
             break
     fd.close()
     print(f'Load {MAX_NUM}, Success {successTimes}, Fail {failTimes}')
+    print('Fails: ', fails)
     if successTimes + failTimes != MAX_NUM:
         raise Exception('[autoLoadTop200Data] 下载失败')
 
 def test2():
-    import win32gui, win32con
-    MAIN_WIN = 0x40468
-    idx = 0
-    def enumCallback(hwnd, exta):
-        nonlocal idx
-        title = win32gui.GetWindowText(hwnd)
-        if win32gui.IsWindowVisible(hwnd):
-            idx += 1
-            print(f"[{idx}] hwnd = {hwnd : X}, {exta}, {title}")
-
-    win32gui.EnumChildWindows(MAIN_WIN, enumCallback, 'WWX')
+    curDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
+    datas = orm.THS_Hot.select(orm.THS_Hot.code).distinct().where(orm.THS_Hot.day == curDay).tuples()
+    datas = [d[0] for d in datas]
+    print(len(datas))
 
 def run():
     lock = getDesktopGUILock()

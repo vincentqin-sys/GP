@@ -65,6 +65,35 @@ def findMaxDieFu(fromDay : int, endDay : int):
         dfList[i][2] = f'{dfList[i][2] :.1f}'
         print(i + 1, dfList[i])
     return dfList
+#--------------------------------------------------
+def findZT_1_2_one(df, fromDay : int, endDay : int):
+    beginIdx, endIdx = 0, 0
+    for d in df.data:
+        if d.day >= fromDay:
+            break
+        beginIdx += 1
+    for d in df.data:
+        if d.day > endDay:
+            break
+        endIdx += 1
+    maxLbs = 0
+    for i in range(beginIdx, min(endIdx + 2, len(df.data))):
+        d = df.data[i]
+        maxLbs = max(maxLbs, getattr(d, 'lbs', 0))
+    
+    
+
+# 涨停1 - 1.5 - 2.5之间的个股
+def findZT_1_2(fromDay : int, endDay : int):
+    codes = DataFileUtils.listAllCodes()
+    for c in codes:
+        df = DataFile(c, DataFile.DT_DAY, DataFile.FLAG_ALL)
+        df.calcMA(5)
+        df.calcMA(10)
+        df.calcZDT()
+
+    pass
+
 
 if __name__ == '__main__':
     #findMaxDieFu(20231227, 20231229)

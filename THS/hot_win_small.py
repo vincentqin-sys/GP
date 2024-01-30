@@ -239,7 +239,7 @@ class ZSCardView(CardView):
             y = (idx % MAX_ROWS) * H + 2 + H
             x = RW // 2 if idx >= MAX_ROWS else 0
             rect = (x + 2, y, x + RW // 2, y + H)
-            line = f'{day}    {zs["zdf_PM"] :> 4d}   {zs["zdf_50PM"] :> 6d}'
+            line = f'{day}    {zs["zdf_PM"] :< 4d}     {zs["zdf_50PM"] :< 6d}'
             win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT)
         # draw title
         pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)

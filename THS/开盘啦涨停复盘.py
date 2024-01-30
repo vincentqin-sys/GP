@@ -96,6 +96,8 @@ class KPL_Image:
         rs = []
         startY = self.getRowOfColors(140, 160, 0, self.height, [0xf3f3f3, 0xeeeeee, 0xffffff])
         if startY < 0:
+            startY = self.getRowOfColors(140, 160, 0, self.height, [0xf3f3f3, 0xf9f9f9, 0xffffff])
+        if startY < 0:
             raise Exception('[KPL_Image.splitRows] startY=', startY)
         startY += 2
         y = startY
