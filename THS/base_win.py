@@ -233,6 +233,9 @@ class Layout:
     def resize(self, x, y, width, height):
         self.rect = (x, y, width, height)
 
+    def setVisible(self, visible):
+        pass
+
 class GridLayout(Layout):
     # templateRows = 分行, 设置高度  整数固定: 200 ; 自动: 'auto'; 片段: 1fr | 2fr; 百分比: 15% 
     #       Eg: (200, 'auto', '15%')  fr与auto不能同时出现, auto最多只能有一个
@@ -427,6 +430,26 @@ class GridLayout(Layout):
             else:
                 print('[GridLayout.adjustContentRect] unsport win type: ', winInfo)
 
+    def setVisible(self, visible):
+        for k in self.winsInfo:
+            winInfo = self.winsInfo[k]
+            win = winInfo['win']
+            if isinstance(win, BaseWindow):
+                if visible:
+                    win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
+                else:
+                    win32gui.ShowWindow(win.hwnd, win32con.SW_HIDE)
+            elif type(win) == int:
+                # is HWND object
+                if visible:
+                    win32gui.ShowWindow(win, win32con.SW_SHOW)
+                else:
+                    win32gui.ShowWindow(win, win32con.SW_HIDE)
+            elif isinstance(win, Layout):
+                win.setVisible(visible)
+            else:
+                print('[GridLayout.setVisible] unsport win type: ', winInfo)
+
 class AbsLayout(Layout):
     def __init__(self) -> None:
         super().__init__()
@@ -454,6 +477,27 @@ class AbsLayout(Layout):
             win.resize(x, y, win.rect[2], win.rect[3])
         else:
             print('[AbsLayout.adjustContentRect] unsupport win type :', winInfo)
+
+    def setVisible(self, visible):
+        for winInfo in self.winsInfo:
+            win = winInfo['win']
+            if not win:
+                continue
+            if isinstance(win, BaseWindow):
+                if visible:
+                    win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
+                else:
+                    win32gui.ShowWindow(win.hwnd, win32con.SW_HIDE)
+            elif type(win) == int:
+                # is HWND object
+                if visible:
+                    win32gui.ShowWindow(win, win32con.SW_SHOW)
+                else:
+                    win32gui.ShowWindow(win, win32con.SW_HIDE)
+            elif isinstance(win, Layout):
+                win.setVisible(visible)
+            else:
+                print('[AbsLayout.setVisible] unsport win type: ', winInfo)
 
 class TableWindow(BaseWindow):
     def __init__(self) -> None:
@@ -570,7 +614,7 @@ class TableWindow(BaseWindow):
 
     def onClick(self, x, y):
         #win32gui.SetFocus(self.hwnd)
-        if y > self.headHeight and y < self.getClientSize()[1] - self.TAIL_HEIGHT:
+        if y > self.headHeight and y < self.getClientSize()[1] - self.tailHeight:
             y -= self.headHeight
             self.selRow = y // self.rowHeight + self.startIdx
             win32gui.InvalidateRect(self.hwnd, None, True)
