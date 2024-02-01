@@ -453,7 +453,7 @@ class KPLCardView(CardView):
         self.selectDay = selDay
 
     def updateCode(self, code):
-        qq = orm.KPL_ZT_FuPan.select().where(orm.KPL_ZT_FuPan.code == code).order_by(orm.KPL_ZT_FuPan.day.asc())
+        qq = orm.KPL_ZT.select().where(orm.KPL_ZT.code == code).order_by(orm.KPL_ZT.day.asc())
         def fmtDay(d): 
             d['day'] = d['day'].replace('-', '')
             return d

@@ -332,11 +332,11 @@ class KPL_RowImage(KPL_Image):
         return nb
 
 def saveToDB(day, code, name, ztTime, status, ztReason, tag):
-    count = orm.KPL_ZT_FuPan.select(pw.fn.count(orm.KPL_ZT_FuPan.code)).where(orm.KPL_ZT_FuPan.code == code, orm.KPL_ZT_FuPan.day == day)
+    count = orm.KPL_ZT.select(pw.fn.count(orm.KPL_ZT.code)).where(orm.KPL_ZT.code == code, orm.KPL_ZT.day == day)
     #print(count.sql())
     count = count.scalar()
     if not count:
-        orm.KPL_ZT_FuPan.create(name=name, code=code, tag=tag, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
+        orm.KPL_ZT.create(name=name, code=code, tag=tag, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
         print('Save success: ', day, name, code)
     else:
         print('重复项：', day, code, name, ztTime, status, ztReason, tag)
@@ -638,6 +638,8 @@ def runOpt(opt, util, hwnd):
         notepad = r'C:\Program Files\Notepad++\notepad++.exe'
         win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
         pass
+    elif opt == 'h':
+        hot_main(hwnd, False)
     return True
 
 def main():
@@ -647,14 +649,12 @@ def main():
     hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
     print('定位到[市场情绪->股票列表->涨停原因排序] ')
     print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
-    tip = 'select options: \n\tr = restart  \n\tn = next page down  \n\ts = save to file\n\tl = load file, save to database\n\to = use notepad++ open data file\n\th = print tip'
+    tip = 'select options: \n\tr = restart  \n\tn = next page down  \n\ts = save to file\n\tl = load file, save to database\n\to = use notepad++ open data file\n\th = load hot[定位到[市场情绪->数据分析]'
     print(tip)
     util = OCRUtil()
     while True:
         opt = input('input select: ').strip()
         runOpt(opt, util, hwnd)
-        if opt == 'h':
-            print(tip)
 
 def clickLeftArrow(hwnd, rect):
     win32gui.SetForegroundWindow(xiaoWnds['topWnd'])
@@ -677,7 +677,6 @@ def nextPage(hwnd):
     time.sleep(1)
     pyautogui.dragTo(x, lastY, duration=2)
 
-
 def auto_main():
     hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
     print('定位到[市场情绪->股票列表->涨停原因排序] ')
@@ -693,10 +692,41 @@ def auto_main():
             time.sleep(3)
             nextPage(hwnd)
             time.sleep(3)
-            
-if __name__ == '__main__':
-    opt = input('select type: 1: manual    2: auto\n')
-    if opt.strip() == '1':
-        main()
+
+def hot_main(hwnd, loop):
+    print('定位到[市场情绪->数据分析] ')
+    hotRect = [415, 217, 510, 264]
+    leftArrowRect = [272, 114, 272, 114]
+    dayRect = [295, 103, 384, 126]
+    time.sleep(2)
+    while True:
+        kimg = KPL_Image(KPL_Image.dump(hwnd))
+        dayImg = kimg.copyImage(dayRect)
+        dayImg.save(TMP_FILE)
+        result = ocr.readtext(TMP_FILE)
+        curDay = result[0][1]
+        hotImg = kimg.copyImage(hotRect)
+        hotImg.save(TMP_FILE)
+        result = ocr.readtext(TMP_FILE)
+        hotVal = result[0][1]
+        print(curDay, hotVal, sep='\t')
+        # check day
+        if not re.match(r'\d{4}-\d{2}-\d{2}', curDay):
+            print('\terror day')
+            break
+        save_KPL_SCQX(curDay, hotVal)
+        if not loop:
+            break
+        clickLeftArrow(hwnd, leftArrowRect)
+        time.sleep(3)
+
+def save_KPL_SCQX(day, zhqd):
+    obj = orm.KPL_SCQX.get_or_none(orm.KPL_SCQX.day == day)
+    if obj:
+        obj.zhqd = int(zhqd)
+        obj.save()
     else:
-        auto_main()
+        orm.KPL_SCQX.create(day = day, zhqd = zhqd)
+
+if __name__ == '__main__':
+    main()

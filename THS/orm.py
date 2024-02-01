@@ -227,7 +227,7 @@ class TdxLSModel(pw.Model):
 
     class Meta:
         database = voldb
-        table_name = '两市总体情况'        
+        table_name = '两市总体情况'
 
 db_thszs = pw.SqliteDatabase(f'{path}GP/db/THS_ZS.db')
 class THS_ZS(pw.Model):
@@ -259,7 +259,7 @@ class THS_ZS_ZD(pw.Model):
         table_name = '同花顺指数涨跌信息'
 
 db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/KPL_ZT_FuPan.db')
-class KPL_ZT_FuPan(pw.Model):
+class KPL_ZT(pw.Model):
     code = pw.CharField()
     name = pw.CharField(null = True)
     day = pw.CharField()
@@ -272,12 +272,20 @@ class KPL_ZT_FuPan(pw.Model):
         database = db_ztfupan
         table_name = '开盘啦涨停复盘'
 
+class KPL_SCQX(pw.Model):
+    day = pw.CharField()
+    zhqd = pw.IntegerField(column_name='综合强度')
+
+    class Meta:
+        database = db_ztfupan
+        table_name = '开盘啦市场情绪'
+
 
 db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_GNTC, THS_Newest, THS_HYDB_2])
 db2.create_tables([THS_Hot, THS_HotZH])
 db3.create_tables([TaoGuBa_Remark])
 db5.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS, THS_ZS_ZD])
-db_ztfupan.create_tables([KPL_ZT_FuPan])
+db_ztfupan.create_tables([KPL_ZT, KPL_SCQX])
 
     

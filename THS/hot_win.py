@@ -482,7 +482,7 @@ class HotWindow(base_win.BaseWindow):
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def updateZtFuPanData(self, code):
-        ds = orm.KPL_ZT_FuPan.select().where(orm.KPL_ZT_FuPan.code == code).order_by(orm.KPL_ZT_FuPan.day.asc())
+        ds = orm.KPL_ZT.select().where(orm.KPL_ZT.code == code).order_by(orm.KPL_ZT.day.asc())
         self.ztFuPanData = [d.__data__ for d in ds]
         self.selectDay = None
         win32gui.InvalidateRect(self.hwnd, None, True)
