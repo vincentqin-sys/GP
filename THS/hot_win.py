@@ -18,6 +18,7 @@ class HotWindow(base_win.BaseWindow):
         self.ddlrData = None # 大单流入数据
         self.lsInfoData = None # 两市信息
         self.ztFuPanData = None # 涨停复盘
+        self.kplSCQX = None # 涨停啦数据强度
         self.dataType = HotWindow.DATA_TYPE[0]
         self.selectDay = '' # YYYY-MM-DD
 
@@ -306,6 +307,19 @@ class HotWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, info, len(info), (volX - 10, volY - 12, volX + 20, volY + 30), win32con.DT_CENTER)
         info = f"{int(data['amount'] - self.lsInfoData[idx - 1]['amount']) :+d}"
         win32gui.DrawText(hdc, info, len(info), (volX - 10, endY, volX + 20, endY + 15), win32con.DT_CENTER)
+        # 开盘啦市场情绪
+        if self.kplSCQX:
+            zhqd = self.kplSCQX.get(self.formatDay(day), 0)
+            xdc = win32gui.SaveDC(hdc)
+            if zhqd > 0:
+                fnt = self.drawer.getFont('黑体', fontSize = 20,  weight = 1200)
+                self.drawer.use(hdc, fnt)
+                if zhqd >= 60: color = 0x0000ff
+                elif zhqd >= 40: color= 0x1D77FF
+                else: color = 0x24E7C8
+                rc = (x + itemWidth // 2 - 15, 20, x + itemWidth // 2 + 15, 50)
+                self.drawer.drawText(hdc, str(zhqd), rc, color)
+            win32gui.RestoreDC(hdc, xdc)
         # 显示当前选中日期的图标
         if day == self.selectDay:
             hbrBlack = win32gui.CreateSolidBrush(0x000000)
@@ -394,6 +408,7 @@ class HotWindow(base_win.BaseWindow):
         self.updateLSInfoData(code)
         self.updateDDLRData(code)
         self.updateZtFuPanData(code)
+        self.updateKPL_SCQX(code)
 
     def updateLHBData(self, code):
         def gn(name : str):
@@ -486,6 +501,13 @@ class HotWindow(base_win.BaseWindow):
         self.ztFuPanData = [d.__data__ for d in ds]
         self.selectDay = None
         win32gui.InvalidateRect(self.hwnd, None, True)
+
+    def updateKPL_SCQX(self, code):
+        qr = orm.KPL_SCQX.select().order_by(orm.KPL_SCQX.day.asc())
+        if not self.kplSCQX:
+            self.kplSCQX = {}
+        for d in qr:
+            self.kplSCQX[d.day] = d.zhqd
 
     def updateSelectDay(self, newDay):
         if not newDay or self.selectDay == newDay:

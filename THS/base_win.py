@@ -154,13 +154,15 @@ class Drawer:
             return ps
         return None
 
-    def getFont(self, name = '新宋体', fontSize = 14):
+    def getFont(self, name = '新宋体', fontSize = 14, weight = 0):
         key = f'{name}:{fontSize}'
         font = self.fonts.get(key, None)
         if not font:
             a = win32gui.LOGFONT()
             a.lfHeight = fontSize
             a.lfFaceName = name
+            if weight > 0:
+                a.lfWeight = weight
             self.fonts[key] = font = win32gui.CreateFontIndirect(a)
         return font
 
