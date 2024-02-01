@@ -125,7 +125,7 @@ if __name__ == '__main__':
     # listen ths fu ping
     #p = Process(target = listen_ThsFuPing_Process, daemon = False, name='hot_win32.py')
     #p.start()
-    th = threading.Thread(target=listen_ThsFuPing_Process)
+    th = threading.Thread(target=listen_ThsFuPing_Process, daemon=True)
     th.start()
     while True:
         p = Process(target = subprocess_main, daemon = True)

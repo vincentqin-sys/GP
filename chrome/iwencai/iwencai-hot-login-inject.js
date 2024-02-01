@@ -300,5 +300,7 @@ function initUserInfoUI() {
     loginBtn.click();
 }
 
-setTimeout(initUserInfoUI, 1000);
-setTimeout(checkImages, 2500);
+setTimeout(initUserInfoUI, 2500);
+setTimeout(checkImages, 5000);
+
+console.log('inject hot login ');

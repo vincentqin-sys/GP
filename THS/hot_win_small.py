@@ -167,9 +167,9 @@ class CardWindow(base_win.BaseWindow):
         if msg == win32con.WM_NCLBUTTONDBLCLK:
             self.maxMode = not self.maxMode
             if self.maxMode:
-                win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, *self.MAX_SIZE, win32con.SWP_NOMOVE)
+                win32gui.SetWindowPos(self.hwnd, 0, 0, 0, *self.MAX_SIZE, win32con.SWP_NOMOVE | win32con.SWP_NOZORDER) # win32con.HWND_TOP
             else:
-                win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, *self.MIN_SIZE, win32con.SWP_NOMOVE)
+                win32gui.SetWindowPos(self.hwnd, 0, 0, 0, *self.MIN_SIZE, win32con.SWP_NOMOVE| win32con.SWP_NOZORDER)
             return True
         if msg == win32con.WM_RBUTTONUP:
             self.changeCardView()
@@ -503,7 +503,7 @@ class SimpleWindow(CardWindow):
         w = win32api.GetSystemMetrics(0) # desktop width
         rect = (int(w / 3), 300, *self.MAX_SIZE)
         super().createWindow(parentWnd, rect, style, title='SimpleWindow')
-        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
         self.addCardView(SortCardView(self.hwnd))
         self.addCardView(HotCardView(self.hwnd))
@@ -746,7 +746,7 @@ class SimpleHotZHWindow(CardWindow):
         w = win32api.GetSystemMetrics(0) # desktop width
         rect = (w - self.MAX_SIZE[0], 300, *self.MAX_SIZE)
         super().createWindow(parentWnd, rect, style, title='HotZH')
-        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
         self.addCardView(HotZHCardView(self.hwnd))
 

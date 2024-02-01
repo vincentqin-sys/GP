@@ -283,7 +283,7 @@ class HotWindow(base_win.BaseWindow):
         #dtY = max(dtY, ztStartY)
         win32gui.FillRect(hdc, (dtX, dtY, dtX + 5, endY), hbrYellow)
         info = str(data['dtNum'])
-        win32gui.DrawText(hdc, info, len(info), (dtX - 4, dtY - 12, dtX + 8, dtY), win32con.DT_CENTER)
+        win32gui.DrawText(hdc, info, len(info), (dtX - 10, dtY - 12, dtX + 14, dtY), win32con.DT_CENTER)
         #下跌超过7%的个股数量图表
         d7X = dtX + 15
         _, d7Max = self.getRangeOf(self.lsInfoData, 'down7Num', startIdx, endIdx)

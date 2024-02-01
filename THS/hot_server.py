@@ -41,10 +41,13 @@ def getHot(code):
     return nd
 
 def check_chrome_open():
-    for pid in psutil.pids():
-        p = psutil.Process(pid)
-        if p.name() == 'chrome.exe':
-            return True
+    try:
+        for pid in psutil.pids():
+            p = psutil.Process(pid)
+            if p.name() == 'chrome.exe':
+                return True
+    except Exception as e:
+        print('[hot_server.check_chrome_open] exception: ', e)
     return False
 
 def sub_process():

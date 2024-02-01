@@ -7,8 +7,11 @@
 
 	"permissions": [
 		"http://www.iwencai.com/*",
+		"https://www.iwencai.com/*",
 		"http://upass.iwencai.com/*",
+		"https://upass.iwencai.com/*",
 		"http://captcha.10jqka.com.cn/*",
+		"https://captcha.10jqka.com.cn/*",
 		"tabs",
 		"webRequest",
 		"webRequestBlocking",
@@ -31,7 +34,7 @@
 		},
 		{
 			"matches": [
-				"http://upass.iwencai.com/login*"
+				"http://upass.iwencai.com/login*", "https://upass.iwencai.com/login*"
 			],
 			"run_at": "document_idle",
 			"js": [

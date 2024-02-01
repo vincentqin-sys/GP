@@ -274,7 +274,7 @@ def autoLoadTop200Data():
     curDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
     datas = orm.THS_Hot.select(orm.THS_Hot.code).distinct().where(orm.THS_Hot.day == curDay).tuples()
     datas = [d[0] for d in datas]
-    MAX_NUM = datas.length
+    MAX_NUM = len(datas)
     successTimes, failTimes = 0, 0
     fails = []
     for idx, code in enumerate(datas):
@@ -290,6 +290,12 @@ def autoLoadTop200Data():
     fd.close()
     print(f'Load {MAX_NUM}, Success {successTimes}, Fail {failTimes}')
     print('Fails: ', fails)
+    print('Try load fails')
+    for code in fails:
+        sc = autoLoadOne(code)
+        if sc:
+            tg = 'success' if sc else 'Fail'
+            print('Load ', code, tg)
     if successTimes + failTimes != MAX_NUM:
         raise Exception('[autoLoadTop200Data] 下载失败')
 

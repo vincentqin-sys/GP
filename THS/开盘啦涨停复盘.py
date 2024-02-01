@@ -3,6 +3,7 @@ import time, os, platform, sys
 from PIL import Image as PIL_Image
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import requests, json, hashlib, random, easyocr
+import pyautogui
 import orm
 from download import henxin
 
@@ -14,6 +15,8 @@ KPL_OCR_FILE = 'D:/kpl-ocr.txt'
 
 # 开盘啦截图
 class KPL_Image:
+    startY = -1
+
     def __init__(self, imgPIL):
         self.imgPIL : PIL_Image = imgPIL
         self.pixs = imgPIL.load()
@@ -97,6 +100,10 @@ class KPL_Image:
         startY = self.getRowOfColors(140, 160, 0, self.height, [0xf3f3f3, 0xeeeeee, 0xffffff])
         if startY < 0:
             startY = self.getRowOfColors(140, 160, 0, self.height, [0xf3f3f3, 0xf9f9f9, 0xffffff])
+        if startY > 0:
+            KPL_Image.startY = startY
+        if startY < 0:
+            startY = KPL_Image.startY
         if startY < 0:
             raise Exception('[KPL_Image.splitRows] startY=', startY)
         startY += 2
@@ -113,6 +120,16 @@ class KPL_Image:
                 #print(rowRect, rowRect[3] - rowRect[1])
             y += 1
 
+    def checkFinish(self):
+        if not self.rowsRect:
+            return False
+        lastRect = self.rowsRect[-1]
+        lastY = lastRect[3] + 5
+        if self.height - lastY < 35:
+            return False
+        white = self.rectIsColor((5, lastY, 140, self.height - 5), 0xffffff)
+        return white
+    
     def copyImage(self, rect):
         img = self.imgPIL.crop(rect)
         return img
@@ -212,11 +229,11 @@ class KPL_RowImage(KPL_Image):
         self.nameRect = None
         self.codeRect = None
 
-    def isValid(self):
+    def isLastEmptyRow(self):
         # last row may be white name
         white = self.rectIsColor((5, 5, self.COL_NAME[1], self.height - 5), 0xffffff)
-        return not white
-
+        return white
+    
     def parse(self):
         self.splitColName()
 
@@ -339,15 +356,20 @@ class OCRUtil:
         self.calcLeftRightArrow()
         self.calcCurrentDay()
         self.kimg.splitRows()
+        finish = False
         for r in self.kimg.rowsRect:
             nimg = self.kimg.copyImage(r)
             rowImg = KPL_RowImage(nimg)
-            if not rowImg.isValid():
-                continue
+            if rowImg.isLastEmptyRow():
+                finish = True
+                break
             model = self.parseRow(rowImg)
             model['day'] = self.curDay
             self.addModel(model)
         self.compareModels()
+        if not finish:
+            finish = self.kimg.checkFinish()
+        return finish
 
     def compareModels(self):
         for model in self.models:
@@ -371,6 +393,8 @@ class OCRUtil:
         for model in self.models:
             info = f"{model['day']}\t{fmtName(model['name'])}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}"
             print(info)
+            if '新上市' in model['status']:
+                continue
             if file:
                 file.write(info + '\n')
             if not model['_success']:
@@ -382,6 +406,8 @@ class OCRUtil:
             if file:
                 file.flush()
         print('sum =', len(self.models))
+        if file:
+            file.flush()
     
     def clearModels(self):
         self.models = []
@@ -426,13 +452,26 @@ class OCRUtil:
         img.model['ztTime'] = img.model['ztTime'].replace('.', ':')
         img.model['status'] = result[2][1]
         rz = result[3][1]
-        if (rz[-1] == '1') and (')' not in rz):
+        if (rz[-1] == '1' or rz[-1] == '/') and (')' not in rz):
             rz = rz[0 : -1] + ')'
         rz = rz.replace('」', ')')
         rz = rz.replace('}', ')')
         rz = rz.replace(']', ')')
         rz = rz.replace('[', '(')
         rz = rz.replace('{', '(')
+        rz = rz.replace('霎', '零')
+        rz = rz.replace('井', '并')
+        rz = rz.replace('娈', '变')
+        if '(' not in rz and rz != '无':
+            for i in range(len(rz) - 1, -1, -1):
+                if rz[i] != ')' and  not (rz[i] >= '0' and rz[i] <= '9'):
+                    if rz == 0:
+                        rz = rz + '()'
+                    else:
+                        rz = rz[0 : i + 1] + '(' + rz[i + 1 : ]
+                    break
+        if rz != '无' and rz[-1] != ')':
+            rz += ')'
         img.model['ztReason'] = rz
         tag = ''
         if 'R' in img.model:
@@ -444,8 +483,6 @@ class OCRUtil:
 
     def checkModel(self, model):
         mc = model['code']
-        if len(mc) != 6:
-            return False
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == mc)
         if obj and obj.name == model['name']:
             return True
@@ -453,14 +490,15 @@ class OCRUtil:
         if obj:
             flag = True
             for i, c in enumerate(obj.code):
-                f = (c == mc[i]) or (c == '1' and mc[i] == '7') or (c == '7' and mc[i] == '1') or (c == '8' and mc[i] == '3') or (c == '3' and mc[i] == '8')
+                f = (i >= len(mc)) or (c == mc[i]) or (c == '1' and mc[i] == '7') or (c == '7' and mc[i] == '1') or (c == '8' and mc[i] == '3') or (c == '3' and mc[i] == '8')
                 flag = flag and f
             if flag:
                 model['code'] = obj.code # use sugguest code
                 return True
             model['_exception'] = ' Maybe is ' + obj.code + '? '
             return False
-        
+        if len(mc) != 6:
+            return False
         try:
             obj = hx.loadUrlData(hx.getTodayKLineUrl(mc))
             name = obj['name']
@@ -469,9 +507,22 @@ class OCRUtil:
             return False
         if model['name'] == name:
             return True
-        else:
-            model['_exception'] = ' Maybe is ' + name + '? '
-            return False
+        if model['name'].replace('酉', '西') == name:
+            model['name'] = name
+            return True
+        if model['name'].replace('曰', '日') == name:
+            model['name'] = name
+            return True
+        if model['name'].replace('壬', '王') == name:
+            model['name'] = name
+            return True
+        if model['name'].replace('娈', '变') == name:
+            model['name'] = name
+            return True
+        if model['name'].replace('夭', '天') == name:
+            model['name'] = name
+            return True
+        model['_exception'] = ' Maybe is ' + name + '? '
         return False
 
     def calcReadHeadLineY(self):
@@ -521,18 +572,25 @@ class OCRUtil:
         #self.kimg.fillBox(self.rightArrow, 0xff0000)
         #self.kimg.imgPIL.show()
 
+xiaoWnds = {}
 def findXiaoYaoWnd():
     xiaoYaoWnd = win32gui.FindWindow('Qt5QWindowIcon', '逍遥模拟器')
     if not xiaoYaoWnd:
         print('Not find 逍遥模拟器')
         return None
     print(f'逍遥模拟器 top hwnd=0x{xiaoYaoWnd :x}')
+    xiaoWnds['topWnd'] = xiaoYaoWnd
     hwnd = win32gui.FindWindowEx(xiaoYaoWnd, None, 'Qt5QWindowIcon', 'MainWindowWindow')
+    xiaoWnds['mainWnd'] = hwnd
     hwnd = win32gui.FindWindowEx(hwnd, None, 'Qt5QWindowIcon', 'CenterWidgetWindow')
+    xiaoWnds['centerWnd'] = hwnd
     hwnd = win32gui.FindWindowEx(hwnd, None, 'Qt5QWindowIcon', 'RenderWindowWindow')
+    xiaoWnds['renderWnd'] = hwnd
     hwnd = win32gui.FindWindowEx(hwnd, None, 'subWin', 'sub')
+    xiaoWnds['subWin'] = hwnd
     hwnd = win32gui.FindWindowEx(hwnd, None, 'subWin', 'sub')
     print(f'逍遥模拟器 sub hwnd=0x{hwnd :x}')
+    xiaoWnds['subWin_2'] = hwnd
     return hwnd
 
 def main_loadFile():
@@ -546,6 +604,42 @@ def main_loadFile():
         day, name, code, ztTime, status, ztReason, *_ = its
         saveToDB(day, code, name, ztTime, status, ztReason, '')
 
+def runOpt(opt, util, hwnd):
+    if opt == 'r':
+        util = OCRUtil()
+        pilImage = KPL_Image.dump(hwnd)
+        util.updateImage(pilImage)
+        util.printeModels()
+        print('restart....end')
+    elif opt == 'n':
+        pilImage = KPL_Image.dump(hwnd)
+        finish = util.updateImage(pilImage)
+        util.printeModels()
+        print('next...end')
+        finish = 'Finish' if finish else False
+        return finish
+    elif opt == 's':
+        file = open(KPL_OCR_FILE, 'a')
+        util.writeModels(file)
+        util.clearModels()
+        file.close()
+        print('save success')
+        notepad = r'C:\Program Files\Notepad++\notepad++.exe'
+        win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
+    elif opt == 'so':
+        file = open(KPL_OCR_FILE, 'a')
+        util.writeModels(file)
+        util.clearModels()
+        file.close()
+        print('save success')
+    elif opt == 'l':
+        main_loadFile()
+    elif opt == 'o':
+        notepad = r'C:\Program Files\Notepad++\notepad++.exe'
+        win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
+        pass
+    return True
+
 def main():
     #txt = ocr.readtext(TMP_FILE)
     #print(txt)
@@ -558,33 +652,51 @@ def main():
     util = OCRUtil()
     while True:
         opt = input('input select: ').strip()
-        if opt == 'r':
-            util = OCRUtil()
-            pilImage = KPL_Image.dump(hwnd)
-            util.updateImage(pilImage)
-            util.printeModels()
-            print('restart....end')
-        elif opt == 'n':
-            pilImage = KPL_Image.dump(hwnd)
-            util.updateImage(pilImage)
-            util.printeModels()
-            print('next...end')
-        elif opt == 's':
-            file = open(KPL_OCR_FILE, 'a')
-            util.writeModels(file)
-            util.clearModels()
-            file.close()
-            print('save success')
-            notepad = r'C:\Program Files\Notepad++\notepad++.exe'
-            win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
-        elif opt == 'l':
-            main_loadFile()
-        elif opt == 'h':
+        runOpt(opt, util, hwnd)
+        if opt == 'h':
             print(tip)
-        elif opt == 'o':
-            notepad = r'C:\Program Files\Notepad++\notepad++.exe'
-            win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
-            pass
-        
+
+def clickLeftArrow(hwnd, rect):
+    win32gui.SetForegroundWindow(xiaoWnds['topWnd'])
+    time.sleep(0.5)
+    rr = win32gui.GetWindowRect(hwnd)
+    x = (rect[0] + rect[2]) // 2 + rr[0]
+    y = (rect[1] + rect[3]) // 2 + rr[1]
+    pyautogui.click(x, y)
+
+def nextPage(hwnd):
+    win32gui.SetForegroundWindow(xiaoWnds['topWnd'])
+    rr = win32gui.GetWindowRect(hwnd)
+    time.sleep(0.5)
+    rect = win32gui.GetClientRect(hwnd)
+    x = rect[2] // 2 + rr[0]
+    y = rect[3] - 40 + rr[1]
+    lastY = KPL_Image.startY + 50 + rr[1]
+    lparam = (y << 16) | x
+    pyautogui.moveTo(x, y)
+    time.sleep(1)
+    pyautogui.dragTo(x, lastY, duration=2)
+
+
+def auto_main():
+    hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
+    print('定位到[市场情绪->股票列表->涨停原因排序] ')
+    print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
+    util = OCRUtil()
+    while True:
+        tg = runOpt('n', util, hwnd)
+        if tg == 'Finish':
+            runOpt('so', util, hwnd)
+            clickLeftArrow(hwnd, util.leftArrow)
+            time.sleep(3)
+        else:
+            time.sleep(3)
+            nextPage(hwnd)
+            time.sleep(3)
+            
 if __name__ == '__main__':
-    main()
+    opt = input('select type: 1: manual    2: auto\n')
+    if opt.strip() == '1':
+        main()
+    else:
+        auto_main()
