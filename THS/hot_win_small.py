@@ -244,6 +244,7 @@ class ZSCardView(CardView):
         # draw title
         pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
         win32gui.SelectObject(hdc, pen)
+        win32gui.SetTextColor(hdc, 0xdddddd)
         for i in range(2):
             trc = (i * RW // 2, 0, i * RW // 2 + RW // 2, H)
             title = f'       全市排名  50亿排名'
@@ -269,6 +270,8 @@ class ZSCardView(CardView):
         return data
     
     def updateSelectDay(self, selDay):
+        if type(selDay) == str:
+            selDay = int(selDay.replace('-', ''))
         self.selectDay = selDay
 
 class HotCardView(CardView):
@@ -549,6 +552,7 @@ class SimpleWindow(CardWindow):
         for cv in self.cardViews:
             cc =  getattr(cv, 'updateSelectDay', None)
             if cc: cc(selDay)
+        self.zsCardView.updateSelectDay(selDay)
         if self.hwnd:
             win32gui.InvalidateRect(self.hwnd, None, True)
 

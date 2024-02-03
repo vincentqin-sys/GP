@@ -86,6 +86,8 @@ class Indicator:
 
     def calcVisibleRange(self, idx):
         self.visibleRange = None
+        if not self.data:
+            return
         num = self.getVisibleNum()
         if idx < 0 or idx >= len(self.data):
             self.visibleRange = (max(len(self.data) - num, 0), len(self.data))
@@ -124,7 +126,7 @@ class KLineIndicator(Indicator):
         return y
 
     def getValueAtY(self, y):
-        if not self.valueRange:
+        if not self.valueRange or not self.height:
             return None
         m = (self.valueRange[1] - self.valueRange[0]) / self.height
         val = int(self.valueRange[1] - y * m)
@@ -484,20 +486,27 @@ class KLineWindow(base_win.BaseWindow):
             return True
         if msg == win32con.WM_MOUSEMOVE:
             self.onMouseMove(lParam & 0xffff, (lParam >> 16) & 0xffff)
+            self.notifyListener('Event.onMouseMove', {'src': self, 'x': lParam & 0xffff, 'y' : (lParam >> 16) & 0xffff})
+            #self.notifyListener('WM_MOUSEMOVE', {'src': self, 'lParam': lParam, 'wParam' : wParam})
             return True
         if msg == win32con.WM_KEYDOWN:
             oem = lParam >> 16 & 0xff
             self.onKeyDown(oem)
+            self.notifyListener('Event.onKeyDown', {'src': self, 'oem': oem})
+            #self.notifyListener('WM_KEYDOWN', {'src': self, 'lParam': lParam, 'wParam' : wParam})
+            return True
+        if msg == win32con.WM_LBUTTONDOWN:
+            win32gui.SetFocus(self.hwnd)
             return True
         return False
 
     def updateAttr(self, attrName, attrVal):
-        if attrName == 'selIdx':
+        if attrName == 'selIdx' and self.selIdx != attrVal:
             self.selIdx = attrVal
             data = self.model.data[attrVal] if attrVal >= 0 else None
             self.notifyListener('selIdx.changed', {'selIdx': attrVal, 'data': data})
             win32gui.InvalidateRect(self.hwnd, None, True)
-
+        
     def onMouseMove(self, x, y):
         self.mouseXY = (x, y)
         si = self.indicators[0].getIdxAtX(x)

@@ -105,7 +105,8 @@ class KPL_Image:
         if startY < 0:
             startY = KPL_Image.startY
         if startY < 0:
-            raise Exception('[KPL_Image.splitRows] startY=', startY)
+            startY = 286
+            print('[KPL_Image.splitRows] use default startY')
         startY += 2
         y = startY
         while y < self.height:
@@ -695,6 +696,12 @@ def auto_main():
 
 def hot_main(hwnd, loop):
     print('定位到[市场情绪->数据分析] ')
+    #582x989
+    wr = win32gui.GetWindowRect(xiaoWnds['topWnd'])
+    w, h = wr[2] - wr[0], wr[3] - wr[1]
+    if w != 582 or h != 989:
+        win32gui.SetWindowPos(xiaoWnds['topWnd'], 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE)
+        time.sleep(1.5)
     hotRect = [415, 217, 510, 264]
     leftArrowRect = [272, 114, 272, 114]
     dayRect = [295, 103, 384, 126]

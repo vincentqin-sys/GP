@@ -114,7 +114,7 @@ def subprocess_main_fp():
 def listen_ThsFuPing_Process():
     print('open listen fu ping prcess')
     while True:
-        p = Process(target = subprocess_main_fp, daemon = True, name='hot_win32.py')
+        p = Process(target = subprocess_main_fp, daemon = True)
         p.start()
         print('start a new sub process(FU PING), pid=', p.pid)
         p.join()
@@ -125,8 +125,9 @@ if __name__ == '__main__':
     # listen ths fu ping
     #p = Process(target = listen_ThsFuPing_Process, daemon = False, name='hot_win32.py')
     #p.start()
-    th = threading.Thread(target=listen_ThsFuPing_Process, daemon=True)
+    th = threading.Thread(target=listen_ThsFuPing_Process, daemon=True, name='hot_win32.py')
     th.start()
+    time.sleep(1)
     while True:
         p = Process(target = subprocess_main, daemon = True)
         p.start()

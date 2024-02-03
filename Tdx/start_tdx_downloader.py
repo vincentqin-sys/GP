@@ -185,6 +185,7 @@ def work():
     t = start_ls_info.TdxLSTools()
     t.calcInfo()
     releaseDesktopGUILock(lock)
+    print('\n\n')
     return True
 
 def getDesktopGUILock():

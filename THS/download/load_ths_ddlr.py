@@ -292,7 +292,7 @@ def autoLoadTop200Data():
     print('Fails: ', fails)
     print('Try load fails')
     for code in fails:
-        sc = autoLoadOne(code)
+        sc = autoLoadOne(code, ddWin)
         if sc:
             tg = 'success' if sc else 'Fail'
             print('Load ', code, tg)
@@ -322,6 +322,7 @@ def run():
         print('Occur Exception: ', e)
         rs = False
     releaseDesktopGUILock(lock)
+    print('\n\n')
     return rs
 
 def checkDDLR_Amount():
