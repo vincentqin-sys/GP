@@ -148,18 +148,37 @@ class TdxLSTools:
                 item.upNum += 1
             elif dt.close < df.data[idx - 1].close:
                 item.downNum += 1
+            else:
+                item.zeroNum += 1
             zdt = getattr(dt, 'zdt', '')
             if zdt == 'ZT':
                 item.ztNum += 1
             elif zdt == 'DT':
                 item.dtNum += 1
+            else:
+                zd = getattr(dt, 'zhangFu', -9999)
+                if zd > 0 and zd <= 2:
+                    item.z0_2 += 1
+                elif zd > 2 and zd <= 5:
+                    item.z2_5 += 1
+                elif zd > 5 and zd <= 7:
+                    item.z5_7 += 1
+                elif zd > 7:
+                    item.z7 += 1
+                elif zd < 0 and zd >= -2:
+                    item.d0_2 += 1
+                elif zd < -2 and zd >= -5:
+                    item.d2_5 += 1
+                elif zd < -5 and zd >= -7:
+                    item.d5_7 += 1
+                elif zd < -7 and zd != -9999:
+                    item.d7 += 1
             lbs = getattr(dt, 'lbs', 0)
             if lbs >= 2:
                 item.lbNum += 1
             if item.zgb < lbs:
                 item.zgb = lbs
-            if getattr(dt, 'zhangFu', 0) <= -7:
-                item.down7Num += 1
+            
         return item
 
     def calcInfo(self):
@@ -180,8 +199,8 @@ class TdxLSTools:
 
 
 if __name__ == '__main__':
-    t = TdxVolPMTools()
-    t.calcTop50ZS()
+    #t = TdxVolPMTools()
+    #t.calcTop50ZS()
     #-----------------------------
     t = TdxLSTools()
     t.calcInfo()

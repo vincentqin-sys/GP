@@ -28,6 +28,7 @@ class Indicator:
         self.klineWin = klineWin
         self.config = config
         self.data = None
+        self.model = None
         self.valueRange = None
         self.visibleRange = None
         self.width = 0
@@ -508,12 +509,15 @@ class KLineWindow(base_win.BaseWindow):
             win32gui.InvalidateRect(self.hwnd, None, True)
         
     def onMouseMove(self, x, y):
-        self.mouseXY = (x, y)
         si = self.indicators[0].getIdxAtX(x)
-        if self.selIdx != si:
-            self.updateAttr('selIdx', si)
+        if self.selIdx == si or si < 0:
+            return
+        x = self.indicators[0].getCenterX(si)
+        if x < 0:
+            return
+        self.mouseXY = (x, y)
+        self.updateAttr('selIdx', si)
         win32gui.InvalidateRect(self.hwnd, None, True)
-        #print('[onMouseMove] price=', self.getPriceAtY(y))
 
     def setSelIdx(self, idx):
         if not self.indicators:
@@ -576,15 +580,36 @@ class KLineWindow(base_win.BaseWindow):
             return
         sdc = win32gui.SaveDC(hdc)
         d = self.model.data[self.selIdx]
-        txt = f'{self.model.code}\n{self.model.name}\n\n时间\n{d.day//10000}\n{d.day%10000:04d}\n\n涨幅\n{d.zhangFu:.2f}%\n\n成交额\n{d.amount/100000000:.02f}亿'
+        amx = d.amount/100000000
+        am = f'{amx :.1f}' if amx > 100 else f'{amx :.2f}'
+        if amx >= 1000:
+            am = f'{int(am)}'
+        txt = f'时间\n{d.day//10000}\n{d.day%10000:04d}\n\n涨幅\n{d.zhangFu:.2f}%\n\n成交额\n{am}亿'
         if hasattr(d, 'rate'):
             txt += f'\n\n换手率\n{d.rate :.1f}%'
-        rc = (0, 60, 60, 300)
+        TIP_HEIGHT = 180
+        h = self.getClientSize()[1]
+        rc = (0, (h - TIP_HEIGHT) // 2, 60, (h - TIP_HEIGHT) // 2 + TIP_HEIGHT)
         win32gui.SelectObject(hdc, hbrs['black'])
         win32gui.SelectObject(hdc, pens['red'])
         win32gui.Rectangle(hdc, *rc)
         win32gui.SetTextColor(hdc, 0xffffff)
         win32gui.DrawText(hdc, txt, len(txt), rc, win32con.DT_CENTER)
+        win32gui.RestoreDC(hdc, sdc)
+    
+    def drawCodeName(self, hdc, pens, hbrs):
+        if not self.model:
+            return
+        sdc = win32gui.SaveDC(hdc)
+        code = self.model.code
+        name = self.model.name
+        font = self.drawer.getFont('黑体', 18, 900)
+        tip = f'{code}  {name}'
+        w = self.getClientSize()[0]
+        sx = int(w* 0.65)
+        rc = (sx, 0, sx + 250, 30)
+        self.drawer.use(hdc, font)
+        self.drawer.drawText(hdc, tip, rc, 0x0000ff)
         win32gui.RestoreDC(hdc, sdc)
 
     def onDraw(self, hdc):
@@ -629,6 +654,7 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.LineTo(hdc, w - self.RIGHT_MARGIN + 10, h)
         self.drawMouse(hdc, pens)
         self.drawSelTip(hdc, pens, hbrs)
+        self.drawCodeName(hdc, pens, hbrs)
 
         if self.mouseXY:
             self.drawTipPrice(hdc, self.mouseXY[1], pens, hbrs)

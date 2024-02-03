@@ -1,8 +1,6 @@
-from win32.lib.win32con import WS_CHILD, WS_VISIBLE
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os, copy
-import os, sys, requests
-import win32gui, win32con
+import os, sys
 
 cwd = os.getcwd()
 w = cwd.index('GP')
@@ -11,6 +9,7 @@ sys.path.append(cwd)
 from Tdx import datafile
 from THS.download import henxin, load_ths_ddlr
 from THS import orm as ths_orm, base_win, kline
+
 
 class MultiKLineWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -59,16 +58,23 @@ class MultiKLineWindow(base_win.BaseWindow):
         hy2, hy3 = hy[1], hy[2]
         hy2Obj = ths_orm.THS_ZS.get_or_none(name = hy2.strip(), hydj = '二级行业')
         hy3Obj = ths_orm.THS_ZS.get_or_none(name = hy3.strip(), hydj = '三级行业')
+        md2, md3 = None, None
         if hy2Obj:
-            md = kline.KLineModel_Ths(hy2Obj.code)
-            md.loadDataFile()
-            self.klines[0].setModel(md)
-            self.klines[0].makeVisible(-1)
+            md2 = kline.KLineModel_Ths(hy2Obj.code)
+            md2.loadDataFile()
         if hy3Obj:
-            md = kline.KLineModel_Ths(hy3Obj.code)
-            md.loadDataFile()
-            self.klines[1].setModel(md)
-            self.klines[1].makeVisible(-1)
+            md3 = kline.KLineModel_Ths(hy3Obj.code)
+            md3.loadDataFile()
+            
+        if md2 and md3:
+            if len(md2.data) > len(md3.data):
+                md2.data = md2.data[len(md2.data) -len(md3.data) : ]
+            elif len(md2.data) < len(md3.data):
+                md3.data = md3.data[len(md3.data) -len(md2.data) : ]
+        self.klines[0].setModel(md2)
+        self.klines[0].makeVisible(-1)
+        self.klines[1].setModel(md3)
+        self.klines[1].makeVisible(-1)
 
     def onListen(self, target, evtName, evtInfo):
         curWinIdx = target
@@ -79,7 +85,6 @@ class MultiKLineWindow(base_win.BaseWindow):
                 kl.onMouseMove(evtInfo['x'], evtInfo['y'])
             elif evtName == 'Event.onKeyDown':
                 kl.onKeyDown(evtInfo['oem'])
-
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:
