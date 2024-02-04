@@ -3,7 +3,12 @@ import threading, time, datetime, sys, os
 from multiprocessing import Process
 from multiprocessing import shared_memory # python 3.8+
 from PIL import Image  # pip install pillow
-import base_win, number_ocr
+
+cwd = os.getcwd()
+w = cwd.index('GP')
+cwd = cwd[0 : w + 2]
+sys.path.append(cwd)
+from THS import base_win, number_ocr
 
 class ThsWindow(base_win.BaseWindow):
 

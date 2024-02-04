@@ -4,8 +4,13 @@ from PIL import Image as PIL_Image
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import requests, json, hashlib, random, easyocr
 import pyautogui
-import orm
-from download import henxin
+
+cwd = os.getcwd()
+w = cwd.index('GP')
+cwd = cwd[0 : w + 2]
+sys.path.append(cwd)
+from THS import orm
+from THS.download import henxin
 
 hx = henxin.HexinUrl()
 ocr = easyocr.Reader(['ch_sim','en'])

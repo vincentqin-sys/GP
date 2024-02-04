@@ -358,7 +358,16 @@ def checkUserNoInputTime():
     sec = diff / 1000
     return sec >= 5 * 60
 
+def main2():
+    lds = LoadThsDdlrStruct()
+    lds.loadAllFileData()
+    ldd = LoadThsDdlrDetail()
+    # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
+    ldd.loadAllFilesData()
+    checkDDLR_Amount()
+
 if __name__ == '__main__':
+    #main2()
     lastDay = None
     runNow = False
     while True:

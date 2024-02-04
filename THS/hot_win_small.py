@@ -294,6 +294,8 @@ class HotCardView(CardView):
         self.selectDay = selDay
 
     def onDraw(self, hdc):
+        if not self.hotData:
+            return
         rr = win32gui.GetClientRect(self.hwnd)
         win32gui.SetTextColor(hdc, 0xdddddd)
         H = 18

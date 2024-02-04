@@ -1,6 +1,11 @@
-import win32gui, win32con, threading, time
-import ths_win, kline
-from download import henxin
+import win32gui, win32con, threading, time, os, sys
+
+cwd = os.getcwd()
+w = cwd.index('GP')
+cwd = cwd[0 : w + 2]
+sys.path.append(cwd)
+from THS import ths_win, kline
+from THS .download import henxin
 
 win = kline.KLineWindow() # flags = kline.KLineWindow.FLAG_SHOW_AMOUNT
 tsm = ths_win.ThsShareMemory()
@@ -24,6 +29,7 @@ if __name__ == '__main__':
     tsm.open()
     rect = (0, 0, 1300, 400)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW, title='复盘-K线对照')
+    win.addDefaultIndicator(win.INDICATOR_KLINE)
     model = kline.KLineModel_Ths(603628) # 886026
     model.loadDataFile()
     win.setModel(model)

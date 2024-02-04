@@ -279,7 +279,11 @@ class AmountIndicator(Indicator):
         for idx in range(*self.visibleRange):
             self.drawItem(idx, hdc, pens, hbrs)
         win32gui.SelectObject(hdc, pens['dark_red'])
-        
+        self.drawAmountTip(hdc, pens, hbrs)
+
+    def drawAmountTip(self, hdc, pens, hbrs):
+        if not self.model or self.model.code[0] == '8' or self.model.code[0 : 3] == '399':
+            return
         亿 = 100000000
         w = self.width
         if self.valueRange[1] >= 5 * 亿 and 5 * 亿  >= self.valueRange[0]:
@@ -581,9 +585,12 @@ class KLineWindow(base_win.BaseWindow):
         sdc = win32gui.SaveDC(hdc)
         d = self.model.data[self.selIdx]
         amx = d.amount/100000000
-        am = f'{amx :.1f}' if amx > 100 else f'{amx :.2f}'
         if amx >= 1000:
             am = f'{int(am)}'
+        elif amx > 100:
+            am = f'{amx :.1f}'
+        else:
+            am =  f'{amx :.2f}'
         txt = f'时间\n{d.day//10000}\n{d.day%10000:04d}\n\n涨幅\n{d.zhangFu:.2f}%\n\n成交额\n{am}亿'
         if hasattr(d, 'rate'):
             txt += f'\n\n换手率\n{d.rate :.1f}%'

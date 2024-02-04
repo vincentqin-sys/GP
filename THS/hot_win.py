@@ -4,6 +4,12 @@ from multiprocessing import Process
 from PIL import Image  # pip install pillow
 import orm, THS.hot_win_small as hot_win_small, base_win, ths_win
 
+cwd = os.getcwd()
+w = cwd.index('GP')
+cwd = cwd[0 : w + 2]
+sys.path.append(cwd)
+from Tdx import orm as tdx_orm
+
 class HotWindow(base_win.BaseWindow):
     #  HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息) DDLR（大单流入） ZT_FUPAN(涨停复盘)
     DATA_TYPE = ('HOT', 'LHB', 'LS_INFO', 'DDLR') 
@@ -287,11 +293,11 @@ class HotWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, info, len(info), (dtX - 10, dtY - 12, dtX + 14, dtY), win32con.DT_CENTER)
         #下跌超过7%的个股数量图表
         d7X = dtX + 15
-        _, d7Max = self.getRangeOf(self.lsInfoData, 'down7Num', startIdx, endIdx)
+        _, d7Max = self.getRangeOf(self.lsInfoData, 'd7', startIdx, endIdx)
         d7Max = max(d7Max, ztMax)
-        d7Y = int(ztStartY + (1 - (data['down7Num']) / d7Max) * (endY - ztStartY))
+        d7Y = int(ztStartY + (1 - (data['d7']) / d7Max) * (endY - ztStartY))
         win32gui.FillRect(hdc, (d7X, d7Y, d7X + 5, endY), hbrYellow2)
-        info = str(data['down7Num'])
+        info = str(data['d7'])
         win32gui.DrawText(hdc, info, len(info), (d7X - 8, d7Y - 12, d7X + 15, d7Y), win32con.DT_CENTER)
         # 成交额图表
         BASE_VOL = 6000 #基准成交额为6000亿
@@ -477,7 +483,7 @@ class HotWindow(base_win.BaseWindow):
         win32gui.InvalidateRect(self.hwnd, None, True)
     
     def updateLSInfoData(self, code):
-        zsDatas = orm.TdxLSModel.select()
+        zsDatas = tdx_orm.TdxLSModel.select()
         codeDatas = orm.TdxVolPMModel.select().where(orm.TdxVolPMModel.code == code)
         cs = {}
         for c in codeDatas:

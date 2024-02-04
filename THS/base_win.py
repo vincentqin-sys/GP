@@ -1,4 +1,4 @@
-import win32gui, win32con , win32api, win32ui # pip install pywin32
+import win32gui, win32con , win32api, win32ui, win32gui_struct # pip install pywin32
 import threading, time, datetime, sys, os, copy
 
 class BaseWindow:
@@ -12,6 +12,7 @@ class BaseWindow:
         self._bitmap = None
         self._bitmapSize = None
         self.cacheBitmap = False
+        self.menu = {}
     
     # func = function(target, evtName, evtInfo)
     def addListener(self, target, func):
@@ -43,6 +44,21 @@ class BaseWindow:
         if msg == win32con.WM_DESTROY:
             win32gui.PostQuitMessage(0)
             return True
+        if msg == win32con.WM_COMMAND:
+            itemId = wParam & 0xffff
+            menuWnd = self.menu.get('hwnd', None)
+            if not menuWnd:
+                return False
+            if menuWnd: win32gui.DestroyMenu(menuWnd)
+            callback = self.menu.get('callback', None)
+            START_MENU_IDX = 40000
+            idx = itemId - START_MENU_IDX
+            if callback: callback(self.menu['args'], idx, self.menu['model'][idx])
+        if msg == win32con.WM_RBUTTONUP:
+            mm = self.menu.get('model', None)
+            if mm:
+                pos = win32gui.GetCursorPos()
+                self.popMenu(*pos)
         return False
 
     def _draw(self, fontSize = 14):
@@ -73,6 +89,28 @@ class BaseWindow:
         
     def onDraw(self, hdc):
         pass
+    
+    # model =[ {title: xx, } ]   title = 'LINE' is hor-split-line
+    # callback = function(args, model-idx, model-item)
+    def setPopupMenu(self, model, callback, args):
+        self.menu['model'] = model
+        self.menu['callback'] = callback
+        self.menu['args'] = args
+
+    def popMenu(self, x, y):
+        model = self.menu.get('model', None)
+        if not model:
+            return
+        pm = win32gui.CreatePopupMenu()
+        self.menu['hwnd'] = pm
+        START_MENU_IDX = 40000
+        for i, it in enumerate(model):
+            if it['title'] == 'LINE':
+                mi, exta = win32gui_struct.PackMENUITEMINFO(wID = START_MENU_IDX + i, fType = win32con.MF_SEPARATOR)
+            else:
+                mi, exta = win32gui_struct.PackMENUITEMINFO(text=it['title'], wID = START_MENU_IDX + i)
+            win32gui.InsertMenuItem(pm, i, True, mi)
+        win32gui.TrackPopupMenu(pm, win32con.TPM_LEFTALIGN | win32con.TPM_RIGHTBUTTON, x, y, 0, self.hwnd, None)
 
     @staticmethod
     def _WinProc(hwnd, msg, wParam, lParam):
