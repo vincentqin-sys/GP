@@ -1,5 +1,5 @@
 import win32gui, win32con , win32api, win32ui, win32gui_struct # pip install pywin32
-import threading, time, datetime, sys, os, copy
+import threading, time, datetime, sys, os, copy, calendar
 
 class BaseWindow:
     bindHwnds = {}
@@ -817,6 +817,199 @@ class Button(BaseWindow):
         if msg == win32con.WM_LBUTTONUP:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
             self.onClick(x, y)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
+
+class DatePopupWindow(BaseWindow):
+    TOP_HEADER_HEIGHT = 40
+    PADDING = 10
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.preBtnRect = None
+        self.nextBtnRect = None
+        self.curSelDay = None
+        self.ownerHwnd = None
+        self.setSelDay(None)
+
+    def createWindow(self, parentWnd, rect = None, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
+        style = win32con.WS_POPUP | win32con.WS_CHILD
+        self.ownerHwnd = parentWnd
+        p = parentWnd
+        while True and False:
+            px = win32gui.GetParent(p)
+            if px: p = px
+            else: break
+        W, H = 250, 240
+        super().createWindow(p, (0, 0, W, H), style, className, title)
+        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        BTN_W, BTN_H = 20, 20
+        self.nextBtnRect = (W - BTN_W - 5, 10, W - 5, 30)
+        self.preBtnRect = (W - BTN_W * 2 - 15, 10, W - BTN_W - 15, 30)
+
+    def show(self):
+        self.setSelDay(self.curSelDay)
+        ownerRect = win32gui.GetWindowRect(self.ownerHwnd)
+        x = 0
+        y = ownerRect[3]
+        win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+        win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
+        win32gui.SetActiveWindow(self.hwnd)
+
+    def hide(self):
+        win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+
+    def onDraw(self, hdc):
+        self.drawHeader(hdc, self.curYear, self.curMonth)
+        self.drawContent(hdc, self.curYear, self.curMonth)
+
+    def drawHeader(self, hdc, year, month):
+        title = f'{year}年{month}月'
+        self.drawer.drawText(hdc, title, (0, 10, 100, self.TOP_HEADER_HEIGHT), 0xcccccc)
+        #self.drawer.drawRect2(hdc, self.nextBtnRect, 0x444444)
+        #self.drawer.drawRect2(hdc, self.preBtnRect, 0x444444)
+        self.drawer.drawText(hdc, '<<', self.preBtnRect, 0xcccccc)
+        self.drawer.drawText(hdc, '>>', self.nextBtnRect, 0xcccccc)
+
+    def drawContent(self, hdc, year, month):
+        days = self.calcDays(year, month)
+        sy = self.TOP_HEADER_HEIGHT
+        w, h = self.getClientSize()
+        ITEM_WIDTH = (w - self.PADDING * 2) / 7
+        ITEM_HEIGHT = (h - self.TOP_HEADER_HEIGHT - self.PADDING) / ((len(days) + 6) // 7 + 1)
+        XQ = ['一', '二', '三', '四', '五', '六' ,'日']
+        XQ.extend(days)
+        days = XQ
+        DPY = (ITEM_HEIGHT - 14) // 2
+        sy = self.TOP_HEADER_HEIGHT
+        for i, day in enumerate(days):
+            if i > 0 and i % 7 == 0:
+                sy += ITEM_HEIGHT
+            c = i % 7
+            if not day:
+                continue
+            rc = [self.PADDING + int(c * ITEM_WIDTH), int(sy), self.PADDING + int(c * ITEM_WIDTH + ITEM_WIDTH), int(sy + ITEM_HEIGHT)]
+            #self.drawer.drawRect2(hdc, rc, 0x00aa00)
+            rc[1] += int(DPY)
+            txt = day if type(day) == str else str(day.day)
+            self.drawer.drawText(hdc, txt, rc, 0xcccccc)
+            
+    def calcDays(self, year, month):
+        weeky, num = calendar.monthrange(year, month)
+        days = []
+        for i in range(0, weeky):
+            days.append(None)
+        for i in range(0, num):
+            d = datetime.date(year, month, i + 1)
+            days.append(d)
+        return days
+
+    def nextMonth(self):
+        m = self.curMonth + 1
+        if m == 13:
+            self.curMonth = 1
+            self.curYear += 1
+        else:
+            self.curMonth = m
+        self.invalidWindow()
+
+    def prevMonth(self):
+        m = self.curMonth - 1
+        if m == 0:
+            self.curMonth = 12
+            self.curYear -= 1
+        else:
+            self.curMonth = m
+        self.invalidWindow()
+
+    def getDayOf(self, x, y):
+        w, h = self.getClientSize()
+        if x < self.PADDING or x > w - self.PADDING or y < self.TOP_HEADER_HEIGHT or y >= h - self.PADDING:
+            return None
+        days = self.calcDays(self.curYear, self.curMonth)
+        ITEM_WIDTH = int((w - self.PADDING * 2) / 7)
+        ITEM_HEIGHT = int((h - self.TOP_HEADER_HEIGHT - self.PADDING) / ((len(days) + 6) // 7 + 1))
+        if y <= self.TOP_HEADER_HEIGHT + ITEM_HEIGHT:
+            return None # in XQ title
+        x -= self.PADDING
+        y -= self.TOP_HEADER_HEIGHT + ITEM_HEIGHT
+        r = y // ITEM_HEIGHT
+        c = x // ITEM_WIDTH
+        idx = r * 7 + c
+        if idx >=0 and idx < len(days):
+            return days[idx]
+        return None
+
+    # day = int | datetime.date | str
+    def setSelDay(self, day):
+        if not day:
+            day = datetime.date.today()
+            self.curSelDay = None
+            self.curYear = day.year
+            self.curMonth = day.month
+            return
+        if type(day) == datetime.date:
+            self.curSelDay = day
+        elif type(day) == int:
+            self.curSelDay = datetime.date(day // 10000, day // 100 % 100, day % 100)
+        elif type(day) == str:
+            day = int(day.replace('-', ''))
+            self.curSelDay = datetime.date(day // 10000, day // 100 % 100, day % 100)
+        self.curYear = self.curSelDay.year
+        self.curMonth = self.curSelDay.month
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_ACTIVATE:
+            ac = wParam & 0xffff
+            if ac == win32con.WA_INACTIVE:
+                self.hide()
+            return True
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            if x >= self.preBtnRect[0] and x < self.preBtnRect[2] and y >= self.preBtnRect[1] and y < self.preBtnRect[3]:
+                self.prevMonth()
+            elif x >= self.nextBtnRect[0] and x < self.nextBtnRect[2] and y >= self.nextBtnRect[1] and y < self.nextBtnRect[3]:
+                self.nextMonth()
+            else:
+                day = self.getDayOf(x, y)
+                if day:
+                    self.setSelDay(day)
+                    self.hide()
+                    self.notifyListener('sel.date.changed', {'curSelDay': self.curSelDay})
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
+
+class DatePicker(BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.selDay = None
+        self.popWin = DatePopupWindow()
+        self.popWin.addListener('DatePopupWindow', self.onSelDayChanged)
+
+    def onSelDayChanged(self, target, evtName, evtInfo):
+        self.selDay = evtInfo['curSelDay']
+        self.invalidWindow()
+        self.notifyListener(evtName, evtInfo)
+
+    def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
+        super().createWindow(parentWnd, rect, style, className, title)
+        self.popWin.createWindow(self.hwnd)
+
+    def onDraw(self, hdc):
+        w, h = self.getClientSize()
+        self.drawer.drawRect2(hdc, (0, 0, w, h), 0xcccccc)
+        if not self.selDay:
+            return
+        txt = f'{self.selDay.year}-{self.selDay.month :02d}-{self.selDay.day :02d}'
+        sy = (h - 2 - 14) // 2
+        self.drawer.drawText(hdc, txt, (0, sy, w - 1, h), 0xcccccc)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONUP:
+            if win32gui.IsWindowVisible(self.popWin.hwnd):
+                self.popWin.hide()
+            else:
+                self.popWin.show()
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 

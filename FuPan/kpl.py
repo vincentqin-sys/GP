@@ -174,13 +174,14 @@ class KPL_MgrWindow(base_win.BaseWindow):
         self.kplWin = KPL_Window()
         self.kplTableWin = KPL_ZT_TableWindow()
         self.multiKLineWin = multi_kline.MultiKLineWindow()
+        self.datePickerWin = base_win.DatePicker()
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
         self.layout.setContent(0, 0, self.kplWin)
         self.layout.setContent(2, 0, self.kplTableWin)
         self.layout.setContent(0, 1, self.multiKLineWin, {'verExpand' : -1})
-        gl = base_win.GridLayout(('100%', ), (40, '1fr', 40), (0, 5))
+        gl = base_win.GridLayout(('100%', ), (40, '1fr', 150, '1fr', 40), (0, 5))
         preDayBtn = base_win.Button({'name': 'pre-day-btn', 'title': '<<'})
         nextDayBtn = base_win.Button({'name': 'next-day-btn', 'title': '>>'})
         preDayBtn.addListener('pre', self.onLisetenSelectDay)
@@ -188,11 +189,13 @@ class KPL_MgrWindow(base_win.BaseWindow):
         preDayBtn.createWindow(self.hwnd, (0, 0, 40, 30))
         nextDayBtn.createWindow(self.hwnd, (0, 0, 40, 30))
         gl.setContent(0, 0, preDayBtn)
-        gl.setContent(0, 2, nextDayBtn)
+        gl.setContent(0, 2, self.datePickerWin)
+        gl.setContent(0, 4, nextDayBtn)
         self.layout.setContent(1, 0, gl)
         self.kplWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.kplTableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.multiKLineWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.datePickerWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.layout.resize(0, 0, *self.getClientSize())
 
     def onLisetenSelectDay(self, target, evtName, evtInfo):
