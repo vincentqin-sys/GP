@@ -190,7 +190,7 @@ class Drawer:
             return ps
         return None
 
-    def getFont(self, name = '新宋体', fontSize = 14, weight = 0):
+    def getFont(self, name = '宋体', fontSize = 14, weight = 0):
         key = f'{name}:{fontSize}'
         font = self.fonts.get(key, None)
         if not font:

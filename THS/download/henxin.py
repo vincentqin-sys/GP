@@ -327,16 +327,22 @@ class HexinUrl(Henxin):
         ds = js['data'].split(';')
         keys = ['day', 'open', 'high', 'low', 'close', 'vol', 'amount', 'rate']; # vol: 单位股, amount:单位元
         rs = []
-        for d in ds:
+        for m, d in enumerate(ds):
             obj = HexinUrl.ItemData()
             row = d.split(',')
+            if m == len(ds) - 1: 
+                print(row) # last row
             for i, k in enumerate(keys):
                 if row[i] == '':
                     row[i] = '0' # fix bug
                 if i == 0 or i == 5:
                     setattr(obj, keys[i], int(row[i]))
                 elif i >= 1 and i <= 4:
-                    setattr(obj, keys[i], int(row[i].replace('.', '')))
+                    if row[i][-3] == '.':
+                        d = int(row[i].replace('.', ''))
+                    else:
+                        d = int(float(row[i]) * 100)
+                    setattr(obj, keys[i], d)
                 elif i == 6:
                     setattr(obj, keys[i], int(float(row[i])))
                 elif i == 7 and row[i]:
@@ -344,6 +350,7 @@ class HexinUrl(Henxin):
             if obj:
                 rs.append(obj)
         rv = {'name': name, 'today': today,  'data': rs}
+        #print('[henxin.parseDaylyData ] rs[-1]=', rs[-1].__dict__)
         return rv
 
     def parseFenShiData(self, txt):

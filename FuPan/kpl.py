@@ -17,14 +17,110 @@ class KPL_Window(base_win.BaseWindow):
         super().__init__()
         self.day = None
         self.data = None
+        self.paddings = (10, 5, 10, 0) # left, top, right, bottom
+        self.itemWidth = 16 # 每项宽度
 
     def onDraw(self, hdc):
-        self.drawSCQX(hdc)
-        pass
+        #self.drawer.drawRect2(hdc, (0, 0, *self.getClientSize()), 0xff0000)
+        if not self.data:
+            return
+        w, h = self.getClientSize()
+        # draw scqx
+        SCQX_CYCLE_H, SCQX_H = 20, 8
+        scqdRect = [self.paddings[1] + 15, self.paddings[1] + (SCQX_CYCLE_H - SCQX_H) // 2, w - self.paddings[2] - 60, self.paddings[1] + (SCQX_CYCLE_H - SCQX_H) // 2 + SCQX_H]
+        scqdCycle = [self.paddings[1] + 10, self.paddings[1], self.paddings[1] + 10 + SCQX_CYCLE_H, self.paddings[1] + SCQX_CYCLE_H]
+        self.drawer.fillRect(hdc, scqdRect, 0xaaaaaa)
+        self.drawer.fillCycle(hdc, scqdCycle, 0x00cc00)
+        zhqd = self.data.get('zhqd', 0)
+        sgx = int((scqdRect[2] - scqdRect[0]) / 100 * min(zhqd, 40))
+        rc = [scqdRect[0], scqdRect[1], scqdRect[0] + sgx, scqdRect[3]]
+        self.drawer.fillRect(hdc, rc, 0x00cc00)
+        if zhqd > 40:
+            szx = int((scqdRect[2] - scqdRect[0]) / 100 * (min(zhqd, 60) - 40))
+            rc2 = [rc[2], scqdRect[1], rc[2] + szx, scqdRect[3]]
+            self.drawer.fillRect(hdc, rc2, 0x00ccff)
+        if zhqd > 60:
+            smx = int((scqdRect[2] - scqdRect[0]) / 100 * (zhqd - 60))
+            rc3 = [rc2[2], scqdRect[1], rc2[2] + smx, scqdRect[3]]
+            self.drawer.fillRect(hdc, rc3, 0x0000ff)
+        fnt = self.drawer.getFont(fontSize=18, weight=1000)
+        self.drawer.use(hdc, fnt)
+        color = 0x00cc00
+        if zhqd > 40: color = 0x00ccff
+        if zhqd > 60: color = 0x0000ff
+        self.drawer.drawText(hdc, f'{zhqd}', (scqdRect[2] + 10, scqdRect[1] - 5, scqdRect[2] + 60, scqdRect[3] + 5), color, align=win32con.DT_LEFT)
+        # draw items
+        NUM = 11
+        endY = h - 54 - self.paddings[3]
+        startY = 50
+        space = (w - self.itemWidth * NUM - self.paddings[0] - self.paddings[2]) / (NUM - 1)
+        keys = ('ztNum', 'z7', 'z5_7', 'z2_5', 'z0_2', 'zeroNum', 'd0_2', 'd2_5', 'd5_7', 'd7', 'dtNum')
+        titles = ('涨停', '>7', '5-7', '2-5', '0-2', '平', '0-2', '2-5', '5-7', '<7', '跌停')
+        maxNum = 0
+        for v in keys:
+            n = self.data.get(v, 0)
+            maxNum = max(n, maxNum)
+        for i, k in enumerate(keys):
+            sx = int(space * (i + 1)) + self.itemWidth * i
+            color = 0xaaaaaa
+            if i < 5:
+                color = 0x0000ff
+            elif i > 5:
+                color = 0x00ff00
+            ih = self.data.get(k, 0) / maxNum * (endY - startY)
+            ih = max(ih, 1)
+            sy = endY - int(ih)
+            rc = (sx, sy, sx + self.itemWidth, endY)
+            self.drawer.fillRect(hdc, rc, color)
+            rc = [sx - 3, sy - 15, sx + self.itemWidth + 3, sy]
+            fnt = self.drawer.getFont(fontSize = 11)
+            self.drawer.use(hdc, fnt)
+            self.drawer.drawText(hdc, f'{self.data.get(k, 0)}', rc, color)
+            rc[1] = endY + 4
+            rc[3] = endY + 20
+            self.drawer.drawText(hdc, titles[i], rc, color)
+        # draw upNum
+        UD_HEIGHT = 10
+        zY = endY + 25
+        ARROW = 10
+        space2 = 5
+        WW = w - self.paddings[0] - self.paddings[2] - space * 2
+        mmn = max(self.data['upNum'] + self.data['downNum'] + self.data['zeroNum'], 1)
+        upW = int(WW * self.data['upNum'] / mmn)
+        ps = win32gui.GetStockObject(win32con.NULL_PEN)
+        win32gui.SelectObject(hdc, ps)
+        sx = self.paddings[0]
+        ex = sx + upW
+        self.drawer.use(hdc, self.drawer.getBrush(0x0000ff))
+        win32gui.Polygon(hdc, [(sx, zY), (ex + ARROW, zY), (ex, zY + UD_HEIGHT), (sx, zY + UD_HEIGHT), (sx, zY)])
+        zTY = zY + UD_HEIGHT + 5
+        self.drawer.use(hdc, self.drawer.getFont(fontSize=14))
+        self.drawer.drawText(hdc, f"{self.data['upNum']}家", (sx, zTY, sx + 50, zTY + 20), color=0x0000ff, align = win32con.DT_LEFT)
+        # draw zeroNum
+        zeroW = max(int(WW * self.data['zeroNum'] / mmn), 2)
+        sx = ex + space2
+        ex = sx + zeroW
+        self.drawer.use(hdc, self.drawer.getBrush(0xaaaaaa))
+        win32gui.Polygon(hdc, [(sx + ARROW, zY), (ex + ARROW, zY), (ex, zY + UD_HEIGHT), (sx, zY + UD_HEIGHT), (sx + ARROW, zY)])
+        # draw downNum
+        sx = ex + space2
+        ex = int(w - self.paddings[2])
+        self.drawer.use(hdc, self.drawer.getBrush(0x00ff00))
+        win32gui.Polygon(hdc, [(sx + ARROW, zY), (ex, zY), (ex, zY + UD_HEIGHT), (sx, zY + UD_HEIGHT), (sx + ARROW, zY)])
+        self.drawer.drawText(hdc, f"{self.data['downNum']}家", (ex - 50, zTY, ex, zTY + 20), color=0x00ff00, align = win32con.DT_RIGHT)
+        # draw amount
+        sx = w // 2
+        amount = int(self.data['amount'])
+        self.drawer.drawText(hdc, f"{amount}亿", (sx - 50, zTY, sx + 50, zTY + 20), color=0xaaaaaa, align = win32con.DT_CENTER)
 
-    def drawSCQX(self, hdc):
-        self.drawer.fillRect(hdc, (0, 0, *self.getClientSize()), 0xff0000)
-        pass
+    def getTradeDays(self):
+        qr = tdx_orm.TdxLSModel.select(tdx_orm.TdxLSModel.day).distinct().order_by(tdx_orm.TdxLSModel.day.asc()).tuples()
+        d = [dx[0] for dx in qr]
+        return d
+
+    def getLastTradeDay(self):
+        ds = self.getTradeDays()
+        return ds[-1]
 
     def updateDay(self, day):
         if self.day == day or not day:
@@ -41,6 +137,28 @@ class KPL_Window(base_win.BaseWindow):
         obj = ths_orm.KPL_SCQX.get_or_none(day = day)
         if obj:
             self.data['zhqd'] = obj.zhqd
+        self.invalidWindow()
+
+    def nextDay(self):
+        if not self.day:
+            return False
+        days = self.getTradeDays()
+        idx = days.index(self.day)
+        if idx != len(days) - 1:
+            self.updateDay(days[idx + 1])
+            return True
+        return False
+    
+    def preDay(self):
+        if not self.day:
+            return False
+        days = self.getTradeDays()
+        idx = days.index(self.day)
+        if idx != 0:
+            self.updateDay(days[idx - 1])
+            return True
+        return False
+
 
 class KPL_ZT_TableWindow(base_win.TableWindow):
     def __init__(self) -> None:
@@ -78,8 +196,11 @@ class KPL_MgrWindow(base_win.BaseWindow):
         self.layout.resize(0, 0, *self.getClientSize())
 
     def onLisetenSelectDay(self, target, evtName, evtInfo):
-        print('onLisetenSelectDay: ', target, evtName, evtInfo)
-        pass
+        #print('onLisetenSelectDay: ', target, evtName, evtInfo)
+        if target == 'next':
+            self.kplWin.nextDay()
+        elif target == 'pre':
+            self.kplWin.preDay()
 
     def onLisetenEvent(self, target, evtName, evtInfo):
         print('onLisetenEvent: ', target, evtName, evtInfo)
@@ -92,9 +213,13 @@ class KPL_MgrWindow(base_win.BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
+    def init(self):
+        #self.multiKLineWin.updateCode('603259')
+        self.kplWin.updateDay(self.kplWin.getLastTradeDay())
 
 if __name__ == '__main__':
     kpl = KPL_MgrWindow()
     kpl.createWindow(None, (0, 0, 1000, 400), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(kpl.hwnd, win32con.SW_MAXIMIZE)
+    kpl.init()
     win32gui.PumpMessages()

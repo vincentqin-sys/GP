@@ -22,6 +22,7 @@ class MultiKLineWindow(base_win.BaseWindow):
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
+        self.adjustChildKLine(3)
 
     def adjustChildKLine(self, childKlineNum = 3):
         rowTmp = ('1fr', ) * childKlineNum
