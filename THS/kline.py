@@ -514,10 +514,12 @@ class KLineWindow(base_win.BaseWindow):
         
     def onMouseMove(self, x, y):
         si = self.indicators[0].getIdxAtX(x)
-        if self.selIdx == si or si < 0:
+        if si < 0:
             return
         x = self.indicators[0].getCenterX(si)
         if x < 0:
+            return
+        if self.selIdx == si and self.mouseXY and y == self.mouseXY[1]:
             return
         self.mouseXY = (x, y)
         self.updateAttr('selIdx', si)

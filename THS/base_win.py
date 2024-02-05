@@ -51,8 +51,7 @@ class BaseWindow:
                 return False
             if menuWnd: win32gui.DestroyMenu(menuWnd)
             callback = self.menu.get('callback', None)
-            START_MENU_IDX = 40000
-            idx = itemId - START_MENU_IDX
+            idx = itemId
             if callback: callback(self.menu['args'], idx, self.menu['model'][idx])
         if msg == win32con.WM_RBUTTONUP:
             mm = self.menu.get('model', None)
@@ -103,12 +102,11 @@ class BaseWindow:
             return
         pm = win32gui.CreatePopupMenu()
         self.menu['hwnd'] = pm
-        START_MENU_IDX = 40000
         for i, it in enumerate(model):
             if it['title'] == 'LINE':
-                mi, exta = win32gui_struct.PackMENUITEMINFO(wID = START_MENU_IDX + i, fType = win32con.MF_SEPARATOR)
+                mi, exta = win32gui_struct.PackMENUITEMINFO(wID = i, fType = win32con.MF_SEPARATOR)
             else:
-                mi, exta = win32gui_struct.PackMENUITEMINFO(text=it['title'], wID = START_MENU_IDX + i)
+                mi, exta = win32gui_struct.PackMENUITEMINFO(text = it['title'], wID = i)
             win32gui.InsertMenuItem(pm, i, True, mi)
         win32gui.TrackPopupMenu(pm, win32con.TPM_LEFTALIGN | win32con.TPM_RIGHTBUTTON, x, y, 0, self.hwnd, None)
 
@@ -543,18 +541,19 @@ class TableWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.style = {}
-        self.rowHeight = 18
-        self.headHeight = 20
+        self.rowHeight = 20
+        self.headHeight = 24
         self.tailHeight = 0
-        self.columnCount = 1
         self.startIdx = 0
         self.selRow = -1
         self.data = None # a data array, [{colName1: xx, colName2: xxx}, ...]
+        # headers : need set  [{title:xx, name:xxx, width: x }, ...]  
+        # '#idx' is index row column  width: int-> fix width; -1: expand all less width; float( < 1.0 ) -> percent of headers width
+        self.headers = None 
+        self.columnCount = 1 # need set
 
-    # over-write
-    # return [{title:xx, name:xxx}, ...]  '#idx' is index row column
     def getHeaders(self):
-        return None
+        return self.headers
 
     # over-write
     def getValueAt(self, row, col, colName):
@@ -620,15 +619,17 @@ class TableWindow(BaseWindow):
 
     def drawHeaders(self, hdc):
         hds = self.getHeaders()
-        if self.headHeight <= 0:
+        if self.headHeight <= 0 or not hds:
             return
         w = self.getClientSize()[0]
         self.drawer.fillRect(hdc, (0, 0, w, self.headHeight), 0x191919)
         rc = [0, 0, 0, self.headHeight]
         for i, hd in enumerate(hds):
-            rc[2] = self.getColumnWidth(i, hd['name'])
+            rc[2] += self.getColumnWidth(i, hd['name'])
             self.drawer.drawRect2(hdc, rc, 0x888888)
-            self.drawer.drawText(hdc, hd['title'], rc)
+            rc2 = rc.copy()
+            rc2[1] = (self.headHeight - 14) // 2
+            self.drawer.drawText(hdc, hd['title'], rc2)
             rc[0] = rc[2]
         
     def drawCell(self, hdc, row, col, colName, value, rect):

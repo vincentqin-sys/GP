@@ -116,6 +116,7 @@ class MultiKLineWindow(base_win.BaseWindow):
     def onMenuItemClick(self, klineIdx, idx, menuItem):
         md = kline.KLineModel_Ths(menuItem['code'])
         md.loadDataFile()
+        self.adjustDataLength(md, self.dataLen)
         target = self.klines[(klineIdx + 1) % len(self.klines)]
         self.klines[klineIdx].setModel(md)
         self.klines[klineIdx].makeVisible(target.selIdx)

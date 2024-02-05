@@ -403,7 +403,7 @@ class DDMoneyWindow(base_win.BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-class FuPanMgrWindow(base_win.BaseWindow):
+class DDLR_MinuteMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.fsWin = None
@@ -413,12 +413,9 @@ class FuPanMgrWindow(base_win.BaseWindow):
         tcs = (250, 'auto')
         self.gridLayout = base_win.GridLayout(trs, tcs, (10, 5))
 
-    def create(self):
+    def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''):
         self.shareMem.open()
-        style = win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE
-        rect = (0, 0, 1000, 500)
-        super().createWindow(None, rect, style, title = '大单复盘')
-        win32gui.ShowWindow(self.hwnd, win32con.SW_MAXIMIZE)
+        super().createWindow(parentWnd, rect, style, title = '大单复盘')
         
         size = self.getClientSize()
         self.tableWin = TableWindow()
@@ -439,7 +436,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.moneyBtns.createWindow(self.hwnd, rc3)
         self.moneyBtns.addListener(None, self.onListenMoney)
 
-        refreshBtn = base_win.Button({'title': '刷新', 'val': 'Refresh'})
+        refreshBtn = base_win.Button({'title': '同步', 'val': 'Refresh'})
         rc4 = (5, 10, 50, 30)
         refreshBtn.createWindow(self.hwnd, rc4)
         refreshBtn.addListener(None, self.onListenRefresh)
@@ -502,6 +499,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
 
 if __name__ == '__main__':
-    mgr = FuPanMgrWindow()
-    mgr.create()
+    mgr = DDLR_MinuteMgrWindow()
+    mgr.createWindow(None,(0, 0, 1000, 400), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE )
+    win32gui.ShowWindow(mgr.hwnd, win32con.SW_MAXIMIZE)
     win32gui.PumpMessages()
