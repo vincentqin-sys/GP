@@ -331,21 +331,25 @@ class HexinUrl(Henxin):
             obj = HexinUrl.ItemData()
             row = d.split(',')
             if m == len(ds) - 1: 
-                print(row) # last row
+                print('[henxin.parseDaylyData]', name, row) # last row
             for i, k in enumerate(keys):
                 if row[i] == '':
                     row[i] = '0' # fix bug
                 if i == 0 or i == 5:
                     setattr(obj, keys[i], int(row[i]))
                 elif i >= 1 and i <= 4:
-                    if row[i][-3] == '.':
+                    if row[i] == '0':
+                        del obj
+                        obj = None
+                        break
+                    if len(row[i]) > 3 and row[i][-3] == '.':
                         d = int(row[i].replace('.', ''))
                     else:
                         d = int(float(row[i]) * 100)
                     setattr(obj, keys[i], d)
                 elif i == 6:
                     setattr(obj, keys[i], int(float(row[i])))
-                elif i == 7 and row[i]:
+                elif i == 7:
                     setattr(obj, keys[i], float(row[i]))
             if obj:
                 rs.append(obj)
@@ -378,6 +382,36 @@ class ThsDataFile(datafile.DataFile):
             rs = hx.loadUrlData(url)
             self.data = rs['data']
             self.name = rs['name']
+            
+    def getItemIdx(self, day):
+        if not self.data:
+            return -1
+        if type(day) == str:
+            day = day.replace('-', '')
+            day = int(day)
+        left, right = 0, len(self.data) - 1
+        idx = -1
+        while left <= right:
+            mid = (left + right) // 2
+            d = self.data[mid]
+            if d.day == day:
+                idx = mid
+                break
+            elif day > d.day:
+                left = mid + 1
+            else:
+                right = mid - 1
+        if idx == -1:
+            return -1
+        if self.dataType == self.DT_DAY:
+            return idx
+        t = self.data[idx].day
+        while idx > 0:
+            if self.data[idx - 1].day == t:
+                idx -= 1
+            else:
+                break
+        return idx
 
 if __name__ == '__main__':
     hx = HexinUrl()

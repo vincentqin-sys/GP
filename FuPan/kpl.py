@@ -165,14 +165,39 @@ class KPL_Window(base_win.BaseWindow):
 class KPL_ZT_TableWindow(base_win.TableWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.headers = [{'name':'code', 'title':'股票名称'}, {'name':'ztTime', 'title':'涨停时间'}, {'name':'status', 'title':'状态'}, {'name':'ztReason', 'title':'涨停原因'}] # {'name':'#idx', 'title':''}, 
-        self.columnCount = len(self.headers)
+        self.headers = [{'name':'#idx', 'title':''}, {'name':'name', 'title':'股票名称'}, 
+                        {'name':'ztTime', 'title':'涨停时间'}, 
+                        {'name':'status', 'title':'状态'}, 
+                        {'name':'ztReason', 'title':'涨停原因'}] # {'name':'#idx', 'title':''}, 
 
+    def updateDay(self, day):
+        if not day:
+            self.data = None
+            return
+        if type(day) == int:
+            day = f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
+        elif type(day) == str and len(day) == 8:
+            day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
+        qr = ths_orm.KPL_ZT.select().where(ths_orm.KPL_ZT.day == day)
+        if self.data:
+            self.data.clear()
+        self.data = [d.__data__ for d in qr]
+        self.invalidWindow()
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONDBLCLK:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            if y > self.headHeight and y < self.getClientSize()[1] - self.tailHeight:
+                y -= self.headHeight
+                row = y // self.rowHeight + self.startIdx
+                self.notifyListener('DbClick', {'row': row, 'data': self.data[row]})
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
 
 class KPL_MgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.layout = base_win.GridLayout((170, 30, '1fr'), (350, '1fr'), (10, 10))
+        self.layout = base_win.GridLayout((170, 30, '1fr'), (400, '1fr'), (10, 10))
         self.kplWin = KPL_Window()
         self.kplTableWin = KPL_ZT_TableWindow()
         self.multiKLineWin = multi_kline.MultiKLineWindow()
@@ -199,6 +224,7 @@ class KPL_MgrWindow(base_win.BaseWindow):
         self.multiKLineWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.datePickerWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.datePickerWin.addListener('DatePicker', self.onLisetenDatePickerChanged)
+        self.kplTableWin.addListener('TableWindow', self.onListenDbClickTable)
         self.layout.resize(0, 0, *self.getClientSize())
 
     def onLisetenSelectDay(self, target, evtName, evtInfo):
@@ -206,18 +232,26 @@ class KPL_MgrWindow(base_win.BaseWindow):
         if target == 'next':
             self.kplWin.nextDay()
             self.datePickerWin.setSelDay(self.kplWin.day)
+            self.kplTableWin.updateDay(self.kplWin.day)
         elif target == 'pre':
             self.kplWin.preDay()
             self.datePickerWin.setSelDay(self.kplWin.day)
+            self.kplTableWin.updateDay(self.kplWin.day)
 
     def onLisetenDatePickerChanged(self, target, evtName, evtInfo):
         day = evtInfo['curSelDay']
-        day = f'{day.year}-{day.month :02d}-{day.day :02d}'
+        #day = f'{day.year}-{day.month :02d}-{day.day :02d}'
         self.kplWin.updateDay(day)
+        self.kplTableWin.updateDay(day)
 
     def onLisetenEvent(self, target, evtName, evtInfo):
         print('onLisetenEvent: ', target, evtName, evtInfo)
         pass
+    def onListenDbClickTable(self, target, evtName, evtInfo):
+        if evtName == 'DbClick':
+            data = evtInfo['data']
+            self.multiKLineWin.updateCode(data['code'])
+            self.multiKLineWin.setMarkDay(data['day'])
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:
@@ -231,6 +265,7 @@ class KPL_MgrWindow(base_win.BaseWindow):
         day = self.kplWin.getLastTradeDay()
         self.kplWin.updateDay(day)
         self.datePickerWin.setSelDay(day)
+        self.kplTableWin.updateDay(day)
 
 if __name__ == '__main__':
     kpl = KPL_MgrWindow()

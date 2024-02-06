@@ -81,7 +81,7 @@ class Indicator:
             return -1
         idx = x // (self.klineWin.klineWidth + self.klineWin.klineSpace)
         idx += self.visibleRange[0]
-        if idx >= len(self.data):
+        if idx >= len(self.data) or idx >= self.visibleRange[1]:
             return -1
         return idx
 
@@ -155,6 +155,11 @@ class KLineIndicator(Indicator):
         if not self.visibleRange:
             return
         self.drawBackground(hdc, pens, hbrs)
+        self.drawKLines(hdc, pens, hbrs)
+    
+    def drawKLines(self, hdc, pens, hbrs):
+        if not self.visibleRange:
+            return
         for idx in range(*self.visibleRange):
             data = self.data[idx]
             cx = self.getCenterX(idx)
@@ -263,7 +268,10 @@ class AmountIndicator(Indicator):
         cx = self.getCenterX(idx)
         bx = cx - self.klineWin.klineWidth // 2
         ex = bx + self.klineWin.klineWidth
-        rect = (bx, self.getYAtValue(self.valueRange[0]), ex, self.getYAtValue(data.amount) + 1)
+        rect = [bx, self.getYAtValue(self.valueRange[0]), ex, self.getYAtValue(data.amount) + 1]
+        if rect[3] - rect[1] == 0 and data.amount > 0:
+            rect[1] -= 1
+        rect = tuple(rect)
         color = self.getColor(idx, data)
         win32gui.SelectObject(hdc, pens[color])
         if data.close >= data.open:
@@ -588,7 +596,7 @@ class KLineWindow(base_win.BaseWindow):
         d = self.model.data[self.selIdx]
         amx = d.amount/100000000
         if amx >= 1000:
-            am = f'{int(am)}'
+            am = f'{int(amx)}'
         elif amx > 100:
             am = f'{amx :.1f}'
         else:

@@ -549,13 +549,11 @@ class TableWindow(BaseWindow):
         self.data = None # a data array, [{colName1: xx, colName2: xxx}, ...]
         # headers : need set  [{title:xx, name:xxx, width: x }, ...]  
         # '#idx' is index row column  width: int-> fix width; -1: expand all less width; float( < 1.0 ) -> percent of headers width
-        self.headers = None 
-        self.columnCount = 1 # need set
+        self.headers = None # must be set TODO
 
     def getHeaders(self):
         return self.headers
 
-    # over-write
     def getValueAt(self, row, col, colName):
         if not self.data:
             return None
@@ -567,7 +565,12 @@ class TableWindow(BaseWindow):
 
     def getColumnWidth(self, colIdx, colName):
         w, h = self.getClientSize()
-        return w // self.columnCount
+        return w // self.getColumnCount()
+    
+    def getColumnCount(self):
+        if not self.headers:
+            return 1
+        return len(self.headers)
 
     def getPageSize(self):
         h = self.getClientSize()[1]
@@ -605,8 +608,10 @@ class TableWindow(BaseWindow):
     
     def onDraw(self, hdc):
         self.drawer.fillRect(hdc, (0, 0, *self.getClientSize()), 0x151313)
+        if not self.getHeaders():
+            return
         self.drawHeaders(hdc)
-        if not self.data or not self.getHeaders():
+        if not self.data:
             return
         vr = self.getVisibleRange()
         if not vr:
@@ -665,7 +670,7 @@ class TableWindow(BaseWindow):
             return
         if delta & 0x8000:
             delta = delta - 0xffff - 1
-        delta = -delta // 120
+        delta = delta // 120
         self.scroll(delta * 5)
         win32gui.InvalidateRect(self.hwnd, None, True)
 
@@ -971,7 +976,8 @@ class DatePopupWindow(BaseWindow):
                 if day:
                     self.setSelDay(day)
                     self.hide()
-                    self.notifyListener('sel.date.changed', {'curSelDay': self.curSelDay})
+                    sdd = self.curSelDay.year * 10000 + self.curSelDay.month * 100 + self.curSelDay.day
+                    self.notifyListener('sel.date.changed', {'curSelDay': sdd})
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 

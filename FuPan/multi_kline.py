@@ -10,6 +10,47 @@ from Tdx import datafile
 from THS.download import henxin, load_ths_ddlr
 from THS import orm as ths_orm, base_win, kline
 
+class XKLineIndicator(kline.KLineIndicator):
+    def __init__(self, klineWin, config) -> None:
+        super().__init__(klineWin, config)
+        self.markDay = None
+
+    def setMarkDay(self, day):
+        if not day:
+            self.markDay = None
+            return
+        if type(day) == int:
+            self.markDay = day
+        elif type(day) == str:
+            self.markDay = int(day.replace('-', ''))
+
+    def drawMarkDay(self, hdc):
+        if not self.markDay or not self.model or not self.visibleRange:
+            return
+        idx = self.model.getItemIdx(self.markDay)
+        if idx < 0:
+            return
+        if idx < self.visibleRange[0] or idx >= self.visibleRange[1]:
+            return
+        x = self.getCenterX(idx)
+        sx = x - self.klineWin.klineWidth // 2 - self.klineWin.klineSpace
+        ex = x + self.klineWin.klineWidth // 2 + self.klineWin.klineSpace
+        rc = (sx, 20, ex, self.height - 20)
+        #rop = win32gui.SetROP2(hdc, win32con.R2_XORPEN) # R2_XORPEN  R2_MERGEPEN
+        hbr = win32gui.GetStockObject(win32con.NULL_BRUSH)
+        px = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0xcccccc)
+        win32gui.SelectObject(hdc, hbr)
+        win32gui.SelectObject(hdc, px)
+        win32gui.Rectangle(hdc, *rc)
+        win32gui.DeleteObject(px)
+        #win32gui.SetROP2(hdc, rop)
+
+    def draw(self, hdc, pens, hbrs):
+        if not self.visibleRange:
+            return
+        self.drawBackground(hdc, pens, hbrs)
+        self.drawMarkDay(hdc)
+        self.drawKLines(hdc, pens, hbrs)
 
 class MultiKLineWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -18,11 +59,15 @@ class MultiKLineWindow(base_win.BaseWindow):
         self.klines = []
         self.codeInfo = None # {code, name, gn, hy}
         self.selDay = None
-        self.dataLen = 0
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
         self.adjustChildKLine(3)
+
+    def setMarkDay(self, markDay):
+        for k in self.klines:
+            k.indicators[0].setMarkDay(markDay)
+            k.invalidWindow()
 
     def adjustChildKLine(self, childKlineNum = 3):
         rowTmp = ('1fr', ) * childKlineNum
@@ -34,7 +79,7 @@ class MultiKLineWindow(base_win.BaseWindow):
         self.klines.clear()
         for i in range(childKlineNum):
             win = kline.KLineWindow()
-            idt = kline.KLineIndicator(win, {'height': -1, 'margins': (10, 0)})
+            idt = XKLineIndicator(win, {'height': -1, 'margins': (10, 0)})
             win.addIndicator(idt)
             idt = kline.AmountIndicator(win, {'height': 50, 'margins': (10, 0)})
             win.addIndicator(idt)
@@ -44,18 +89,49 @@ class MultiKLineWindow(base_win.BaseWindow):
             win.addListener(i, self.onListen)
         self.layout.resize(0, 0, *self.getClientSize())
 
-    def adjustDataLength(self, model, mlen):
-        if not model or not model.data:
+    def findByDayInData(self, day, fromIdx, data):
+        i = fromIdx
+        while i < len(data):
+            if data[i].day < day:
+                i += 1
+            elif day == data[i].day:
+                return True, i
+            else:
+                return False, max(i - 1, 0)
+        return False, i - 1
+
+    def adjustDataLength_(self, days, model):
+        fromIdx = 0
+        rsData = []
+        for day in days:
+            fd, idx = self.findByDayInData(day, fromIdx, model.data)
+            if fd:
+                rsData.append(model.data[idx])
+            else:
+                dd = copy.copy(model.data[idx])
+                dd.low = dd.high = dd.open = dd.close
+                dd.amount = dd.vol = dd.rate = 0
+                dd.day = day
+                rsData.append(dd)
+            fromIdx = idx
+        model.data.clear()
+        del model.data
+        model.data = rsData
+
+    def adjustDataLength(self, *models):
+        models = [m for m in models if m and m.data]
+        if not models:
             return
-        if len(model.data) == mlen:
-            return
-        if len(model.data) > mlen:
-             model.data = model.data[len(model.data) - mlen : ]
-        elif len(model.data) < mlen:
-            d = [model.data[0]] * (mlen - len(model.data))
-            d.extend(model.data)
-            model.data.clear()
-            model.data = d
+        days = set()
+        for m in models:
+            for d in m.data:
+                days.add(d.day)
+        days = list(days)
+        days.sort()
+        if len(days) > 500:
+            days = days[-500 : ]
+        for m in models:
+            self.adjustDataLength_(days, m)
 
     def updateCode(self, code):
         self.dataLen = 0
@@ -95,15 +171,7 @@ class MultiKLineWindow(base_win.BaseWindow):
         if hy3Obj:
             md3 = kline.KLineModel_Ths(hy3Obj.code)
             md3.loadDataFile()
-        mlen = len(md1.data)
-        if md2:
-            mlen = max(mlen, len(md2.data))
-        if md3:
-            mlen = max(mlen, len(md3.data))
-        self.dataLen = mlen
-        self.adjustDataLength(md1, mlen)
-        self.adjustDataLength(md2, mlen)
-        self.adjustDataLength(md3, mlen)
+        self.adjustDataLength(md1, md2, md3)
         self.klines[0].setModel(md1)
         self.klines[0].makeVisible(-1)
         self.klines[1].setModel(md2)
@@ -117,7 +185,8 @@ class MultiKLineWindow(base_win.BaseWindow):
     def onMenuItemClick(self, klineIdx, idx, menuItem):
         md = kline.KLineModel_Ths(menuItem['code'])
         md.loadDataFile()
-        self.adjustDataLength(md, self.dataLen)
+        days = [d.day for d in self.klines[0].model.data]
+        self.adjustDataLength_(days, md)
         target = self.klines[(klineIdx + 1) % len(self.klines)]
         self.klines[klineIdx].setModel(md)
         self.klines[klineIdx].makeVisible(target.selIdx)
