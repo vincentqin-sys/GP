@@ -828,20 +828,15 @@ class DatePopupWindow(BaseWindow):
         super().__init__()
         self.preBtnRect = None
         self.nextBtnRect = None
-        self.curSelDay = None
+        self.curSelDay = None # datetime.date object
         self.ownerHwnd = None
         self.setSelDay(None)
 
     def createWindow(self, parentWnd, rect = None, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
         style = win32con.WS_POPUP | win32con.WS_CHILD
         self.ownerHwnd = parentWnd
-        p = parentWnd
-        while True and False:
-            px = win32gui.GetParent(p)
-            if px: p = px
-            else: break
         W, H = 250, 240
-        super().createWindow(p, (0, 0, W, H), style, className, title)
+        super().createWindow(parentWnd, (0, 0, W, H), style, className, title)
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         BTN_W, BTN_H = 20, 20
         self.nextBtnRect = (W - BTN_W - 5, 10, W - 5, 30)
@@ -850,7 +845,7 @@ class DatePopupWindow(BaseWindow):
     def show(self):
         self.setSelDay(self.curSelDay)
         ownerRect = win32gui.GetWindowRect(self.ownerHwnd)
-        x = 0
+        x = ownerRect[0]
         y = ownerRect[3]
         win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
@@ -889,7 +884,8 @@ class DatePopupWindow(BaseWindow):
             if not day:
                 continue
             rc = [self.PADDING + int(c * ITEM_WIDTH), int(sy), self.PADDING + int(c * ITEM_WIDTH + ITEM_WIDTH), int(sy + ITEM_HEIGHT)]
-            #self.drawer.drawRect2(hdc, rc, 0x00aa00)
+            if self.curSelDay == day:
+                self.drawer.drawRect2(hdc, rc, 0x00aa00)
             rc[1] += int(DPY)
             txt = day if type(day) == str else str(day.day)
             self.drawer.drawText(hdc, txt, rc, 0xcccccc)
@@ -982,12 +978,20 @@ class DatePopupWindow(BaseWindow):
 class DatePicker(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.selDay = None
         self.popWin = DatePopupWindow()
         self.popWin.addListener('DatePopupWindow', self.onSelDayChanged)
 
+    def setSelDay(self, selDay):
+        self.popWin.setSelDay(selDay)
+        self.invalidWindow()
+    
+    def getSelDay(self):
+        day = self.popWin.curSelDay
+        if not day:
+            return None
+        return f'{day.year}-{day.month :02d}-{day.day :02d}'
+
     def onSelDayChanged(self, target, evtName, evtInfo):
-        self.selDay = evtInfo['curSelDay']
         self.invalidWindow()
         self.notifyListener(evtName, evtInfo)
 
@@ -998,11 +1002,10 @@ class DatePicker(BaseWindow):
     def onDraw(self, hdc):
         w, h = self.getClientSize()
         self.drawer.drawRect2(hdc, (0, 0, w, h), 0xcccccc)
-        if not self.selDay:
+        if not self.getSelDay():
             return
-        txt = f'{self.selDay.year}-{self.selDay.month :02d}-{self.selDay.day :02d}'
         sy = (h - 2 - 14) // 2
-        self.drawer.drawText(hdc, txt, (0, sy, w - 1, h), 0xcccccc)
+        self.drawer.drawText(hdc, self.getSelDay(), (0, sy, w - 1, h), 0xcccccc)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONUP:

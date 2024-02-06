@@ -19,6 +19,7 @@ class KPL_Window(base_win.BaseWindow):
         self.data = None
         self.paddings = (10, 5, 10, 0) # left, top, right, bottom
         self.itemWidth = 16 # 每项宽度
+        self.itemFontSize = 12
 
     def onDraw(self, hdc):
         #self.drawer.drawRect2(hdc, (0, 0, *self.getClientSize()), 0xff0000)
@@ -73,7 +74,7 @@ class KPL_Window(base_win.BaseWindow):
             rc = (sx, sy, sx + self.itemWidth, endY)
             self.drawer.fillRect(hdc, rc, color)
             rc = [sx - 3, sy - 15, sx + self.itemWidth + 3, sy]
-            fnt = self.drawer.getFont(fontSize = 11)
+            fnt = self.drawer.getFont(fontSize = self.itemFontSize)
             self.drawer.use(hdc, fnt)
             self.drawer.drawText(hdc, f'{self.data.get(k, 0)}', rc, color)
             rc[1] = endY + 4
@@ -140,9 +141,10 @@ class KPL_Window(base_win.BaseWindow):
         self.invalidWindow()
 
     def nextDay(self):
-        if not self.day:
-            return False
         days = self.getTradeDays()
+        if self.day not in days:
+            self.updateDay(days[-1])
+            return True
         idx = days.index(self.day)
         if idx != len(days) - 1:
             self.updateDay(days[idx + 1])
@@ -150,15 +152,15 @@ class KPL_Window(base_win.BaseWindow):
         return False
     
     def preDay(self):
-        if not self.day:
-            return False
         days = self.getTradeDays()
+        if self.day not in days:
+            self.updateDay(days[-1])
+            return True
         idx = days.index(self.day)
         if idx != 0:
             self.updateDay(days[idx - 1])
             return True
         return False
-
 
 class KPL_ZT_TableWindow(base_win.TableWindow):
     def __init__(self) -> None:
@@ -170,7 +172,7 @@ class KPL_ZT_TableWindow(base_win.TableWindow):
 class KPL_MgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.layout = base_win.GridLayout((170, 30, '1fr'), (300, '1fr'), (10, 10))
+        self.layout = base_win.GridLayout((170, 30, '1fr'), (350, '1fr'), (10, 10))
         self.kplWin = KPL_Window()
         self.kplTableWin = KPL_ZT_TableWindow()
         self.multiKLineWin = multi_kline.MultiKLineWindow()
@@ -196,14 +198,22 @@ class KPL_MgrWindow(base_win.BaseWindow):
         self.kplTableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.multiKLineWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.datePickerWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.datePickerWin.addListener('DatePicker', self.onLisetenDatePickerChanged)
         self.layout.resize(0, 0, *self.getClientSize())
 
     def onLisetenSelectDay(self, target, evtName, evtInfo):
         #print('onLisetenSelectDay: ', target, evtName, evtInfo)
         if target == 'next':
             self.kplWin.nextDay()
+            self.datePickerWin.setSelDay(self.kplWin.day)
         elif target == 'pre':
             self.kplWin.preDay()
+            self.datePickerWin.setSelDay(self.kplWin.day)
+
+    def onLisetenDatePickerChanged(self, target, evtName, evtInfo):
+        day = evtInfo['curSelDay']
+        day = f'{day.year}-{day.month :02d}-{day.day :02d}'
+        self.kplWin.updateDay(day)
 
     def onLisetenEvent(self, target, evtName, evtInfo):
         print('onLisetenEvent: ', target, evtName, evtInfo)
@@ -218,7 +228,9 @@ class KPL_MgrWindow(base_win.BaseWindow):
 
     def init(self):
         #self.multiKLineWin.updateCode('603259')
-        self.kplWin.updateDay(self.kplWin.getLastTradeDay())
+        day = self.kplWin.getLastTradeDay()
+        self.kplWin.updateDay(day)
+        self.datePickerWin.setSelDay(day)
 
 if __name__ == '__main__':
     kpl = KPL_MgrWindow()

@@ -106,9 +106,15 @@ def getMoreHotOrders():
 def saveZS():
     data = request.json
     if len(data) > 0:
-        datas = [orm.THS_ZS_ZD(**d) for d in data]
-        orm.THS_ZS_ZD.bulk_create(datas, 100)
-        print(f"Save ZS success, insert {data[0]['day']} {len(data)} num")
+        #datas = [orm.THS_ZS_ZD(**d) for d in data]
+        num = 0
+        for d in data:
+            obj = orm.THS_ZS_ZD.get_or_none(code = d['code'], day = d['day'])
+            if not obj:
+                orm.THS_ZS_ZD.create(**d)
+                num += 1
+        #orm.THS_ZS_ZD.bulk_create(datas, 100)
+        print(f"Save ZS success, insert {data[0]['day']} {num} num")
     else:
         print(f"Save ZS, no data ")
     return {"status": "OK"}
