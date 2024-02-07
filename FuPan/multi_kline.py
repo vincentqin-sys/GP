@@ -68,6 +68,16 @@ class MultiKLineWindow(base_win.BaseWindow):
         for k in self.klines:
             k.indicators[0].setMarkDay(markDay)
             k.invalidWindow()
+        
+    def makeVisible(self, day):
+        model = self.klines[0].indicators[0].model
+        if not model or not day:
+            return
+        if type(day) == str:
+            day = int(day.replace('-', ''))
+        idx = model.getItemIdx(day)
+        for kl in self.klines:
+            kl.makeVisible(idx)
 
     def adjustChildKLine(self, childKlineNum = 3):
         rowTmp = ('1fr', ) * childKlineNum

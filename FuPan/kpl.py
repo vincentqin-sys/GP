@@ -233,7 +233,7 @@ class KPL_MgrWindow(base_win.BaseWindow):
             self.kplWin.nextDay()
             self.datePickerWin.setSelDay(self.kplWin.day)
             self.kplTableWin.updateDay(self.kplWin.day)
-        elif target == 'pre':
+        elif target == 'pre': 
             self.kplWin.preDay()
             self.datePickerWin.setSelDay(self.kplWin.day)
             self.kplTableWin.updateDay(self.kplWin.day)
@@ -247,11 +247,13 @@ class KPL_MgrWindow(base_win.BaseWindow):
     def onLisetenEvent(self, target, evtName, evtInfo):
         print('onLisetenEvent: ', target, evtName, evtInfo)
         pass
+
     def onListenDbClickTable(self, target, evtName, evtInfo):
         if evtName == 'DbClick':
             data = evtInfo['data']
             self.multiKLineWin.updateCode(data['code'])
             self.multiKLineWin.setMarkDay(data['day'])
+            self.multiKLineWin.makeVisible(data['day'])
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:
