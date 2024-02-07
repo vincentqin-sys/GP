@@ -606,6 +606,21 @@ class TableWindow(BaseWindow):
         self.startIdx += delta
         self.invalidWindow()
     
+    def showRow(self, row):
+        rg = self.getVisibleRange()
+        if not rg:
+            return
+        num = rg[1] - rg[0]
+        if num == 0:
+            return
+        if row >= rg[0] and row < rg[1]:
+            return # is visible
+        if row < rg[0]:
+            self.startIdx -= rg[0] - row
+        elif row >= rg[1]:
+            self.startIdx += row - rg[1] + 1
+        self.invalidWindow()
+
     def onDraw(self, hdc):
         self.drawer.fillRect(hdc, (0, 0, *self.getClientSize()), 0x151313)
         if not self.getHeaders():
@@ -659,7 +674,7 @@ class TableWindow(BaseWindow):
             return
 
     def onClick(self, x, y):
-        #win32gui.SetFocus(self.hwnd)
+        win32gui.SetFocus(self.hwnd)
         if y > self.headHeight and y < self.getClientSize()[1] - self.tailHeight:
             y -= self.headHeight
             self.selRow = y // self.rowHeight + self.startIdx
@@ -674,6 +689,27 @@ class TableWindow(BaseWindow):
         self.scroll(delta * 5)
         win32gui.InvalidateRect(self.hwnd, None, True)
 
+    def onKeyDown(self, key):
+        if not self.data:
+            return False
+        if key == win32con.VK_DOWN:
+            if self.selRow < len(self.data) - 1:
+                self.selRow += 1
+                self.showRow(self.selRow)
+                self.invalidWindow()
+            return True
+        elif key == win32con.VK_UP:
+            if self.selRow > 0:
+                self.selRow -= 1
+                self.showRow(self.selRow)
+                self.invalidWindow()
+            return True
+        elif key == win32con.VK_RETURN:
+            if self.selRow >= 0 and self.data:
+                self.notifyListener('RowEnter', {'src': self, 'selRow' : self.selRow, 'data': self.data[self.selRow]})
+            return True
+        return False
+
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONDOWN:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
@@ -682,6 +718,9 @@ class TableWindow(BaseWindow):
         if msg == win32con.WM_MOUSEWHEEL:
             self.onMouseWheel((wParam >> 16) & 0xffff)
             return True
+        if msg == win32con.WM_KEYDOWN:
+            tg = self.onKeyDown(wParam)
+            return tg
         return super().winProc(hwnd, msg, wParam, lParam)
 
 class ColumnWindow(BaseWindow):
@@ -847,11 +886,13 @@ class DatePopupWindow(BaseWindow):
         self.nextBtnRect = (W - BTN_W - 5, 10, W - 5, 30)
         self.preBtnRect = (W - BTN_W * 2 - 15, 10, W - BTN_W - 15, 30)
 
-    def show(self):
+    def show(self, x = None, y = None):
         self.setSelDay(self.curSelDay)
         ownerRect = win32gui.GetWindowRect(self.ownerHwnd)
-        x = ownerRect[0]
-        y = ownerRect[3]
+        if x == None:
+            x = ownerRect[0]
+        if y == None:
+            y = ownerRect[3]
         win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
         win32gui.SetActiveWindow(self.hwnd)
@@ -977,7 +1018,7 @@ class DatePopupWindow(BaseWindow):
                     self.setSelDay(day)
                     self.hide()
                     sdd = self.curSelDay.year * 10000 + self.curSelDay.month * 100 + self.curSelDay.day
-                    self.notifyListener('sel.date.changed', {'curSelDay': sdd})
+                    self.notifyListener('DatePopupWindow.selDayChanged', {'curSelDay': sdd})
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 

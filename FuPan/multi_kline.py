@@ -24,7 +24,7 @@ class XKLineIndicator(kline.KLineIndicator):
         elif type(day) == str:
             self.markDay = int(day.replace('-', ''))
 
-    def drawMarkDay(self, hdc):
+    def drawMarkDay(self, hdc, pens, hbrs):
         if not self.markDay or not self.model or not self.visibleRange:
             return
         idx = self.model.getItemIdx(self.markDay)
@@ -36,21 +36,21 @@ class XKLineIndicator(kline.KLineIndicator):
         sx = x - self.klineWin.klineWidth // 2 - self.klineWin.klineSpace
         ex = x + self.klineWin.klineWidth // 2 + self.klineWin.klineSpace
         rc = (sx, 0, ex, self.height)
-        #rop = win32gui.SetROP2(hdc, win32con.R2_XORPEN) # R2_XORPEN  R2_MERGEPEN
-        hbr = win32gui.GetStockObject(win32con.NULL_BRUSH)
-        px = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0xcccccc)
-        win32gui.SelectObject(hdc, hbr)
-        win32gui.SelectObject(hdc, px)
-        win32gui.Rectangle(hdc, *rc)
-        win32gui.DeleteObject(px)
-        #win32gui.SetROP2(hdc, rop)
+        pen = win32gui.GetStockObject(win32con.NULL_PEN)
+        #px = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0xcccccc)
+        win32gui.SelectObject(hdc, pen)
+        win32gui.FillRect(hdc, rc, hbrs['drak'])
+        # redraw kline item
+        self.drawKLineItem(idx, hdc, pens, hbrs, hbrs['drak'])
 
     def draw(self, hdc, pens, hbrs):
         if not self.visibleRange:
             return
         self.drawBackground(hdc, pens, hbrs)
-        self.drawMarkDay(hdc)
         self.drawKLines(hdc, pens, hbrs)
+        self.drawMarkDay(hdc, pens, hbrs)
+        self.drawMA(hdc, 5)
+        self.drawMA(hdc, 10)
 
 class MultiKLineWindow(base_win.BaseWindow):
     def __init__(self) -> None:

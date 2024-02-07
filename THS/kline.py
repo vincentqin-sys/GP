@@ -166,29 +166,33 @@ class KLineIndicator(Indicator):
             return
         self.drawBackground(hdc, pens, hbrs)
         self.drawKLines(hdc, pens, hbrs)
+        self.drawMA(hdc, 5)
+        self.drawMA(hdc, 10)
+
+    def drawKLineItem(self, idx, hdc, pens, hbrs, fillHbr):
+        data = self.data[idx]
+        cx = self.getCenterX(idx)
+        bx = cx - self.klineWin.klineWidth // 2
+        ex = bx + self.klineWin.klineWidth
+        rect = [bx, self.getYAtValue(data.open), ex, self.getYAtValue(data.close)]
+        if rect[1] == rect[3]:
+            rect[1] -=1
+        color = self.getColor(idx, data)
+        win32gui.SelectObject(hdc, pens[color])
+        win32gui.MoveToEx(hdc, cx, self.getYAtValue(data.low))
+        win32gui.LineTo(hdc, cx, self.getYAtValue(data.high))
+        if data.close >= data.open:
+            #nullHbr = win32gui.GetStockObject(win32con.NULL_BRUSH)
+            win32gui.SelectObject(hdc, fillHbr)
+            win32gui.Rectangle(hdc, *rect)
+        else:
+            win32gui.FillRect(hdc, tuple(rect), hbrs[color])
     
     def drawKLines(self, hdc, pens, hbrs):
         if not self.visibleRange:
             return
         for idx in range(*self.visibleRange):
-            data = self.data[idx]
-            cx = self.getCenterX(idx)
-            bx = cx - self.klineWin.klineWidth // 2
-            ex = bx + self.klineWin.klineWidth
-            rect = [bx, self.getYAtValue(data.open), ex, self.getYAtValue(data.close)]
-            if rect[1] == rect[3]:
-                rect[1] -=1
-            color = self.getColor(idx, data)
-            win32gui.SelectObject(hdc, pens[color])
-            win32gui.MoveToEx(hdc, cx, self.getYAtValue(data.low))
-            win32gui.LineTo(hdc, cx, self.getYAtValue(data.high))
-            if data.close >= data.open:
-                win32gui.SelectObject(hdc, hbrs['black'])
-                win32gui.Rectangle(hdc, *rect)
-            else:
-                win32gui.FillRect(hdc, tuple(rect), hbrs[color])
-        self.drawMA(hdc, 5)
-        self.drawMA(hdc, 10)
+            self.drawKLineItem(idx, hdc, pens, hbrs, hbrs['black'])
 
     def drawBackground(self, hdc, pens, hbrs):
         sdc = win32gui.SaveDC(hdc)
@@ -702,6 +706,7 @@ class KLineWindow(base_win.BaseWindow):
         pens['bk_dot_red'] = win32gui.CreatePen(win32con.PS_DOT, 1, 0x000055) # 背景虚线
 
         hbrs['white'] = win32gui.CreateSolidBrush(0xffffff)
+        hbrs['drak'] = win32gui.CreateSolidBrush(0x101010)
         hbrs['red'] = win32gui.CreateSolidBrush(0x0000ff)
         hbrs['green'] = win32gui.CreateSolidBrush(0x00ff00)
         hbrs['light_green'] = win32gui.CreateSolidBrush(0xfcfc54)

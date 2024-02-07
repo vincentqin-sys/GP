@@ -1,8 +1,15 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os, threading
-import sys
-import orm, hot_utils, base_win, download.henxin as henxin
+import sys, pyautogui
 import peewee as pw
+
+cwd = os.getcwd()
+w = cwd.index('GP')
+cwd = cwd[0 : w + 2]
+sys.path.append(cwd)
+from Tdx import datafile
+from THS import orm, hot_utils, base_win
+from THS.download import henxin
 
 #-----------------------------------------------------------
 class ThsSortQuery:
@@ -583,20 +590,29 @@ class HotZHCardView(CardView):
         self.selIdx = -1
         self.updateDataTime = 0
 
-    def updateData(self):
+        self.curSelDay : int = 0
+        self.maxHotDay : int = 0
+
+    def updateData(self, foreUpdate = False):
         lt = time.time()
-        if lt - self.updateDataTime < 60:
+        if not foreUpdate and lt - self.updateDataTime < 60:
             return
         self.updateDataTime = lt
         maxHotDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
         maxHotZhDay = orm.THS_HotZH.select(pw.fn.max(orm.THS_HotZH.day)).scalar()
-        if maxHotDay == maxHotZhDay:
-            qr = orm.THS_HotZH.select().where(orm.THS_HotZH.day == maxHotZhDay).order_by(orm.THS_HotZH.zhHotOrder.asc())
-            self.data = [d.__data__ for d in qr]
+        self.maxHotDay = maxHotDay
+        if self.curSelDay == 0 or self.curSelDay == maxHotDay or self.curSelDay == maxHotZhDay:
+            if maxHotDay == maxHotZhDay:
+                qr = orm.THS_HotZH.select().where(orm.THS_HotZH.day == maxHotZhDay).order_by(orm.THS_HotZH.zhHotOrder.asc())
+                self.data = [d.__data__ for d in qr]
+            else:
+                self.data = hot_utils.calcHotZHOnDay(maxHotDay)
         else:
-            self.data = hot_utils.calcHotZHOnDay(maxHotDay)
+            # is history 
+            qr = orm.THS_HotZH.select().where(orm.THS_HotZH.day == self.curSelDay).order_by(orm.THS_HotZH.zhHotOrder.asc())
+            self.data = [d.__data__ for d in qr]
 
-    def loadCodeInfo(self, code):
+    def loadCodeInfoNet(self, code):
         try:
             if type(code) == int:
                 code = f'{code :06d}'
@@ -617,7 +633,26 @@ class HotZHCardView(CardView):
                 data['HX_updateTime'] = time.time()
             win32gui.InvalidateRect(self.hwnd, None, True)
         except Exception as e:
-            print('[HotZHView.loadCodeInfo]', data, e)
+            print('[HotZHView.loadCodeInfoNet]', data, e)
+
+    def loadCodeInfoNative(self, code):
+        if type(code) == int:
+            code = f'{code :06d}'
+        data = self.codeInfos.get(code, None)
+        if not data:
+            self.codeInfos[code] = data = {}
+            data['name'] = ''
+        dt = datafile.DataFile(code, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
+        idx = dt.getItemIdx(self.curSelDay)
+        if idx <= 0:
+            return
+        pre = dt.data[idx - 1].close
+        cur = dt.data[idx].close
+        data['HX_curPrice'] = cur / 100
+        data['HX_prePrice'] = pre / 100
+        data['HX_zhangFu'] = (cur - pre) / pre * 100
+        data['HX_updateTime'] = time.time()
+        win32gui.InvalidateRect(self.hwnd, None, True)
 
     def getCodeInfo(self, code):
         if type(code) == int:
@@ -627,7 +662,10 @@ class HotZHCardView(CardView):
             data = self.codeInfos[code] = {}
         if ('HX_updateTime' not in data) or (time.time() - data['HX_updateTime'] > 120): # 120 seconds
             data['HX_updateTime'] = time.time()
-            self.thread.addTask(code, self.loadCodeInfo, (code, ))
+            if self.curSelDay == 0 or self.curSelDay == self.maxHotDay:
+                self.thread.addTask(code, self.loadCodeInfoNet, (code, ))
+            else:
+                self.thread.addTask(code, self.loadCodeInfoNative, (code, ))
             return data
         return data
     
@@ -724,6 +762,32 @@ class HotZHCardView(CardView):
         end = min(end, len(self.data) - 1)
         return start, end
     
+    def onDayChanged(self, target, evtName, evtInfo):
+        if evtName == 'DatePopupWindow.selDayChanged':
+            selDay = evtInfo['curSelDay']
+            if selDay > self.maxHotDay:
+                return
+            if self.curSelDay == selDay:
+                return
+            qr = orm.THS_Newest.select()
+            self.codeInfos.clear()
+            for q in qr:
+                self.codeInfos[q.code] = {'name': q.name}
+            self.curSelDay = selDay
+            if selDay == self.maxHotDay:
+                win32gui.SetWindowText(self.hwnd, f'HotZH')
+            else:
+                tradeDays = hot_utils.getTradeDaysByHot()
+                bef = 0
+                for i in range(len(tradeDays) - 1, 0, -1):
+                    if selDay < tradeDays[i]:
+                        bef += 1
+                    else:
+                        break
+                win32gui.SetWindowText(self.hwnd, f'HotZH   {selDay} ({bef}天前)')
+            self.updateData(True)
+            win32gui.InvalidateRect(self.hwnd, None, True)
+
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_MOUSEWHEEL:
             wParam = (wParam >> 16) & 0xffff
@@ -740,6 +804,28 @@ class HotZHCardView(CardView):
             self.selIdx = self.getItemIdx(x, y)
             win32gui.InvalidateRect(self.hwnd, None, True)
             return True
+        if msg == win32con.WM_LBUTTONDBLCLK:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            selIdx = self.getItemIdx(x, y)
+            if self.data and selIdx >= 0 and selIdx < len(self.data):
+                topWnd = win32gui.GetParent(hwnd)
+                #print(f'hot_sin_small topWnd=0x{topWnd :X}')
+                #win32gui.ShowWindow(topWnd, win32con.SW_SHOW)
+                win32gui.SetForegroundWindow(topWnd)
+                code = self.data[selIdx]['code']
+                if type(code) == int:
+                    code = f'{code :06d}'
+                pyautogui.typewrite(code, interval=0.05)
+                pyautogui.press('enter')
+            return True
+        if msg == win32con.WM_NCRBUTTONUP:
+            if not getattr(self, 'DP', None):
+                self.DP = base_win.DatePopupWindow()
+                self.DP.createWindow(hwnd)
+                self.DP.addListener('DatePicker', self.onDayChanged)
+            rc = win32gui.GetWindowRect(hwnd)
+            self.DP.show(y = rc[1] + 30)
+            return False
         return False
 
 class SimpleHotZHWindow(CardWindow):

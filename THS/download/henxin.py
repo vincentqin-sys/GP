@@ -282,7 +282,9 @@ class HexinUrl(Henxin):
         url = self._getUrlWithParam(url)
         return url
 
-    # @return data : list, name : str
+    # @return today:  {name:xx, data: HexinUrl.ItemData}
+    #         kline:  {'name': xx, 'today': today,  'data': [HexinUrl.ItemData, ...]}
+    #         fenshi: {}
     def loadUrlData(self, url):
         resp = self.session.get(url)
         if resp.status_code != 200:
@@ -302,21 +304,45 @@ class HexinUrl(Henxin):
             return self.parseFenShiData(txt)
         return None
     
+    def loadKLineData(self, code):
+        url = self.getKLineUrl(code)
+        klineRs = self.loadUrlData(url)
+        data = klineRs['data']
+        if not data or data[-1].day != klineRs['today']:
+            url = self.getTodayKLineUrl(code)
+            todayRs = self.loadUrlData(url)
+            data.append(todayRs['data'])
+        return klineRs
+    
     def parseTodayData(self, txt : str):
         js = json.loads(txt)
         for k in js:
             js = js[k]
             break
-        keys = {'day': '1', 'open': '7', 'high':'8', 'low':'9', 'close':'11', 'vol':'13'} # vol: 单位股, amount:单位元 'amount':'19', 'rate':'1968584'
+        
         item = HexinUrl.ItemData()
+        if js['1']:
+            setattr(item, 'day', int(js['1']))
+        if js['13']:
+            setattr(item, 'vol', int(js['13']))
+        if js['19']:
+            setattr(item, 'amount', int(float(js['19'])))
+        if js['1968584']:
+            setattr(item, 'rate', float(js['1968584']))
+        
+        keys = { 'open': '7', 'high':'8', 'low':'9', 'close':'11'} # vol: 单位股, amount:单位元 'amount':'19', 'rate':'1968584'  'vol':'13'  'day': '1',
         for k in keys:
             v = js[keys[k]]
             if type(v) == str:
-                v = v.replace('.', '')
+                if not v:
+                    del item
+                    item = None
+                    break
+                if '.' in v and v.index('.') == len(v) - 3:
+                    v = v.replace('.', '')
+                else:
+                    v = float(v) * 100
             setattr(item, k, int(v))
-        setattr(item, 'amount', int(float(js['19'])))
-        setattr(item, 'rate', float(js['1968584']))
-        setattr(item, 'name', js['name'])
         rs = {'name': js['name'], 'data': item}
         return rs
 
@@ -330,8 +356,8 @@ class HexinUrl(Henxin):
         for m, d in enumerate(ds):
             obj = HexinUrl.ItemData()
             row = d.split(',')
-            if m == len(ds) - 1: 
-                print('[henxin.parseDaylyData]', name, row) # last row
+            #if m == len(ds) - 1: 
+            #    print('[henxin.parseDaylyData]', name, row) # last row
             for i, k in enumerate(keys):
                 if row[i] == '':
                     row[i] = '0' # fix bug
@@ -377,9 +403,7 @@ class ThsDataFile(datafile.DataFile):
     def loadDataFile(self):
         if self.dataType == datafile.DataFile.DT_DAY:
             hx = HexinUrl()
-            url = hx.getKLineUrl(self.code)
-            #{'name': name, 'today': today,  'data': rs}
-            rs = hx.loadUrlData(url)
+            rs = hx.loadKLineData(self.code)
             self.data = rs['data']
             self.name = rs['name']
             
