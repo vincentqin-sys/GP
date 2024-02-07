@@ -247,7 +247,7 @@ db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/KPL_ZT_FuPan.db')
 class KPL_ZT(pw.Model):
     code = pw.CharField()
     name = pw.CharField(null = True)
-    day = pw.CharField()
+    day = pw.CharField() # YYYY-MM-DD
     ztTime = pw.CharField(null = True, column_name='涨停时间')
     status = pw.CharField(null = True, column_name='状态')
     ztReason = pw.CharField(null = True, column_name='涨停原因')

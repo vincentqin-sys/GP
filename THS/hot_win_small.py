@@ -138,6 +138,8 @@ class CardView:
         pass
     def winProc(self, hwnd, msg, wParam, lParam):
         return False
+    def getWindowTitle(self):
+        return None
 
 class CardWindow(base_win.BaseWindow):
     # maxSize = (width, height)
@@ -168,6 +170,10 @@ class CardWindow(base_win.BaseWindow):
         idx = self.curCardViewIdx
         self.curCardViewIdx = (idx + 1) % len(self.cardViews)
         if self.curCardViewIdx != idx:
+            cv = self.getCurCardView()
+            title = cv.getWindowTitle()
+            if title != None:
+                win32gui.SetWindowText(self.hwnd, title)
             win32gui.InvalidateRect(self.hwnd, None, True)
 
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -577,7 +583,7 @@ class HotZHCardView(CardView):
     ROW_HEIGHT = 18
 
     def __init__(self, hwnd) -> None:
-        self.hwnd = hwnd
+        super().__init__(hwnd)
         self.data = None
         self.pageIdx = 0
         self.codeInfos = {}
@@ -592,6 +598,7 @@ class HotZHCardView(CardView):
 
         self.curSelDay : int = 0
         self.maxHotDay : int = 0
+        self.windowTitle = 'HotZH'
 
     def updateData(self, foreUpdate = False):
         lt = time.time()
@@ -762,6 +769,9 @@ class HotZHCardView(CardView):
         end = min(end, len(self.data) - 1)
         return start, end
     
+    def getWindowTitle(self):
+        return self.windowTitle
+
     def onDayChanged(self, target, evtName, evtInfo):
         if evtName == 'DatePopupWindow.selDayChanged':
             selDay = evtInfo['curSelDay']
@@ -774,8 +784,11 @@ class HotZHCardView(CardView):
             for q in qr:
                 self.codeInfos[q.code] = {'name': q.name}
             self.curSelDay = selDay
+            self.selIdx = -1
+            self.pageIdx = 0
             if selDay == self.maxHotDay:
-                win32gui.SetWindowText(self.hwnd, f'HotZH')
+                self.windowTitle = f'HotZH'
+                win32gui.SetWindowText(self.hwnd, self.windowTitle)
             else:
                 tradeDays = hot_utils.getTradeDaysByHot()
                 bef = 0
@@ -784,7 +797,8 @@ class HotZHCardView(CardView):
                         bef += 1
                     else:
                         break
-                win32gui.SetWindowText(self.hwnd, f'HotZH   {selDay} ({bef}天前)')
+                self.windowTitle = f'HotZH   {selDay}   {bef}天前'
+                win32gui.SetWindowText(self.hwnd, self.windowTitle)
             self.updateData(True)
             win32gui.InvalidateRect(self.hwnd, None, True)
 
@@ -818,14 +832,169 @@ class HotZHCardView(CardView):
                 pyautogui.typewrite(code, interval=0.05)
                 pyautogui.press('enter')
             return True
-        if msg == win32con.WM_NCRBUTTONUP:
-            if not getattr(self, 'DP', None):
-                self.DP = base_win.DatePopupWindow()
-                self.DP.createWindow(hwnd)
-                self.DP.addListener('DatePicker', self.onDayChanged)
-            rc = win32gui.GetWindowRect(hwnd)
-            self.DP.show(y = rc[1] + 30)
-            return False
+        return False
+
+class KPL_AllCardView(CardView):
+    ROW_HEIGHT = 18
+
+    def __init__(self, hwnd):
+        super().__init__(hwnd)
+        self.data = None
+        self.pageIdx = 0
+        self.selIdx = -1
+
+        self.windowTitle = 'KPL-ZT'
+        self.curSelDay = 0
+        day = orm.KPL_ZT.select(pw.fn.max(orm.KPL_ZT.day)).scalar()
+        self.updateData(day)
+
+    def getFont(self):
+        fnt = getattr(self, '_font', None)
+        if not fnt:
+            a = win32gui.LOGFONT()
+            a.lfHeight = 12
+            a.lfFaceName = '宋体'
+            self._font = fnt = win32gui.CreateFontIndirect(a)
+        return fnt
+
+    def getWindowTitle(self):
+        if not self.curSelDay:
+            return 'KPL-ZT'
+        tradeDays = hot_utils.getTradeDaysByHot()
+        bef = 0
+        for i in range(len(tradeDays) - 1, 0, -1):
+            if self.curSelDay < tradeDays[i]:
+                bef += 1
+            else:
+                break
+        self.windowTitle = f'KPL-ZT   {self.curSelDay}   {bef}天前'
+        return self.windowTitle
+    
+    def updateData(self, day):
+        if day == self.curSelDay:
+            return
+        if not day:
+            day = orm.KPL_ZT.select(pw.fn.max(orm.KPL_ZT.day)).scalar()
+        if type(day) == int:
+            day = str(day)
+        if len(day) == 8:
+            day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
+        self.curSelDay = int(day.replace('-', ''))
+        qr = orm.KPL_ZT.select().where(orm.KPL_ZT.day == day)
+        self.data = [d.__data__ for d in qr]
+        self.pageIdx = 0
+        self.selIdx = -1
+    
+    def getPageSize(self):
+        rc = win32gui.GetClientRect(self.hwnd)
+        h = rc[3] - rc[1]
+        return h // self.ROW_HEIGHT
+    
+    def getMaxPageNum(self):
+        if not self.data:
+            return 0
+        return (len(self.data) + self.getPageSize() - 1) // self.getPageSize()
+    
+    def getItemRect(self, idx):
+        rc = win32gui.GetClientRect(self.hwnd)
+        w = rc[2] - rc[0]
+        pz = self.getPageSize()
+        idx -= self.pageIdx * pz
+        if idx < 0 or idx >= pz:
+            return None
+        c = idx // pz
+        sy = (idx % pz) * self.ROW_HEIGHT
+        ey = sy + self.ROW_HEIGHT
+        return (2, sy + 2, w, ey + 2)
+
+    def getItemIdx(self, x, y):
+        pz = self.getPageSize()
+        r = y // self.ROW_HEIGHT
+        idx = r + pz * self.pageIdx
+        return idx
+
+    def drawItem(self, hdc, data, idx):
+        rect = self.getItemRect(idx)
+        if not rect:
+            return
+        win32gui.SetTextColor(hdc, 0xdddddd)
+        name = data['name']
+        nl = 0
+        for n in name:
+            nl += 1 if ord(n) < 256 else 2
+        if nl < 8:
+            name += ' ' * (8 - nl)
+        nl = 0
+        status = data["status"]
+        if '连' in status:
+            status = status.replace('连', '') + ' '
+        elif len(status) >= 4: # x天y板
+            status = status[0 : -1]
+        txt = f'{name} {data["ztTime"]} {status} {data["ztReason"]}'
+        win32gui.SelectObject(hdc, self.getFont())
+        win32gui.DrawText(hdc, txt, len(txt), rect, win32con.DT_LEFT)
+        if self.selIdx == idx:
+            ps = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
+            win32gui.SelectObject(hdc, ps)
+            win32gui.MoveToEx(hdc, rect[0], rect[3] - 2)
+            win32gui.LineTo(hdc, rect[2], rect[3] - 2)
+            win32gui.DeleteObject(ps)
+
+    def getVisibleRange(self):
+        if not self.data:
+            return None
+        pz = self.getPageSize()
+        start = pz * self.pageIdx
+        end = (self.pageIdx + 1) * pz
+        start = min(start, len(self.data) - 1)
+        end = min(end, len(self.data) - 1)
+        return start, end
+
+    def onDraw(self, hdc):
+        vr = self.getVisibleRange()
+        if not vr:
+            return
+        for i in range(*vr):
+            self.drawItem(hdc, self.data[i], i)
+
+    def onDayChanged(self, target, evtName, evtInfo):
+        selDay = evtInfo['curSelDay']
+        if selDay == self.curSelDay:
+            return
+        self.updateData(selDay)
+        win32gui.SetWindowText(self.hwnd, self.getWindowTitle())
+        win32gui.InvalidateRect(self.hwnd, None, True)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_MOUSEWHEEL:
+            wParam = (wParam >> 16) & 0xffff
+            if wParam & 0x8000:
+                wParam = wParam - 0xffff + 1
+            if wParam > 0: # up
+                self.pageIdx = max(self.pageIdx - 1, 0)
+            else:
+                self.pageIdx = min(self.pageIdx + 1, self.getMaxPageNum() - 1)
+            win32gui.InvalidateRect(self.hwnd, None, True)
+            return True
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            self.selIdx = self.getItemIdx(x, y)
+            win32gui.InvalidateRect(self.hwnd, None, True)
+            return True
+        if msg == win32con.WM_LBUTTONDBLCLK:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            selIdx = self.getItemIdx(x, y)
+            if self.data and selIdx >= 0 and selIdx < len(self.data):
+                topWnd = win32gui.GetParent(hwnd)
+                #print(f'hot_sin_small topWnd=0x{topWnd :X}')
+                #win32gui.ShowWindow(topWnd, win32con.SW_SHOW)
+                win32gui.SetForegroundWindow(topWnd)
+                code = self.data[selIdx]['code']
+                if type(code) == int:
+                    code = f'{code :06d}'
+                pyautogui.typewrite(code, interval=0.05)
+                pyautogui.press('enter')
+            return True
         return False
 
 class SimpleHotZHWindow(CardWindow):
@@ -841,6 +1010,7 @@ class SimpleHotZHWindow(CardWindow):
         #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
         self.addCardView(HotZHCardView(self.hwnd))
+        self.addCardView(KPL_AllCardView(self.hwnd))
 
     def onDraw(self, hdc):
         super().onDraw(hdc)
@@ -852,3 +1022,21 @@ class SimpleHotZHWindow(CardWindow):
         win32gui.Rectangle(hdc, 0, 0, size[0] - 1, size[1] - 1)
         win32gui.DeleteObject(ps)
         #win32gui.DeleteObject(bk)
+
+    def onDayChanged(self, target, evtName, evtInfo):
+        cv = self.getCurCardView()
+        dc = getattr(cv, 'onDayChanged', None)
+        if not dc:
+            return
+        dc(target, evtName, evtInfo)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_NCRBUTTONUP:
+            if not getattr(self, 'DP', None):
+                self.DP = base_win.DatePopupWindow()
+                self.DP.createWindow(hwnd)
+                self.DP.addListener('DatePicker', self.onDayChanged)
+            rc = win32gui.GetWindowRect(hwnd)
+            self.DP.show(y = rc[1] + 30)
+            return False
+        return super().winProc(hwnd, msg, wParam, lParam)
