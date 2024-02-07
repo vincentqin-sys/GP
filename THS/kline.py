@@ -6,7 +6,7 @@ cwd = os.getcwd()
 w = cwd.index('GP')
 cwd = cwd[0 : w + 2]
 sys.path.append(cwd)
-from THS import base_win
+from THS import base_win, orm
 from Tdx import datafile
 from THS.download import henxin
 
@@ -37,6 +37,8 @@ class Indicator:
     def setData(self, model, data):
         self.model = model
         self.data = data
+        self.valueRange = None
+        self.visibleRange = None
 
     def calcValueRange(self, fromIdx, endIdx):
         pass
@@ -95,7 +97,7 @@ class Indicator:
             return
         RIGHT_NUM = num // 2
         endIdx = min(idx + RIGHT_NUM, len(self.data))
-        leftNum = num - (endIdx - idx + 1)
+        leftNum = num - (endIdx - idx) # + 1 TODO
         fromIdx = max(idx - leftNum, 0)
         self.visibleRange = (fromIdx, endIdx)
 
@@ -121,19 +123,27 @@ class KLineIndicator(Indicator):
             return 0
         if value < self.valueRange[0] or value > self.valueRange[1]:
             return 0
-        p = (value - self.valueRange[0]) / (self.valueRange[1] - self.valueRange[0])
         H = self.height
-        y = H - int(p * H)
+        p = H * (value - self.valueRange[0]) / (self.valueRange[1] - self.valueRange[0])
+        y = H - int(p)
         return y
 
     def getValueAtY(self, y):
         if not self.valueRange or not self.height:
             return None
-        m = (self.valueRange[1] - self.valueRange[0]) / self.height
-        val = int(self.valueRange[1] - y * m)
-        return {'value': val, 'fmtVal': f'{val // 100}.{val % 100 :02d}', 'valType': 'Price'}
+        m = y * (self.valueRange[1] - self.valueRange[0]) / self.height
+        val = int(self.valueRange[1] - m)
+        if val / 100 >= 1000:
+            fval = f'{val // 100}'
+        elif val / 100 >= 100:
+            fval = f'{val / 100 :0.1f}'
+        else:
+            fval = f'{val // 100}.{val % 100 :02d}'
+        return {'value': val, 'fmtVal': fval, 'valType': 'Price'}
 
     def getColor(self, idx, data):
+        if not self.klineWin.model:
+            return 'light_green'
         code = self.klineWin.model.code
         if code[0 : 2] == '88' and idx > 0: # 指数
             zdfd = abs((self.data[idx].close - self.data[idx - 1].close) / self.data[idx - 1].close * 100)
@@ -165,7 +175,9 @@ class KLineIndicator(Indicator):
             cx = self.getCenterX(idx)
             bx = cx - self.klineWin.klineWidth // 2
             ex = bx + self.klineWin.klineWidth
-            rect = (bx, self.getYAtValue(data.open), ex, self.getYAtValue(data.close) + 1)
+            rect = [bx, self.getYAtValue(data.open), ex, self.getYAtValue(data.close)]
+            if rect[1] == rect[3]:
+                rect[1] -=1
             color = self.getColor(idx, data)
             win32gui.SelectObject(hdc, pens[color])
             win32gui.MoveToEx(hdc, cx, self.getYAtValue(data.low))
@@ -174,7 +186,7 @@ class KLineIndicator(Indicator):
                 win32gui.SelectObject(hdc, hbrs['black'])
                 win32gui.Rectangle(hdc, *rect)
             else:
-                win32gui.FillRect(hdc, rect, hbrs[color])
+                win32gui.FillRect(hdc, tuple(rect), hbrs[color])
         self.drawMA(hdc, 5)
         self.drawMA(hdc, 10)
 
@@ -438,10 +450,10 @@ class KLineWindow(base_win.BaseWindow):
             idt = KLineIndicator(self, {'height': -1, 'margins': (30, 20)})
             self.indicators.append(idt)
         if indicator & KLineWindow.INDICATOR_RATE:
-            idt = RateIndicator(self, {'height': 60, 'margins': (15, 0)})
+            idt = RateIndicator(self, {'height': 60, 'margins': (15, 2)})
             self.indicators.append(idt)
         if indicator & KLineWindow.INDICATOR_AMOUNT:
-            idt = AmountIndicator(self, {'height': 60, 'margins': (15, 0)})
+            idt = AmountIndicator(self, {'height': 60, 'margins': (15, 2)})
             self.indicators.append(idt)
 
     def calcIndicatorsRect(self):
@@ -481,7 +493,10 @@ class KLineWindow(base_win.BaseWindow):
 
     def setModel(self, model):
         self.model = model
+        self.hygn = None
         if not model:
+            for idt in self.indicators:
+                idt.setData(None, None)
             return
         self.model.calcMA(5)
         self.model.calcMA(10)
@@ -489,6 +504,15 @@ class KLineWindow(base_win.BaseWindow):
         self.model.calcZhangFu()
         for idt in self.indicators:
             idt.setData(self.model, self.model.data)
+        gntcObj = orm.THS_GNTC.get_or_none(code = str(self.model.code))
+        self.model.hy = []
+        self.model.gn = []
+        if gntcObj and gntcObj.hy:
+            self.model.hy = gntcObj.hy.split('-')
+            if len(self.model.hy) == 3:
+                del self.model.hy[0]
+        if gntcObj and gntcObj.hy:
+            self.model.gn = gntcObj.gn.replace('【', '').replace('】', '').split(';')
 
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -499,21 +523,29 @@ class KLineWindow(base_win.BaseWindow):
             return True
         if msg == win32con.WM_MOUSEMOVE:
             self.onMouseMove(lParam & 0xffff, (lParam >> 16) & 0xffff)
-            self.notifyListener('Event.onMouseMove', {'src': self, 'x': lParam & 0xffff, 'y' : (lParam >> 16) & 0xffff})
+            self.notifyListener('Event.MouseMove', {'src': self, 'x': lParam & 0xffff, 'y' : (lParam >> 16) & 0xffff})
             #self.notifyListener('WM_MOUSEMOVE', {'src': self, 'lParam': lParam, 'wParam' : wParam})
             return True
         if msg == win32con.WM_KEYDOWN:
             oem = lParam >> 16 & 0xff
             self.onKeyDown(oem)
-            self.notifyListener('Event.onKeyDown', {'src': self, 'oem': oem})
+            self.notifyListener('Event.KeyDown', {'src': self, 'oem': oem})
             #self.notifyListener('WM_KEYDOWN', {'src': self, 'lParam': lParam, 'wParam' : wParam})
             return True
         if msg == win32con.WM_LBUTTONDOWN:
             win32gui.SetFocus(self.hwnd)
             return True
+        if msg == win32con.WM_LBUTTONDBLCLK:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            si = self.indicators[0].getIdxAtX(x)
+            if si >= 0:
+                self.notifyListener('Event.DbClick', {'src': self, 'idx': si, 'data': self.model.data[si]})
+            return True
         return False
 
     def updateAttr(self, attrName, attrVal):
+        if not self.model:
+            return
         if attrName == 'selIdx' and self.selIdx != attrVal:
             self.selIdx = attrVal
             data = self.model.data[attrVal] if attrVal >= 0 else None
@@ -587,6 +619,24 @@ class KLineWindow(base_win.BaseWindow):
                 idt.calcValueRange(*vr)
         win32gui.InvalidateRect(self.hwnd, None, True)
 
+    def drawSelDayTip(self, hdc, pens, hbrs):
+        if self.selIdx < 0 or (not self.model) or (not self.model.data) or self.selIdx >= len(self.model.data):
+            return
+        if not self.indicators:
+            return
+        it : Indicator = self.indicators[0]
+        if not hasattr(it, 'y'):
+            return
+        cx = it.getCenterX(self.selIdx)
+        SEL_DAY_WIDTH_HALF = 30
+        sy = it.y + it.height + it.getMargins(1) + 1
+        rc = (cx - SEL_DAY_WIDTH_HALF , sy, cx + SEL_DAY_WIDTH_HALF, sy + 14)
+        d = self.model.data[self.selIdx]
+        day = f'{d.day}'
+        win32gui.FillRect(hdc, rc, hbrs['black'])
+        win32gui.SetTextColor(hdc, 0x0000dd)
+        win32gui.DrawText(hdc, day, len(day), rc, win32con.DT_CENTER)
+
     def drawSelTip(self, hdc, pens, hbrs):
         if not self.showSelTip:
             return
@@ -601,10 +651,10 @@ class KLineWindow(base_win.BaseWindow):
             am = f'{amx :.1f}'
         else:
             am =  f'{amx :.2f}'
-        txt = f'时间\n{d.day//10000}\n{d.day%10000:04d}\n\n涨幅\n{d.zhangFu:.2f}%\n\n成交额\n{am}亿'
+        txt = f'涨幅\n{d.zhangFu:.2f}%\n\n成交额\n{am}亿' # 时间\n{d.day//10000}\n{d.day%10000:04d}\n\n
         if hasattr(d, 'rate'):
             txt += f'\n\n换手率\n{d.rate :.1f}%'
-        TIP_HEIGHT = 180
+        TIP_HEIGHT = 110
         h = self.getClientSize()[1]
         rc = (0, (h - TIP_HEIGHT) // 2, 60, (h - TIP_HEIGHT) // 2 + TIP_HEIGHT)
         win32gui.SelectObject(hdc, hbrs['black'])
@@ -614,13 +664,20 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, txt, len(txt), rc, win32con.DT_CENTER)
         win32gui.RestoreDC(hdc, sdc)
     
-    def drawCodeName(self, hdc, pens, hbrs):
+    def drawCodeInfo(self, hdc, pens, hbrs):
         if not self.model:
             return
-        sdc = win32gui.SaveDC(hdc)
         code = self.model.code
         name = self.model.name
-        font = self.drawer.getFont('黑体', 18, 900)
+        # draw gn hy
+        gnhy = '【' + ' - '.join(self.model.hy) + '】' + '│'.join(self.model.gn)
+        rc = (0, 0, int(self.getClientSize()[0] * 0.7), 70)
+        font = self.drawer.getFont('宋体', 12)
+        self.drawer.use(hdc, font)
+        self.drawer.drawText(hdc, gnhy, rc, 0x00cc00, win32con.DT_LEFT | win32con.DT_EDITCONTROL | win32con.DT_WORDBREAK)
+        
+        sdc = win32gui.SaveDC(hdc)
+        font = self.drawer.getFont('黑体', 16, 900)
         tip = f'{code}  {name}'
         w = self.getClientSize()[0]
         sx = int(w* 0.65)
@@ -638,6 +695,7 @@ class KLineWindow(base_win.BaseWindow):
         pens['light_green'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xfcfc54)
         pens['blue'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xff0000)
         pens['yellow'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
+        pens['yellow2'] = win32gui.CreatePen(win32con.PS_SOLID, 2, 0x00ffff)
         pens['0xff00ff'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xff00ff)
         pens['dark_red'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x0000aa) # 暗红色
         pens['dark_red2'] = win32gui.CreatePen(win32con.PS_SOLID, 2, 0x0000aa) # 暗红色
@@ -669,9 +727,13 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.SelectObject(hdc, pens['dark_red'])
         win32gui.MoveToEx(hdc, w - self.RIGHT_MARGIN + 10, 0)
         win32gui.LineTo(hdc, w - self.RIGHT_MARGIN + 10, h)
+        win32gui.SelectObject(hdc, pens['yellow'])
+        win32gui.MoveToEx(hdc, 0, h - 2)
+        win32gui.LineTo(hdc, w, h - 2)
         self.drawMouse(hdc, pens)
         self.drawSelTip(hdc, pens, hbrs)
-        self.drawCodeName(hdc, pens, hbrs)
+        self.drawCodeInfo(hdc, pens, hbrs)
+        self.drawSelDayTip(hdc, pens, hbrs)
 
         if self.mouseXY:
             self.drawTipPrice(hdc, self.mouseXY[1], pens, hbrs)
@@ -715,8 +777,8 @@ class KLineWindow(base_win.BaseWindow):
 
 if __name__ == '__main__':
     win = KLineWindow()
-    win.showSelTip = False
-    win.addDefaultIndicator(KLineWindow.INDICATOR_KLINE)
+    win.showSelTip = True
+    win.addDefaultIndicator(KLineWindow.INDICATOR_KLINE | KLineWindow.INDICATOR_AMOUNT)
     rect = (0, 0, 1000, 650)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     model = KLineModel_Ths('002682')

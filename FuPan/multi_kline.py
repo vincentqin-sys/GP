@@ -35,7 +35,7 @@ class XKLineIndicator(kline.KLineIndicator):
         x = self.getCenterX(idx)
         sx = x - self.klineWin.klineWidth // 2 - self.klineWin.klineSpace
         ex = x + self.klineWin.klineWidth // 2 + self.klineWin.klineSpace
-        rc = (sx, 20, ex, self.height - 20)
+        rc = (sx, 0, ex, self.height)
         #rop = win32gui.SetROP2(hdc, win32con.R2_XORPEN) # R2_XORPEN  R2_MERGEPEN
         hbr = win32gui.GetStockObject(win32con.NULL_BRUSH)
         px = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0xcccccc)
@@ -89,9 +89,9 @@ class MultiKLineWindow(base_win.BaseWindow):
         self.klines.clear()
         for i in range(childKlineNum):
             win = kline.KLineWindow()
-            idt = XKLineIndicator(win, {'height': -1, 'margins': (10, 0)})
+            idt = XKLineIndicator(win, {'height': -1, 'margins': (10, 10)})
             win.addIndicator(idt)
-            idt = kline.AmountIndicator(win, {'height': 50, 'margins': (10, 0)})
+            idt = kline.AmountIndicator(win, {'height': 50, 'margins': (10, 3)})
             win.addIndicator(idt)
             self.klines.append(win)
             win.createWindow(self.hwnd, (0, 0, 10, 10))
@@ -110,7 +110,7 @@ class MultiKLineWindow(base_win.BaseWindow):
                 return False, max(i - 1, 0)
         return False, i - 1
 
-    def adjustDataLength_(self, days, model):
+    def adjustDataLength_2(self, days, model):
         fromIdx = 0
         rsData = []
         for day in days:
@@ -141,7 +141,7 @@ class MultiKLineWindow(base_win.BaseWindow):
         if len(days) > 500:
             days = days[-500 : ]
         for m in models:
-            self.adjustDataLength_(days, m)
+            self.adjustDataLength_2(days, m)
 
     def updateCode(self, code):
         self.dataLen = 0
@@ -175,19 +175,19 @@ class MultiKLineWindow(base_win.BaseWindow):
             if 'code' in d and 'name' in d:
                 d['title'] = d['name'] + ' ' + d['code']
         md2, md3 = None, None
-        if hy2Obj:
-            md2 = kline.KLineModel_Ths(hy2Obj.code)
-            md2.loadDataFile()
         if hy3Obj:
             md3 = kline.KLineModel_Ths(hy3Obj.code)
             md3.loadDataFile()
+        elif hy2Obj:
+            md2 = kline.KLineModel_Ths(hy2Obj.code)
+            md2.loadDataFile()
         self.adjustDataLength(md1, md2, md3)
         self.klines[0].setModel(md1)
+        self.klines[1].setModel(md2 or md3)
+        #self.klines[2].setModel(md3)
         self.klines[0].makeVisible(-1)
-        self.klines[1].setModel(md2)
         self.klines[1].makeVisible(-1)
-        self.klines[2].setModel(md3)
-        self.klines[2].makeVisible(-1)
+        #self.klines[2].makeVisible(-1)
         self.klines[0].setPopupMenu(gnModel, self.onMenuItemClick, 0)
         self.klines[1].setPopupMenu(gnModel, self.onMenuItemClick, 1)
         self.klines[2].setPopupMenu(gnModel, self.onMenuItemClick, 2)
@@ -196,7 +196,7 @@ class MultiKLineWindow(base_win.BaseWindow):
         md = kline.KLineModel_Ths(menuItem['code'])
         md.loadDataFile()
         days = [d.day for d in self.klines[0].model.data]
-        self.adjustDataLength_(days, md)
+        self.adjustDataLength_2(days, md)
         target = self.klines[(klineIdx + 1) % len(self.klines)]
         self.klines[klineIdx].setModel(md)
         self.klines[klineIdx].makeVisible(target.selIdx)
@@ -206,9 +206,9 @@ class MultiKLineWindow(base_win.BaseWindow):
         for i, kl in enumerate(self.klines):
             if i == curWinIdx:
                 continue
-            if evtName == 'Event.onMouseMove':
+            if evtName == 'Event.MouseMove':
                 kl.onMouseMove(evtInfo['x'], evtInfo['y'])
-            elif evtName == 'Event.onKeyDown':
+            elif evtName == 'Event.KeyDown':
                 kl.onKeyDown(evtInfo['oem'])
 
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -225,6 +225,5 @@ if __name__ == '__main__':
     win = MultiKLineWindow()
     win.createWindow(None, (0, 0, 100, 100), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
     win32gui.ShowWindow(win.hwnd, win32con.SW_MAXIMIZE)
-    win.adjustChildKLine(3)
     win.updateCode('600053')
     win32gui.PumpMessages()
