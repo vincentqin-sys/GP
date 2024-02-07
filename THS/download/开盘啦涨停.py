@@ -646,7 +646,20 @@ def runOpt(opt, util, hwnd):
         pass
     elif opt == 'h':
         hot_main(hwnd, False)
+    elif opt == 'a':
+        autoLoadOnePage(util, hwnd)
     return True
+
+def autoLoadOnePage(util, hwnd):
+    while True:
+        tg = runOpt('n', util, hwnd)
+        if tg == 'Finish':
+            runOpt('s', util, hwnd)
+            break
+        else:
+            time.sleep(3)
+            nextPage(hwnd)
+            time.sleep(3)
 
 def main():
     #txt = ocr.readtext(TMP_FILE)
@@ -655,7 +668,7 @@ def main():
     hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
     print('定位到[市场情绪->股票列表->涨停原因排序] ')
     print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
-    tip = 'select options: \n\tr = restart  \n\tn = next page down  \n\ts = save to file\n\tl = load file, save to database\n\to = use notepad++ open data file\n\th = load hot[定位到[市场情绪->数据分析]\n\thelp = print help'
+    tip = 'select options: \n\ta = auto load one page  \n\tn = next page down  \n\ts = save to file\n\tl = load file, save to database\n\to = use notepad++ open data file\n\th = load hot[定位到[市场情绪->数据分析]\n\thelp = print help'
     print(tip)
     util = OCRUtil()
     while True:
@@ -679,7 +692,7 @@ def nextPage(hwnd):
     rect = win32gui.GetClientRect(hwnd)
     x = rect[2] // 2 + rr[0]
     y = rect[3] - 40 + rr[1]
-    lastY = KPL_Image.startY + 50 + rr[1]
+    lastY =  300 + rr[1] #KPL_Image.startY
     lparam = (y << 16) | x
     pyautogui.moveTo(x, y)
     time.sleep(1)
