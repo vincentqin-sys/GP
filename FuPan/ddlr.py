@@ -414,8 +414,8 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
         self.gridLayout = base_win.GridLayout(trs, tcs, (10, 5))
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''):
-        self.shareMem.open()
         super().createWindow(parentWnd, rect, style, title = '大单复盘')
+        self.shareMem.open()
         
         size = self.getClientSize()
         self.tableWin = TableWindow()

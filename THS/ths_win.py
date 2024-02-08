@@ -169,9 +169,37 @@ class ThsFuPingWindow(ThsWindow):
 class ThsShareMemory:
     POS_CODE = 0
     POS_SEL_DAY = 1
+    _thread = None
 
     def __init__(self, create : bool = False) -> None:
         self.create = create
+        self.listeners = []
+
+    # func = function(code, day)
+    def addListener(self, name, func):
+        for ls in self.listeners:
+            if ls[0] == name:
+                return
+        if func:
+            self.listeners.append((name, func))
+
+    def notifyListener(self, curCode, curDay):
+        for ls in self.listeners:
+            func = ls[1]
+            func(curCode, curDay)
+
+    def onListenThread(self):
+        curDay, curCode = 0, 0
+        while True:
+            time.sleep(0.5)
+            day = self.readSelDay()
+            code = self.readCode()
+            if day == 0 or code == 0:
+                continue
+            if day != curDay or code != curCode:
+                curDay = day
+                curCode = code
+                self.notifyListener(curCode, curDay)
 
     def open(self):
         if self.create:
@@ -181,6 +209,9 @@ class ThsShareMemory:
             buf[self.POS_SEL_DAY] = 0
         else:
             self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', False)
+        if not ThsShareMemory._thread:
+            ThsShareMemory._thread = threading.Thread(target = self.onListenThread, daemon = True)
+            ThsShareMemory._thread.start()
 
     def writeCode(self, code):
         try:

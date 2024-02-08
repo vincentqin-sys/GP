@@ -1,14 +1,8 @@
 import peewee as pw
 import sys, os
 
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
-if __name__ == '__main__':
-    from orm import THS_Hot, THS_HotZH, THS_Newest
-else:
-    from THS.orm import THS_Hot, THS_HotZH, THS_Newest
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from THS.orm import THS_Hot, THS_HotZH, THS_Newest
 
 # param day : int
 def calcHotZHOnDay(day : int):

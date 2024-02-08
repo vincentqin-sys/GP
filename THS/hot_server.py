@@ -8,11 +8,7 @@ import traceback
 import logging
 from multiprocessing import Process
 
-#sys.path.append(os.getcwd())
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import hot_utils, orm
 
 

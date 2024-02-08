@@ -172,7 +172,7 @@ class KPL_ZT_TableWindow(base_win.TableWindow):
 
     def updateDay(self, day):
         if not day:
-            self.data = None
+            self.setData(None)
             return
         if type(day) == int:
             day = f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
@@ -181,7 +181,7 @@ class KPL_ZT_TableWindow(base_win.TableWindow):
         qr = ths_orm.KPL_ZT.select().where(ths_orm.KPL_ZT.day == day)
         if self.data:
             self.data.clear()
-        self.data = [d.__data__ for d in qr]
+        self.setData([d.__data__ for d in qr])
         self.invalidWindow()
 
     def winProc(self, hwnd, msg, wParam, lParam):

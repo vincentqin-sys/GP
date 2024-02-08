@@ -2,10 +2,7 @@ import os, sys
 import win32gui, win32con
 import requests
 
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import base_win, orm
 from Tdx import datafile
 from THS.download import henxin

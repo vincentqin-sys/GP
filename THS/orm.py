@@ -1,8 +1,7 @@
 import peewee as pw
 import sys
 
-path = sys.argv[0]
-path = path[0 : path.index('GP') ]
+path = __file__[0 : __file__.upper().index('GP')]
 db = pw.SqliteDatabase(f'{path}GP/db/THS_F10.db')
 
 # 同花顺-- 机构持仓 (主力持仓)

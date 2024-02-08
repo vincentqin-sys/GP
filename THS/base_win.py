@@ -274,6 +274,23 @@ class Layout:
     def setVisible(self, visible):
         pass
 
+    def setWinVisible(self, win, visible):
+        if isinstance(win, BaseWindow):
+            if visible:
+                win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
+            else:
+                win32gui.ShowWindow(win.hwnd, win32con.SW_HIDE)
+        elif type(win) == int:
+            # is HWND object
+            if visible:
+                win32gui.ShowWindow(win, win32con.SW_SHOW)
+            else:
+                win32gui.ShowWindow(win, win32con.SW_HIDE)
+        elif isinstance(win, Layout):
+            win.setVisible(visible)
+        else:
+            print('[Layout.setVisible] unsport win type: ', win)
+
 class GridLayout(Layout):
     # templateRows = 分行, 设置高度  整数固定: 200 ; 自动: 'auto'; 片段: 1fr | 2fr; 百分比: 15% 
     #       Eg: (200, 'auto', '15%')  fr与auto不能同时出现, auto最多只能有一个
@@ -472,28 +489,14 @@ class GridLayout(Layout):
         for k in self.winsInfo:
             winInfo = self.winsInfo[k]
             win = winInfo['win']
-            if isinstance(win, BaseWindow):
-                if visible:
-                    win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
-                else:
-                    win32gui.ShowWindow(win.hwnd, win32con.SW_HIDE)
-            elif type(win) == int:
-                # is HWND object
-                if visible:
-                    win32gui.ShowWindow(win, win32con.SW_SHOW)
-                else:
-                    win32gui.ShowWindow(win, win32con.SW_HIDE)
-            elif isinstance(win, Layout):
-                win.setVisible(visible)
-            else:
-                print('[GridLayout.setVisible] unsport win type: ', winInfo)
+            self.setWinVisible(win, visible)
 
 class AbsLayout(Layout):
     def __init__(self) -> None:
         super().__init__()
         self.winsInfo = []
 
-    # win = BaseWindow, HWND, unsupport Layout
+    # win = BaseWindow, HWND
     def setContent(self, x, y, win):
         if win:
             self.winsInfo.append({'win': win, 'x' : x, 'y': y})
@@ -519,23 +522,58 @@ class AbsLayout(Layout):
     def setVisible(self, visible):
         for winInfo in self.winsInfo:
             win = winInfo['win']
-            if not win:
-                continue
-            if isinstance(win, BaseWindow):
-                if visible:
-                    win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
-                else:
-                    win32gui.ShowWindow(win.hwnd, win32con.SW_HIDE)
-            elif type(win) == int:
-                # is HWND object
-                if visible:
-                    win32gui.ShowWindow(win, win32con.SW_SHOW)
-                else:
-                    win32gui.ShowWindow(win, win32con.SW_HIDE)
-            elif isinstance(win, Layout):
-                win.setVisible(visible)
-            else:
-                print('[AbsLayout.setVisible] unsport win type: ', winInfo)
+            self.setWinVisible(win, visible)
+
+class Cardayout(Layout):
+    def __init__(self) -> None:
+        super().__init__()
+        self.winsInfo = []
+        self.curVisibleIdx = -1
+
+    def addContent(self, win):
+        ws = {'win': win}
+        self.winsInfo.append(ws)
+        self.setWinVisible(win, False)
+    
+    def resize(self, x, y, width, height):
+        super().resize(x, y, width, height)
+        for it in self.winsInfo:
+            self.adjustContentRect(it, x, y, width, height)
+
+    def adjustContentRect(self, winInfo, x, y, width, height):
+        win = winInfo['win']
+        if isinstance(win, BaseWindow):
+            win32gui.SetWindowPos(win.hwnd, None, x, y, width, height, win32con.SWP_NOZORDER)
+        elif type(win) == int:
+            win32gui.SetWindowPos(win, None, x, y, width, height, win32con.SWP_NOZORDER)
+        elif isinstance(win, Layout):
+            win.resize(x, y, width, height)
+        else:
+            print('[Cardayout.adjustContentRect] unsupport win type :', winInfo)
+
+    def setVisible(self, visible):
+        if not visible:
+            for winInfo in self.winsInfo:
+                win = winInfo['win']
+                self.setWinVisible(win, False)
+        else:
+            self.showCardByIdx(self.curVisibleIdx)
+    
+    def showCardByIdx(self, idx):
+        if not self.winsInfo:
+            return
+        if self.curVisibleIdx != idx and self.curVisibleIdx >= 0 and self.curVisibleIdx < len(self.winsInfo):
+            win = self.winsInfo[self.curVisibleIdx]['win']
+            self.setWinVisible(win, False)
+        self.curVisibleIdx = idx
+        win = self.winsInfo[idx]['win']
+        self.setWinVisible(win, True)
+
+    def showCard(self, win):
+        for i, winInfo in enumerate(self.winsInfo):
+            if win == winInfo['win']:
+                self.showCardByIdx(i)
+                break
 
 class TableWindow(BaseWindow):
     def __init__(self) -> None:
@@ -588,6 +626,11 @@ class TableWindow(BaseWindow):
         end = min(end, num)
         return (self.startIdx, end)
     
+    def setData(self, data):
+        self.data = data
+        self.startIdx = 0
+        self.selRow = -1
+
     # delta > 0 : up scroll
     # delta < 0 : down scroll
     def scroll(self, delta):
@@ -797,16 +840,13 @@ class ColumnWindow(BaseWindow):
             self.drawColumnHead(hdc, i)
 
 class GroupButton(BaseWindow):
-    def __init__(self, groups, enableGroup = True) -> None:
+    def __init__(self, groups) -> None:
         super().__init__()
         self.groups = groups
         self.selGroupIdx = -1
-        self.enableGroup = enableGroup
     
     # group = int, is group idx or group object
     def setSelGroup(self, group):
-        if not self.enableGroup:
-            return
         if type(group) == int:
             self.selGroupIdx = group
         win32gui.InvalidateRect(self.hwnd, None, True)
@@ -816,7 +856,7 @@ class GroupButton(BaseWindow):
         cw = w / len(self.groups)
         for i in range(len(self.groups)):
             item = self.groups[i]
-            color = 0x00008C if self.enableGroup and i == self.selGroupIdx else 0x333333
+            color = 0x00008C if i == self.selGroupIdx else 0x333333
             rc = [int(cw * i), 0,  int((i + 1) * cw), h]
             self.drawer.fillRect(hdc, rc, color)
             self.drawer.drawRect(hdc, rc, self.drawer.getPen(0x202020))
@@ -827,8 +867,9 @@ class GroupButton(BaseWindow):
         w, h = self.getClientSize()
         cw = w / len(self.groups)
         idx = int(x / cw)
-        if self.enableGroup:
-            self.selGroupIdx = idx
+        if self.selGroupIdx == idx:
+            return
+        self.selGroupIdx = idx
         self.notifyListener('click', {'group': self.groups[idx], 'groupIdx': idx})
         win32gui.InvalidateRect(self.hwnd, None, True)
 

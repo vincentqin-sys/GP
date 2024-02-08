@@ -4,10 +4,7 @@ from multiprocessing import Process
 from PIL import Image  # pip install pillow
 import orm, THS.hot_win_small as hot_win_small, base_win, ths_win
 
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import orm as tdx_orm
 
 class HotWindow(base_win.BaseWindow):

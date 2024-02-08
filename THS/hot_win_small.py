@@ -3,10 +3,7 @@ import threading, time, datetime, sys, os, threading
 import sys, pyautogui
 import peewee as pw
 
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from THS import orm, hot_utils, base_win
 from THS.download import henxin
@@ -307,7 +304,10 @@ class HotCardView(CardView):
         self.selectDay = selDay
 
     def onDraw(self, hdc):
+        rect = win32gui.GetClientRect(self.hwnd)
         if not self.hotData:
+            win32gui.SetTextColor(hdc, 0xdddddd)
+            win32gui.DrawText(hdc, '无Hot信息', -1, rect, win32con.DT_CENTER)
             return
         rr = win32gui.GetClientRect(self.hwnd)
         win32gui.SetTextColor(hdc, 0xdddddd)
