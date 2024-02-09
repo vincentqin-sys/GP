@@ -174,6 +174,7 @@ class ThsShareMemory:
     def __init__(self, create : bool = False) -> None:
         self.create = create
         self.listeners = []
+        self.shm = None
 
     # func = function(code, day)
     def addListener(self, name, func):
@@ -202,18 +203,23 @@ class ThsShareMemory:
                 self.notifyListener(curCode, curDay)
 
     def open(self):
-        if self.create:
-            self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', True, size = 512)
-            buf = self.shm.buf.cast('i')
-            buf[self.POS_CODE] = 0
-            buf[self.POS_SEL_DAY] = 0
-        else:
-            self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', False)
-        if not ThsShareMemory._thread:
-            ThsShareMemory._thread = threading.Thread(target = self.onListenThread, daemon = True)
-            ThsShareMemory._thread.start()
+        try:
+            if self.create:
+                self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', True, size = 512)
+                buf = self.shm.buf.cast('i')
+                buf[self.POS_CODE] = 0
+                buf[self.POS_SEL_DAY] = 0
+            else:
+                self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', False)
+            if not ThsShareMemory._thread:
+                ThsShareMemory._thread = threading.Thread(target = self.onListenThread, daemon = True)
+                ThsShareMemory._thread.start()
+        except Exception as e:
+            print('ths_win.ThsShareMemory.open exception: ', e)
 
     def writeCode(self, code):
+        if not self.shm:
+            return
         try:
             code = int(code)
         except:
@@ -223,12 +229,14 @@ class ThsShareMemory:
 
     # return int
     def readCode(self):
+        if not self.shm:
+            return
         buf = self.shm.buf.cast('i')
         code = buf[0]
         return code
     
     def writeSelDay(self, day):
-        if not day:
+        if not day or not self.shm:
             return
         if type(day) == str:
             day = day.replace('-', '')
@@ -238,12 +246,18 @@ class ThsShareMemory:
 
     # return int
     def readSelDay(self):
+        if not self.shm:
+            return
         buf = self.shm.buf.cast('i')
         day = buf[self.POS_SEL_DAY]
         return day
 
     def close(self):
+        if not self.shm:
+            return
         self.shm.close()
 
     def unlink(self):
+        if not self.shm:
+            return
         self.shm.unlink()

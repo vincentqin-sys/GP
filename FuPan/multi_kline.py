@@ -10,48 +10,6 @@ from Tdx import datafile
 from THS.download import henxin, load_ths_ddlr
 from THS import orm as ths_orm, base_win, kline
 
-class XKLineIndicator(kline.KLineIndicator):
-    def __init__(self, klineWin, config) -> None:
-        super().__init__(klineWin, config)
-        self.markDay = None
-
-    def setMarkDay(self, day):
-        if not day:
-            self.markDay = None
-            return
-        if type(day) == int:
-            self.markDay = day
-        elif type(day) == str:
-            self.markDay = int(day.replace('-', ''))
-
-    def drawMarkDay(self, hdc, pens, hbrs):
-        if not self.markDay or not self.model or not self.visibleRange:
-            return
-        idx = self.model.getItemIdx(self.markDay)
-        if idx < 0:
-            return
-        if idx < self.visibleRange[0] or idx >= self.visibleRange[1]:
-            return
-        x = self.getCenterX(idx)
-        sx = x - self.klineWin.klineWidth // 2 - self.klineWin.klineSpace
-        ex = x + self.klineWin.klineWidth // 2 + self.klineWin.klineSpace
-        rc = (sx, 0, ex, self.height)
-        pen = win32gui.GetStockObject(win32con.NULL_PEN)
-        #px = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0xcccccc)
-        win32gui.SelectObject(hdc, pen)
-        win32gui.FillRect(hdc, rc, hbrs['drak'])
-        # redraw kline item
-        self.drawKLineItem(idx, hdc, pens, hbrs, hbrs['drak'])
-
-    def draw(self, hdc, pens, hbrs):
-        if not self.visibleRange:
-            return
-        self.drawBackground(hdc, pens, hbrs)
-        self.drawKLines(hdc, pens, hbrs)
-        self.drawMarkDay(hdc, pens, hbrs)
-        self.drawMA(hdc, 5)
-        self.drawMA(hdc, 10)
-
 class MultiKLineWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -89,7 +47,7 @@ class MultiKLineWindow(base_win.BaseWindow):
         self.klines.clear()
         for i in range(childKlineNum):
             win = kline.KLineWindow()
-            idt = XKLineIndicator(win, {'height': -1, 'margins': (10, 10)})
+            idt = kline.KLineIndicator(win, {'height': -1, 'margins': (10, 10)})
             win.addIndicator(idt)
             idt = kline.AmountIndicator(win, {'height': 50, 'margins': (10, 3)})
             win.addIndicator(idt)

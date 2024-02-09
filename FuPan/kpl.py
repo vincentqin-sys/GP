@@ -57,7 +57,7 @@ class KPL_Window(base_win.BaseWindow):
         space = (w - self.itemWidth * NUM - self.paddings[0] - self.paddings[2]) / (NUM - 1)
         keys = ('ztNum', 'z7', 'z5_7', 'z2_5', 'z0_2', 'zeroNum', 'd0_2', 'd2_5', 'd5_7', 'd7', 'dtNum')
         titles = ('涨停', '>7', '5-7', '2-5', '0-2', '平', '0-2', '2-5', '5-7', '<7', '跌停')
-        maxNum = 0
+        maxNum = 1
         for v in keys:
             n = self.data.get(v, 0)
             maxNum = max(n, maxNum)

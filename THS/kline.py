@@ -101,6 +101,16 @@ class Indicator:
 class KLineIndicator(Indicator):
     def __init__(self, klineWin, config) -> None:
         super().__init__(klineWin, config)
+        self.markDay = None
+
+    def setMarkDay(self, day):
+        if not day:
+            self.markDay = None
+            return
+        if type(day) == int:
+            self.markDay = day
+        elif type(day) == str:
+            self.markDay = int(day.replace('-', ''))
 
     def calcValueRange(self, fromIdx, endIdx):
         self.valueRange = None
@@ -163,8 +173,28 @@ class KLineIndicator(Indicator):
             return
         self.drawBackground(hdc, pens, hbrs)
         self.drawKLines(hdc, pens, hbrs)
+        self.drawMarkDay(hdc, pens, hbrs)
         self.drawMA(hdc, 5)
         self.drawMA(hdc, 10)
+    
+    def drawMarkDay(self, hdc, pens, hbrs):
+        if not self.markDay or not self.model or not self.visibleRange:
+            return
+        idx = self.model.getItemIdx(self.markDay)
+        if idx < 0:
+            return
+        if idx < self.visibleRange[0] or idx >= self.visibleRange[1]:
+            return
+        x = self.getCenterX(idx)
+        sx = x - self.klineWin.klineWidth // 2 - self.klineWin.klineSpace
+        ex = x + self.klineWin.klineWidth // 2 + self.klineWin.klineSpace
+        rc = (sx, 0, ex, self.height)
+        pen = win32gui.GetStockObject(win32con.NULL_PEN)
+        #px = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0xcccccc)
+        win32gui.SelectObject(hdc, pen)
+        win32gui.FillRect(hdc, rc, hbrs['drak'])
+        # redraw kline item
+        self.drawKLineItem(idx, hdc, pens, hbrs, hbrs['drak'])
 
     def drawKLineItem(self, idx, hdc, pens, hbrs, fillHbr):
         data = self.data[idx]
@@ -703,7 +733,7 @@ class KLineWindow(base_win.BaseWindow):
         pens['bk_dot_red'] = win32gui.CreatePen(win32con.PS_DOT, 1, 0x000055) # 背景虚线
 
         hbrs['white'] = win32gui.CreateSolidBrush(0xffffff)
-        hbrs['drak'] = win32gui.CreateSolidBrush(0x101010)
+        hbrs['drak'] = win32gui.CreateSolidBrush(0x202020)
         hbrs['red'] = win32gui.CreateSolidBrush(0x0000ff)
         hbrs['green'] = win32gui.CreateSolidBrush(0x00ff00)
         hbrs['light_green'] = win32gui.CreateSolidBrush(0xfcfc54)
