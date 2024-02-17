@@ -129,10 +129,11 @@ class Thread:
     def __init__(self) -> None:
         self.tasks = []
         self.stoped = False
+        self.started = False
         self.event = threading.Event()
         self.thread = threading.Thread(target = Thread._run, args=(self,))
 
-    def addTask(self, taskId, fun, args):
+    def addTask(self, taskId, fun, args = None):
         for tk in self.tasks:
             if tk[2] == taskId:
                 return
@@ -140,7 +141,9 @@ class Thread:
         self.event.set()
 
     def start(self):
-        self.thread.start()
+        if not self.started:
+            self.started = True
+            self.thread.start()
 
     def stop(self):
         self.stoped = True
@@ -154,9 +157,12 @@ class Thread:
             else:
                 task = self.tasks[0]
                 fun, args, taskId,  *_ = task
-                fun(*args)
+                if args != None:
+                    fun(*args)
+                else:
+                    fun()
                 self.tasks.pop(0)
-                print('run task taskId=', taskId)
+                #print('run task taskId=', taskId)
 
 class Drawer:
     _instance = None
@@ -584,8 +590,13 @@ class TableWindow(BaseWindow):
         self.tailHeight = 0
         self.startIdx = 0
         self.selRow = -1
+        self.sortHeader = {'header': None, 'state': None} # state: 'ASC' | 'DSC' |  None
+        self.sortData = None
+
         self.data = None # a data array, [{colName1: xx, colName2: xxx}, ...]
-        # headers : need set  [{title:xx, name:xxx, width: x }, ...]  
+
+        # headers : need set  [{title:xx, name:xxx, width: x, sortable:True|False }, ...]
+        #                         width : int (fix width), float : int part is fix width, float part is stretch
         # '#idx' is index row column  width: int-> fix width; -1: expand all less width; float( < 1.0 ) -> percent of headers width
         self.headers = None # must be set TODO
 
@@ -598,12 +609,32 @@ class TableWindow(BaseWindow):
         if colName == '#idx':
             return row + 1
         if row < len(self.data):
+            if self.sortData:
+                return self.sortData[row][colName]
             return self.data[row][colName]
         return None
 
     def getColumnWidth(self, colIdx, colName):
         w, h = self.getClientSize()
-        return w // self.getColumnCount()
+        baseWidth = w // self.getColumnCount()
+        fixWidth = 0
+        frs = 0
+        for hd in self.headers:
+            cw = hd.get('width', 0)
+            if cw <= 0:
+                fixWidth += baseWidth
+            else:
+                fixWidth += cw
+                frs += float(cw) - int(cw)
+        lessWidth = w - fixWidth
+        cw = self.headers[colIdx].get('width', 0)
+        if cw <= 0:
+            return int(baseWidth)
+
+        fr = cw - int(cw) # float part
+        if type(cw) == int or fr == 0:
+            return cw
+        return int(cw) + int(lessWidth * fr / frs)
     
     def getColumnCount(self):
         if not self.headers:
@@ -627,6 +658,8 @@ class TableWindow(BaseWindow):
         return (self.startIdx, end)
     
     def setData(self, data):
+        if self.data == data:
+            return
         self.data = data
         self.startIdx = 0
         self.selRow = -1
@@ -680,6 +713,23 @@ class TableWindow(BaseWindow):
             rc = (0, sy + i * self.rowHeight, w, sy + (i + 1) * self.rowHeight)
             self.drawRow(hdc, i, i + vr[0], rc)
 
+    def drawSort(self, hdc, rc):
+        hd = self.sortHeader['header']
+        state = self.sortHeader['state']
+        if not hd or not state:
+            return
+        WH = 6
+        sx = rc[2] - 10
+        sy = (rc[3] - rc[1] - WH) // 2
+        if state == 'ASC':
+            pts = [(sx + WH // 2, sy), (sx, sy + WH), (sx + WH, sy + WH)]
+        else:
+            pts = [(sx, sy), (sx + WH, sy), (sx + WH // 2, sy + WH)]
+        hbr = win32gui.CreateSolidBrush(0xaaaabb)
+        win32gui.SelectObject(hdc, hbr)
+        win32gui.Polygon(hdc, pts)
+        win32gui.DeleteObject(hbr)
+
     def drawHeaders(self, hdc):
         hds = self.getHeaders()
         if self.headHeight <= 0 or not hds:
@@ -690,6 +740,8 @@ class TableWindow(BaseWindow):
         for i, hd in enumerate(hds):
             rc[2] += self.getColumnWidth(i, hd['name'])
             self.drawer.drawRect2(hdc, rc, 0x888888)
+            if self.sortHeader['header'] == hd:
+                self.drawSort(hdc, rc)
             rc2 = rc.copy()
             rc2[1] = (self.headHeight - 14) // 2
             self.drawer.drawText(hdc, hd['title'], rc2)
@@ -716,8 +768,46 @@ class TableWindow(BaseWindow):
         if self.tailHeight <= 0:
             return
 
+    def getHeaderAtX(self, x):
+        if not self.headers or x < 0:
+            return None
+        for i, hd in enumerate(self.headers):
+            iw = self.getColumnWidth(i, hd['name'])
+            if x <= iw:
+                return hd
+            x -= iw
+        return None
+
+    def setSortHeader(self, header):
+        hd = self.sortHeader['header']
+        st = self.sortHeader['state']
+        if not header:
+            self.sortHeader['header'] = None
+            self.sortHeader['state'] = None
+            self.sortData = None
+            return
+        if hd == header:
+            a = ('ASC', 'DSC', None)
+            idx = (a.index(st) + 1) % len(a)
+            self.sortHeader['state'] = a[idx]
+        else:
+            self.sortHeader['header'] = header
+            self.sortHeader['state'] = 'ASC'
+        st = self.sortHeader['state']
+        if st == None:
+            self.sortData = None
+            return
+        reverse = st == 'DSC'
+        self.sortData = sorted(self.data, key = lambda d: d[header['name']], reverse = reverse)
+
     def onClick(self, x, y):
         win32gui.SetFocus(self.hwnd)
+        if y <= self.headHeight: # click headers
+            hd = self.getHeaderAtX(x)
+            if hd:
+               self.setSortHeader(hd)
+               self.invalidWindow()
+            return
         if y > self.headHeight and y < self.getClientSize()[1] - self.tailHeight:
             y -= self.headHeight
             self.selRow = y // self.rowHeight + self.startIdx

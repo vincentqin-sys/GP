@@ -3,10 +3,8 @@ import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os, copy
 import os, sys
 
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+
 from Tdx import datafile, orm as tdx_orm
 from THS.download import henxin, load_ths_ddlr
 from THS import orm as ths_orm, base_win, kline
@@ -165,10 +163,11 @@ class KPL_Window(base_win.BaseWindow):
 class KPL_ZT_TableWindow(base_win.TableWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.headers = [{'name':'#idx', 'title':''}, {'name':'name', 'title':'股票名称'}, 
-                        {'name':'ztTime', 'title':'涨停时间'}, 
-                        {'name':'status', 'title':'状态'}, 
-                        {'name':'ztReason', 'title':'涨停原因'}] # {'name':'#idx', 'title':''}, 
+        self.headers = [{'name':'#idx', 'title':'', 'width': 30}, 
+                        {'name':'name', 'title':'股票名称', 'width': 70}, 
+                        {'name':'ztTime', 'title':'涨停时间', 'width': 60}, 
+                        {'name':'status', 'title':'状态', 'width': 60}, 
+                        {'name':'ztReason', 'title':'涨停原因', 'width': 60.5}] # {'name':'#idx', 'title':''}, 
 
     def updateDay(self, day):
         if not day:
