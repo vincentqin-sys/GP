@@ -242,7 +242,7 @@ class THS_ZS_ZD(pw.Model):
         database = db_thszs
         table_name = '同花顺指数涨跌信息'
 
-db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/KPL_ZT_FuPan.db')
+db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/KPL.db')
 class KPL_ZT(pw.Model):
     code = pw.CharField()
     name = pw.CharField(null = True)

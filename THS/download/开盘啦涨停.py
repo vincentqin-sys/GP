@@ -720,7 +720,9 @@ def hot_main(hwnd, loop):
     wr = win32gui.GetWindowRect(xiaoWnds['topWnd'])
     w, h = wr[2] - wr[0], wr[3] - wr[1]
     if w != 582 or h != 989:
-        win32gui.SetWindowPos(xiaoWnds['topWnd'], 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE)
+        tag = win32gui.SetWindowPos(xiaoWnds['topWnd'], 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE)
+        print(tag)
+        print(win32api.GetLastError())
         time.sleep(1.5)
     hotRect = [415, 217, 510, 264]
     leftArrowRect = [272, 114, 272, 114]
