@@ -7,6 +7,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import orm as tdx_orm
 from THS import orm
 from Common import base_win
+from LHB import orm as lhb_orm
 
 
 class HotWindow(base_win.BaseWindow):
@@ -423,7 +424,7 @@ class HotWindow(base_win.BaseWindow):
             if i < 0: return name
             return name[0 : i]
 
-        ds = orm.TdxLHB.select().where(orm.TdxLHB.code == code)
+        ds = lhb_orm.TdxLHB.select().where(lhb_orm.TdxLHB.code == code)
         data = []
         for d in ds:
             r = {'day': d.day, 'famous': []}
@@ -483,7 +484,7 @@ class HotWindow(base_win.BaseWindow):
     
     def updateLSInfoData(self, code):
         zsDatas = tdx_orm.TdxLSModel.select()
-        codeDatas = orm.TdxVolPMModel.select().where(orm.TdxVolPMModel.code == code)
+        codeDatas = tdx_orm.TdxVolPMModel.select().where(tdx_orm.TdxVolPMModel.code == code)
         cs = {}
         for c in codeDatas:
             cs[c.day] = c

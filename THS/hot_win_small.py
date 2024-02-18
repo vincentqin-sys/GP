@@ -903,6 +903,8 @@ class KPL_AllCardView(ListView):
             return
         if not day:
             day = orm.KPL_ZT.select(pw.fn.max(orm.KPL_ZT.day)).scalar()
+        if not day:
+            day = '0000-00-00'
         if type(day) == int:
             day = str(day)
         if len(day) == 8:
