@@ -7,7 +7,7 @@ import pyautogui
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import orm
-from THS.download import henxin
+from Download import henxin
 
 hx = henxin.HexinUrl()
 ocr = easyocr.Reader(['ch_sim','en'])
@@ -478,18 +478,8 @@ class OCRUtil:
         if len(result) < 1:
             raise Exception('[parseCodeRect] fail :', result)
         return result[0][1][0 : 6]
-
-    def parseRowImage(self, img):
-        #img.imgPIL.show()
-        img.imgPIL.save(TMP_FILE)
-        result = ocr.readtext(TMP_FILE)
-        if len(result) < 4:
-            raise Exception('[parseRow] fail :', result)
-        img.model['name'] = result[0][1]
-        img.model['ztTime'] = result[1][1]
-        img.model['ztTime'] = img.model['ztTime'].replace('.', ':')
-        img.model['status'] = result[2][1]
-        rz = result[3][1]
+    
+    def adjustZtReason(self, rz):
         if (rz[-1] == '1' or rz[-1] == '/') and (')' not in rz):
             rz = rz[0 : -1] + ')'
         rz = rz.replace('」', ')')
@@ -501,6 +491,10 @@ class OCRUtil:
         rz = rz.replace('井', '并')
         rz = rz.replace('娈', '变')
         rz = rz.replace('机器入', '机器人')
+        rz = rz.replace('-', '一')
+        rz = rz.replace('~', '一')
+        if rz.find('季报') == 0:
+            rz = '一' + rz
         if '(' not in rz and rz != '无':
             for i in range(len(rz) - 1, -1, -1):
                 if rz[i] != ')' and  not (rz[i] >= '0' and rz[i] <= '9'):
@@ -515,7 +509,31 @@ class OCRUtil:
             rz = 'AR/VR/MR' + rz[rz.index('(') : ]
         if 'DRG' in rz and 'DIP' in rz:
             rz = 'DRG/DIP' + rz[rz.index('(') : ]
-        img.model['ztReason'] = rz
+        if 'CPO' in rz and 'MPO' in rz:
+            rz = 'CPO/MPO' + rz[rz.index('(') : ]
+        # check num
+        if '(' in rz and ')' in rz:
+            sx = rz.index('(')
+            ex = rz.index(')')
+            num = ''
+            for i in range(sx + 1, ex, 1):
+                if rz[i] >= '0' and rz[i] <= '9':
+                    num += rz[i]
+            rz = rz[0 : sx] + '(' + num + ')'
+        return rz
+
+    def parseRowImage(self, img):
+        #img.imgPIL.show()
+        img.imgPIL.save(TMP_FILE)
+        result = ocr.readtext(TMP_FILE)
+        if len(result) < 4:
+            raise Exception('[parseRow] fail :', result)
+        img.model['name'] = result[0][1]
+        img.model['ztTime'] = result[1][1]
+        img.model['ztTime'] = img.model['ztTime'].replace('.', ':')
+        img.model['status'] = result[2][1]
+        rz = result[3][1]
+        img.model['ztReason'] = self.adjustZtReason(rz)
         tag = ''
         if 'R' in img.model:
             tag += '(融)'
@@ -587,7 +605,7 @@ class OCRUtil:
         rect = [upLineRect[0] + 2, upLineRect[1] + 2, ex, downLineRect[3] - 2]
         rectx = rect[ : ]
         rectx[0] += 70
-        rightLineRect = self.kimg.findRectIsColor(rectx, (3, rect[3] - rect[1] - 1), 0xffffff)
+        rightLineRect = self.kimg.findRectIsColor(rectx, (4, rect[3] - rect[1] - 1), 0xffffff)
         rect[2] = rightLineRect[2]
         self.dayRect = rect
     
