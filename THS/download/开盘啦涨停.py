@@ -468,7 +468,7 @@ class OCRUtil:
         model = self.parseRowImage(img)
         model['code'] = code
         #print('[OCRUtil.parseRow]', model)
-        info = f"{model['day']}\t{model['name']}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}"
+        info = f"{model['name']}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}"
         print('[OCRUtil.parseRow]', info)
         return model
     
@@ -568,7 +568,7 @@ class OCRUtil:
     def calcHeadLineY(self):
         #color = self.kimg.getPixel(self.kimg.width //2, 80)
         #print(f'{color:x}')
-        sy = self.kimg.getRowOfColors(self.kimg.width // 2, self.kimg.width // 2 + 100, 1, 100, [0xffffff])
+        sy = self.kimg.getRowOfColors(self.kimg.width // 2, self.kimg.width // 2 + 100, 1, 200, [0xffffff])
         if sy < 0:
             raise Exception('[calcHeadLineY] fail not find current day line')
         self.headLineY = sy + 3
