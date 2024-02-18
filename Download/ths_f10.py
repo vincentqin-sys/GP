@@ -370,7 +370,6 @@ if __name__ == '__main__':
     fd.open()
     # 自动下载数据
     time.sleep(10)
-    # print('必须先打开fiddler')
     # Download_HYDB().download()
     # Download_3().download()
 
