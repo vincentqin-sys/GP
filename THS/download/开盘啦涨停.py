@@ -5,10 +5,7 @@ import win32gui, win32con , win32api, win32ui # pip install pywin32
 import requests, json, hashlib, random, easyocr
 import pyautogui
 
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import orm
 from THS.download import henxin
 
@@ -101,17 +98,12 @@ class KPL_Image:
         return True
 
     def splitRows(self, MIN_ROW_HEIGHT = 50):
-        rs = []
-        startY = self.getRowOfColors(140, 160, 0, self.height, [0xf3f3f3, 0xeeeeee, 0xffffff])
+        startY = self.getRowOfColors(140, 160, 0, self.height, [0xf3f3f3, 0xf3f3f3, 0xf3f3f3])
         if startY < 0:
-            startY = self.getRowOfColors(140, 160, 0, self.height, [0xf3f3f3, 0xf9f9f9, 0xffffff])
-        if startY > 0:
-            KPL_Image.startY = startY
+            raise Exception('KPL_Image.splitRows not find startY 1')
+        self.findRectNotExistsColor2((140, startY, 160, startY + 50), (20, 1), 0xf3f3f3)
         if startY < 0:
-            startY = KPL_Image.startY
-        if startY < 0:
-            startY = 286
-            print('[KPL_Image.splitRows] use default startY')
+            raise Exception('KPL_Image.splitRows not find startY 2')
         startY += 2
         y = startY
         while y < self.height:
@@ -349,18 +341,30 @@ def saveToDB(day, code, name, ztTime, status, ztReason, tag):
 
 class OCRUtil:
     def __init__(self):
+        self.winSize = None
         self.kimg = None
         self.curDay = ''
         self.readHeadLineY = -1
         self.leftArrow = None
         self.rightArrow = None
+        self.dayRect = None
         self.models = []
 
-    def updateImage(self, pilImage):
+    def isWinSizeChanged(self, hwnd):
+        rc = win32gui.GetClientRect(hwnd)
+        w, h = rc[2], rc[3]
+        if not self.winSize or self.winSize[0] != w or self.winSize[1] != h:
+            self.winSize = (w, h)
+            return True
+        return False
+
+    def updateImage(self, pilImage, hwnd):
         self.kimg = KPL_Image(pilImage)
-        self.calcReadHeadLineY()
-        self.calcLeftRightArrow()
-        self.calcCurrentDay()
+        if self.isWinSizeChanged(hwnd):
+            self.calcReadHeadLineY()
+            self.calcLeftRightArrow()
+            self.calcCurDayRect()
+        self.readCurDay()
         self.kimg.splitRows()
         finish = False
         for r in self.kimg.rowsRect:
@@ -494,17 +498,14 @@ class OCRUtil:
             return True
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.name == model['name'])
         if obj:
-            flag = True
-            for i, c in enumerate(obj.code):
-                f = (i >= len(mc)) or (c == mc[i]) or (c == '1' and mc[i] == '7') or (c == '7' and mc[i] == '1') or (c == '8' and mc[i] == '3') or (c == '3' and mc[i] == '8')
-                flag = flag and f
-            if flag:
-                model['code'] = obj.code # use sugguest code
-                return True
+            model['code'] = mc
             model['_exception'] = ' Maybe is ' + obj.code + '? '
             return False
         if len(mc) != 6:
             return False
+        for c in mc:
+            if c < '0' or c > '9':
+                return False
         try:
             obj = hx.loadUrlData(hx.getTodayKLineUrl(mc))
             name = obj['name']
@@ -539,7 +540,7 @@ class OCRUtil:
             raise Exception('[calcReadHeadLineY] fail not find current day line')
         self.readHeadLineY = sy + 3
 
-    def calcCurrentDay(self):
+    def calcCurDayRect(self):
         sy = self.readHeadLineY
         sx = self.leftArrow[2] + 10
         ey = self.kimg.getRowOfColors(sx, sx + 50, sy, sy + 100, [0xf8f8f8])
@@ -547,14 +548,20 @@ class OCRUtil:
             ey = sy + 75
         ex = self.rightArrow[0] - 10 if self.rightArrow else self.kimg.width
         rect = [sx, sy, ex, ey]
-        upLineRect = self.kimg.findRectNotExistsColor2(rect, (80, 1), 0xffffff)
-        rect2= [upLineRect[0], upLineRect[1] + 10, ex, ey]
-        downLineRect = self.kimg.findRectNotExistsColor2(rect2, (80, 1), 0xffffff)
+        upLineRect = self.kimg.findRectNotExistsColor2(rect, (50, 1), 0xffffff)
+        rect2= [upLineRect[0], upLineRect[1] + 2, ex, ey]
+        downLineRect = self.kimg.findRectNotExistsColor2(rect2, (50, 1), 0xffffff)
         rect = [upLineRect[0] + 2, upLineRect[1] + 2, ex, downLineRect[3] - 2]
-        rightLineRect = self.kimg.findRectNotExistsColor2(rect, (15, 1), 0xffffff)
-        rect[2] = rightLineRect[0] - 3
-        dimg = self.kimg.copyImage(rect)
-        #dimg.show()
+        rectx = rect[ : ]
+        rectx[0] += 30
+        rightLineRect = self.kimg.findRectIsColor(rectx, (3, rect[3] - rect[1] - 1), 0xffffff)
+        rect[2] = rightLineRect[2]
+        self.dayRect = rect
+    
+    def readCurDay(self):
+        #self.kimg.drawBox(rect, 0xff0000)
+        #self.kimg.imgPIL.show()
+        dimg = self.kimg.copyImage(self.dayRect)
         dimg.save(TMP_FILE)
         rs = ocr.readtext(TMP_FILE)
         for r in rs:
@@ -567,9 +574,11 @@ class OCRUtil:
 
     def calcLeftRightArrow(self):
         sy = self.readHeadLineY
-        sx = self.kimg.width // 2
+        sx = self.kimg.width // 2 - 30
         rect = [sx, sy, self.kimg.width, sy + 100]
-        self.leftArrow = self.kimg.findRectIsColor(rect, (10, 10), 0xDADEE5)
+        #self.kimg.drawBox(rect, 0xff0000)
+        #self.kimg.imgPIL.show()
+        self.leftArrow = self.kimg.findRectIsColor(rect, (5, 5), 0xDADEE5)
         if not self.leftArrow:
             raise Exception('[calcLeftRightArrow] not find leftArrow of day')
         rect[0] = self.leftArrow[0] + 50
@@ -614,12 +623,12 @@ def runOpt(opt, util, hwnd):
     if opt == 'r':
         util = OCRUtil()
         pilImage = KPL_Image.dump(hwnd)
-        util.updateImage(pilImage)
+        util.updateImage(pilImage, hwnd)
         util.printeModels()
         print('restart....end')
     elif opt == 'n':
         pilImage = KPL_Image.dump(hwnd)
-        finish = util.updateImage(pilImage)
+        finish = util.updateImage(pilImage, hwnd)
         util.printeModels()
         print('next...end')
         finish = 'Finish' if finish else False
@@ -758,4 +767,7 @@ def save_KPL_SCQX(day, zhqd):
         orm.KPL_SCQX.create(day = day, zhqd = zhqd)
 
 if __name__ == '__main__':
-    main()
+    util = OCRUtil()
+    util.updateImage(PIL_Image.open(r'C:\Users\Administrator\Desktop\A.png'))
+    util.printeModels()
+    #main()

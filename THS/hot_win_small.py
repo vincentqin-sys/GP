@@ -578,14 +578,129 @@ class SimpleWindow(CardWindow):
         if not win32gui.IsWindowVisible(self.hwnd):
             win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
 
-#-------------小窗口（全热度）----------------------------------------------
-class HotZHCardView(CardView):
-    ROW_HEIGHT = 18
+#----------------------------------------
+class ListView(CardView):
+    thread = None
+    def __init__(self, hwnd):
+        super().__init__(hwnd)
+        self.ROW_HEIGHT = 18
+        self.selIdx = -1
+        self.pageIdx = 0
+        self.data = None
+        if not ListView.thread:
+            ListView.thread = base_win.Thread()
+            ListView.thread.start()
 
+    def getColumnNum(self):
+        return 1
+    
+    def getColumnWidth(self):
+        n = self.getColumnNum()
+        w = win32gui.GetClientRect(self.hwnd)[2]
+        return w // n
+
+    def getRowNum(self):
+        rect = win32gui.GetClientRect(self.hwnd)
+        h = rect[3] - rect[1]
+        return h // self.ROW_HEIGHT
+    
+    def getPageSize(self):
+        return self.getRowNum() * self.getColumnNum()
+
+    def getMaxPageNum(self):
+        if not self.data:
+            return 0
+        return (len(self.data) + self.getPageSize() - 1) // self.getPageSize()
+
+    def getItemRect(self, idx):
+        pz = self.getPageSize()
+        idx -= self.pageIdx * pz
+        if idx < 0 or idx >= pz:
+            return None
+        c = idx // self.getRowNum()
+        cw = self.getColumnWidth()
+        sx, ex = c * cw, (c + 1) * cw
+        sy = (idx % self.getRowNum()) * self.ROW_HEIGHT
+        ey = sy + self.ROW_HEIGHT
+        return (sx, sy + 2, ex, ey + 2)
+
+    def getItemIdx(self, x, y):
+        c = x // self.getColumnWidth()
+        r = y // self.ROW_HEIGHT
+        idx = c * self.getRowNum() + r
+        idx += self.getPageSize() * self.pageIdx
+        return idx
+
+    def getVisibleRange(self):
+        pz = self.getPageSize()
+        start = pz * self.pageIdx
+        end = (self.pageIdx + 1) * pz
+        start = min(start, len(self.data) - 1)
+        end = min(end, len(self.data) - 1)
+        return start, end
+
+    def openTHSCode(self, code):
+        topWnd = win32gui.GetParent(self.hwnd)
+        win32gui.SetForegroundWindow(topWnd)
+        if type(code) == int:
+            code = f'{code :06d}'
+        pyautogui.typewrite(code, interval=0.05)
+        pyautogui.press('enter')
+        #win32gui.SetActiveWindow(self.hwnd)
+        self.thread.addTask('AW', self.activeWindow, None)
+    
+    def activeWindow(self):
+        time.sleep(1)
+        win32gui.SetForegroundWindow(self.hwnd)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_MOUSEWHEEL:
+            wParam = (wParam >> 16) & 0xffff
+            if wParam & 0x8000:
+                wParam = wParam - 0xffff + 1
+            if wParam > 0: # up
+                self.pageIdx = max(self.pageIdx - 1, 0)
+            else:
+                self.pageIdx = min(self.pageIdx + 1, self.getMaxPageNum() - 1)
+            win32gui.InvalidateRect(self.hwnd, None, True)
+            return True
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            self.selIdx = self.getItemIdx(x, y)
+            win32gui.InvalidateRect(self.hwnd, None, True)
+            return True
+        if msg == win32con.WM_LBUTTONDBLCLK:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            selIdx = self.getItemIdx(x, y)
+            if not self.data or selIdx < 0 or selIdx >= len(self.data):
+                return False
+            code = self.data[selIdx]['code']
+            self.openTHSCode(code)
+            return True
+        if msg == win32con.WM_KEYDOWN:
+            if wParam == win32con.VK_DOWN:
+                if self.data and self.selIdx < len(self.data):
+                    self.selIdx += 1
+                    if self.selIdx > 0 and self.selIdx % self.getPageSize() == 0:
+                        self.pageIdx += 1
+                    win32gui.InvalidateRect(hwnd, None, True)
+            elif wParam == win32con.VK_UP:
+                if self.data and self.selIdx > 0:
+                    self.selIdx -= 1
+                    if self.selIdx > 0 and (self.selIdx + 1) % self.getPageSize() == 0:
+                        self.pageIdx -= 1
+                    win32gui.InvalidateRect(hwnd, None, True)
+            elif wParam == win32con.VK_RETURN:
+                if self.data and self.selIdx >= 0:
+                    code = self.data[self.selIdx]['code']
+                    self.openTHSCode(code)
+            return True
+        return False
+
+#-------------小窗口（全热度）----------------------------------------------
+class HotZHCardView(ListView):
     def __init__(self, hwnd) -> None:
         super().__init__(hwnd)
-        self.data = None
-        self.pageIdx = 0
         self.codeInfos = {}
         qr = orm.THS_Newest.select()
         for q in qr:
@@ -593,7 +708,6 @@ class HotZHCardView(CardView):
         self.thread = base_win.Thread()
         self.thread.start()
         self.henxinUrl = henxin.HexinUrl()
-        self.selIdx = -1
         self.updateDataTime = 0
 
         self.curSelDay : int = 0
@@ -675,47 +789,6 @@ class HotZHCardView(CardView):
                 self.thread.addTask(code, self.loadCodeInfoNative, (code, ))
             return data
         return data
-    
-    def getColumnNum(self):
-        rect = win32gui.GetClientRect(self.hwnd)
-        return max(rect[2] // 200, 1)
-    
-    def getColumnWidth(self):
-        n = self.getColumnNum()
-        w = win32gui.GetClientRect(self.hwnd)[2]
-        return w // n
-
-    def getRowNum(self):
-        rect = win32gui.GetClientRect(self.hwnd)
-        h = rect[3] - rect[1]
-        return h // HotZHCardView.ROW_HEIGHT
-    
-    def getPageSize(self):
-        return self.getRowNum() * self.getColumnNum()
-
-    def getMaxPageNum(self):
-        if not self.data:
-            return 0
-        return (len(self.data) + self.getPageSize() - 1) // self.getPageSize()
-
-    def getItemRect(self, idx):
-        pz = self.getPageSize()
-        idx -= self.pageIdx * pz
-        if idx < 0 or idx >= pz:
-            return None
-        c = idx // self.getRowNum()
-        cw = self.getColumnWidth()
-        sx, ex = c * cw, (c + 1) * cw
-        sy = (idx % self.getRowNum()) * self.ROW_HEIGHT
-        ey = sy + self.ROW_HEIGHT
-        return (sx, sy + 2, ex, ey + 2)
-
-    def getItemIdx(self, x, y):
-        c = x // self.getColumnWidth()
-        r = y // self.ROW_HEIGHT
-        idx = c * self.getRowNum() + r
-        idx += self.getPageSize() * self.pageIdx
-        return idx
 
     def drawItem(self, hdc, data, idx):
         rect = self.getItemRect(idx)
@@ -761,14 +834,6 @@ class HotZHCardView(CardView):
             win32gui.LineTo(hdc, x, rect[3])
             win32gui.DeleteObject(ps)
 
-    def getVisibleRange(self):
-        pz = self.getPageSize()
-        start = pz * self.pageIdx
-        end = (self.pageIdx + 1) * pz
-        start = min(start, len(self.data) - 1)
-        end = min(end, len(self.data) - 1)
-        return start, end
-    
     def getWindowTitle(self):
         return self.windowTitle
 
@@ -802,47 +867,9 @@ class HotZHCardView(CardView):
             self.updateData(True)
             win32gui.InvalidateRect(self.hwnd, None, True)
 
-    def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_MOUSEWHEEL:
-            wParam = (wParam >> 16) & 0xffff
-            if wParam & 0x8000:
-                wParam = wParam - 0xffff + 1
-            if wParam > 0: # up
-                self.pageIdx = max(self.pageIdx - 1, 0)
-            else:
-                self.pageIdx = min(self.pageIdx + 1, self.getMaxPageNum() - 1)
-            win32gui.InvalidateRect(self.hwnd, None, True)
-            return True
-        if msg == win32con.WM_LBUTTONUP:
-            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            self.selIdx = self.getItemIdx(x, y)
-            win32gui.InvalidateRect(self.hwnd, None, True)
-            return True
-        if msg == win32con.WM_LBUTTONDBLCLK:
-            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            selIdx = self.getItemIdx(x, y)
-            if self.data and selIdx >= 0 and selIdx < len(self.data):
-                topWnd = win32gui.GetParent(hwnd)
-                #print(f'hot_sin_small topWnd=0x{topWnd :X}')
-                #win32gui.ShowWindow(topWnd, win32con.SW_SHOW)
-                win32gui.SetForegroundWindow(topWnd)
-                code = self.data[selIdx]['code']
-                if type(code) == int:
-                    code = f'{code :06d}'
-                pyautogui.typewrite(code, interval=0.05)
-                pyautogui.press('enter')
-            return True
-        return False
-
-class KPL_AllCardView(CardView):
-    ROW_HEIGHT = 18
-
+class KPL_AllCardView(ListView):
     def __init__(self, hwnd):
         super().__init__(hwnd)
-        self.data = None
-        self.pageIdx = 0
-        self.selIdx = -1
-
         self.windowTitle = 'KPL-ZT'
         self.curSelDay = 0
         day = orm.KPL_ZT.select(pw.fn.max(orm.KPL_ZT.day)).scalar()
@@ -884,35 +911,7 @@ class KPL_AllCardView(CardView):
         self.data = [d.__data__ for d in qr]
         self.pageIdx = 0
         self.selIdx = -1
-    
-    def getPageSize(self):
-        rc = win32gui.GetClientRect(self.hwnd)
-        h = rc[3] - rc[1]
-        return h // self.ROW_HEIGHT
-    
-    def getMaxPageNum(self):
-        if not self.data:
-            return 0
-        return (len(self.data) + self.getPageSize() - 1) // self.getPageSize()
-    
-    def getItemRect(self, idx):
-        rc = win32gui.GetClientRect(self.hwnd)
-        w = rc[2] - rc[0]
-        pz = self.getPageSize()
-        idx -= self.pageIdx * pz
-        if idx < 0 or idx >= pz:
-            return None
-        c = idx // pz
-        sy = (idx % pz) * self.ROW_HEIGHT
-        ey = sy + self.ROW_HEIGHT
-        return (2, sy + 2, w, ey + 2)
-
-    def getItemIdx(self, x, y):
-        pz = self.getPageSize()
-        r = y // self.ROW_HEIGHT
-        idx = r + pz * self.pageIdx
-        return idx
-
+   
     def drawItem(self, hdc, data, idx):
         rect = self.getItemRect(idx)
         if not rect:
@@ -940,16 +939,6 @@ class KPL_AllCardView(CardView):
             win32gui.LineTo(hdc, rect[2], rect[3] - 2)
             win32gui.DeleteObject(ps)
 
-    def getVisibleRange(self):
-        if not self.data:
-            return None
-        pz = self.getPageSize()
-        start = pz * self.pageIdx
-        end = (self.pageIdx + 1) * pz
-        start = min(start, len(self.data) - 1)
-        end = min(end, len(self.data) - 1)
-        return start, end
-
     def onDraw(self, hdc):
         vr = self.getVisibleRange()
         if not vr:
@@ -965,37 +954,6 @@ class KPL_AllCardView(CardView):
         win32gui.SetWindowText(self.hwnd, self.getWindowTitle())
         win32gui.InvalidateRect(self.hwnd, None, True)
 
-    def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_MOUSEWHEEL:
-            wParam = (wParam >> 16) & 0xffff
-            if wParam & 0x8000:
-                wParam = wParam - 0xffff + 1
-            if wParam > 0: # up
-                self.pageIdx = max(self.pageIdx - 1, 0)
-            else:
-                self.pageIdx = min(self.pageIdx + 1, self.getMaxPageNum() - 1)
-            win32gui.InvalidateRect(self.hwnd, None, True)
-            return True
-        if msg == win32con.WM_LBUTTONUP:
-            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            self.selIdx = self.getItemIdx(x, y)
-            win32gui.InvalidateRect(self.hwnd, None, True)
-            return True
-        if msg == win32con.WM_LBUTTONDBLCLK:
-            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            selIdx = self.getItemIdx(x, y)
-            if self.data and selIdx >= 0 and selIdx < len(self.data):
-                topWnd = win32gui.GetParent(hwnd)
-                #print(f'hot_sin_small topWnd=0x{topWnd :X}')
-                #win32gui.ShowWindow(topWnd, win32con.SW_SHOW)
-                win32gui.SetForegroundWindow(topWnd)
-                code = self.data[selIdx]['code']
-                if type(code) == int:
-                    code = f'{code :06d}'
-                pyautogui.typewrite(code, interval=0.05)
-                pyautogui.press('enter')
-            return True
-        return False
 
 class SimpleHotZHWindow(CardWindow):
     def __init__(self) -> None:
