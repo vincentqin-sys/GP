@@ -699,6 +699,10 @@ class MainTools:
             self.autoMain_SJFX(False)
         elif opt == 'a':
             self.autoLoadOnePage()
+        elif opt == 'al':
+            self.autoMain_ZT()
+        elif opt == 'ah':
+            self.autoMain_SJFX(True)
         return True
 
     def autoLoadOnePage(self):
@@ -716,12 +720,14 @@ class MainTools:
         print('定位到[市场情绪->股票列表->涨停原因排序] ')
         print('定位到[市场情绪->数据分析] ')
         tip = 'select options: \n\t' + \
-                'a = auto load one page  \n\t' + \
+                'a = auto load one zt page  \n\t' + \
+                'al = auto load all zt pages \n\t' + \
                 'n = next page down  \n\t' + \
                 's = save to file\n\t' + \
                 'l = load file, save to database\n\t' + \
                 'o = use notepad++ open data file\n\t' + \
                 'h = load hot[定位到[市场情绪->数据分析]\n\t' + \
+                'ah = auto load hot[定位到[市场情绪->数据分析]\n\t' + \
                 'help = print help'
         print(tip)
         while True:
