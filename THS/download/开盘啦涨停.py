@@ -329,28 +329,21 @@ class KPL_RowImage(KPL_Image):
                     nb += 1
         return nb
 
-def saveToDB(day, code, name, ztTime, status, ztReason, tag):
-    count = orm.KPL_ZT.select(pw.fn.count(orm.KPL_ZT.code)).where(orm.KPL_ZT.code == code, orm.KPL_ZT.day == day)
-    #print(count.sql())
-    count = count.scalar()
-    if not count:
-        orm.KPL_ZT.create(name=name, code=code, tag=tag, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
-        print('Save success: ', day, name, code)
-    else:
-        print('重复项：', day, code, name, ztTime, status, ztReason, tag)
-
 class OCRUtil:
     def __init__(self):
+        self.xiaoWnds = {}
         self.winSize = None
         self.kimg = None
         self.curDay = ''
-        self.readHeadLineY = -1
+        self.headLineY = -1
         self.leftArrow = None
         self.rightArrow = None
         self.dayRect = None
         self.models = []
+        self.hotVal = None
 
-    def isWinSizeChanged(self, hwnd):
+    def isWinSizeChanged(self):
+        hwnd = self.xiaoWnds['contentWin']
         rc = win32gui.GetClientRect(hwnd)
         w, h = rc[2], rc[3]
         if not self.winSize or self.winSize[0] != w or self.winSize[1] != h:
@@ -358,12 +351,19 @@ class OCRUtil:
             return True
         return False
 
-    def updateImage(self, pilImage, hwnd):
+    def checkWindowChanged(self):
+        if not self.isWinSizeChanged():
+            return
+        self.calcHeadLineY()
+        self.calcLeftRightArrow()
+        self.calcCurDayRect()
+
+    # 涨停
+    def updateZT_Image(self):
+        hwnd = self.xiaoWnds['contentWin']
+        pilImage = KPL_Image.dump(hwnd)
         self.kimg = KPL_Image(pilImage)
-        if self.isWinSizeChanged(hwnd):
-            self.calcReadHeadLineY()
-            self.calcLeftRightArrow()
-            self.calcCurDayRect()
+        self.checkWindowChanged()
         self.readCurDay()
         self.kimg.splitRows()
         finish = False
@@ -380,6 +380,32 @@ class OCRUtil:
         if not finish:
             finish = self.kimg.checkFinish()
         return finish
+
+    # 数据分析 (热度值)
+    def updateSJFX_Image(self):
+        hwnd = self.xiaoWnds['contentWin']
+        pilImage = KPL_Image.dump(hwnd)
+        self.kimg = KPL_Image(pilImage)
+        self.checkWindowChanged()
+        self.readCurDay()
+        ey = self.kimg.getRowOfColors(10, 60, self.dayRect[1], self.dayRect[1] + 200, [0xE93030])
+        if ey < 0:
+            raise Exception('[OCRUtil.updateSJFX_Image] not find ey')
+        ey += 3
+        HOT_WIDTH = 125
+        HOT_HEIGHT = 65
+        w = win32gui.GetClientRect(hwnd)[2]
+        hotRect = [w - HOT_WIDTH, ey, w - 5, ey + HOT_HEIGHT]
+        hotImg = self.kimg.copyImage(hotRect)
+        hotImg.save(TMP_FILE)
+        result = ocr.readtext(TMP_FILE)
+        self.hotVal = result[0][1]
+        print(self.curDay, self.hotVal, sep='\t')
+        # check day
+        if not re.match(r'\d{4}-\d{2}-\d{2}', self.curDay):
+            print(' [updateSJFX_Image] error day')
+            return False
+        return True
 
     def compareModels(self):
         for model in self.models:
@@ -532,16 +558,16 @@ class OCRUtil:
         model['_exception'] = ' Maybe is ' + name + '? '
         return False
 
-    def calcReadHeadLineY(self):
+    def calcHeadLineY(self):
         #color = self.kimg.getPixel(self.kimg.width //2, 80)
         #print(f'{color:x}')
         sy = self.kimg.getRowOfColors(self.kimg.width // 2, self.kimg.width // 2 + 100, 1, 100, [0xffffff])
         if sy < 0:
-            raise Exception('[calcReadHeadLineY] fail not find current day line')
-        self.readHeadLineY = sy + 3
+            raise Exception('[calcHeadLineY] fail not find current day line')
+        self.headLineY = sy + 3
 
     def calcCurDayRect(self):
-        sy = self.readHeadLineY
+        sy = self.headLineY
         sx = self.leftArrow[2] + 10
         ey = self.kimg.getRowOfColors(sx, sx + 50, sy, sy + 100, [0xf8f8f8])
         if ey < 0:
@@ -573,7 +599,7 @@ class OCRUtil:
         raise Exception('[OCRUtil.calcCurrentDay] not find current day')
 
     def calcLeftRightArrow(self):
-        sy = self.readHeadLineY
+        sy = self.headLineY
         sx = self.kimg.width // 2 - 30
         rect = [sx, sy, self.kimg.width, sy + 100]
         #self.kimg.drawBox(rect, 0xff0000)
@@ -587,187 +613,172 @@ class OCRUtil:
         #self.kimg.fillBox(self.rightArrow, 0xff0000)
         #self.kimg.imgPIL.show()
 
-xiaoWnds = {}
-def findXiaoYaoWnd():
-    xiaoYaoWnd = win32gui.FindWindow('Qt5QWindowIcon', '逍遥模拟器')
-    if not xiaoYaoWnd:
-        print('Not find 逍遥模拟器')
-        return None
-    print(f'逍遥模拟器 top hwnd=0x{xiaoYaoWnd :x}')
-    xiaoWnds['topWnd'] = xiaoYaoWnd
-    hwnd = win32gui.FindWindowEx(xiaoYaoWnd, None, 'Qt5QWindowIcon', 'MainWindowWindow')
-    xiaoWnds['mainWnd'] = hwnd
-    hwnd = win32gui.FindWindowEx(hwnd, None, 'Qt5QWindowIcon', 'CenterWidgetWindow')
-    xiaoWnds['centerWnd'] = hwnd
-    hwnd = win32gui.FindWindowEx(hwnd, None, 'Qt5QWindowIcon', 'RenderWindowWindow')
-    xiaoWnds['renderWnd'] = hwnd
-    hwnd = win32gui.FindWindowEx(hwnd, None, 'subWin', 'sub')
-    xiaoWnds['subWin'] = hwnd
-    hwnd = win32gui.FindWindowEx(hwnd, None, 'subWin', 'sub')
-    print(f'逍遥模拟器 sub hwnd=0x{hwnd :x}')
-    xiaoWnds['subWin_2'] = hwnd
-    return hwnd
+    def initXiaoYaoWnd(self):
+        xiaoYaoWnd = win32gui.FindWindow('Qt5QWindowIcon', '逍遥模拟器')
+        if not xiaoYaoWnd:
+            print('Not find 逍遥模拟器')
+            return
+        print(f'逍遥模拟器 top hwnd=0x{xiaoYaoWnd :x}')
+        self.xiaoWnds['topWnd'] = xiaoYaoWnd
+        hwnd = win32gui.FindWindowEx(xiaoYaoWnd, None, 'Qt5QWindowIcon', 'MainWindowWindow')
+        self.xiaoWnds['mainWnd'] = hwnd
+        hwnd = win32gui.FindWindowEx(hwnd, None, 'Qt5QWindowIcon', 'CenterWidgetWindow')
+        self.xiaoWnds['centerWnd'] = hwnd
+        hwnd = win32gui.FindWindowEx(hwnd, None, 'Qt5QWindowIcon', 'RenderWindowWindow')
+        self.xiaoWnds['renderWnd'] = hwnd
+        hwnd = win32gui.FindWindowEx(hwnd, None, 'subWin', 'sub')
+        self.xiaoWnds['subWin'] = hwnd
+        hwnd = win32gui.FindWindowEx(hwnd, None, 'subWin', 'sub')
+        print(f'逍遥模拟器 contentWin=0x{hwnd :x}')
+        self.xiaoWnds['contentWin'] = hwnd
 
-def main_loadFile():
-    file = open(KPL_OCR_FILE, encoding='gbk')
-    while True:
-        line = file.readline().strip()
-        if not line:
-            break
-        its = line.split('\t')
-        for i in range(len(its)): its[i] = its[i].strip()
-        day, name, code, ztTime, status, ztReason, *_ = its
-        saveToDB(day, code, name, ztTime, status, ztReason, '')
+class MainTools:
+    def __init__(self) -> None:
+        self.util = OCRUtil()
+        self.util.initXiaoYaoWnd()
 
-def runOpt(opt, util, hwnd):
-    if opt == 'r':
-        util = OCRUtil()
-        pilImage = KPL_Image.dump(hwnd)
-        util.updateImage(pilImage, hwnd)
-        util.printeModels()
-        print('restart....end')
-    elif opt == 'n':
-        pilImage = KPL_Image.dump(hwnd)
-        finish = util.updateImage(pilImage, hwnd)
-        util.printeModels()
-        print('next...end')
-        finish = 'Finish' if finish else False
-        return finish
-    elif opt == 's':
-        file = open(KPL_OCR_FILE, 'a')
-        util.writeModels(file)
-        util.clearModels()
-        file.close()
-        print('save success')
-        notepad = r'C:\Program Files\Notepad++\notepad++.exe'
-        win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
-    elif opt == 'so':
-        file = open(KPL_OCR_FILE, 'a')
-        util.writeModels(file)
-        util.clearModels()
-        file.close()
-        print('save success')
-    elif opt == 'l':
-        main_loadFile()
-    elif opt == 'o':
-        notepad = r'C:\Program Files\Notepad++\notepad++.exe'
-        win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
-        pass
-    elif opt == 'h':
-        hot_main(hwnd, False)
-    elif opt == 'a':
-        autoLoadOnePage(util, hwnd)
-    return True
+    def loadFile(self):
+        file = open(KPL_OCR_FILE, encoding='gbk')
+        while True:
+            line = file.readline().strip()
+            if not line:
+                break
+            its = line.split('\t')
+            for i in range(len(its)): its[i] = its[i].strip()
+            day, name, code, ztTime, status, ztReason, *_ = its
+            self.saveToDB(day, code, name, ztTime, status, ztReason, '')
 
-def autoLoadOnePage(util, hwnd):
-    while True:
-        tg = runOpt('n', util, hwnd)
-        if tg == 'Finish':
-            runOpt('s', util, hwnd)
-            break
+    def saveToDB(self, day, code, name, ztTime, status, ztReason, tag):
+        count = orm.KPL_ZT.select(pw.fn.count(orm.KPL_ZT.code)).where(orm.KPL_ZT.code == code, orm.KPL_ZT.day == day)
+        #print(count.sql())
+        count = count.scalar()
+        if not count:
+            orm.KPL_ZT.create(name=name, code=code, tag=tag, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
+            print('Save success: ', day, name, code)
         else:
+            print('重复项：', day, code, name, ztTime, status, ztReason, tag)
+
+    def runOpt(self, opt):
+        if opt == 'n':
+            finish = self.util.updateZT_Image()
+            self.util.printeModels()
+            print('next...end')
+            finish = 'Finish' if finish else False
+            return finish
+        elif opt == 's':
+            file = open(KPL_OCR_FILE, 'a')
+            self.util.writeModels(file)
+            self.util.clearModels()
+            file.close()
+            print('save success')
+            notepad = r'C:\Program Files\Notepad++\notepad++.exe'
+            win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
+        elif opt == 'so':
+            file = open(KPL_OCR_FILE, 'a')
+            self.util.writeModels(file)
+            self.util.clearModels()
+            file.close()
+            print('save success')
+        elif opt == 'l':
+            self.loadFile()
+        elif opt == 'o':
+            notepad = r'C:\Program Files\Notepad++\notepad++.exe'
+            win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
+            pass
+        elif opt == 'h':
+            self.autoMain_SJFX(False)
+        elif opt == 'a':
+            self.autoLoadOnePage()
+        return True
+
+    def autoLoadOnePage(self):
+        while True:
+            tg = self.runOpt('n')
+            if tg == 'Finish':
+                self.runOpt('s')
+                break
+            else:
+                time.sleep(3)
+                self.scrollNextPage()
+                time.sleep(3)
+
+    def main(self):
+        print('定位到[市场情绪->股票列表->涨停原因排序] ')
+        print('定位到[市场情绪->数据分析] ')
+        tip = 'select options: \n\t' + \
+                'a = auto load one page  \n\t' + \
+                'n = next page down  \n\t' + \
+                's = save to file\n\t' + \
+                'l = load file, save to database\n\t' + \
+                'o = use notepad++ open data file\n\t' + \
+                'h = load hot[定位到[市场情绪->数据分析]\n\t' + \
+                'help = print help'
+        print(tip)
+        while True:
+            opt = input('input select: ').strip()
+            self.runOpt(opt)
+            if opt == 'help':
+                print(tip)
+
+    def clickLeftArrow(self):
+        rect = self.util.leftArrow
+        hwnd = self.util.xiaoWnds['topWnd']
+        win32gui.SetForegroundWindow(hwnd)
+        time.sleep(0.5)
+        hwnd = self.util.xiaoWnds['contentWin']
+        rr = win32gui.GetWindowRect(hwnd)
+        x = (rect[0] + rect[2]) // 2 + rr[0]
+        y = (rect[1] + rect[3]) // 2 + rr[1]
+        pyautogui.click(x, y)
+
+    def scrollNextPage(self):
+        hwnd = self.util.xiaoWnds['topWnd']
+        win32gui.SetForegroundWindow(hwnd)
+        time.sleep(0.5)
+        hwnd = self.util.xiaoWnds['contentWin']
+        rr = win32gui.GetWindowRect(hwnd)
+        rect = win32gui.GetClientRect(hwnd)
+        x = rect[2] // 2 + rr[0]
+        y = rect[3] - 40 + rr[1]
+        lastY =  330 + rr[1] #KPL_Image.startY
+        pyautogui.moveTo(x, y)
+        time.sleep(1)
+        pyautogui.dragTo(x, lastY, duration=2)
+
+    def autoMain_ZT(self):
+        while True:
+            tg = self.runOpt('n')
+            if tg == 'Finish':
+                self.runOpt('so')
+                self.clickLeftArrow()
+                time.sleep(3)
+            else:
+                time.sleep(3)
+                self.scrollNextPage()
+                time.sleep(3)
+
+    def autoMain_SJFX(self, loop):
+        print('定位到[市场情绪->数据分析] ')
+        while True:
+            f = self.util.updateSJFX_Image()
+            if not f:
+                break
+            self.save_KPL_SCQX(self.util.curDay, self.util.hotVal)
+            if not loop:
+                break
+            self.clickLeftArrow()
             time.sleep(3)
-            nextPage(hwnd)
-            time.sleep(3)
 
-def main():
-    #txt = ocr.readtext(TMP_FILE)
-    #print(txt)
-    #return
-    hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
-    print('定位到[市场情绪->股票列表->涨停原因排序] ')
-    print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
-    tip = 'select options: \n\ta = auto load one page  \n\tn = next page down  \n\ts = save to file\n\tl = load file, save to database\n\to = use notepad++ open data file\n\th = load hot[定位到[市场情绪->数据分析]\n\thelp = print help'
-    print(tip)
-    util = OCRUtil()
-    while True:
-        opt = input('input select: ').strip()
-        runOpt(opt, util, hwnd)
-        if opt == 'help':
-            print(tip)
-
-def clickLeftArrow(hwnd, rect):
-    win32gui.SetForegroundWindow(xiaoWnds['topWnd'])
-    time.sleep(0.5)
-    rr = win32gui.GetWindowRect(hwnd)
-    x = (rect[0] + rect[2]) // 2 + rr[0]
-    y = (rect[1] + rect[3]) // 2 + rr[1]
-    pyautogui.click(x, y)
-
-def nextPage(hwnd):
-    win32gui.SetForegroundWindow(xiaoWnds['topWnd'])
-    rr = win32gui.GetWindowRect(hwnd)
-    time.sleep(0.5)
-    rect = win32gui.GetClientRect(hwnd)
-    x = rect[2] // 2 + rr[0]
-    y = rect[3] - 40 + rr[1]
-    lastY =  300 + rr[1] #KPL_Image.startY
-    lparam = (y << 16) | x
-    pyautogui.moveTo(x, y)
-    time.sleep(1)
-    pyautogui.dragTo(x, lastY, duration=2)
-
-def auto_main():
-    hwnd = findXiaoYaoWnd() #0x1120610 # 开盘拉窗口
-    print('定位到[市场情绪->股票列表->涨停原因排序] ')
-    print(f'开盘拉窗口 hwnd=0x{hwnd :x}')
-    util = OCRUtil()
-    while True:
-        tg = runOpt('n', util, hwnd)
-        if tg == 'Finish':
-            runOpt('so', util, hwnd)
-            clickLeftArrow(hwnd, util.leftArrow)
-            time.sleep(3)
+    def save_KPL_SCQX(self, day, zhqd):
+        obj = orm.KPL_SCQX.get_or_none(orm.KPL_SCQX.day == day)
+        if obj:
+            obj.zhqd = int(zhqd)
+            obj.save()
         else:
-            time.sleep(3)
-            nextPage(hwnd)
-            time.sleep(3)
-
-def hot_main(hwnd, loop):
-    print('定位到[市场情绪->数据分析] ')
-    #582x989
-    wr = win32gui.GetWindowRect(xiaoWnds['topWnd'])
-    w, h = wr[2] - wr[0], wr[3] - wr[1]
-    if w != 582 or h != 989:
-        tag = win32gui.SetWindowPos(xiaoWnds['topWnd'], 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE)
-        print(tag)
-        print(win32api.GetLastError())
-        time.sleep(1.5)
-    hotRect = [415, 217, 510, 264]
-    leftArrowRect = [272, 114, 272, 114]
-    dayRect = [295, 103, 384, 126]
-    time.sleep(2)
-    while True:
-        kimg = KPL_Image(KPL_Image.dump(hwnd))
-        dayImg = kimg.copyImage(dayRect)
-        dayImg.save(TMP_FILE)
-        result = ocr.readtext(TMP_FILE)
-        curDay = result[0][1]
-        hotImg = kimg.copyImage(hotRect)
-        hotImg.save(TMP_FILE)
-        result = ocr.readtext(TMP_FILE)
-        hotVal = result[0][1]
-        print(curDay, hotVal, sep='\t')
-        # check day
-        if not re.match(r'\d{4}-\d{2}-\d{2}', curDay):
-            print('\terror day')
-            break
-        save_KPL_SCQX(curDay, hotVal)
-        if not loop:
-            break
-        clickLeftArrow(hwnd, leftArrowRect)
-        time.sleep(3)
-
-def save_KPL_SCQX(day, zhqd):
-    obj = orm.KPL_SCQX.get_or_none(orm.KPL_SCQX.day == day)
-    if obj:
-        obj.zhqd = int(zhqd)
-        obj.save()
-    else:
-        orm.KPL_SCQX.create(day = day, zhqd = zhqd)
+            orm.KPL_SCQX.create(day = day, zhqd = zhqd)
 
 if __name__ == '__main__':
-    util = OCRUtil()
-    util.updateImage(PIL_Image.open(r'C:\Users\Administrator\Desktop\A.png'))
-    util.printeModels()
-    #main()
+    tools = MainTools()
+    tools.main()
+    #tools.autoMain_ZT()
+    #tools.autoMain_SJFX(True)
