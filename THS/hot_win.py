@@ -2,10 +2,12 @@ import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 from multiprocessing import Process
 from PIL import Image  # pip install pillow
-import orm, THS.hot_win_small as hot_win_small, base_win, ths_win
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import orm as tdx_orm
+from THS import orm
+from Common import base_win
+
 
 class HotWindow(base_win.BaseWindow):
     #  HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息) DDLR（大单流入） ZT_FUPAN(涨停复盘)

@@ -3,11 +3,7 @@ import threading
 import requests, json, flask
 import datetime, time, sys, os
 
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
-
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from LHB import orm
 
 # yyyy-mm-dd
@@ -223,7 +219,6 @@ def autoLoadTdxLHB():
     
 if __name__ == '__main__':
     print('功能：自动下载通达信龙虎榜')
-    orm.init()
     loadTdxLHB()
     autoLoadTdxLHB()
 

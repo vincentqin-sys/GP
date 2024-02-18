@@ -163,30 +163,8 @@ class TaoGuBa_Remark(pw.Model):
     class Meta:
         database = db3
 
-
-db4 = pw.SqliteDatabase(f'{path}/GP/db/LHB.db')
-class TdxLHB(pw.Model):
-    day = pw.CharField(column_name = '日期' )
-    code = pw.CharField()
-    name = pw.CharField()
-    title = pw.CharField(column_name = '上榜类型', null=True)
-    price = pw.FloatField(column_name = '收盘价', null=True)
-    zd = pw.FloatField(column_name = '涨跌幅' , null=True)
-    #vol = pw.IntegerField(column_name = '成交量_万' , null=True) # 万股
-    cjje = pw.DecimalField(column_name = '成交额_亿' , null=True, decimal_places = 1, max_digits = 10) # 亿元
-    
-    mrje = pw.DecimalField(column_name = '买入金额_亿' , null=True, decimal_places = 1, max_digits = 10) #  (亿元)
-    #mrjeRate = pw.IntegerField(column_name = '买入金额_占比' , null=True) #  (占总成交比例%)
-    mcje = pw.DecimalField(column_name = '卖出金额_亿' , null=True, decimal_places = 1, max_digits = 10) #  (亿元)
-    #mcjeRate = pw.IntegerField(column_name = '卖出金额_占比' , null=True) #  (占总成交比例%)
-    jme = pw.DecimalField(column_name = '净买额_亿' , null=True, decimal_places = 1, max_digits = 10) #  (亿元)
-    famous = pw.CharField(column_name = '知名游资' , null=True)
-    class Meta:
-        database = db4
-
-
 # 大单流入流出情况
-db5 = pw.SqliteDatabase(f'{path}/GP/db/THS_DDBS.db')
+db5 = pw.SqliteDatabase(f'{path}/GP/db/THS_DDLR.db')
 class THS_DDLR(pw.Model):
     day = pw.CharField(max_length = 8) # YYYYMMDD
     code = pw.CharField(max_length = 6)
@@ -200,18 +178,6 @@ class THS_DDLR(pw.Model):
     class Meta:
         database = db5
         table_name = '个股大单买卖'
-
-voldb = pw.SqliteDatabase(f'{path}GP/db/TdxVolPM.db')
-class TdxVolPMModel(pw.Model):
-    code = pw.CharField() #股票代码
-    name = pw.CharField() #股票名称
-    day = pw.IntegerField() # 日期
-    amount = pw.FloatField() #成交额 （亿元）
-    pm = pw.IntegerField() #全市成交排名
-
-    class Meta:
-        database = voldb
-        table_name = '成交额排名'
 
 db_thszs = pw.SqliteDatabase(f'{path}GP/db/THS_ZS.db')
 class THS_ZS(pw.Model):
@@ -242,7 +208,7 @@ class THS_ZS_ZD(pw.Model):
         database = db_thszs
         table_name = '同花顺指数涨跌信息'
 
-db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/KPL_new.db')
+db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/KPL.db')
 class KPL_ZT(pw.Model):
     code = pw.CharField()
     name = pw.CharField(null = True)

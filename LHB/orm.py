@@ -26,12 +26,12 @@ class TdxLHB(pw.Model):
 
     class Meta:
         database = db_lhb
-    
-def init():
-    db_lhb.create_tables([TdxLHB])
+
+
+db_lhb.create_tables([TdxLHB])
 
 
 if __name__ == '__main__':
-    init()
+    pass
     
 

@@ -586,7 +586,7 @@ class OCRUtil:
         downLineRect = self.kimg.findRectNotExistsColor2(rect2, (50, 1), 0xffffff)
         rect = [upLineRect[0] + 2, upLineRect[1] + 2, ex, downLineRect[3] - 2]
         rectx = rect[ : ]
-        rectx[0] += 30
+        rectx[0] += 70
         rightLineRect = self.kimg.findRectIsColor(rectx, (3, rect[3] - rect[1] - 1), 0xffffff)
         rect[2] = rightLineRect[2]
         self.dayRect = rect
@@ -597,13 +597,16 @@ class OCRUtil:
         dimg = self.kimg.copyImage(self.dayRect)
         dimg.save(TMP_FILE)
         rs = ocr.readtext(TMP_FILE)
+        txt = ''
         for r in rs:
-            txt = r[1]
-            if len(txt) == 10:
-                self.curDay = txt
-                print('[OCRUtil.calcCurrentDay] curDay=', txt)
-                return
-        raise Exception('[OCRUtil.calcCurrentDay] not find current day')
+            txt += r[1]
+        if len(txt) == 10:
+            self.curDay = txt
+            print('[OCRUtil.calcCurrentDay] curDay=', txt)
+        else:
+            self.curDay = txt
+            print('[OCRUtil.calcCurrentDay] curDay=', txt, ' error day')
+            #raise Exception('[OCRUtil.calcCurrentDay] not find current day ', txt)
 
     def calcLeftRightArrow(self):
         sy = self.headLineY

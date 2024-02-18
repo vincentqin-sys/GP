@@ -5,8 +5,9 @@ import peewee as pw
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
-from THS import orm, hot_utils, base_win
-from THS.download import henxin
+from THS import orm, hot_utils
+from Download import henxin
+from Common import base_win
 
 #-----------------------------------------------------------
 class ThsSortQuery:

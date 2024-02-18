@@ -8,14 +8,10 @@ import traceback
 import logging
 from multiprocessing import Process
 
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
-from THS import hot_server
-from Server import lhb_server
-from LHB import lhb_downloader
+from Server import lhb_server, hot_server
+from Server import lhb_downloader
 
 app = Flask(__name__, static_folder='ui/static', template_folder='ui/templates')
 cors = CORS(app)

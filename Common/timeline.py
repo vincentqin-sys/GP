@@ -6,7 +6,8 @@ import win32gui, win32con
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from THS.download import henxin, load_ths_ddlr
-from THS import orm, base_win, ths_win
+from THS import orm, ths_win
+from Common import base_win
 
 class TimelineModel:
     def __init__(self):

@@ -10,6 +10,7 @@ from multiprocessing import Process
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import hot_utils, orm
+from Common import holiday
 
 
 # 热点股票信息
@@ -17,6 +18,10 @@ def saveHot():
     hotDay = request.json.get('hotDay')
     hotTime = request.json.get('hotTime')
     hotInfos = request.json.get('hotInfo')
+
+    if holiday.isHoliday(hotDay):
+        return {"status": "OK", "msg" : f"{hotDay} is holiday, skip this"}
+
     for hi in hotInfos:
         hi['day'] = int(hotDay.replace('-', ''))
         hi['time'] = int(hotTime.replace(':', ''))

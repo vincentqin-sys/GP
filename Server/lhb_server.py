@@ -5,10 +5,7 @@ import json, os, sys
 import traceback
 import requests, json, logging
 
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from LHB import orm
 
 def toJE(s):

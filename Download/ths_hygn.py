@@ -1,4 +1,6 @@
 """
+同花顺 个股行业概念信息
+
 https://www.iwencai.com/unifiedwap/result?w=%E4%B8%AA%E8%82%A1%E5%8F%8A%E8%A1%8C%E4%B8%9A%E6%9D%BF%E5%9D%97&querytype=stock
 
 function nextPage() {
@@ -18,14 +20,10 @@ function loadPageData() {
 	}
 }
 """
-import os, sys
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
+import sys
+
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import orm
-
-
 
 f = open('D:/a.txt', 'r', encoding='utf8')
 lines = f.readlines()

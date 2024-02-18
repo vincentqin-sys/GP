@@ -3,7 +3,7 @@ import win32gui, win32con, sys, os
 import ddlr, kpl, multi_kline
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import base_win
+from Common import base_win
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:

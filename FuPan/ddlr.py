@@ -1,12 +1,12 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os, copy
 import os, sys, requests
-import win32gui, win32con
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from THS.download import henxin, load_ths_ddlr
-from THS import orm, base_win, ths_win, timeline
+from THS import orm, ths_win
+from Common import base_win, timeline
 
 class TableWindow(base_win.BaseWindow):
     def __init__(self) -> None:

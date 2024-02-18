@@ -3,9 +3,10 @@ import win32gui, win32con
 import requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import base_win, orm
+from THS import orm
 from Tdx import datafile
 from THS.download import henxin
+from Common import base_win
 
 class KLineModel_Tdx(datafile.DataFile):
     def __init__(self, code):

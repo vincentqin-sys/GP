@@ -1,11 +1,10 @@
 import win32gui, win32con, threading, time, os, sys
 
-w = __file__.index('GP')
-cwd = __file__[0 : w + 2]
-sys.path.append(cwd)
-from THS import ths_win, kline, base_win
-from THS .download import henxin
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from THS import ths_win
+from THS.download import henxin
 from FuPan import multi_kline
+from Common import base_win, kline
 
 # 板块概念对照个股的K线
 class BKGN_KLineMgrWindow(base_win.BaseWindow):

@@ -2,15 +2,12 @@ import peewee as pw
 from peewee import fn
 import os, json, time, sys, pyautogui, io, datetime, win32api, win32event, winerror
 
-#sys.path.append('.')
-#sys.path.append('..')
-cwd = os.getcwd()
-w = cwd.index('GP')
-cwd = cwd[0 : w + 2]
-sys.path.append(cwd)
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+
 from THS import orm
 from Tdx import datafile
-from THS.download import fiddler, ths
+from Download import fiddler, ths_dd_win
+from Common import holiday
 
 BASE_STRUCT_PATH = 'D:/ThsData/ddlr-struct/'
 BASE_DETAIL_PATH = 'D:/ThsData/ddlr-detail-src/'
@@ -265,7 +262,7 @@ def autoLoadTop200Data():
     fd.open()
     time.sleep(10)
 
-    ddWin = ths.THS_DDWindow()
+    ddWin = ths_dd_win.THS_DDWindow()
     ddWin.initWindows()
     if not ddWin.openDDLJ():
         fd.close()
@@ -366,13 +363,15 @@ def main2():
     ldd.loadAllFilesData()
     checkDDLR_Amount()
 
-if __name__ == '__main__':
-    #main2()
+def main():
     lastDay = None
     runNow = False
     while True:
         today = datetime.datetime.now()
         if today.weekday() >= 5: # 周六周日
+            time.sleep(60 * 60)
+            continue
+        if holiday.isHoliday(today):
             time.sleep(60 * 60)
             continue
         nowDay = today.strftime('%Y-%m-%d')
@@ -382,10 +381,12 @@ if __name__ == '__main__':
             continue
         st = today.strftime('%H:%M')
         if (st >= '18:15' ) or runNow: # runNow and st < '19:00'
-            if  run(): # checkUserNoInputTime() and
+            if run(): # checkUserNoInputTime() and
                 lastDay = nowDay
                 runNow = False
             checkDDLR_Amount()
             time.sleep(5 * 60)
 
-    
+if __name__ == '__main__':
+    #main2()
+    main()

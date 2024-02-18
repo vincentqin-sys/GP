@@ -3,7 +3,7 @@ import sys
 
 path = sys.argv[0]
 path = path[0 : path.index('GP') ]
-voldb = pw.SqliteDatabase(f'{path}GP/db/TdxVolPM.db')
+voldb = pw.SqliteDatabase(f'{path}GP/db/Tdx.db')
 
 class TdxVolPMModel(pw.Model):
     code = pw.CharField() #股票代码
