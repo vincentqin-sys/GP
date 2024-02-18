@@ -467,7 +467,9 @@ class OCRUtil:
         img.fillBox(img.codeRect, 0xffffff)
         model = self.parseRowImage(img)
         model['code'] = code
-        print('[OCRUtil.parseRow]', model)
+        #print('[OCRUtil.parseRow]', model)
+        info = f"{model['day']}\t{model['name']}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}"
+        print('[OCRUtil.parseRow]', info)
         return model
     
     def parseCodeRect(self, pilImg):
@@ -498,6 +500,7 @@ class OCRUtil:
         rz = rz.replace('霎', '零')
         rz = rz.replace('井', '并')
         rz = rz.replace('娈', '变')
+        rz = rz.replace('机器入', '机器人')
         if '(' not in rz and rz != '无':
             for i in range(len(rz) - 1, -1, -1):
                 if rz[i] != ')' and  not (rz[i] >= '0' and rz[i] <= '9'):
@@ -508,6 +511,10 @@ class OCRUtil:
                     break
         if rz != '无' and rz[-1] != ')':
             rz += ')'
+        if 'AR' in rz and 'VR' in rz:
+            rz = 'AR/VR/MR' + rz[rz.index('(') : ]
+        if 'DRG' in rz and 'DIP' in rz:
+            rz = 'DRG/DIP' + rz[rz.index('(') : ]
         img.model['ztReason'] = rz
         tag = ''
         if 'R' in img.model:
@@ -524,8 +531,8 @@ class OCRUtil:
             return True
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.name == model['name'])
         if obj:
-            model['code'] = mc
-            model['_exception'] = ' Maybe is ' + obj.code + '? '
+            model['code'] = obj.code
+            model['_exception'] = f' Find code {mc}  change to {obj.code} ? '
             return False
         if len(mc) != 6:
             return False
@@ -661,7 +668,7 @@ class MainTools:
     def runOpt(self, opt):
         if opt == 'n':
             finish = self.util.updateZT_Image()
-            self.util.printeModels()
+            #self.util.printeModels()
             print('next...end')
             finish = 'Finish' if finish else False
             return finish
