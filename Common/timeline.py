@@ -5,7 +5,7 @@ import win32gui, win32con
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
-from THS.download import henxin, load_ths_ddlr
+from Download import henxin, ths_ddlr
 from THS import orm, ths_win
 from Common import base_win
 
@@ -35,7 +35,7 @@ class TimelineModel:
         #if self.code != code:
         self.code = code
         self.dataFile = datafile.DataFile(code, datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL)
-        self.ddlrFile = load_ths_ddlr.ThsDdlrDetailData(code)
+        self.ddlrFile = ths_ddlr.ThsDdlrDetailData(code)
         try:
             #url = self.henxi.getFenShiUrl(code)
             #todayData = self.henxi.loadUrlData(url)
