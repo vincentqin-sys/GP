@@ -757,23 +757,30 @@ class HotZHCardView(ListView):
         except Exception as e:
             print('[HotZHView.loadCodeInfoNet]', data, e)
 
-    def loadCodeInfoNative(self, code):
+    def loadCodeInfoNative(self, code, setNull):
         if type(code) == int:
             code = f'{code :06d}'
         data = self.codeInfos.get(code, None)
         if not data:
             self.codeInfos[code] = data = {}
             data['name'] = ''
+        if setNull:
+            if 'HX_curPrice_Native' in data:
+                del data['HX_curPrice_Native']
+            if 'HX_prePrice_Native' in data:
+                del data['HX_prePrice_Native']
+            if 'HX_zhangFu_Native' in data:
+                del data['HX_zhangFu_Native']
+            return
         dt = datafile.DataFile(code, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
         idx = dt.getItemIdx(self.curSelDay)
         if idx <= 0:
             return
         pre = dt.data[idx - 1].close
         cur = dt.data[idx].close
-        data['HX_curPrice'] = cur / 100
-        data['HX_prePrice'] = pre / 100
-        data['HX_zhangFu'] = (cur - pre) / pre * 100
-        data['HX_updateTime'] = time.time()
+        data['HX_curPrice_Native'] = cur / 100
+        data['HX_prePrice_Native'] = pre / 100
+        data['HX_zhangFu_Native'] = (cur - pre) / pre * 100
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def getCodeInfo(self, code):
@@ -785,9 +792,11 @@ class HotZHCardView(ListView):
         if ('HX_updateTime' not in data) or (time.time() - data['HX_updateTime'] > 120): # 120 seconds
             data['HX_updateTime'] = time.time()
             if self.curSelDay == 0 or self.curSelDay == self.maxHotDay:
-                self.thread.addTask(code, self.loadCodeInfoNet, (code, ))
+                self.thread.addTask(code + '-Native', self.loadCodeInfoNative, (code, True))
+                self.thread.addTask(code + '-Net', self.loadCodeInfoNet, (code, ))
             else:
-                self.thread.addTask(code, self.loadCodeInfoNative, (code, ))
+                self.thread.addTask(code + '-Native', self.loadCodeInfoNative, (code, False))
+                self.thread.addTask(code + '-Net', self.loadCodeInfoNet, (code, ))
             return data
         return data
 
@@ -798,15 +807,24 @@ class HotZHCardView(ListView):
         code = f"{data['code'] :06d}"
         info = self.getCodeInfo(code)
         name = ''
-        zf = ''
+        zf, nativeZF = '', ''
         if info:
             name = info.get('name', '')
             zf = info.get('HX_zhangFu', None)
             if zf != None:
                 zf = f'{zf :.2f}% '
-        txt = f"{data['zhHotOrder']:>3d} {code} {name}"
+            nativeZF = info.get('HX_zhangFu_Native', None)
+            if nativeZF != None:
+                nativeZF = f'{nativeZF :.2f}% '
+        txt = f"{data['zhHotOrder']:>3d} {name}"
         win32gui.SetTextColor(hdc, 0xdddddd)
         win32gui.DrawText(hdc, txt, len(txt), rect, win32con.DT_LEFT)
+        if nativeZF:
+            color = 0x00ff00 if  '-' in nativeZF else 0x0000ff
+            win32gui.SetTextColor(hdc, color)
+            rc2 = list(rect)
+            rc2[2] = 145
+            win32gui.DrawText(hdc, nativeZF, len(nativeZF), tuple(rc2), win32con.DT_RIGHT)
         if zf:
             color = 0x00ff00 if  '-' in zf else 0x0000ff
             win32gui.SetTextColor(hdc, color)
