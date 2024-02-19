@@ -10,7 +10,6 @@ from THS import orm
 from Download import henxin
 
 hx = henxin.HexinUrl()
-ocr = easyocr.Reader(['ch_sim','en'])
 
 TMP_FILE = 'D:/_kpl_.bmp'
 KPL_OCR_FILE = 'D:/kpl-ocr.txt'
@@ -348,7 +347,8 @@ class KPL_RowImage(KPL_Image):
         return nb
 
 class OCRUtil:
-    def __init__(self):
+    def __init__(self, ocr):
+        self.ocr = ocr
         self.xiaoWnds = {}
         self.winSize = None
         self.kimg = None
@@ -416,7 +416,7 @@ class OCRUtil:
         hotRect = [w - HOT_WIDTH, ey, w - 5, ey + HOT_HEIGHT]
         hotImg = self.kimg.copyImage(hotRect)
         hotImg.save(TMP_FILE)
-        result = ocr.readtext(TMP_FILE)
+        result = self.ocr.readtext(TMP_FILE)
         self.hotVal = result[0][1]
         print(self.curDay, self.hotVal, sep='\t')
         # check day
@@ -493,7 +493,7 @@ class OCRUtil:
     
     def parseCodeRect(self, pilImg):
         pilImg.save(TMP_FILE)
-        result = ocr.readtext(TMP_FILE)
+        result = self.ocr.readtext(TMP_FILE)
         if len(result) < 1:
             raise Exception('[parseCodeRect] fail :', result)
         code = result[0][1][0 : 6]
@@ -548,7 +548,7 @@ class OCRUtil:
     def parseRowImage(self, img):
         #img.imgPIL.show()
         img.imgPIL.save(TMP_FILE)
-        result = ocr.readtext(TMP_FILE)
+        result = self.ocr.readtext(TMP_FILE)
         if len(result) < 4:
             raise Exception('[parseRow] fail :', result)
         img.model['name'] = result[0][1]
@@ -639,7 +639,7 @@ class OCRUtil:
         #self.kimg.imgPIL.show()
         dimg = self.kimg.copyImage(self.dayRect)
         dimg.save(TMP_FILE)
-        rs = ocr.readtext(TMP_FILE)
+        rs = self.ocr.readtext(TMP_FILE)
         txt = ''
         for r in rs:
             txt += r[1]
@@ -686,9 +686,8 @@ class OCRUtil:
         self.xiaoWnds['contentWin'] = hwnd
 
 class MainTools:
-    def __init__(self) -> None:
-        self.util = OCRUtil()
-        self.util.initXiaoYaoWnd()
+    def __init__(self, util) -> None:
+        self.util = util
 
     def loadFile(self):
         file = open(KPL_OCR_FILE, encoding='gbk')
@@ -837,7 +836,10 @@ class MainTools:
             orm.KPL_SCQX.create(day = day, zhqd = zhqd)
 
 if __name__ == '__main__':
-    tools = MainTools()
+    ocr = easyocr.Reader(['ch_sim','en'])
+    util = OCRUtil(ocr)
+    tools = MainTools(util)
+    util.initXiaoYaoWnd()
     tools.main()
     #tools.autoMain_ZT()
     #tools.autoMain_SJFX(True)
