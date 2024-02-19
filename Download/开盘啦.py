@@ -840,6 +840,7 @@ if __name__ == '__main__':
     util = OCRUtil(ocr)
     tools = MainTools(util)
     util.initXiaoYaoWnd()
+    
     tools.main()
     #tools.autoMain_ZT()
     #tools.autoMain_SJFX(True)
