@@ -470,9 +470,13 @@ class OCRUtil:
         codePilImg = img.copyImage(img.codeRect)
         code = self.parseCodeRect(codePilImg)
         img.fillBox(img.codeRect, 0xffffff)
-        img.replaceColor([img.width // 2, 0, img.width, img.height], 0xE7F4FF, 0x000000)
+        img.replaceColor([img.width // 2, 0, img.width, img.height], 0xE7F4FF, 0xffffff)
         model = self.parseRowImage(img)
         model['code'] = code
+        if code and code[0] == '5':
+            model['code'] = '6' + code[ 1 : ]
+        if '-' in model['name']:
+            model['name'] = model['name'].replace('-', '一')
         #print('[OCRUtil.parseRow]', model)
         info = f"{model['name']}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}"
         print('[OCRUtil.parseRow]', info)
@@ -551,10 +555,6 @@ class OCRUtil:
 
     def checkModel(self, model):
         mc = model['code']
-        if mc and mc[0] == '5':
-            mc = '5' + mc[ 1 : ]
-        if '-' in model['name']:
-            model['name'] = model['name'].replace('-', '一')
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == mc)
         if obj and obj.name == model['name']:
             return True
