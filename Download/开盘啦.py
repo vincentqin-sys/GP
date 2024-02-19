@@ -488,6 +488,7 @@ class OCRUtil:
         rz = rz.replace('[', '(')
         rz = rz.replace('{', '(')
         rz = rz.replace('霎', '零')
+        rz = rz.replace('窭', '零')
         rz = rz.replace('井', '并')
         rz = rz.replace('娈', '变')
         rz = rz.replace('机器入', '机器人')
@@ -544,14 +545,18 @@ class OCRUtil:
 
     def checkModel(self, model):
         mc = model['code']
+        if mc and mc[0] == '5':
+            mc = '5' + mc[ 1 : ]
+        if '-' in model['name']:
+            model['name'] = model['name'].replace('-', '一')
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == mc)
         if obj and obj.name == model['name']:
             return True
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.name == model['name'])
         if obj:
             model['code'] = obj.code
-            model['_exception'] = f' Find code {mc}  change to {obj.code} ? '
-            return False
+            #model['_exception'] = f' Find code {mc}  -> {obj.code} ? '
+            return True
         if len(mc) != 6:
             return False
         for c in mc:
