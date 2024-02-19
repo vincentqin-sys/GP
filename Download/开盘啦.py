@@ -190,8 +190,13 @@ class KPL_Image:
                 if not self.rectExistsColor((x, y, x + w, y + h), color):
                     return (x, y, x + w, y + h)
         return None
-        
     
+    def replaceColor(self, rect, srcColor, destColor):
+        for x in range(rect[0], rect[2]):
+            for y in range(rect[1], rect[3]):
+                if self.getPixel(x, y) == srcColor:
+                    self.setPixel(x, y, destColor)
+
     @staticmethod
     def dump(hwnd):
         dc = win32gui.GetWindowDC(hwnd)
@@ -465,6 +470,7 @@ class OCRUtil:
         codePilImg = img.copyImage(img.codeRect)
         code = self.parseCodeRect(codePilImg)
         img.fillBox(img.codeRect, 0xffffff)
+        img.replaceColor([img.width // 2, 0, img.width, img.height], 0xE7F4FF, 0x000000)
         model = self.parseRowImage(img)
         model['code'] = code
         #print('[OCRUtil.parseRow]', model)
