@@ -196,6 +196,19 @@ class KPL_Image:
             for y in range(rect[1], rect[3]):
                 if self.getPixel(x, y) == srcColor:
                     self.setPixel(x, y, destColor)
+    
+    # 二值化图片
+    def toBinaryValImage(self):
+        WHITE_COLOR = 0xffffff
+        for x in range(self.width):
+            for y in range(self.height):
+                color = self.getPixel(x, y)
+                color = int(0.299 * (color >> 16) + 0.578 * ((color >> 8) & 0xff) + 0.114 * (color & 0xff))
+                if color < 200:
+                    color = 0
+                else:
+                    color = 0xffffff
+                self.setPixel(x, y, color)
 
     @staticmethod
     def dump(hwnd):
@@ -434,16 +447,16 @@ class OCRUtil:
         for model in self.models:
             info = f"{model['day']}\t{fmtName(model['name'])}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}"
             print(info)
-            if '新上市' in model['status']:
+            if '新上市' in model['status'] or model['ztReason'] == '无':
                 continue
             if file:
                 file.write(info + '\n')
             if not model['_success']:
                 ex = ''
                 if '_exception' in model: ex = model['_exception']
-                print('\tMaybe error ' + ex)
+                print('\tException ' + ex)
                 if file:
-                    file.write( '\tMaybe error'  + ex + '\n')
+                    file.write( '\tException '  + ex + '\n')
             if file:
                 file.flush()
         print('sum =', len(self.models))
@@ -473,10 +486,6 @@ class OCRUtil:
         img.replaceColor([img.width // 2, 0, img.width, img.height], 0xE7F4FF, 0xffffff)
         model = self.parseRowImage(img)
         model['code'] = code
-        if code and code[0] == '5':
-            model['code'] = '6' + code[ 1 : ]
-        if '-' in model['name']:
-            model['name'] = model['name'].replace('-', '一')
         #print('[OCRUtil.parseRow]', model)
         info = f"{model['name']}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}"
         print('[OCRUtil.parseRow]', info)
@@ -487,7 +496,10 @@ class OCRUtil:
         result = ocr.readtext(TMP_FILE)
         if len(result) < 1:
             raise Exception('[parseCodeRect] fail :', result)
-        return result[0][1][0 : 6]
+        code = result[0][1][0 : 6]
+        if code and code[0] == '5':
+            code = '6' + code[ 1 : ]
+        return code
     
     def adjustZtReason(self, rz):
         if (rz[-1] == '1' or rz[-1] == '/') and (')' not in rz):
@@ -558,6 +570,8 @@ class OCRUtil:
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == mc)
         if obj and obj.name == model['name']:
             return True
+        if '-' in model['name']:
+            model['name'] = model['name'].replace('-', '一')
         obj = orm.THS_Newest.get_or_none(orm.THS_Newest.name == model['name'])
         if obj:
             model['code'] = obj.code
