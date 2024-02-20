@@ -2,7 +2,7 @@ import peewee as pw
 import sys
 
 path = __file__[0 : __file__.upper().index('GP')]
-db = pw.SqliteDatabase(f'{path}GP/db/THS_F10_new.db')
+db = pw.SqliteDatabase(f'{path}GP/db/THS_F10.db')
 
 # 同花顺--最新动态
 class THS_Newest(pw.Model):
