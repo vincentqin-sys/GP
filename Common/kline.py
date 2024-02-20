@@ -3,9 +3,9 @@ import win32gui, win32con
 import requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import orm
+from THS import orm as ths_orm
 from Tdx import datafile
-from THS.download import henxin
+from Download import henxin
 from Common import base_win
 
 class KLineModel_Tdx(datafile.DataFile):
@@ -536,7 +536,7 @@ class KLineWindow(base_win.BaseWindow):
         self.model.calcZhangFu()
         for idt in self.indicators:
             idt.setData(self.model, self.model.data)
-        gntcObj = orm.THS_GNTC.get_or_none(code = str(self.model.code))
+        gntcObj = ths_orm.THS_GNTC.get_or_none(code = str(self.model.code))
         self.model.hy = []
         self.model.gn = []
         if gntcObj and gntcObj.hy:

@@ -689,7 +689,7 @@ class MainTools:
     def __init__(self, util) -> None:
         self.util = util
 
-    def loadFile(self):
+    def loadZT_File(self):
         file = open(KPL_OCR_FILE, encoding='gbk')
         while True:
             line = file.readline().strip()
@@ -698,9 +698,9 @@ class MainTools:
             its = line.split('\t')
             for i in range(len(its)): its[i] = its[i].strip()
             day, name, code, ztTime, status, ztReason, *_ = its
-            self.saveToDB(day, code, name, ztTime, status, ztReason, '')
+            self.save_KPL_ZT(day, code, name, ztTime, status, ztReason, '')
 
-    def saveToDB(self, day, code, name, ztTime, status, ztReason, tag):
+    def save_KPL_ZT(self, day, code, name, ztTime, status, ztReason, tag):
         count = orm.KPL_ZT.select(pw.fn.count(orm.KPL_ZT.code)).where(orm.KPL_ZT.code == code, orm.KPL_ZT.day == day)
         #print(count.sql())
         count = count.scalar()
@@ -711,47 +711,38 @@ class MainTools:
             print('重复项：', day, code, name, ztTime, status, ztReason, tag)
 
     def runOpt(self, opt):
-        if opt == 'n':
+        if opt == 'next-zt-page':
             finish = self.util.updateZT_Image()
             #self.util.printeModels()
             print('next...end')
             finish = 'Finish' if finish else False
             return finish
-        elif opt == 's':
+        elif opt == 'save-zt':
             file = open(KPL_OCR_FILE, 'a')
             self.util.writeModels(file)
             self.util.clearModels()
             file.close()
-            print('save success')
+            print('save to file success')
+        elif opt == 'load-zt-file':
+            self.loadZT_File()
+        elif opt == 'open-zt-file':
             notepad = r'C:\Program Files\Notepad++\notepad++.exe'
             win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
-        elif opt == 'so':
-            file = open(KPL_OCR_FILE, 'a')
-            self.util.writeModels(file)
-            self.util.clearModels()
-            file.close()
-            print('save success')
-        elif opt == 'l':
-            self.loadFile()
-        elif opt == 'o':
-            notepad = r'C:\Program Files\Notepad++\notepad++.exe'
-            win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
-            pass
-        elif opt == 'h':
-            self.autoMain_SJFX(False)
-        elif opt == 'a':
-            self.autoLoadOnePage()
-        elif opt == 'al':
+        elif opt == 'auto-zt-one':
+            self.autoLoadOneZT_Page()
+        elif opt == 'auto-zt-all':
             self.autoMain_ZT()
-        elif opt == 'ah':
+        elif opt == 'scqx':
+            self.autoMain_SJFX(False)
+        elif opt == 'auto-scqx':
             self.autoMain_SJFX(True)
         return True
 
-    def autoLoadOnePage(self):
+    def autoLoadOneZT_Page(self):
         while True:
-            tg = self.runOpt('n')
+            tg = self.runOpt('next-zt-page')
             if tg == 'Finish':
-                self.runOpt('s')
+                self.runOpt('save-zt')
                 break
             else:
                 time.sleep(3)
@@ -762,14 +753,14 @@ class MainTools:
         print('定位到[市场情绪->股票列表->涨停原因排序] ')
         print('定位到[市场情绪->数据分析] ')
         tip = 'select options: \n\t' + \
-                'a = auto load one zt page  \n\t' + \
-                'al = auto load all zt pages \n\t' + \
-                'n = next page down  \n\t' + \
-                's = save to file\n\t' + \
-                'l = load file, save to database\n\t' + \
-                'o = use notepad++ open data file\n\t' + \
-                'h = load hot[定位到[市场情绪->数据分析]\n\t' + \
-                'ah = auto load hot[定位到[市场情绪->数据分析]\n\t' + \
+                'auto-zt-one = auto load one zt page  \n\t' + \
+                'auto-zt-all = auto load all zt pages \n\t' + \
+                'next-zt-page = next page down  \n\t' + \
+                'save-zt = save to file\n\t' + \
+                'load-zt-file = load zt data file, save to database\n\t' + \
+                'open-zt-file = use notepad++ open zt data file\n\t' + \
+                'scqx = load one scqx 定位到[市场情绪->数据分析]\n\t' + \
+                'auto-scqx = auto load scqx 定位到[市场情绪->数据分析]\n\t' + \
                 'help = print help'
         print(tip)
         while True:
@@ -805,9 +796,9 @@ class MainTools:
 
     def autoMain_ZT(self):
         while True:
-            tg = self.runOpt('n')
+            tg = self.runOpt('next-zt-page')
             if tg == 'Finish':
-                self.runOpt('so')
+                self.runOpt('save-zt')
                 self.clickLeftArrow()
                 time.sleep(3)
             else:
@@ -840,7 +831,4 @@ if __name__ == '__main__':
     util = OCRUtil(ocr)
     tools = MainTools(util)
     util.initXiaoYaoWnd()
-    
     tools.main()
-    #tools.autoMain_ZT()
-    #tools.autoMain_SJFX(True)
