@@ -2,68 +2,49 @@ import peewee as pw
 import sys
 
 path = __file__[0 : __file__.upper().index('GP')]
-db = pw.SqliteDatabase(f'{path}GP/db/THS_F10.db')
+db = pw.SqliteDatabase(f'{path}GP/db/THS_F10_new.db')
 
-# 同花顺-- 机构持仓 (主力持仓)
-class THS_JGCC(pw.Model):
+# 同花顺--最新动态
+class THS_Newest(pw.Model):
     code = pw.CharField() #股票代码
     name = pw.CharField() #股票名称
-
-    date1 = pw.CharField(null=True) # 日期(年报、季报、中报等)
-    orgNum1 = pw.IntegerField(null=True) # 机构数量
-    totalRate1 = pw.FloatField(null=True) #持仓比例
-    change1 = pw.IntegerField(null=True) #较上期变化 (万股)
-
-    date2 = pw.CharField(null=True) # 日期(年报、季报、中报等)
-    orgNum2 = pw.IntegerField(null=True)
-    totalRate2 = pw.FloatField(null=True) #持仓比例
-    change2 = pw.IntegerField(null=True) #较上期变化 (万股)
-
-    date3 = pw.CharField(null=True) # 日期(年报、季报、中报等)
-    orgNum3 = pw.IntegerField(null=True)
-    totalRate3 = pw.FloatField(null=True) #持仓比例
-    change3 = pw.IntegerField(null=True) #较上期变化 (万股)
-
-    date4 = pw.CharField(null=True) # 日期(年报、季报、中报等)
-    orgNum4 = pw.IntegerField(null=True)
-    totalRate4 = pw.FloatField(null=True) #持仓比例
-    change4 = pw.IntegerField(null=True) #较上期变化 (万股)
-
-    date5 = pw.CharField(null=True) # 日期(年报、季报、中报等)
-    orgNum5 = pw.IntegerField(null=True)
-    totalRate5 = pw.FloatField(null=True) #持仓比例
-    change5 = pw.IntegerField(null=True) #较上期变化 (万股)
+    zsz = pw.IntegerField(null=True, column_name='总市值') # （亿元）
+    gsld = pw.CharField(null=True, column_name='公司亮点')
+    kbgs = pw.CharField(null=True, column_name='可比公司')
+    cwfx = pw.CharField(null=True, column_name='财务分析')
 
     class Meta:
         database = db
-        table_name = '机构持仓'
+        table_name = '最新动态'
 
+# 同花顺--前十大流通股东
+class THS_Top10_LTGD(pw.Model):
+    code = pw.CharField() #股票代码
+    day = pw.CharField(null = True) # 日期 YYYY-MM-DD
+    rate = pw.FloatField(null = True) # 前十大流通股东占比 %
+    change = pw.FloatField(null=True, column_name='较上期变化') # 万股
+    class Meta:
+        database = db
+        table_name = '前十大流通股东'
+
+# 同花顺-- 机构持股 (主力持仓)
+class THS_JGCG(pw.Model):
+    code = pw.CharField() #股票代码
+    day = pw.CharField(null=True) # 日期(年报、季报、中报等)   中报改为二季报， 年报改为四季报
+    jjsl = pw.IntegerField(null=True, column_name='机构数量')
+    rate = pw.FloatField(null=True, column_name='持仓比例')
+    change = pw.FloatField(null=True, column_name='较上期变化') # (万股)
+    day_sort = pw.CharField(null=True) # 日期，用于排序
+
+    class Meta:
+        database = db
+        table_name = '机构持股'
 
 # 同花顺--行业对比（排名）
 class THS_HYDB(pw.Model):
     code = pw.CharField() #股票代码
     name = pw.CharField() #股票名称
-    hyDJ = pw.CharField(null=True) # 行业等级（二级 、 三级）
-    hyName = pw.CharField(null=True) # 行业名称
-    hyTotal = pw.IntegerField(null=True) # 行业中股票总数量
-
-    mgsyPM = pw.IntegerField(null=True) #每股收益排名
-    mgjzcPM = pw.IntegerField(null=True) #每股净资产排名
-    mgxjlPM = pw.IntegerField(null=True) #每股现金流排名
-    jlrPM = pw.IntegerField(null=True) #净利润排名
-    yyzslPM = pw.IntegerField(null=True) #营业总收入排名
-    zgbPM = pw.IntegerField(null=True) #总股本排名
-
-    zhPM = pw.IntegerField(null = True) #综合排名
-
-    class Meta:
-        database = db
-        table_name = '行业对比'
-
-# 同花顺--行业对比2（排名）
-class THS_HYDB_2(pw.Model):
-    code = pw.CharField() #股票代码
-    name = pw.CharField() #股票名称
+    day = pw.CharField() # 报告日期
     hy = pw.CharField(null=True, column_name='行业')
     hydj = pw.IntegerField(null = True, column_name='行业等级') #
     hysl = pw.IntegerField(null=True, column_name='同行数量') # 行业中股票总数量
@@ -79,29 +60,8 @@ class THS_HYDB_2(pw.Model):
 
     class Meta:
         database = db
-        table_name = '行业对比_2'        
+        table_name = '行业对比'
 
-# 同花顺--股东
-class THS_GD(pw.Model):
-    code = pw.CharField() #股票代码
-    name = pw.CharField() #股票名称
-
-    ltgdTop10Rate = pw.FloatField(null = True) #前十大流通股东占比 %
-
-    class Meta:
-        database = db
-        table_name = '股东'
-        
-# 同花顺--最新动态
-class THS_Newest(pw.Model):
-    code = pw.CharField() #股票代码
-    name = pw.CharField() #股票名称
-    zsz = pw.IntegerField() #总市值 （亿元）
-    liangDian = pw.CharField()  #公司亮点
-    class Meta:
-        database = db
-        table_name = '最新动态'
-    
 
 # 同花顺--概念题材
 class THS_GNTC(pw.Model):
@@ -121,8 +81,8 @@ def queryFullInfo(code):
     rs = {'code' : code}
     rs['THS_Newest'] = THS_Newest.get_or_none(THS_Newest.code == code)
     rs['THS_GNTC'] = THS_GNTC.get_or_none(THS_GNTC.code == code)
-    rs['THS_GD'] = THS_GD.get_or_none(THS_GD.code == code)
-    rs['THS_JGCC'] = THS_JGCC.get_or_none(THS_JGCC.code == code)
+    rs['THS_GD'] = THS_Top10_LTGD.get_or_none(THS_Top10_LTGD.code == code)
+    rs['THS_JGCC'] = THS_JGCG.get_or_none(THS_JGCG.code == code)
     rs['THS_HYDB_2'] = THS_HYDB.get_or_none((THS_HYDB.code == code) & (THS_HYDB.hyDJ == '二级'))
     rs['THS_HYDB_3'] = THS_HYDB.get_or_none((THS_HYDB.code == code) & (THS_HYDB.hyDJ == '三级'))
     #print(rs)
@@ -208,7 +168,7 @@ class THS_ZS_ZD(pw.Model):
         database = db_thszs
         table_name = '同花顺指数涨跌信息'
 
-db_ztfupan = pw.SqliteDatabase(f'{path}GP/db/KPL.db')
+db_kpl = pw.SqliteDatabase(f'{path}GP/db/KPL.db')
 class KPL_ZT(pw.Model):
     code = pw.CharField()
     name = pw.CharField(null = True)
@@ -219,7 +179,7 @@ class KPL_ZT(pw.Model):
     tag = pw.CharField(null=True)
 
     class Meta:
-        database = db_ztfupan
+        database = db_kpl
         table_name = '开盘啦涨停'
 
 class KPL_SCQX(pw.Model):
@@ -227,15 +187,15 @@ class KPL_SCQX(pw.Model):
     zhqd = pw.IntegerField(column_name='综合强度')
 
     class Meta:
-        database = db_ztfupan
+        database = db_kpl
         table_name = '开盘啦市场情绪'
 
 
-db.create_tables([THS_JGCC, THS_HYDB, THS_GD, THS_GNTC, THS_Newest, THS_HYDB_2])
+db.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_GNTC, THS_Newest])
 db2.create_tables([THS_Hot, THS_HotZH])
 db3.create_tables([TaoGuBa_Remark])
 db5.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS, THS_ZS_ZD])
-db_ztfupan.create_tables([KPL_ZT, KPL_SCQX])
+db_kpl.create_tables([KPL_ZT, KPL_SCQX])
 
     

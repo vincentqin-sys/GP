@@ -53,42 +53,39 @@ class ThsSortQuery:
     def getCodeInfo_THS(self, code):
         code = int(code)
         code = "%06d" % code
-        gdInfo = orm.THS_GD.get_or_none(orm.THS_GD.code == code)
-        jgccInfo = orm.THS_JGCC.get_or_none(orm.THS_JGCC.code == code)
-        hydbInfo = orm.THS_HYDB_2.select().where(orm.THS_HYDB_2.code == code).order_by(orm.THS_HYDB_2.hy).execute()
+        gdInfo = orm.THS_Top10_LTGD.select().where(orm.THS_Top10_LTGD.code == code).order_by(orm.THS_Top10_LTGD.day.desc())
+        jgcgInfo = orm.THS_JGCG.select().where(orm.THS_JGCG.code == code).order_by(orm.THS_JGCG.day_sort.desc())
+        hydbInfo = orm.THS_HYDB.select().where(orm.THS_HYDB.code == code).order_by(orm.THS_HYDB.day.desc())
 
         name = ''
-        zb = ''
-        if not jgccInfo:
-            zb = '--'
-            jgNum = '--'
-        else:
-            jgNum = jgccInfo.orgNum1
-            name = jgccInfo.name
-            if not jgccInfo.totalRate1:
-                zb = '--'
-            elif jgccInfo.totalRate1 < 1:
-                zb = '<1'
-            else:
-                zb = int(jgccInfo.totalRate1)
-        jg = "机构 %s家, 持仓%s%%" % (jgNum, zb)
+        rate = '--'
+        jgNum = '--'
+        for jgcg in jgcgInfo:
+            jgNum = jgcg.jjsl
+            rate = int(jgcg.rate) if jgcg.rate else 0
+            break
+        jg = f"机构 {jgNum}家, 持仓{rate}%"
 
-        if gdInfo:
-            jg += f'   前十流通股东{int(gdInfo.ltgdTop10Rate)}%'
-            name = gdInfo.name
+        for gd in gdInfo:
+            rate = int(gd.rate) if gd.rate else 0
+            jg += f'   前十流通股东{rate}%'
+            break
 
-        hy = ''
+        hy2, hy3 = '', ''
         hyName = ''
+        gntc = orm.THS_GNTC.get_or_none(code = code)
+        if gntc:
+            hyName = gntc.hy
+            name = gntc.name
         for m in hydbInfo:
-            hy += f'  {m.hydj} {m.zhpm} / {m.hysl} [{self.getPMTag(m.zhpm / m.hysl)}]\n'
-            hyName = m.hy
-            name = m.name
-        
-        txt = hyName + '\n' + jg + '\n' + hy
+            if m.hydj == '三级' and not hy3:
+                hy3 = f'  {m.hydj} {m.zhpm} / {m.hysl} [{self.getPMTag(m.zhpm / m.hysl)}]\n'
+            elif m.hydj == '二级' and not hy2:
+                hy2 = f'  {m.hydj} {m.zhpm} / {m.hysl} [{self.getPMTag(m.zhpm / m.hysl)}]\n'
+        txt = hyName + '\n' + jg + '\n' + hy2 + hy3
         # 龙虎榜信息
         txt += self.getLhbInfo(code)
         txt += '\n' + self.getMaxHotInfo(code)
-        
         return {'info': txt, 'code': code, 'name': name}
 
 # param days (int): [YYYYMMDD, ....]

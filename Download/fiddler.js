@@ -17,12 +17,93 @@
         if (! furl.StartsWith(demain)) {
             return;
         }
-        url = furl.Substring(demain.Length);
+        var url = furl.Substring(demain.Length);
         if (! url.EndsWith("/field.html")) {
             return;
         }
         var code = url.Substring(0, 6);
         var file = "D:/ThsData/f10/" + code + "-同行比较.html";
+        oSession.utilDecodeResponse();
+        oSession.SaveResponseBody(file);
+    }
+
+    static function isCode(strs) {
+        if (strs.Length != 6)
+            return false;
+        for (var i = 0; i < 6; i++) {
+            if (strs.charAt(i) < '0' || strs.charAt(i) > '9') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // 最新动态
+    // http://basic.10jqka.com.cn/600898/ 
+    static function load_Newest(furl, oSession) {
+        var demain = "http://basic.10jqka.com.cn/";
+        if (! furl.StartsWith(demain)) {
+            return;
+        }
+        var url = furl.Substring(demain.Length);
+        if (! url.EndsWith("/") || url.Length != 7) {
+            return;
+        }
+        var code = url.Substring(0, 6);
+        if (! isCode(code)) {
+            return;
+        }
+        var file = "D:/ThsData/f10/" + code + "-最新动态.html";
+        oSession.utilDecodeResponse();
+        oSession.SaveResponseBody(file);
+    }
+
+    // 股东研究
+    //  http://basic.10jqka.com.cn/600000/holder.html  
+    static function load_GD(furl, oSession) {
+        var demain = "http://basic.10jqka.com.cn/";
+        if (! furl.StartsWith(demain)) {
+            return;
+        }
+        var url = furl.Substring(demain.Length);
+        if (! url.EndsWith("/holder.html") || url.Length != 18) {
+            return;
+        }
+        var code = url.Substring(0, 6);
+        if (! isCode(code)) {
+            return;
+        }
+        var file = "D:/ThsData/f10/" + code + "-股东研究.html";
+        oSession.utilDecodeResponse();
+        oSession.SaveResponseBody(file);
+    }
+
+    // 主力持仓
+    // http://basic.10jqka.com.cn/basicapi/holder/stock/org_holder/rate?code=600006&limit=5&year=0 HTTP/1.1
+    static function load_ZLCC(furl, oSession) {
+        var demain = "http://basic.10jqka.com.cn/";
+        if (! furl.StartsWith(demain)) {
+            return;
+        }
+        var url = furl.Substring(demain.Length);
+        var tag = "basicapi/holder/stock/org_holder/rate?"
+        if (! url.StartsWith(tag)) {
+            return;
+        }
+        url = url.Substring(tag.Length);
+        if (url.Length < 11) {
+            return;
+        }
+        var idx = url.IndexOf('code=');
+        if (idx < 0) {
+            return;
+        }
+        url = url.Substring(idx + 5);
+        var code = url.Substring(0, 6);
+        if (! isCode(code)) {
+            return;
+        }
+        var file = "D:/ThsData/f10/" + code + "-主力持仓.html";
         oSession.utilDecodeResponse();
         oSession.SaveResponseBody(file);
     }
