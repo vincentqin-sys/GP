@@ -1124,7 +1124,7 @@ class PopupMenu(PopupWindow):
             return (100, self.rowHeight)
         hdc = win32gui.GetDC(self.hwnd)
         self.drawer.use(hdc, self.drawer.getFont())
-        for i in range(self.startIdx, min(self.startIdx + self.VISIBLE_MAX_ITEM, len(self.model))):
+        for i in range(0, len(self.model)):
             m = self.model[i]
             title = m.get('title', '')
             if title == 'LINE':
