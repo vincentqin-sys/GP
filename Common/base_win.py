@@ -270,6 +270,14 @@ class Drawer:
         self.use(hdc, self.getBrush(color))
         win32gui.Ellipse(hdc, *rect)
 
+    def drawCycle(self, hdc, rect, penColor, penWidth):
+        if not rect:
+            return
+        pen = self.getPen(penColor, win32con.PS_SOLID, penWidth)
+        self.use(hdc, pen)
+        self.use(hdc, win32gui.GetStockObject(win32con.NULL_BRUSH))
+        win32gui.Ellipse(hdc, *rect)
+
 class Layout:
     def __init__(self) -> None:
         self.rect = None # (x, y, width, height)
@@ -995,30 +1003,75 @@ class Button(BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-class DatePopupWindow(BaseWindow):
-    TOP_HEADER_HEIGHT = 40
-    PADDING = 10
+class CheckBox(BaseWindow):
+    _groups = {}
 
+    # info = {name: xx, value:xx, title:'', checked: True|False }
+    def __init__(self, info : dict) -> None:
+        super().__init__()
+        self.info = info
+        name = info.get('name', None)
+        if name:
+             ls = CheckBox._groups.get(name, None)
+             if not ls:
+                 ls = CheckBox._groups[name] = []
+             ls.append(self)
+
+    def onDraw(self, hdc):
+        w, h = self.getClientSize()
+        R = 14
+        RR = 8
+        sy = (h - R) // 2
+        rc = (0, sy, R, sy + R)
+        self.drawer.drawCycle(hdc, rc, 0x606060, 2)
+        
+        sy = (h - RR) // 2
+        sx = (R - RR) // 2
+        rc2 = (sx, sy, sx + RR, sy + RR)
+        self.drawer.fillCycle(hdc, rc2, 0x338833)
+        if 'title' in self.info:
+            rc3 = (rc[2] + 3, (h - 14) // 2, w, h)
+            self.drawer.drawText(hdc, self.info['title'], rc3, 0x2fffff, win32con.DT_LEFT)
+
+    def isChecked(self):
+        return self.info and self.info.get('checked', False)
+
+    def setChecked(self, checked : bool):
+        if self.isChecked() == checked:
+            return
+        if checked:
+            name = self.info.get('name', None)
+            self.uncheckedGroup(name)
+        self.info['checked'] = checked
+        self.notifyListener('checked', self.info)
+
+    def uncheckedGroup(self, name):
+        if not name:
+            return
+        ls = CheckBox._groups[name]
+        for c in ls:
+            if c != self:
+                c.changeChecked(False)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONUP:
+            self.setChecked(not self.isChecked())
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
+
+class PopupWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.preBtnRect = None
-        self.nextBtnRect = None
-        self.curSelDay = None # datetime.date object
         self.ownerHwnd = None
-        self.setSelDay(None)
 
-    def createWindow(self, parentWnd, rect = None, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
+    def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
         style = win32con.WS_POPUP | win32con.WS_CHILD
         self.ownerHwnd = parentWnd
-        W, H = 250, 240
-        super().createWindow(parentWnd, (0, 0, W, H), style, className, title)
+        super().createWindow(parentWnd, rect, style, className, title)
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        BTN_W, BTN_H = 20, 20
-        self.nextBtnRect = (W - BTN_W - 5, 10, W - 5, 30)
-        self.preBtnRect = (W - BTN_W * 2 - 15, 10, W - BTN_W - 15, 30)
 
+    # x, y is screen pos
     def show(self, x = None, y = None):
-        self.setSelDay(self.curSelDay)
         ownerRect = win32gui.GetWindowRect(self.ownerHwnd)
         if x == None:
             x = ownerRect[0]
@@ -1032,6 +1085,110 @@ class DatePopupWindow(BaseWindow):
         win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
 
     def onDraw(self, hdc):
+        self.drawer.drawRect2(hdc, (0, 0, *self.getClientSize()), 0xAAAAAA)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_ACTIVATE:
+            ac = wParam & 0xffff
+            if ac == win32con.WA_INACTIVE:
+                self.hide()
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
+
+class PopupMenu(PopupWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.model = None  # [{title:xx, name:xx }, ...]   title = LINE 表示分隔线
+        self.rowHeight = 18
+        self.visibleMaxItem = 30 # 最大显示的个数
+        self.selIdx = -1
+        self.startIdx = 0 # 开始显示的idx
+
+    def setModel(self, model):
+        self.model = model
+
+    def show(self, x = None, y = None):
+        self.selIdx = -1
+        w, h = self.calcSize()
+        win32gui.SetWindowPos(self.hwnd, 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE)
+        super().show(x, y)
+    
+    def calcSize(self):
+        w, h = 0, 0
+        if not self.model:
+            return (100, self.rowHeight)
+        hdc = win32gui.GetDC(self.hwnd)
+        self.drawer.use(self.drawer.getFont())
+        for m in self.model:
+            title = m.get('title', '')
+            if title == 'LINE':
+                h += 2
+            else:
+                sz = win32gui.GetTextExtentPoint32(hdc, title)
+                w = max(w, sz[0])
+                h += self.rowHeight
+        w += 40
+        w = min(100, w)
+        win32gui.ReleaseDC(self.hwnd, hdc)
+        return (w, h)
+    
+    def getItemIdxAt(self, y):
+        if not self.model:
+            return -1
+        sy = 0
+        for i, m in enumerate(self.model):
+            title = m.get('title', '')
+            ih = 2 if title == 'LINE' else self.rowHeight
+            if y >= sy and y < sy + ih:
+                return i
+            sy += ih
+        return -1
+
+    def onDraw(self, hdc):
+        super().onDraw(hdc)
+        if not self.model:
+            return
+        rc = [20, 0, self.getClientSize()[0] - 20, 0]
+        for i, m in enumerate(self.model):
+            title = m.get('title', '')
+            ih = 2 if title == 'LINE' else self.rowHeight
+            rc[3] += ih
+            if i == self.selIdx and title != 'LINE':
+                self.drawer.fillRect(hdc, rc, 0xaaaaaa)
+            if title == 'LINE':
+                self.drawer.drawLine(hdc, *rc)
+            else:
+                bk = rc[1]
+                rc[1] += (self.rowHeight - 14) // 2
+                self.drawer.drawText(hdc, title, rc, 0xcccccc, win32con.DT_LEFT)
+                rc[1] = bk
+            rc[1] = rc[3]
+
+class DatePopupWindow(PopupWindow):
+    TOP_HEADER_HEIGHT = 40
+    PADDING = 10
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.preBtnRect = None
+        self.nextBtnRect = None
+        self.curSelDay = None # datetime.date object
+        self.setSelDay(None)
+
+    def createWindow(self, parentWnd, rect = None, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
+        W, H = 250, 240
+        super().createWindow(parentWnd, (0, 0, W, H), style, className, title)
+        BTN_W, BTN_H = 20, 20
+        self.nextBtnRect = (W - BTN_W - 5, 10, W - 5, 30)
+        self.preBtnRect = (W - BTN_W * 2 - 15, 10, W - BTN_W - 15, 30)
+
+    # x, y is screen pos
+    def show(self, x = None, y = None):
+        super().show(x, y)
+        self.setSelDay(self.curSelDay)
+
+    def onDraw(self, hdc):
+        self.drawer.drawRect2(hdc, (0, 0, *self.getClientSize()), 0xAAAAAA)
         self.drawHeader(hdc, self.curYear, self.curMonth)
         self.drawContent(hdc, self.curYear, self.curMonth)
 
@@ -1044,6 +1201,7 @@ class DatePopupWindow(BaseWindow):
         self.drawer.drawText(hdc, '>>', self.nextBtnRect, 0xcccccc)
 
     def drawContent(self, hdc, year, month):
+        today = datetime.date.today()
         days = self.calcDays(year, month)
         sy = self.TOP_HEADER_HEIGHT
         w, h = self.getClientSize()
@@ -1065,8 +1223,11 @@ class DatePopupWindow(BaseWindow):
                 self.drawer.drawRect2(hdc, rc, 0x00aa00)
             rc[1] += int(DPY)
             txt = day if type(day) == str else str(day.day)
-            self.drawer.drawText(hdc, txt, rc, 0xcccccc)
-            
+            if isinstance(day, datetime.date) and day == today:
+                self.drawer.drawText(hdc, txt, rc, 0x5555ff)
+            else:
+                self.drawer.drawText(hdc, txt, rc, 0xcccccc)
+
     def calcDays(self, year, month):
         weeky, num = calendar.monthrange(year, month)
         days = []
@@ -1132,11 +1293,6 @@ class DatePopupWindow(BaseWindow):
         self.curMonth = self.curSelDay.month
 
     def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_ACTIVATE:
-            ac = wParam & 0xffff
-            if ac == win32con.WA_INACTIVE:
-                self.hide()
-            return True
         if msg == win32con.WM_LBUTTONUP:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
             if x >= self.preBtnRect[0] and x < self.preBtnRect[2] and y >= self.preBtnRect[1] and y < self.preBtnRect[3]:
@@ -1243,4 +1399,8 @@ def testGridLayout():
 
 
 if __name__ == '__main__':
-    testGridLayout()
+    #testGridLayout()
+    pass
+    main = CheckBox({'name': 'tt', 'title':'是什么A'})
+    main.createWindow(None, (0, 0, 200, 50), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
+    win32gui.PumpMessages()

@@ -495,8 +495,9 @@ class KPLCardView(CardView):
                 win32gui.SetTextColor(hdc, 0x0000ff)
             else:
                 win32gui.SetTextColor(hdc, 0xdddddd)
-            day = kpl['day'][4 : ]
-            line = f"{day[0:2]}.{day[2:4]} {kpl['ztReason']}"
+            day = kpl['day']
+            day = day[2 : 4] + '-' + day[4 : 6] + '-' + day[6 : ]
+            line = f"{day} {kpl['ztReason']}"
             idx = i - fromIdx
             y = (idx % MAX_ROWS) * H + 2
             x = RW // 2 if idx >= MAX_ROWS else 0
@@ -1007,12 +1008,12 @@ class SimpleHotZHWindow(CardWindow):
         dc(target, evtName, evtInfo)
 
     def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_NCRBUTTONUP:
+        if msg == win32con.WM_CONTEXTMENU:
             if not getattr(self, 'DP', None):
                 self.DP = base_win.DatePopupWindow()
                 self.DP.createWindow(hwnd)
                 self.DP.addListener('DatePicker', self.onDayChanged)
             rc = win32gui.GetWindowRect(hwnd)
-            self.DP.show(y = rc[1] + 30)
+            self.DP.show(x = rc[0] + 8, y = rc[1] + 30)
             return False
         return super().winProc(hwnd, msg, wParam, lParam)
