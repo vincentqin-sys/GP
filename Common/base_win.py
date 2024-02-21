@@ -1025,10 +1025,11 @@ class CheckBox(BaseWindow):
         rc = (0, sy, R, sy + R)
         self.drawer.drawCycle(hdc, rc, 0x606060, 2)
         
-        sy = (h - RR) // 2
-        sx = (R - RR) // 2
-        rc2 = (sx, sy, sx + RR, sy + RR)
-        self.drawer.fillCycle(hdc, rc2, 0x338833)
+        if self.isChecked():
+            sy = (h - RR) // 2
+            sx = (R - RR) // 2
+            rc2 = (sx, sy, sx + RR, sy + RR)
+            self.drawer.fillCycle(hdc, rc2, 0x338833)
         if 'title' in self.info:
             rc3 = (rc[2] + 3, (h - 14) // 2, w, h)
             self.drawer.drawText(hdc, self.info['title'], rc3, 0x2fffff, win32con.DT_LEFT)
@@ -1043,6 +1044,7 @@ class CheckBox(BaseWindow):
             name = self.info.get('name', None)
             self.uncheckedGroup(name)
         self.info['checked'] = checked
+        self.invalidWindow()
         self.notifyListener('checked', self.info)
 
     def uncheckedGroup(self, name):
@@ -1051,7 +1053,7 @@ class CheckBox(BaseWindow):
         ls = CheckBox._groups[name]
         for c in ls:
             if c != self:
-                c.changeChecked(False)
+                c.setChecked(False)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONUP:
@@ -1118,7 +1120,7 @@ class PopupMenu(PopupWindow):
         if not self.model:
             return (100, self.rowHeight)
         hdc = win32gui.GetDC(self.hwnd)
-        self.drawer.use(self.drawer.getFont())
+        self.drawer.use(hdc, self.drawer.getFont())
         for m in self.model:
             title = m.get('title', '')
             if title == 'LINE':
@@ -1397,10 +1399,20 @@ def testGridLayout():
     gl.resize(*rc)
     win32gui.PumpMessages()
 
+def testPopMenu():
+    def back(menu, e, ei):
+        menu.selIdx = 2
+        menu.show(100, 100)
+        pass
+    btn = Button({'title' : 'Hello'})
+    btn.createWindow(None, (0, 0, 200, 100), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
+    menu = PopupMenu()
+    menu.createWindow(btn.hwnd, (0, 0, 1, 1))
+    menu.setModel([{'title': 'Hello 1' }, {'title': 'Hello 2'}, {'title': 'Hello 3'}, {'title': 'Hello 4'}, {'title': 'Hello 5'}])
+    btn.addListener(menu, back)
+    pass
 
 if __name__ == '__main__':
     #testGridLayout()
-    pass
-    main = CheckBox({'name': 'tt', 'title':'是什么A'})
-    main.createWindow(None, (0, 0, 200, 50), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
+    testPopMenu()
     win32gui.PumpMessages()
