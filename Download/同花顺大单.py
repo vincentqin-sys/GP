@@ -124,17 +124,8 @@ def checkUserNoInputTime():
     sec = diff / 1000
     return sec >= 5 * 60
 
-def main2():
-    lds = ths_ddlr.LoadThsDdlrStruct()
-    lds.loadAllFileData()
-    ldd = ths_ddlr.LoadThsDdlrDetail()
-    # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
-    ldd.loadAllFilesData()
-    checkDDLR_Amount()
-
 def main():
     lastDay = None
-    runNow = False
     while True:
         today = datetime.datetime.now()
         if today.weekday() >= 5: # 周六周日
@@ -149,13 +140,13 @@ def main():
             checkDDLR_Amount()
             continue
         st = today.strftime('%H:%M')
-        if (st >= '18:15' ) or runNow: # runNow and st < '19:00'
-            if run(): # checkUserNoInputTime() and
-                lastDay = nowDay
-                runNow = False
-            checkDDLR_Amount()
+        if (st < '18:00' ):
             time.sleep(5 * 60)
+            continue
+        run() # checkUserNoInputTime() and
+        lastDay = nowDay
+        checkDDLR_Amount()
+
 
 if __name__ == '__main__':
-    #main2()
     main()

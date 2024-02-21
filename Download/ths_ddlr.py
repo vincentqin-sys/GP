@@ -127,19 +127,47 @@ class LoadThsDdlrDetail:
         fs = os.listdir(BASE_DETAIL_PATH)
         print('找到大单详细数据: ', len(fs), '个')
         for f in fs:
-            if isCode(f):
-                fp = BASE_DETAIL_PATH + f
-                destfp = DEST_DETAIL_PATH + f
-                self.loadFileData(fp, destfp)
-                os.remove(fp)
+            if not isCode(f):
+                continue
+            fp = BASE_DETAIL_PATH + f
+            destfp = DEST_DETAIL_PATH + f + '.dd'
+            srcData = self.readSrcFile(fp)
+            self.writeDestData(srcData, destfp)
+            os.remove(fp)
     
     # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,结束时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
-    def loadFileData(self, fileName, destfp):
+    def writeDestData(self, srcData, destFileName):
+        if srcData == None:
+            srcData = []
+        rw, days, destData = self.readDestFile(destFileName)
+        # merge src and dest data
+        mdata = []
+        for sd in srcData:
+            day, line = sd
+            if day in days:
+                continue
+            mdata.append(line)
+            days.add(day)
+        if rw:
+            df = open(destFileName, 'w', encoding='utf8')
+            for d in destData:
+                df.write(d)
+                df.write('\n')
+        else:
+            df = open(destFileName, 'a', encoding='utf8')
+        for d in mdata:
+            df.write(d)
+            df.write('\n')
+        df.close()
+    
+    def readSrcFile(self, fileName):
+        if not fileName:
+            return None
         f = open(fileName, 'r', encoding= 'utf8')
         lines = f.readlines()
         f.close()
         i = 0
-        sio = io.StringIO()
+        rs = []
         while i < len(lines) - 1:
             heads = lines[i].strip().split('\t')
             if len(heads) != 2 or len(lines[i + 1]) < 10:
@@ -154,16 +182,35 @@ class LoadThsDdlrDetail:
             if ld['code'] != 0:
                 i += 2
                 continue
+            sio = io.StringIO()
             sio.write(tradeDay + ';')
             for d in ld['data']:
                 v = d['firstTime'][0 : 6] + ',' + d['lastTime'][0 : 6] + ',' + str(d['stats']) + ',' + str(int(d['totalMoney'] / 10000 + 0.5)) + ',' + str(d['tradeVol'] // 100) + ';'
                 sio.write(v)
-            sio.write('\n')
+            rs.append((tradeDay, sio.getvalue()))
             i += 2
+        return rs
+        
 
-        f2 = open(destfp + '.dd', 'a', encoding='utf8')
-        f2.write(sio.getvalue())
-        f2.close()
+    def readDestFile(self, destfp):
+        f = open(destfp, 'r', encoding= 'utf8')
+        lines = f.readlines()
+        f.close()
+        rs = []
+        rw = False
+        existsDays = set()
+        for line in lines:
+            line : str = line.strip()
+            if not line:
+                rw = True
+                continue
+            day = line[0 : line.index(';')]
+            if day in existsDays:
+                rw = True
+                continue
+            existsDays.add(day)
+            rs.append(line)
+        return rw, existsDays, rs
 
 class ThsDdlrDetailData:
 
@@ -236,3 +283,11 @@ class ThsDdlrDetailData:
             else:
                 self.data.append(item)
         f.close()
+
+
+if __name__ == '__main__':
+    ddlr = LoadThsDdlrDetail()
+    lds = os.listdir(DEST_DETAIL_PATH)
+    for fn in lds:
+        fn = os.path.join(DEST_DETAIL_PATH, fn)
+        ddlr.writeDestData(None, fn)
