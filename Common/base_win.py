@@ -1100,9 +1100,12 @@ class PopupWindow(BaseWindow):
 class PopupMenu(PopupWindow):
     def __init__(self) -> None:
         super().__init__()
+        self.LEFT_RIGHT_PADDING = 20
+        self.SEPRATOR_HEIGHT = 2
+        self.ARROW_HEIGHT = 10
+        self.VISIBLE_MAX_ITEM = 20 # 最大显示的个数
         self.model = None  # [{title:xx, name:xx }, ...]   title = LINE 表示分隔线
-        self.rowHeight = 18
-        self.visibleMaxItem = 30 # 最大显示的个数
+        self.rowHeight = 20
         self.selIdx = -1
         self.startIdx = 0 # 开始显示的idx
 
@@ -1121,42 +1124,82 @@ class PopupMenu(PopupWindow):
             return (100, self.rowHeight)
         hdc = win32gui.GetDC(self.hwnd)
         self.drawer.use(hdc, self.drawer.getFont())
-        for m in self.model:
+        for i in range(self.startIdx, min(self.startIdx + self.VISIBLE_MAX_ITEM, len(self.model))):
+            m = self.model[i]
             title = m.get('title', '')
             if title == 'LINE':
-                h += 2
+                h += self.SEPRATOR_HEIGHT
             else:
                 sz = win32gui.GetTextExtentPoint32(hdc, title)
                 w = max(w, sz[0])
                 h += self.rowHeight
-        w += 40
-        w = min(100, w)
+        w += self.LEFT_RIGHT_PADDING * 2
+        w = max(100, w)
         win32gui.ReleaseDC(self.hwnd, hdc)
+        if len(self.model) > self.VISIBLE_MAX_ITEM:
+            h += self.ARROW_HEIGHT * 2
         return (w, h)
     
     def getItemIdxAt(self, y):
         if not self.model:
             return -1
         sy = 0
-        for i, m in enumerate(self.model):
+        for i in range(self.startIdx, min(self.startIdx + self.VISIBLE_MAX_ITEM, len(self.model))):
+            m = self.model[i]
             title = m.get('title', '')
-            ih = 2 if title == 'LINE' else self.rowHeight
+            ih = self.SEPRATOR_HEIGHT if title == 'LINE' else self.rowHeight
             if y >= sy and y < sy + ih:
                 return i
             sy += ih
         return -1
 
+    def scroll(self, delta):
+        if not self.model:
+            return
+        idx = self.startIdx - delta
+        if delta < 0:
+            maxIdx = len(self.model) - self.VISIBLE_MAX_ITEM
+            idx = min(idx, maxIdx)
+        else:
+            idx = max(idx, 0)
+        if self.startIdx == idx:
+                return
+        self.startIdx = idx
+        self.invalidWindow()
+
+    def drawArrow(self, hdc):
+        if not self.model:
+            return
+        w, h = self.getClientSize()
+        cx = w // 2
+        AW, AH = 4, 4
+        self.drawer.use(hdc, self.drawer.getBrush(0x333333))
+        self.drawer.use(hdc, win32gui.GetStockObject(win32con.NULL_PEN))
+        if self.startIdx > 0:
+            sy = 2
+            pts = [(cx, sy), (cx + AW, AH + sy), (cx - AW, AH + sy)]
+            win32gui.Polygon(hdc, pts)
+        if len(self.model) > self.startIdx + self.VISIBLE_MAX_ITEM:
+            sy = h - AH - 3
+            pts = [(cx, sy + AH), (cx + AW, sy), (cx - AW, sy)]
+            win32gui.Polygon(hdc, pts)
+
     def onDraw(self, hdc):
         super().onDraw(hdc)
         if not self.model:
             return
-        rc = [20, 0, self.getClientSize()[0] - 20, 0]
-        for i, m in enumerate(self.model):
+        self.drawArrow(hdc)
+        w = self.getClientSize()[0]
+        sy = 0 if len(self.model) <= self.VISIBLE_MAX_ITEM else self.ARROW_HEIGHT
+        rc = [self.LEFT_RIGHT_PADDING, sy, w - self.LEFT_RIGHT_PADDING, sy]
+        for i in range(self.startIdx, min(self.startIdx + self.VISIBLE_MAX_ITEM, len(self.model))):
+            m = self.model[i]
             title = m.get('title', '')
-            ih = 2 if title == 'LINE' else self.rowHeight
+            ih = self.SEPRATOR_HEIGHT if title == 'LINE' else self.rowHeight
             rc[3] += ih
             if i == self.selIdx and title != 'LINE':
-                self.drawer.fillRect(hdc, rc, 0xaaaaaa)
+                rcs = [0, rc[1], w, rc[3]]
+                self.drawer.fillRect(hdc, rcs, 0x333333)
             if title == 'LINE':
                 self.drawer.drawLine(hdc, *rc)
             else:
@@ -1165,6 +1208,30 @@ class PopupMenu(PopupWindow):
                 self.drawer.drawText(hdc, title, rc, 0xcccccc, win32con.DT_LEFT)
                 rc[1] = bk
             rc[1] = rc[3]
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_MOUSEMOVE:
+            y = (lParam >> 16) & 0xffff
+            idx = self.getItemIdxAt(y)
+            if self.selIdx != idx and idx >= 0 and self.model[idx].get('title', '') != 'LINE':
+                self.selIdx = idx
+                self.invalidWindow()
+            return True
+        if msg == win32con.WM_LBUTTONUP:
+            y = (lParam >> 16) & 0xffff
+            idx = self.getItemIdxAt(y)
+            self.hide()
+            if idx >= 0 and self.model[idx].get('title', '') != 'LINE':
+                self.notifyListener('select', self.model[idx])
+            return True
+        if msg == win32con.WM_MOUSEWHEEL:
+            delta = (wParam >> 16) & 0xffff
+            if delta & 0x8000:
+                delta = delta - 0xffff - 1
+            delta = delta // 120
+            self.scroll(delta)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
 
 class DatePopupWindow(PopupWindow):
     TOP_HEADER_HEIGHT = 40
@@ -1403,14 +1470,16 @@ def testPopMenu():
     def back(menu, e, ei):
         menu.selIdx = 2
         menu.show(100, 100)
-        pass
+
     btn = Button({'title' : 'Hello'})
     btn.createWindow(None, (0, 0, 200, 100), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     menu = PopupMenu()
+    menu.VISIBLE_MAX_ITEM = 3
     menu.createWindow(btn.hwnd, (0, 0, 1, 1))
-    menu.setModel([{'title': 'Hello 1' }, {'title': 'Hello 2'}, {'title': 'Hello 3'}, {'title': 'Hello 4'}, {'title': 'Hello 5'}])
+    menu.setModel([{'title': 'Hello 1 你好呀不' }, {'title': 'Hello 2'},
+        {'title': 'Hello 3要'}, {'title': 'Hello 4'}, {'title': 'Hello 5'},
+        {'title': 'Hello 6 kdil'}, {'title': 'Hello 7 KIL'}])
     btn.addListener(menu, back)
-    pass
 
 if __name__ == '__main__':
     #testGridLayout()
