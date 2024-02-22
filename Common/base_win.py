@@ -13,15 +13,16 @@ class BaseWindow:
         self._bitmapSize = None
         self.cacheBitmap = False
         self.menu = {}
+        self.css = {'fontSize' : 14, 'bgColor': 0x000000, 'textColor': 0xffffff} # config css style 
     
-    # func = function(target, evtName, evtInfo)
-    def addListener(self, target, func):
-        self.listeners.append((target, func))
+    # func = function(args, evtName, evtInfo)
+    def addListener(self, func, args):
+        self.listeners.append((args, func))
 
     def notifyListener(self, evtName, evtInfo):
         for ls in self.listeners:
-            obj, func = ls
-            func(obj, evtName, evtInfo)
+            args, func = ls
+            func(args, evtName, evtInfo)
 
     # @param rect = (x, y, width, height)
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''): #  0x00800000 | 
@@ -60,7 +61,7 @@ class BaseWindow:
                 self.popMenu(*pos)
         return False
 
-    def _draw(self, fontSize = 14):
+    def _draw(self):
         hdc, ps = win32gui.BeginPaint(self.hwnd)
         l, t, r, b = win32gui.GetClientRect(self.hwnd)
         w, h = r - l, b - t
@@ -72,10 +73,10 @@ class BaseWindow:
         else:
             bmp = self._bitmap
         win32gui.SelectObject(mdc, bmp)
-        self.drawer.fillRect(mdc, win32gui.GetClientRect(self.hwnd), 0x000000)
+        self.drawer.fillRect(mdc, win32gui.GetClientRect(self.hwnd), self.css['bgColor'])
         win32gui.SetBkMode(mdc, win32con.TRANSPARENT)
-        win32gui.SetTextColor(mdc, 0xffffff)
-        self.drawer.use(mdc, self.drawer.getFont(fontSize = 14))
+        win32gui.SetTextColor(mdc, self.css['textColor'])
+        self.drawer.use(mdc, self.drawer.getFont(fontSize = self.css['fontSize']))
         self.onDraw(mdc)
         win32gui.BitBlt(hdc, 0, 0, w, h, mdc, 0, 0, win32con.SRCCOPY)
         win32gui.EndPaint(self.hwnd, ps)
@@ -937,6 +938,82 @@ class ColumnWindow(BaseWindow):
         for i in range(0, colNum):
             self.drawColumnHead(hdc, i)
 
+class ListWindow(BaseWindow):
+    def __init__(self, hwnd):
+        super().__init__(hwnd)
+        self.ROW_HEIGHT = 18
+        self.selIdx = -1
+        self.pageIdx = 0
+        self.data = None
+
+    def getPageSize(self):
+        rect = win32gui.GetClientRect(self.hwnd)
+        h = rect[3] - rect[1]
+        return h // self.ROW_HEIGHT
+
+    def getPageNum(self):
+        if not self.data:
+            return 0
+        return (len(self.data) + self.getPageSize() - 1) // self.getPageSize()
+
+    def getItemRect(self, idx):
+        pz = self.getPageSize()
+        idx -= self.pageIdx * pz
+        if idx < 0 or idx >= pz:
+            return None
+        sy = idx * self.ROW_HEIGHT
+        ey = sy + self.ROW_HEIGHT
+        return (0, sy, self.getClientSize()[0], ey)
+
+    def getItemIdx(self, y):
+        idx = y // self.ROW_HEIGHT
+        idx += self.getPageSize() * self.pageIdx
+        return idx
+
+    def getVisibleRange(self):
+        pz = self.getPageSize()
+        start = pz * self.pageIdx
+        end = (self.pageIdx + 1) * pz
+        start = min(start, len(self.data) - 1)
+        end = min(end, len(self.data) - 1)
+        return start, end
+    
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_MOUSEWHEEL:
+            wParam = (wParam >> 16) & 0xffff
+            if wParam & 0x8000:
+                wParam = wParam - 0xffff + 1
+            wParam = wParam // 120
+            if wParam > 0: # up
+                self.pageIdx = max(self.pageIdx - wParam, 0)
+            else:
+                self.pageIdx = min(self.pageIdx + wParam, self.getPageNum() - 1)
+            win32gui.InvalidateRect(self.hwnd, None, True)
+            return True
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            idx = self.getItemIdx(y)
+            if self.selIdx != idx:
+                self.selIdx = idx
+                win32gui.InvalidateRect(self.hwnd, None, True)
+                self.notifyListener('select', {'selIdx': idx})
+            return True
+        if msg == win32con.WM_KEYDOWN:
+            if wParam == win32con.VK_DOWN:
+                if self.data and self.selIdx < len(self.data):
+                    self.selIdx += 1
+                    if self.selIdx > 0 and self.selIdx % self.getPageSize() == 0:
+                        self.pageIdx += 1
+                    win32gui.InvalidateRect(hwnd, None, True)
+            elif wParam == win32con.VK_UP:
+                if self.data and self.selIdx > 0:
+                    self.selIdx -= 1
+                    if self.selIdx > 0 and (self.selIdx + 1) % self.getPageSize() == 0:
+                        self.pageIdx -= 1
+                    win32gui.InvalidateRect(hwnd, None, True)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
+
 class GroupButton(BaseWindow):
     def __init__(self, groups) -> None:
         super().__init__()
@@ -1124,17 +1201,18 @@ class PopupMenu(PopupWindow):
             return (100, self.rowHeight)
         hdc = win32gui.GetDC(self.hwnd)
         self.drawer.use(hdc, self.drawer.getFont())
+        # calc max height
+        for i in range(self.startIdx, min(self.startIdx + self.VISIBLE_MAX_ITEM, len(self.model))):
+            m = self.model[i]
+            title = m.get('title', '')
+            h += self.SEPRATOR_HEIGHT if title == 'LINE' else self.rowHeight
+        # calc max width
         for i in range(0, len(self.model)):
             m = self.model[i]
             title = m.get('title', '')
-            if title == 'LINE':
-                h += self.SEPRATOR_HEIGHT
-            else:
-                sz = win32gui.GetTextExtentPoint32(hdc, title)
-                w = max(w, sz[0])
-                h += self.rowHeight
+            sz = win32gui.GetTextExtentPoint32(hdc, title)
+            w = max(w, sz[0])
         w += self.LEFT_RIGHT_PADDING * 2
-        w = max(100, w)
         win32gui.ReleaseDC(self.hwnd, hdc)
         if len(self.model) > self.VISIBLE_MAX_ITEM:
             h += self.ARROW_HEIGHT * 2
@@ -1165,6 +1243,8 @@ class PopupMenu(PopupWindow):
         if self.startIdx == idx:
                 return
         self.startIdx = idx
+        w, h = self.calcSize()
+        win32gui.SetWindowPos(self.hwnd, 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE)
         self.invalidWindow()
 
     def drawArrow(self, hdc):
@@ -1201,7 +1281,7 @@ class PopupMenu(PopupWindow):
                 rcs = [0, rc[1], w, rc[3]]
                 self.drawer.fillRect(hdc, rcs, 0x333333)
             if title == 'LINE':
-                self.drawer.drawLine(hdc, *rc)
+                self.drawer.drawLine(hdc, rc[0], rc[1], rc[2], rc[1], 0x999999, width = 1)
             else:
                 bk = rc[1]
                 rc[1] += (self.rowHeight - 14) // 2
@@ -1382,7 +1462,7 @@ class DatePicker(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.popWin = DatePopupWindow()
-        self.popWin.addListener('DatePopupWindow', self.onSelDayChanged)
+        self.popWin.addListener(self.onSelDayChanged, 'DatePopupWindow')
 
     def setSelDay(self, selDay):
         self.popWin.setSelDay(selDay)
@@ -1476,10 +1556,10 @@ def testPopMenu():
     menu = PopupMenu()
     menu.VISIBLE_MAX_ITEM = 3
     menu.createWindow(btn.hwnd, (0, 0, 1, 1))
-    menu.setModel([{'title': 'Hello 1 你好呀不' }, {'title': 'Hello 2'},
+    menu.setModel([{'title': 'Hello 1 你好呀不' },  {'title': 'LINE'}, {'title': 'Hello 2'},
         {'title': 'Hello 3要'}, {'title': 'Hello 4'}, {'title': 'Hello 5'},
-        {'title': 'Hello 6 kdil'}, {'title': 'Hello 7 KIL'}])
-    btn.addListener(menu, back)
+        {'title': 'Hello 6 kdil'},  {'title': 'LINE'}, {'title': 'Hello 7 KIL'}])
+    btn.addListener(back, menu)
 
 if __name__ == '__main__':
     #testGridLayout()

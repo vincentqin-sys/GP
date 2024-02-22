@@ -1000,19 +1000,19 @@ class SimpleHotZHWindow(CardWindow):
         win32gui.DeleteObject(ps)
         #win32gui.DeleteObject(bk)
 
-    def onDayChanged(self, target, evtName, evtInfo):
+    def onDayChanged(self, args, evtName, evtInfo):
         cv = self.getCurCardView()
         dc = getattr(cv, 'onDayChanged', None)
         if not dc:
             return
-        dc(target, evtName, evtInfo)
+        dc(args, evtName, evtInfo)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_CONTEXTMENU:
             if not getattr(self, 'DP', None):
                 self.DP = base_win.DatePopupWindow()
                 self.DP.createWindow(hwnd)
-                self.DP.addListener('DatePicker', self.onDayChanged)
+                self.DP.addListener(self.onDayChanged, 'DatePicker')
             rc = win32gui.GetWindowRect(hwnd)
             self.DP.show(x = rc[0] + 8, y = rc[1] + 30)
             return False

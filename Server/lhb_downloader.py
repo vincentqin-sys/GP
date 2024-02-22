@@ -170,7 +170,7 @@ def loadOneDayLHB(day):
             dd.execute()
     if len(result) > 0:
         lt = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-        print(f'{lt} Success insert  {len(result)} rows for day {day}')
+        print(f'[LHB] {lt} Success insert  {len(result)} rows for day {day}')
     return True
 
 runLock = threading.RLock()

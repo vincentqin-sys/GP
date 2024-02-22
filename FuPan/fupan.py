@@ -17,7 +17,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         gp = base_win.GroupButton([{'name': 'KPL', 'title': '开盘啦'}, {'name': 'DDLR', 'title': '大单流入'}])
         gp.setSelGroup(0)
         gp.createWindow(self.hwnd, (0, 0, 200, 30))
-        gp.addListener('GroupButton', self.changeGroup)
+        gp.addListener(self.changeGroup, 'GroupButton')
         gpLy = base_win.AbsLayout()
         gpLy.setContent(0, 0, gp)
         self.layout.setContent(0, 0, gpLy)
@@ -33,7 +33,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.layout.setContent(1, 0, self.cardLayout)
 
     
-    def changeGroup(self, target, evtName, evtInfo):
+    def changeGroup(self, args, evtName, evtInfo):
         idx = evtInfo['groupIdx']
         self.cardLayout.showCardByIdx(idx)
 

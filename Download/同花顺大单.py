@@ -4,7 +4,7 @@ import os, json, time, sys, pyautogui, io, datetime, win32api, win32event, winer
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
-from THS import orm
+from THS import orm, hot_utils
 from Tdx import datafile
 from Download import fiddler, ths_dd_win, ths_ddlr
 from Common import holiday
@@ -38,8 +38,8 @@ def autoLoadTop200Data():
         raise Exception('[autoLoadTop200Data] 同花顺的大单页面打开失败')
     
     curDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
-    datas = orm.THS_Hot.select(orm.THS_Hot.code).distinct().where(orm.THS_Hot.day == curDay).tuples()
-    datas = [d[0] for d in datas]
+    ds = hot_utils.calcHotZHOnDay(curDay)
+    datas = [d['code'] for d in ds]
     MAX_NUM = len(datas)
     successTimes, failTimes = 0, 0
     fails = []
@@ -51,7 +51,7 @@ def autoLoadTop200Data():
         else: 
             failTimes += 1
             fails.append(code)
-        if failTimes >= 5 and failTimes >= successTimes:
+        if failTimes >= 10 and failTimes >= successTimes:
             break
     fd.close()
     print(f'Load {MAX_NUM}, Success {successTimes}, Fail {failTimes}')
@@ -71,10 +71,7 @@ def test2():
     datas = [d[0] for d in datas]
     print(len(datas))
 
-def run():
-    lock = getDesktopGUILock()
-    if not lock:
-        return False
+def runOneTime():
     try:
         pyautogui.hotkey('win', 'd')
         autoLoadTop200Data()
@@ -83,10 +80,20 @@ def run():
         ldd = ths_ddlr.LoadThsDdlrDetail()
         # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
         ldd.loadAllFilesData()
-        rs = True
+        return True
     except Exception as e:
         print('Occur Exception: ', e)
-        rs = False
+    return False
+
+def run():
+    lock = getDesktopGUILock()
+    if not lock:
+        return False
+    rs = False
+    for i in range(3): # try 3 times
+        rs = runOneTime()
+        if rs:
+            break
     releaseDesktopGUILock(lock)
     print('\n\n')
     return rs
@@ -143,9 +150,9 @@ def main():
         if (st < '18:00' ):
             time.sleep(5 * 60)
             continue
-        run() # checkUserNoInputTime() and
-        lastDay = nowDay
-        checkDDLR_Amount()
+        if run(): # checkUserNoInputTime() and
+            lastDay = nowDay
+            checkDDLR_Amount()
 
 
 if __name__ == '__main__':

@@ -211,8 +211,8 @@ class KPL_MgrWindow(base_win.BaseWindow):
         gl = base_win.GridLayout(('100%', ), (40, '1fr', 150, '1fr', 40), (0, 5))
         preDayBtn = base_win.Button({'name': 'pre-day-btn', 'title': '<<'})
         nextDayBtn = base_win.Button({'name': 'next-day-btn', 'title': '>>'})
-        preDayBtn.addListener('pre', self.onLisetenSelectDay)
-        nextDayBtn.addListener('next', self.onLisetenSelectDay)
+        preDayBtn.addListener(self.onLisetenSelectDay, 'pre')
+        nextDayBtn.addListener(self.onLisetenSelectDay, 'next')
         preDayBtn.createWindow(self.hwnd, (0, 0, 40, 30))
         nextDayBtn.createWindow(self.hwnd, (0, 0, 40, 30))
         gl.setContent(0, 0, preDayBtn)
@@ -223,32 +223,32 @@ class KPL_MgrWindow(base_win.BaseWindow):
         self.kplTableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.multiKLineWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.datePickerWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.datePickerWin.addListener('DatePicker', self.onLisetenDatePickerChanged)
-        self.kplTableWin.addListener('TableWindow', self.onListenTable)
+        self.datePickerWin.addListener(self.onLisetenDatePickerChanged, 'DatePicker')
+        self.kplTableWin.addListener(self.onListenTable, 'TableWindow')
         self.layout.resize(0, 0, *self.getClientSize())
 
-    def onLisetenSelectDay(self, target, evtName, evtInfo):
+    def onLisetenSelectDay(self, args, evtName, evtInfo):
         #print('onLisetenSelectDay: ', target, evtName, evtInfo)
-        if target == 'next':
+        if args == 'next':
             self.kplWin.nextDay()
             self.datePickerWin.setSelDay(self.kplWin.day)
             self.kplTableWin.updateDay(self.kplWin.day)
-        elif target == 'pre': 
+        elif args == 'pre': 
             self.kplWin.preDay()
             self.datePickerWin.setSelDay(self.kplWin.day)
             self.kplTableWin.updateDay(self.kplWin.day)
 
-    def onLisetenDatePickerChanged(self, target, evtName, evtInfo):
+    def onLisetenDatePickerChanged(self, args, evtName, evtInfo):
         day = evtInfo['curSelDay']
         #day = f'{day.year}-{day.month :02d}-{day.day :02d}'
         self.kplWin.updateDay(day)
         self.kplTableWin.updateDay(day)
 
-    def onLisetenEvent(self, target, evtName, evtInfo):
-        print('onLisetenEvent: ', target, evtName, evtInfo)
+    def onLisetenEvent(self, args, evtName, evtInfo):
+        print('onLisetenEvent: ', args, evtName, evtInfo)
         pass
 
-    def onListenTable(self, target, evtName, evtInfo):
+    def onListenTable(self, args, evtName, evtInfo):
         if evtName == 'DbClick' or evtName == 'RowEnter':
             data = evtInfo['data']
             self.multiKLineWin.updateCode(data['code'])

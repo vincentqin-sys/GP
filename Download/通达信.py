@@ -417,6 +417,6 @@ if __name__ == '__main__':
         if ts < '18:05':
             time.sleep(3 * 60)
             continue
-        work() #checkUserNoInputTime() and
-        lastDay = today.day
+        if work(): #checkUserNoInputTime() and
+            lastDay = today.day
         

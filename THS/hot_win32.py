@@ -78,8 +78,8 @@ def showSortAndLiangDianWindow(show, move):
         if width > 1500:
             win32gui.SetWindowPos(simpleWindow.hwnd, None, 1087, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
 
-def onListen(target, evtName, evtInfo):
-    if target == 'ListenHotWindow' and evtName == 'mode.change':
+def onListen(args, evtName, evtInfo):
+    if args == 'ListenHotWindow' and evtName == 'mode.change':
         #showSortAndLiangDianWindow(not evtInfo['maxMode'], True)
         pass
 
@@ -92,7 +92,7 @@ def subprocess_main():
     hotWindow.createWindow(thsWindow.topHwnd)
     simpleWindow.createWindow(thsWindow.topHwnd)
     simpleHotZHWindow.createWindow(thsWindow.topHwnd)
-    hotWindow.addListener('ListenHotWindow', onListen)
+    hotWindow.addListener(onListen, 'ListenHotWindow')
     threading.Thread(target = _workThread, args=(thsWindow, )).start()
     win32gui.PumpMessages()
     print('Quit Sub Process')

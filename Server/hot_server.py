@@ -115,7 +115,7 @@ def saveZS():
                 orm.THS_ZS_ZD.create(**d)
                 num += 1
         #orm.THS_ZS_ZD.bulk_create(datas, 100)
-        print(f"Save ZS success, insert {data[0]['day']} {num} num")
+        print(f"[THS-ZS] Save ZS success, insert {data[0]['day']} {num} num")
     else:
         print(f"Save ZS, no data ")
     return {"status": "OK"}

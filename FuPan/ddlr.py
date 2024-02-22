@@ -101,7 +101,7 @@ class TableWindow(base_win.BaseWindow):
                 return i
         return -1
 
-    def onListen(self, target, evtName, evtInfo):
+    def onListen(self, args, evtName, evtInfo):
         if evtName == 'click.ddlr.time':
             _time = evtInfo['time']
             idx = self.findNearestTime(_time)
@@ -422,7 +422,7 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
         rc2 = (rc[2] + 5, 0, size[0] - rc[2] - 10, 400)
         self.fsWin = timeline.TimelineWindow()
         self.fsWin.createWindow(self.hwnd, rc2)
-        self.fsWin.addListener(None, self.tableWin.onListen)
+        self.fsWin.addListener(self.tableWin.onListen, None)
         
         grs = (  {'title': '50万', 'val': 50, 'desc': '50万以上'},
                  {'title': '100万', 'val': 100, 'desc': '100万以上'},
@@ -431,12 +431,12 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
         self.moneyBtns = base_win.GroupButton(grs)
         rc3 = (63, 10, 190, 30)
         self.moneyBtns.createWindow(self.hwnd, rc3)
-        self.moneyBtns.addListener(None, self.onListenMoney)
+        self.moneyBtns.addListener(self.onListenMoney, None)
 
         refreshBtn = base_win.Button({'title': '同步', 'val': 'Refresh'})
         rc4 = (5, 10, 50, 30)
         refreshBtn.createWindow(self.hwnd, rc4)
-        refreshBtn.addListener(None, self.onListenRefresh)
+        refreshBtn.addListener(self.onListenRefresh, None)
 
         self.moneyWin = DDMoneyWindow()
         rc5 = (rc[2] + 5, rc2[3] + 10, size[0] - rc[2] - 10, size[1] - rc2[3]- 15)
@@ -454,14 +454,14 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
         # TODO: remove 
         #self.updateCodeDay('601096', 20240119)
 
-    def onListenMoney(self, target, evtName, evtInfo):
+    def onListenMoney(self, args, evtName, evtInfo):
         group = evtInfo['group']
         ds = self.fsWin.model.filterDDLR(group['val'])
         self.tableWin.setData(ds, group['desc'])
         self.moneyWin.setData(ds)
         win32gui.InvalidateRect(self.fsWin.hwnd, None, True)
 
-    def onListenRefresh(self, target, evtName, evtInfo):
+    def onListenRefresh(self, args, evtName, evtInfo):
         code = self.shareMem.readCode()
         day = self.shareMem.readSelDay()
         if not code or not day:

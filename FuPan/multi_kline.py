@@ -52,7 +52,7 @@ class MultiKLineWindow(base_win.BaseWindow):
             self.klines.append(win)
             win.createWindow(self.hwnd, (0, 0, 10, 10))
             self.layout.setContent(i, 0, win)
-            win.addListener(i, self.onListen)
+            win.addListener(self.onListen, i)
         self.layout.resize(0, 0, *self.getClientSize())
 
     def findByDayInData(self, day, fromIdx, data):
@@ -157,8 +157,8 @@ class MultiKLineWindow(base_win.BaseWindow):
         self.klines[klineIdx].setModel(md)
         self.klines[klineIdx].makeVisible(target.selIdx)
 
-    def onListen(self, target, evtName, evtInfo):
-        curWinIdx = target
+    def onListen(self, args, evtName, evtInfo):
+        curWinIdx = args
         for i, kl in enumerate(self.klines):
             if i == curWinIdx:
                 continue
