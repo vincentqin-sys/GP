@@ -4,7 +4,7 @@ import os, sys
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
-from THS.download import henxin, load_ths_ddlr
+from Download import henxin, ths_ddlr
 from THS import orm as ths_orm
 from Common import base_win, kline
 
@@ -144,9 +144,9 @@ class MultiKLineWindow(base_win.BaseWindow):
         self.klines[0].makeVisible(-1)
         self.klines[1].makeVisible(-1)
         #self.klines[2].makeVisible(-1)
-        self.klines[0].setPopupMenu(gnModel, self.onMenuItemClick, 0)
-        self.klines[1].setPopupMenu(gnModel, self.onMenuItemClick, 1)
-        self.klines[2].setPopupMenu(gnModel, self.onMenuItemClick, 2)
+        #self.klines[0].setPopupMenu(gnModel, self.onMenuItemClick, 0)
+        #self.klines[1].setPopupMenu(gnModel, self.onMenuItemClick, 1)
+        #self.klines[2].setPopupMenu(gnModel, self.onMenuItemClick, 2)
 
     def onMenuItemClick(self, klineIdx, idx, menuItem):
         md = kline.KLineModel_Ths(menuItem['code'])

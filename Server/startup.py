@@ -10,7 +10,7 @@ from multiprocessing import Process
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
-from Server import lhb_server, hot_server
+from Server import lhb_server, hot_server, cls_server
 from Server import lhb_downloader
 
 app = Flask(__name__, static_folder='ui/static', template_folder='ui/templates')
@@ -33,5 +33,8 @@ if __name__ == '__main__':
     # 启动龙虎榜
     lhb_server.startup(app)
     lhb_downloader.autoLoadTdxLHB()
+
+
+    cls_server.startup(app)
 
     app.run(host = '0.0.0.0', port=8071, debug=False) #, debug=True  port=8071

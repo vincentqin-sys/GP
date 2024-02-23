@@ -176,7 +176,8 @@ class KPL_ZT(pw.Model):
     ztTime = pw.CharField(null = True, column_name='涨停时间')
     status = pw.CharField(null = True, column_name='状态')
     ztReason = pw.CharField(null = True, column_name='涨停原因')
-    tag = pw.CharField(null=True)
+    ztNum = pw.CharField(null=True, column_name='涨停数量')
+    remark = pw.CharField(null=True, column_name='备注')
 
     class Meta:
         database = db_kpl
@@ -190,6 +191,19 @@ class KPL_SCQX(pw.Model):
         database = db_kpl
         table_name = '开盘啦市场情绪'
 
+db_cls = pw.SqliteDatabase(f'{path}GP/db/CLS.db')
+class CLS_ZT(pw.Model):
+    day = pw.CharField() # YYYY-MM-DD
+    code = pw.CharField()
+    name = pw.CharField(null = True)
+    lbs = pw.IntegerField(default = 0, column_name='连板数')
+    ztReason = pw.CharField(null = True, column_name='涨停原因')
+    detail = pw.CharField(null = True, column_name='详情')
+
+    class Meta:
+        database = db_cls
+        table_name = '财联社涨停'
+
 
 db.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_GNTC, THS_Newest])
 db2.create_tables([THS_Hot, THS_HotZH])
@@ -197,5 +211,6 @@ db3.create_tables([TaoGuBa_Remark])
 db5.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS, THS_ZS_ZD])
 db_kpl.create_tables([KPL_ZT, KPL_SCQX])
+db_cls.create_tables([CLS_ZT])
 
     

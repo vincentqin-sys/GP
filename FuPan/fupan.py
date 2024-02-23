@@ -1,9 +1,9 @@
 from win32.lib.win32con import WS_CHILD, WS_VISIBLE
 import win32gui, win32con, sys, os
-import ddlr, kpl, multi_kline
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
+import ddlr_detail, kpl, multi_kline, ddlr_struct
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -14,9 +14,9 @@ class FuPanMgrWindow(base_win.BaseWindow):
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
-        gp = base_win.GroupButton([{'name': 'KPL', 'title': '开盘啦'}, {'name': 'DDLR', 'title': '大单流入'}])
+        gp = base_win.GroupButton([{'name': 'KPL', 'title': '开盘啦'}, {'name': 'DDLR_STRUCT', 'title': '大单流入'}])
         gp.setSelGroup(0)
-        gp.createWindow(self.hwnd, (0, 0, 200, 30))
+        gp.createWindow(self.hwnd, (0, 0, 300, 30))
         gp.addListener(self.changeGroup, 'GroupButton')
         gpLy = base_win.AbsLayout()
         gpLy.setContent(0, 0, gp)
@@ -26,7 +26,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         kplWin.createWindow(self.hwnd, (0, 0, 1, 1))
         kplWin.init()
         self.cardLayout.addContent(kplWin)
-        ddlrWin = ddlr.DDLR_MinuteMgrWindow()
+        ddlrWin = ddlr_struct.DddlrStructWindow() #ddlr_detail.DDLR_MinuteMgrWindow()
         ddlrWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(ddlrWin)
         self.cardLayout.showCardByIdx(0)

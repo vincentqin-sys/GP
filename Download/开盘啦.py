@@ -445,7 +445,7 @@ class OCRUtil:
                 apd = apd + (1 if ord(n) < 255 else 2)
             return name + ' ' * (8 - apd)
         for model in self.models:
-            info = f"{model['day']}\t{fmtName(model['name'])}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}"
+            info = f"{model['day']}\t{fmtName(model['name'])}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}\t{model['ztNum']}"
             print(info)
             if '新上市' in model['status'] or model['ztReason'] == '无':
                 continue
@@ -487,7 +487,7 @@ class OCRUtil:
         model = self.parseRowImage(img)
         model['code'] = code
         #print('[OCRUtil.parseRow]', model)
-        info = f"{model['name']}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}"
+        info = f"{model['name']}\t{model['code']}\t{model['ztTime']}\t{model['status']}\t{model['ztReason']}\t{model['ztNum']}"
         print('[OCRUtil.parseRow]', info)
         return model
     
@@ -535,15 +535,15 @@ class OCRUtil:
         if 'CPO' in rz and 'MPO' in rz:
             rz = 'CPO/MPO' + rz[rz.index('(') : ]
         # check num
+        num = ''
         if '(' in rz and ')' in rz:
             sx = rz.index('(')
             ex = rz.index(')')
-            num = ''
             for i in range(sx + 1, ex, 1):
                 if rz[i] >= '0' and rz[i] <= '9':
                     num += rz[i]
-            rz = rz[0 : sx] + '(' + num + ')'
-        return rz
+            rz = rz[0 : sx]
+        return rz, num
 
     def parseRowImage(self, img):
         #img.imgPIL.show()
@@ -556,13 +556,9 @@ class OCRUtil:
         img.model['ztTime'] = img.model['ztTime'].replace('.', ':')
         img.model['status'] = result[2][1]
         rz = result[3][1]
-        img.model['ztReason'] = self.adjustZtReason(rz)
-        tag = ''
-        if 'R' in img.model:
-            tag += '(融)'
-        if 'HF' in img.model:
-            tag += '回封'
-        img.model['tag'] = tag
+        rz, num = self.adjustZtReason(rz)
+        img.model['ztReason'] = rz
+        img.model['ztNum'] = num
         return img.model
 
     def checkModel(self, model):
@@ -697,18 +693,18 @@ class MainTools:
                 break
             its = line.split('\t')
             for i in range(len(its)): its[i] = its[i].strip()
-            day, name, code, ztTime, status, ztReason, *_ = its
-            self.save_KPL_ZT(day, code, name, ztTime, status, ztReason, '')
+            day, name, code, ztTime, status, ztReason, ztNum, *_ = its
+            self.save_KPL_ZT(day, code, name, ztTime, status, ztReason, ztNum)
 
-    def save_KPL_ZT(self, day, code, name, ztTime, status, ztReason, tag):
+    def save_KPL_ZT(self, day, code, name, ztTime, status, ztReason, ztNum):
         count = orm.KPL_ZT.select(pw.fn.count(orm.KPL_ZT.code)).where(orm.KPL_ZT.code == code, orm.KPL_ZT.day == day)
         #print(count.sql())
         count = count.scalar()
         if not count:
-            orm.KPL_ZT.create(name=name, code=code, tag=tag, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
+            orm.KPL_ZT.create(name=name, code=code, ztNum=ztNum, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
             print('Save success: ', day, name, code)
         else:
-            print('重复项：', day, code, name, ztTime, status, ztReason, tag)
+            print('重复项：', day, code, name, ztTime, status, ztReason, ztNum)
 
     def runOpt(self, opt):
         if opt == 'next-zt-page':

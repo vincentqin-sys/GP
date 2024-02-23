@@ -1,0 +1,35 @@
+{
+    "manifest_version": 2,
+    "name": "GP-财联社",
+    "version": "1.0",
+
+    "description": "GP-财联社",
+
+	"permissions": [
+		"https://www.cls.cn/*",
+		"http://www.cls.cn/*",
+		"tabs",
+		"webRequest",
+		"webRequestBlocking",
+		"storage",
+		"nativeMessaging",
+		"declarativeNetRequest", "declarativeNetRequestFeedback"
+	],
+	
+	"background": {
+		"scripts": ["jquery-3.6.min.js", "bg.js"],
+		"persistent": true
+	},
+	
+    "content_scripts": [
+        {
+			"matches": ["https://www.cls.cn/finance"],
+            "run_at": "document_idle",
+            "js": ["jquery-3.6.min.js", "zt-page.js"],
+			"all_frames" : true
+		}
+    ],
+
+	"web_accessible_resources": [
+	]
+}

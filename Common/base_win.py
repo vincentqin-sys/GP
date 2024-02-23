@@ -12,7 +12,6 @@ class BaseWindow:
         self._bitmap = None
         self._bitmapSize = None
         self.cacheBitmap = False
-        self.menu = {}
         self.css = {'fontSize' : 14, 'bgColor': 0x000000, 'textColor': 0xffffff} # config css style 
     
     # func = function(args, evtName, evtInfo)
@@ -45,20 +44,6 @@ class BaseWindow:
         if msg == win32con.WM_DESTROY:
             win32gui.PostQuitMessage(0)
             return True
-        if msg == win32con.WM_COMMAND:
-            itemId = wParam & 0xffff
-            menuWnd = self.menu.get('hwnd', None)
-            if not menuWnd:
-                return False
-            if menuWnd: win32gui.DestroyMenu(menuWnd)
-            callback = self.menu.get('callback', None)
-            idx = itemId
-            if callback: callback(self.menu['args'], idx, self.menu['model'][idx])
-        if msg == win32con.WM_RBUTTONUP:
-            mm = self.menu.get('model', None)
-            if mm:
-                pos = win32gui.GetCursorPos()
-                self.popMenu(*pos)
         return False
 
     def _draw(self):
@@ -89,27 +74,6 @@ class BaseWindow:
         
     def onDraw(self, hdc):
         pass
-    
-    # model =[ {title: xx, } ]   title = 'LINE' is hor-split-line
-    # callback = function(args, model-idx, model-item)
-    def setPopupMenu(self, model, callback, args):
-        self.menu['model'] = model
-        self.menu['callback'] = callback
-        self.menu['args'] = args
-
-    def popMenu(self, x, y):
-        model = self.menu.get('model', None)
-        if not model:
-            return
-        pm = win32gui.CreatePopupMenu()
-        self.menu['hwnd'] = pm
-        for i, it in enumerate(model):
-            if it['title'] == 'LINE':
-                mi, exta = win32gui_struct.PackMENUITEMINFO(wID = i, fType = win32con.MF_SEPARATOR)
-            else:
-                mi, exta = win32gui_struct.PackMENUITEMINFO(text = it['title'], wID = i)
-            win32gui.InsertMenuItem(pm, i, True, mi)
-        win32gui.TrackPopupMenu(pm, win32con.TPM_LEFTALIGN | win32con.TPM_RIGHTBUTTON, x, y, 0, self.hwnd, None)
 
     @staticmethod
     def _WinProc(hwnd, msg, wParam, lParam):
@@ -320,6 +284,10 @@ class GridLayout(Layout):
         self.gaps = gaps
         self.winsInfo = {}
         self.layouts = {}
+
+    def setTemplates(self, templateRows, templateColumns):
+        self.templateRows = templateRows
+        self.templateColumns = templateColumns
     
     # @param style = {  autoFit: True(is default), 
     #            horExpand : int; 0 ( is default) | -1 : right expand all columns |  int(expand num)
@@ -604,9 +572,10 @@ class TableWindow(BaseWindow):
 
         self.data = None # a data array, [{colName1: xx, colName2: xxx}, ...]
 
-        # headers : need set  [{title:xx, name:xxx, width: x, sortable:True|False }, ...]
+        # headers : need set  [{title:xx, name:xxx, width: x, sortable:True|False, formater: func }, ...]
         #                         width : int (fix width), float : int part is fix width, float part is stretch
-        # '#idx' is index row column  width: int-> fix width; -1: expand all less width; float( < 1.0 ) -> percent of headers width
+        #                      formater: function(colName, val, rowData) -> return format data
+        # name = '#idx' is index row column 
         self.headers = None # must be set TODO
 
     def getHeaders(self):
@@ -633,7 +602,7 @@ class TableWindow(BaseWindow):
             if cw <= 0:
                 fixWidth += baseWidth
             else:
-                fixWidth += cw
+                fixWidth += int(cw)
                 frs += float(cw) - int(cw)
         lessWidth = w - fixWidth
         cw = self.headers[colIdx].get('width', 0)
@@ -757,6 +726,9 @@ class TableWindow(BaseWindow):
             rc[0] = rc[2]
         
     def drawCell(self, hdc, row, col, colName, value, rect):
+        formater = self.headers[col].get('formater', None)
+        if formater:
+            value = formater(colName, value, self.data[row])
         self.drawer.drawText(hdc, str(value), rect, 0xffffff, align=win32con.DT_LEFT)
 
     def drawRow(self, hdc, showIdx, row, rect):
@@ -1151,7 +1123,10 @@ class PopupWindow(BaseWindow):
 
     # x, y is screen pos
     def show(self, x = None, y = None):
-        ownerRect = win32gui.GetWindowRect(self.ownerHwnd)
+        if self.ownerHwnd:
+            ownerRect = win32gui.GetWindowRect(self.ownerHwnd)
+        else:
+            ownerRect = (0, 0, 0, 0)
         if x == None:
             x = ownerRect[0]
         if y == None:
@@ -1190,6 +1165,8 @@ class PopupMenu(PopupWindow):
         self.model = model
 
     def show(self, x = None, y = None):
+        if not self.hwnd:
+            return
         self.selIdx = -1
         w, h = self.calcSize()
         win32gui.SetWindowPos(self.hwnd, 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE)
@@ -1312,6 +1289,34 @@ class PopupMenu(PopupWindow):
             self.scroll(delta)
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
+
+class PopupMenuHelper:
+    _ins = None
+    def __init__(self) -> None:
+        self._menu = PopupMenu()
+        self._callback = None
+        self._menu.addListener(self._onMenuSelect, None)
+
+    def _onMenuSelect(self, args, evtName, evtInfo):
+        if not self._callback:
+            return
+        self._callback(evtName, evtInfo)
+
+    def _create(self, model, callback):
+        if not self._menu.hwnd:
+            self._menu.createWindow(None, (0, 0, 1, 1))
+        self._menu.setModel(model)
+        self._callback = callback
+
+    # x, y is screen position
+    # model = [{'title': xx}, ...]  title = LINE | ....
+    # callback = function(evtName, evtInfo)
+    @staticmethod
+    def show(x, y, model, callback):
+        if PopupMenuHelper._ins == None:
+            PopupMenuHelper._ins = PopupMenuHelper()
+        PopupMenuHelper._ins._create(model, callback)
+        PopupMenuHelper._ins._menu.show(x, y)
 
 class DatePopupWindow(PopupWindow):
     TOP_HEADER_HEIGHT = 40
@@ -1548,18 +1553,17 @@ def testGridLayout():
 
 def testPopMenu():
     def back(menu, e, ei):
-        menu.selIdx = 2
-        menu.show(100, 100)
+        PopupMenuHelper.show(300, 100, model, menuSel)
+
+    def menuSel(en, ei):
+        print(en, ei)
 
     btn = Button({'title' : 'Hello'})
     btn.createWindow(None, (0, 0, 200, 100), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    menu = PopupMenu()
-    menu.VISIBLE_MAX_ITEM = 3
-    menu.createWindow(btn.hwnd, (0, 0, 1, 1))
-    menu.setModel([{'title': 'Hello 1 你好呀不' },  {'title': 'LINE'}, {'title': 'Hello 2'},
+    model = [{'title': 'Hello 1 你好呀不' },  {'title': 'LINE'}, {'title': 'Hello 2'},
         {'title': 'Hello 3要'}, {'title': 'Hello 4'}, {'title': 'Hello 5'},
-        {'title': 'Hello 6 kdil'},  {'title': 'LINE'}, {'title': 'Hello 7 KIL'}])
-    btn.addListener(back, menu)
+        {'title': 'Hello 6 kdil'},  {'title': 'LINE'}, {'title': 'Hello 7 KIL'}]
+    btn.addListener(back, None)
 
 if __name__ == '__main__':
     #testGridLayout()

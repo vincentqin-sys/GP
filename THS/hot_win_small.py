@@ -497,7 +497,7 @@ class KPLCardView(CardView):
                 win32gui.SetTextColor(hdc, 0xdddddd)
             day = kpl['day']
             day = day[2 : 4] + '-' + day[4 : 6] + '-' + day[6 : ]
-            line = f"{day} {kpl['ztReason']}"
+            line = f"{day} {kpl['ztReason']}({kpl['ztNum']})"
             idx = i - fromIdx
             y = (idx % MAX_ROWS) * H + 2
             x = RW // 2 if idx >= MAX_ROWS else 0

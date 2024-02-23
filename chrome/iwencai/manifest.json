@@ -41,6 +41,16 @@
 				"jquery-3.6.min.js", "iwencai-hot-login-page.js"
 			],
 			"all_frames": true
+		},
+		{
+			"matches": [
+				"https://data.10jqka.com.cn/datacenterph/limitup/limtupInfo.html*", "http://data.10jqka.com.cn/datacenterph/limitup/limtupInfo.html*"
+			],
+			"run_at": "document_idle",
+			"js": [
+				"jquery-3.6.min.js", "zt.js"
+			],
+			"all_frames": true
 		}
     ],
 
