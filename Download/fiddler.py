@@ -35,6 +35,7 @@ class Fiddler:
         win32gui.SetForegroundWindow(self.hwnd)
         time.sleep(1.5)
         win32gui.PostMessage(self.hwnd, win32con.WM_CLOSE, 0, 0)
+        self.hwnd = None
         print('已自动关闭Fiddler')
 
     @staticmethod
@@ -49,7 +50,8 @@ class Fiddler:
         return True
 
 
-if __name__ == '__main__'    :
+if __name__ == '__main__':
     fd = Fiddler()
     fd.open()
+    time.sleep(20)
     fd.close()

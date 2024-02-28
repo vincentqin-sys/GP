@@ -17,7 +17,7 @@ def autoLoadOne(code, ddWin):
         pyautogui.press('delete')
     pyautogui.typewrite(code, 0.01)
     pyautogui.press('enter')
-    time.sleep(3)
+    time.sleep(5)
     ddWin.releaseFocus()
     return ths_ddlr.codeExists(code)
 
@@ -31,12 +31,16 @@ def autoLoadTop200Data():
     fd.open()
     time.sleep(10)
 
+    thsWin = ths_dd_win.THS_Window()
+    thsWin.open()
     ddWin = ths_dd_win.THS_DDWindow()
     ddWin.initWindows()
     if not ddWin.openDDLJ():
+        print('同花顺大单页面打开失败')
         fd.close()
-        raise Exception('[autoLoadTop200Data] 同花顺的大单页面打开失败')
+        raise Exception()
     
+    print('开始下载同花顺大单数据...')
     curDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
     ds = hot_utils.calcHotZHOnDay(curDay)
     datas = [d['code'] for d in ds]
@@ -46,7 +50,7 @@ def autoLoadTop200Data():
     for idx, code in enumerate(datas):
         code = f"{code :06d}"
         sc = autoLoadOne(code, ddWin)
-        if sc: 
+        if sc:
             successTimes += 1
         else: 
             failTimes += 1
@@ -62,6 +66,7 @@ def autoLoadTop200Data():
         if sc:
             tg = 'success' if sc else 'Fail'
             print('Load ', code, tg)
+    thsWin.close()
     if successTimes + failTimes != MAX_NUM:
         raise Exception('[autoLoadTop200Data] 下载失败')
 
@@ -80,21 +85,18 @@ def runOneTime():
         ldd = ths_ddlr.LoadThsDdlrDetail()
         # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
         ldd.loadAllFilesData()
+        print('\n')
         return True
     except Exception as e:
         print('Occur Exception: ', e)
     return False
 
 def run():
-    lock = getDesktopGUILock()
-    if not lock:
-        return False
     rs = False
-    for i in range(3): # try 3 times
+    for i in range(1): # try 3 times
         rs = runOneTime()
         if rs:
             break
-    releaseDesktopGUILock(lock)
     print('\n\n')
     return rs
 
@@ -143,17 +145,24 @@ def main():
             continue
         nowDay = today.strftime('%Y-%m-%d')
         if lastDay == nowDay:
-            time.sleep(60 * 60)
             checkDDLR_Amount()
+            time.sleep(60 * 60)
             continue
         st = today.strftime('%H:%M')
         if (st < '18:00' ):
             time.sleep(5 * 60)
             continue
+        lock = getDesktopGUILock()
+        if not lock:
+            time.sleep(5 * 60)
+            continue
         if run(): # checkUserNoInputTime() and
             lastDay = nowDay
             checkDDLR_Amount()
+        releaseDesktopGUILock(lock)
+        time.sleep(60 * 60)
 
 
 if __name__ == '__main__':
+    #runOneTime()
     main()

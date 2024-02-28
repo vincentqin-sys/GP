@@ -362,13 +362,10 @@ class TdxDownloader:
         self.login()
         self.openDownloadDialog()
         self.startDownloadForDay()
-        self.startDownloadForTimeMinute()
+        #self.startDownloadForTimeMinute()
         self.killProcess()
 
 def work():
-    lock = getDesktopGUILock()
-    if not lock:
-        return False
     # 下载
     tdx = TdxDownloader()
     tdx.run()
@@ -379,7 +376,6 @@ def work():
     #计算两市行情信息
     t = TdxLSTools()
     t.calcInfo()
-    releaseDesktopGUILock(lock)
     print('\n\n')
     return True
 
@@ -403,7 +399,7 @@ def checkUserNoInputTime():
     sec = diff / 1000
     return sec >= 5 * 60
 
-if __name__ == '__main__':
+def autoMain():
     lastDay = 0
     while True:
         today = datetime.datetime.now()
@@ -417,6 +413,14 @@ if __name__ == '__main__':
         if ts < '18:05':
             time.sleep(3 * 60)
             continue
+        lock = getDesktopGUILock()
+        if not lock:
+            time.sleep(3 * 60)
+            continue
         if work(): #checkUserNoInputTime() and
             lastDay = today.day
-        
+        releaseDesktopGUILock(lock)
+
+if __name__ == '__main__':
+    #work() # run one time
+    autoMain()

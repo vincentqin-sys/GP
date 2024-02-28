@@ -126,8 +126,9 @@ def findDrawDaysIndex(days, selDay, maxNum):
             break
     return (fromIdx, lastIdx)
 
-class CardView:
+class CardView(base_win.Drawer):
     def __init__(self, hwnd):
+        super().__init__()
         self.hwnd = hwnd
     def onDraw(self, hdc):
         pass
@@ -464,25 +465,33 @@ class KPLCardView(CardView):
         self.kplZTData = None
         self.ROW_HEIGHT = 18
         self.selectDay = 0
+        self.ormClazz = orm.KPL_ZT
+        self.emptyLine = '\n\n无开盘啦涨停信息'
+        self.fontSize = 14
 
     def updateSelectDay(self, selDay):
         self.selectDay = selDay
 
     def updateCode(self, code):
-        qq = orm.KPL_ZT.select().where(orm.KPL_ZT.code == code).order_by(orm.KPL_ZT.day.asc())
+        qq = self.ormClazz.select().where(self.ormClazz.code == code).order_by(self.ormClazz.day.asc())
         def fmtDay(d): 
             d['day'] = d['day'].replace('-', '')
             return d
         self.kplZTData = [fmtDay(d) for d in qq.dicts()]
 
+    def drawLine(self, hdc, kpl, rect):
+        day = kpl['day']
+        day = day[2 : 4] + '-' + day[4 : 6] + '-' + day[6 : ]
+        line = f"{day} {kpl['ztReason']}({kpl['ztNum']})"
+        win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT)
+
     def onDraw(self, hdc):
         win32gui.SetTextColor(hdc, 0xdddddd)
         rect = win32gui.GetClientRect(self.hwnd)
         if not self.kplZTData:
-            line = '\n\n无开盘啦涨停信息'
-            win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_CENTER)
+            win32gui.DrawText(hdc, self.emptyLine, len(self.emptyLine), rect, win32con.DT_CENTER)
             return
-        
+        self.use(hdc, self.getFont(fontSize=self.fontSize))
         H = self.ROW_HEIGHT
         RH = rect[3] - rect[1]
         RW = rect[2] - rect[0]
@@ -495,18 +504,32 @@ class KPLCardView(CardView):
                 win32gui.SetTextColor(hdc, 0x0000ff)
             else:
                 win32gui.SetTextColor(hdc, 0xdddddd)
-            day = kpl['day']
-            day = day[2 : 4] + '-' + day[4 : 6] + '-' + day[6 : ]
-            line = f"{day} {kpl['ztReason']}({kpl['ztNum']})"
             idx = i - fromIdx
             y = (idx % MAX_ROWS) * H + 2
             x = RW // 2 if idx >= MAX_ROWS else 0
-            win32gui.DrawText(hdc, line, len(line), (x + 2, y, x + RW // 2, y + H), win32con.DT_LEFT)
+            self.drawLine(hdc, kpl, (x + 2, y, x + RW // 2, y + H))
         pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
         win32gui.SelectObject(hdc, pen)
         win32gui.MoveToEx(hdc, RW // 2, 0)
         win32gui.LineTo(hdc, RW // 2, rect[3])
         win32gui.DeleteObject(pen)
+
+class THS_ZTCardView(KPLCardView):
+    def __init__(self, hwnd):
+        super().__init__(hwnd)
+        self.ormClazz = orm.THS_ZT
+        self.emptyLine = '\n\n无同花顺涨停信息'
+        self.fontSize = 12
+        self.ROW_HEIGHT = 32
+
+    def drawLine(self, hdc, kpl, rect):
+        day = kpl['day']
+        day = day[4 : 6] + '.' + day[6 : ]
+        line = kpl['ztReason']
+        rc2 = (rect[0] + 35, rect[1], rect[2], rect[3])
+        win32gui.DrawText(hdc, line, len(line), rc2, win32con.DT_LEFT | win32con.DT_WORDBREAK)
+        win32gui.DrawText(hdc, day, len(day), rect, win32con.DT_LEFT)
+
 
 class SimpleWindow(CardWindow):
     def __init__(self) -> None:
@@ -525,6 +548,7 @@ class SimpleWindow(CardWindow):
         self.addCardView(SortCardView(self.hwnd))
         self.addCardView(HotCardView(self.hwnd))
         self.addCardView(KPLCardView(self.hwnd))
+        self.addCardView(THS_ZTCardView(self.hwnd))
         self.zsCardView = ZSCardView(self.hwnd)
 
     def changeCardView(self):
@@ -948,7 +972,7 @@ class KPL_AllCardView(ListView):
             status = status.replace('连', '') + ' '
         elif len(status) >= 4: # x天y板
             status = status[0 : -1]
-        txt = f'{name} {data["ztTime"]} {status} {data["ztReason"]}'
+        txt = f'{name} {data["ztTime"]} {status} {data["ztReason"]}({data["ztNum"]})'
         win32gui.SelectObject(hdc, self.getFont())
         win32gui.DrawText(hdc, txt, len(txt), rect, win32con.DT_LEFT)
         if self.selIdx == idx:

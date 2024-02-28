@@ -5,6 +5,7 @@ import win32gui, win32con , win32api, win32ui, win32process # pip install pywin3
 class THS_Window:
     def __init__(self) -> None:
         self.hwnd = None
+        self.needClose = False
 
     def open(self):
         pids = psutil.pids()
@@ -14,11 +15,13 @@ class THS_Window:
                 print('已检测到开启了同花顺, pid=', pid)
                 return
         print('未开启同花顺, 自动开启')
+        self.needClose = True
         subprocess.Popen('D:\\Program Files\\THS\\hexin.exe', shell=True)
         time.sleep(8)
 
     def close(self):
-        os.system('taskkill /F /IM hexin.exe')
+        if self.needClose:
+            os.system('taskkill /F /IM hexin.exe')
 
     @staticmethod
     def cb(hwnd, self):
@@ -74,7 +77,7 @@ class THS_DDWindow:
         hwnd = rt['val']
         if not hwnd:
             return
-        print(f'hwnd=0x{hwnd: X}')
+        print(f'THS_DDWindow hwnd=0x{hwnd: X}')
         *_, w, h = win32gui.GetClientRect(hwnd)
         x = w - 50
         win32gui.PostMessage(hwnd, win32con.WM_LBUTTONDOWN, 0, 0x000a0000 | x)
@@ -98,6 +101,7 @@ class THS_DDWindow:
                 selfx.topWnd = hwnd
             return True
         win32gui.EnumWindows(callback, self)
+        print(f'[THS_DDWindow] 同花顺 top hwnd={self.topWnd :X}')
 
     def _showTopWindow(self):
         if not self.topWnd:

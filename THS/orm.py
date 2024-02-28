@@ -176,7 +176,7 @@ class KPL_ZT(pw.Model):
     ztTime = pw.CharField(null = True, column_name='涨停时间')
     status = pw.CharField(null = True, column_name='状态')
     ztReason = pw.CharField(null = True, column_name='涨停原因')
-    ztNum = pw.CharField(null=True, column_name='涨停数量')
+    ztNum = pw.IntegerField(null=True, column_name='涨停数量')
     remark = pw.CharField(null=True, column_name='备注')
 
     class Meta:
@@ -190,6 +190,20 @@ class KPL_SCQX(pw.Model):
     class Meta:
         database = db_kpl
         table_name = '开盘啦市场情绪'
+
+db_ths_zt = pw.SqliteDatabase(f'{path}GP/db/THS_ZT.db')
+class THS_ZT(pw.Model):
+    code = pw.CharField()
+    name = pw.CharField(null = True)
+    day = pw.CharField() # YYYY-MM-DD
+    ztTime = pw.CharField(null = True, column_name='涨停时间')
+    status = pw.CharField(null = True, column_name='状态')
+    ztReason = pw.CharField(null = True, column_name='涨停原因')
+    #ztNum = pw.IntegerField(null=True, column_name='涨停数量')
+
+    class Meta:
+        database = db_ths_zt
+        table_name = '同花顺涨停'
 
 db_cls = pw.SqliteDatabase(f'{path}GP/db/CLS.db')
 class CLS_ZT(pw.Model):
@@ -212,5 +226,5 @@ db5.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS, THS_ZS_ZD])
 db_kpl.create_tables([KPL_ZT, KPL_SCQX])
 db_cls.create_tables([CLS_ZT])
-
+db_ths_zt.create_tables([THS_ZT])
     

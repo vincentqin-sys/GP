@@ -437,7 +437,8 @@ class ThsDataFile(datafile.DataFile):
 
 if __name__ == '__main__':
     hx = HexinUrl()
-    #hx.copy('A8oAni2gm576FhcyEWD0c9AzG7tpu05WQD_CuVQDdp2oB2RlPEueJRDPEiUn')
+    hx.copy('AwMp0DU6YrbvwS5CE1sd7MFgksyoeJf-0Q3b_zXiW0LYRy2yvUgnCuHca35G')
+    
     url = hx.getFenShiUrl('603628')
     #url = hx.getTodayKLineUrl('603628')
     #url = hx.getKLineUrl('603628')

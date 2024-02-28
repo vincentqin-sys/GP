@@ -2,7 +2,9 @@ import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 from multiprocessing import Process
 from multiprocessing.shared_memory import SharedMemory
-import hot_win_small, ths_win, hot_win
+
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from THS import orm, hot_utils, hot_win_small, ths_win, hot_win
 
 curCode = None
 thsWindow = ths_win.ThsWindow()
