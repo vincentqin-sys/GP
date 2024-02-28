@@ -9,96 +9,83 @@ from Tdx import datafile
 from Download import fiddler, ths_dd_win, ths_ddlr
 from Common import holiday
 
-def autoLoadOne(code, ddWin):
+def autoLoadOne(code, ddWin : ths_dd_win.THS_DDWindow):
     ddWin.grubFocusInSearchBox()
     # clear input text
     for i in range(20):
         pyautogui.press('backspace')
         pyautogui.press('delete')
-    pyautogui.typewrite(code, 0.01)
+    pyautogui.typewrite(code, 0.1)
+    time.sleep(0.2)
     pyautogui.press('enter')
     time.sleep(5)
     ddWin.releaseFocus()
-    return ths_ddlr.codeExists(code)
+    if not ths_ddlr.codeExists(code):
+        return False
+    lds = ths_ddlr.ThsDdlrStructLoader()
+    ldd = ths_ddlr.ThsDdlrDetailLoader()
+    lds.loadOneFile(code, True)
+    ldd.loadOneFile(code, True)
+    return True
 
 # 自动下载同花顺热点Top200个股的大单数据
 def autoLoadTop200Data():
     d = datetime.datetime.today()
     print(d.strftime('%Y-%m-%d:%H:%M:%S'), '->')
     print('自动下载Top 200大单买卖数据(同花顺Level-2)')
-    print('Fiddler拦截onBeforeResponse, 将数据下载下来')
     fd = fiddler.Fiddler()
-    fd.open()
-    time.sleep(10)
-
     thsWin = ths_dd_win.THS_Window()
-    thsWin.open()
     ddWin = ths_dd_win.THS_DDWindow()
-    ddWin.initWindows()
-    if not ddWin.openDDLJ():
-        print('同花顺大单页面打开失败')
-        fd.close()
-        raise Exception()
-    
-    print('开始下载同花顺大单数据...')
-    curDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
-    ds = hot_utils.calcHotZHOnDay(curDay)
-    datas = [d['code'] for d in ds]
-    MAX_NUM = len(datas)
-    successTimes, failTimes = 0, 0
-    fails = []
-    for idx, code in enumerate(datas):
-        code = f"{code :06d}"
-        sc = autoLoadOne(code, ddWin)
-        if sc:
-            successTimes += 1
-        else: 
-            failTimes += 1
-            fails.append(code)
-        if failTimes >= 10 and failTimes >= successTimes:
-            break
-    fd.close()
-    print(f'Load {MAX_NUM}, Success {successTimes}, Fail {failTimes}')
-    print('Fails: ', fails)
-    print('Try load fails')
-    for code in fails:
-        sc = autoLoadOne(code, ddWin)
-        if sc:
-            tg = 'success' if sc else 'Fail'
-            print('Load ', code, tg)
+    successTimes, lxFailTimes = 0, 0
+    try:
+        fd.open()
+        time.sleep(10)
+        thsWin.open()
+        ddWin.initWindows()
+        if not ddWin.openDDLJ():
+            print('同花顺大单页面打开失败')
+            raise Exception()
+        print('开始下载同花顺大单数据...')
+        cs = getCodes()
+        for i in range(len(cs) - 1, -1, -1):
+            info = cs[i]
+            sc = autoLoadOne(info['code'], ddWin)
+            if sc:
+                cs.pop(i)
+                successTimes += 1
+                lxFailTimes = 0
+            else:
+                info['times'] += 1
+                lxFailTimes += 1
+            if lxFailTimes >= 5:
+                break
+    except:
+        pass
+    ddWin.closeDDLJ()
     thsWin.close()
-    if successTimes + failTimes != MAX_NUM:
-        raise Exception('[autoLoadTop200Data] 下载失败')
+    fd.close()
+    print(f'Load success {successTimes}')
 
-def test2():
-    curDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
-    datas = orm.THS_Hot.select(orm.THS_Hot.code).distinct().where(orm.THS_Hot.day == curDay).tuples()
-    datas = [d[0] for d in datas]
-    print(len(datas))
+def checkLoadFinised():
+    cs = getCodes()
+    fails = []
+    for i in range(len(cs) - 1, -1, -1):
+        info = cs[i]
+        if info['times'] >= 3:
+            fails.append(info['code'])
+            cs.pop(i)
+    if len(fails) > 0:
+        print('Fails :', fails)
+    return len(cs) == 0
 
 def runOneTime():
-    try:
-        pyautogui.hotkey('win', 'd')
-        autoLoadTop200Data()
-        lds = ths_ddlr.LoadThsDdlrStruct()
-        lds.loadAllFileData()
-        ldd = ths_ddlr.LoadThsDdlrDetail()
-        # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
-        ldd.loadAllFilesData()
-        print('\n')
+    # check is finished
+    if checkLoadFinised():
         return True
-    except Exception as e:
-        print('Occur Exception: ', e)
-    return False
-
-def run():
-    rs = False
-    for i in range(1): # try 3 times
-        rs = runOneTime()
-        if rs:
-            break
-    print('\n\n')
-    return rs
+    pyautogui.hotkey('win', 'd')
+    autoLoadTop200Data()
+    print('\n')
+    return checkLoadFinised()
 
 def checkDDLR_Amount():
     query = orm.THS_DDLR.select(orm.THS_DDLR.code).distinct().where(orm.THS_DDLR.amount.is_null(True) | (orm.THS_DDLR.amount == 0) ).tuples()
@@ -133,6 +120,18 @@ def checkUserNoInputTime():
     sec = diff / 1000
     return sec >= 5 * 60
 
+_codes = {}
+def getCodes():
+    global _codes
+    curDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
+    if curDay in _codes:
+        return _codes[curDay]
+    ds = hot_utils.calcHotZHOnDay(curDay)
+    datas = [{'code': f"{d['code'] :06d}", 'times': 0} for d in ds]
+    datas.reverse()
+    _codes[curDay] = datas
+    return datas
+
 def main():
     lastDay = None
     while True:
@@ -156,7 +155,7 @@ def main():
         if not lock:
             time.sleep(5 * 60)
             continue
-        if run(): # checkUserNoInputTime() and
+        if runOneTime():
             lastDay = nowDay
             checkDDLR_Amount()
         releaseDesktopGUILock(lock)

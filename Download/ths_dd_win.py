@@ -37,24 +37,17 @@ class THS_Window:
 # 同花顺大单的窗口
 class THS_DDWindow:
     def __init__(self) -> None:
-        self.ddWnd = None
+        self.ddDlgWnd = None
+        self.ddBtnWnd = None
         self.topWnd = None
 
-    def _enumChild(self, hwnd, rt):
+    def _enumChild(self, hwnd):
         if not win32gui.IsWindowVisible(hwnd):
             return True
         title = win32gui.GetWindowText(hwnd)
         if '逐笔成交--600000(' in title:
-            rt['val'] = hwnd
+            self.ddBtnWnd = hwnd
         return True
-    
-    def getScreenPos(self, hwnd, x, y):
-        while hwnd:
-            rect = win32gui.GetWindowRect(hwnd)
-            x += rect[0]
-            y += rect[1]
-            hwnd = win32gui.GetParent(hwnd)
-        return x, y
 
     # 打开 大单棱镜
     def _openDDLJ(self):
@@ -63,36 +56,40 @@ class THS_DDWindow:
         if win32gui.IsIconic(self.topWnd):
             win32gui.ShowWindow(self.topWnd, win32con.SW_MAXIMIZE)
         win32gui.SetForegroundWindow(self.topWnd)
-        self.ddWnd = win32gui.FindWindow(None, '大单棱镜')
-        if self.ddWnd:
+        self.ddDlgWnd = win32gui.FindWindow(None, '大单棱镜')
+        if self.ddDlgWnd:
             return
-        time.sleep(1)
+        time.sleep(2)
         pyautogui.press('F6', interval=0.5) # 进入我的自选股
         time.sleep(2)
-        pyautogui.typewrite('600000', 0.05)
+        pyautogui.typewrite('600000', 0.1)
         pyautogui.press('enter')
-        time.sleep(1)
-        rt = {'val': None}
-        win32gui.EnumChildWindows(self.topWnd, self._enumChild, rt)
-        hwnd = rt['val']
-        if not hwnd:
-            return
-        print(f'THS_DDWindow hwnd=0x{hwnd: X}')
-        *_, w, h = win32gui.GetClientRect(hwnd)
-        x = w - 50
-        win32gui.PostMessage(hwnd, win32con.WM_LBUTTONDOWN, 0, 0x000a0000 | x)
-        time.sleep(0.01)
-        win32gui.PostMessage(hwnd, win32con.WM_LBUTTONUP, 0, 0x000a0000 | x)
         time.sleep(3)
-        self.ddWnd = win32gui.FindWindow(None, '大单棱镜')
+        self.ddBtnWnd = None
+        win32gui.EnumChildWindows(self.topWnd, self._enumChild)
+        if not self.ddBtnWnd:
+            return
+        print(f'THS_DDWindow ddBtn hwnd= {self.ddBtnWnd: X}')
+        *_, w, h = win32gui.GetClientRect(self.ddBtnWnd)
+        x = w - 50
+        win32gui.PostMessage(self.ddBtnWnd, win32con.WM_LBUTTONDOWN, 0, 0x000a0000 | x)
+        time.sleep(0.01)
+        win32gui.PostMessage(self.ddBtnWnd, win32con.WM_LBUTTONUP, 0, 0x000a0000 | x)
+        time.sleep(3)
+        self.ddDlgWnd = win32gui.FindWindow(None, '大单棱镜')
     
     def openDDLJ(self):
         for i in range(0, 3):
-            if not self.ddWnd:
+            if not self.ddDlgWnd:
                 self._showTopWindow()
                 self._openDDLJ()
                 time.sleep(3)
-        return self.ddWnd
+        return self.ddDlgWnd
+
+    def closeDDLJ(self):
+        if self.ddDlgWnd:
+            win32gui.PostMessage(self.ddDlgWnd, win32con.WM_CLOSE, 0, 0)
+        self.ddDlgWnd = None
 
     def initWindows(self):
         def callback(hwnd, selfx):
@@ -111,16 +108,16 @@ class THS_DDWindow:
         win32gui.SetForegroundWindow(self.topWnd)
 
     def grubFocusInSearchBox(self):
-        if not self.ddWnd:
+        if not self.ddDlgWnd:
             return
-        rect = win32gui.GetWindowRect(self.ddWnd)
+        rect = win32gui.GetWindowRect(self.ddDlgWnd)
         x, y = rect[0] + 100, rect[1] + 60 # search input box center
         pyautogui.click(x, y)
 
     def releaseFocus(self):
-        if not self.ddWnd:
+        if not self.ddDlgWnd:
             return
-        rect = win32gui.GetWindowRect(self.ddWnd)
+        rect = win32gui.GetWindowRect(self.ddDlgWnd)
         x, y = rect[0] + 200, rect[1] + 60 # out search input box 
         pyautogui.click(x, y)
 
@@ -129,3 +126,7 @@ if __name__ == '__main__':
     dd.initWindows()
     dd.openDDLJ()
     dd.grubFocusInSearchBox()
+    time.sleep(3)
+    dd.closeDDLJ()
+    time.sleep(3)
+    dd.openDDLJ()

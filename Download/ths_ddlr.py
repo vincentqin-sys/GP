@@ -38,15 +38,10 @@ def getNameByCode(code):
         return ''
     return n.name
 
-class LoadThsDdlrStruct:
-    def listFiles(self):
-        fs = os.listdir(BASE_STRUCT_PATH)
-        rs = [BASE_STRUCT_PATH + f for f in fs if isCode(f) ]
-        return rs
-
-    def _loadFileData(self, fileName):
+class ThsDdlrStructLoader:
+    def _loadFileData(self, path):
         data = {}
-        f = open(fileName, 'r', encoding= 'utf8')
+        f = open(path, 'r', encoding= 'utf8')
         lines = f.readlines()
         f.close()
         i = 0
@@ -81,17 +76,22 @@ class LoadThsDdlrStruct:
             rt.append(v)
         return rt
 
-    def loadOneFile(self, filePath):
+    def loadOneFile(self, code, remove = True):
+        filePath = BASE_STRUCT_PATH + code
+        if not os.path.exists(filePath):
+            return
         data = self._loadFileData(filePath)
         if len(data) <= 0:
             return
         self.mergeSavedData(data)
-        os.remove(filePath)
+        if remove:
+            os.remove(filePath)
 
     def loadAllFileData(self):
-        fs = self.listFiles()
-        print('找到大单结构数据: ', len(fs), '个')
-        for f in fs:
+        fs = os.listdir(BASE_STRUCT_PATH)
+        rs = [f for f in fs if isCode(f) ]
+        print('找到大单结构数据: ', len(rs), '个')
+        for f in rs:
             self.loadOneFile(f)
 
     def mergeSavedData(self, datas):
@@ -105,7 +105,7 @@ class LoadThsDdlrStruct:
                 d['name'] = name
                 orm.THS_DDLR.create(**d)
 
-class LoadThsDdlrDetail:
+class ThsDdlrDetailLoader:
     def __init__(self) -> None:
         self.tradeDays = self.getMaxTradeDays()
         #print(self.tradeDays)
@@ -125,14 +125,20 @@ class LoadThsDdlrDetail:
 
     def loadAllFilesData(self):
         fs = os.listdir(BASE_DETAIL_PATH)
-        print('找到大单详细数据: ', len(fs), '个')
+        #print('找到大单详细数据: ', len(fs), '个')
         for f in fs:
             if not isCode(f):
                 continue
-            fp = BASE_DETAIL_PATH + f
-            destfp = DEST_DETAIL_PATH + f + '.dd'
-            srcData = self.readSrcFile(fp)
-            self.writeDestData(srcData, destfp)
+            self.loadOneFile(f, True)
+    
+    def loadOneFile(self, code, remove = True):
+        fp = BASE_DETAIL_PATH + code
+        destfp = DEST_DETAIL_PATH + code + '.dd'
+        if not os.path.exists(fp):
+            return False
+        srcData = self.readSrcFile(fp)
+        self.writeDestData(srcData, destfp)
+        if remove:
             os.remove(fp)
     
     # 写入 xxxxxx.dd 文件， 数据格式： 日期;开始时间,结束时间,买卖方式(1:主动买 2:被动买 3:主动卖 4:被动卖),成交金额(万元); ...
@@ -191,7 +197,6 @@ class LoadThsDdlrDetail:
             i += 2
         return rs
         
-
     def readDestFile(self, destfp):
         f = open(destfp, 'r', encoding= 'utf8')
         lines = f.readlines()
@@ -286,7 +291,7 @@ class ThsDdlrDetailData:
 
 
 if __name__ == '__main__':
-    ddlr = LoadThsDdlrDetail()
+    ddlr = ThsDdlrDetailLoader()
     lds = os.listdir(DEST_DETAIL_PATH)
     for fn in lds:
         fn = os.path.join(DEST_DETAIL_PATH, fn)
