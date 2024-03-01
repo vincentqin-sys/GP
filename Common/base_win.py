@@ -12,7 +12,7 @@ class BaseWindow:
         self._bitmap = None
         self._bitmapSize = None
         self.cacheBitmap = False
-        self.css = {'fontSize' : 14, 'bgColor': 0x000000, 'textColor': 0xffffff} # config css style 
+        self.css = {'fontSize' : 14, 'bgColor': 0x000000, 'textColor': 0xffffff} # config css style
     
     # func = function(args, evtName, evtInfo)
     def addListener(self, func, args):
