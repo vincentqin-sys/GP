@@ -41,7 +41,7 @@ class THS_DDWindow:
         self.ddBtnWnd = None
         self.topWnd = None
 
-    def _enumChild(self, hwnd):
+    def _enumChild(self, hwnd, ext):
         if not win32gui.IsWindowVisible(hwnd):
             return True
         title = win32gui.GetWindowText(hwnd)
@@ -66,7 +66,7 @@ class THS_DDWindow:
         pyautogui.press('enter')
         time.sleep(3)
         self.ddBtnWnd = None
-        win32gui.EnumChildWindows(self.topWnd, self._enumChild)
+        win32gui.EnumChildWindows(self.topWnd, self._enumChild, None)
         if not self.ddBtnWnd:
             return
         print(f'THS_DDWindow ddBtn hwnd= {self.ddBtnWnd: X}')

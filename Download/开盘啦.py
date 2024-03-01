@@ -687,13 +687,21 @@ class MainTools:
 
     def loadZT_File(self):
         file = open(KPL_OCR_FILE, encoding='gbk')
+        lineNo = 0
         while True:
+            lineNo += 1
             line = file.readline().strip()
             if not line:
                 break
             its = line.split('\t')
             for i in range(len(its)): its[i] = its[i].strip()
+            if len(its) < 7:
+                print(f'Line {lineNo} error: ', its)
+                break
             day, name, code, ztTime, status, ztReason, ztNum, *_ = its
+            if not re.match(r'^\d{4}-\d{2}-\d{2}$', day):
+                print(f'Line {lineNo} error: ', its)
+                break
             self.save_KPL_ZT(day, code, name, ztTime, status, ztReason, ztNum)
 
     def save_KPL_ZT(self, day, code, name, ztTime, status, ztReason, ztNum):
@@ -719,16 +727,16 @@ class MainTools:
             self.util.clearModels()
             file.close()
             print('save to file success')
-        elif opt == 'load-zt-file':
+        elif opt == 'load-zt-file' or opt == 'l':
             self.loadZT_File()
-        elif opt == 'open-zt-file':
+        elif opt == 'open-zt-file' or opt == 'o':
             notepad = r'C:\Program Files\Notepad++\notepad++.exe'
             win32api.ShellExecute(None, 'open', notepad, KPL_OCR_FILE, None, win32con.SW_SHOW)
-        elif opt == 'auto-zt-one':
+        elif opt == 'auto-zt-one' or opt == 'a':
             self.autoLoadOneZT_Page()
         elif opt == 'auto-zt-all':
             self.autoMain_ZT()
-        elif opt == 'scqx':
+        elif opt == 'scqx' or opt == 'x':
             self.autoMain_SJFX(False)
         elif opt == 'auto-scqx':
             self.autoMain_SJFX(True)
@@ -748,15 +756,15 @@ class MainTools:
     def main(self):
         print('定位到[市场情绪->股票列表->涨停原因排序] ')
         print('定位到[市场情绪->数据分析] ')
+        # 'auto-zt-all = auto load all zt pages \n\t' + \
+        # 'next-zt-page = next page down  \n\t' + \
+        # 'auto-scqx = auto load scqx 定位到[市场情绪->数据分析]\n\t' + \
         tip = 'select options: \n\t' + \
-                'auto-zt-one = auto load one zt page  \n\t' + \
-                'auto-zt-all = auto load all zt pages \n\t' + \
-                'next-zt-page = next page down  \n\t' + \
-                'save-zt = save to file\n\t' + \
-                'load-zt-file = load zt data file, save to database\n\t' + \
-                'open-zt-file = use notepad++ open zt data file\n\t' + \
-                'scqx = load one scqx 定位到[市场情绪->数据分析]\n\t' + \
-                'auto-scqx = auto load scqx 定位到[市场情绪->数据分析]\n\t' + \
+                '[a] auto-zt-one = auto load one zt page  \n\t' + \
+                '[s] save-zt = save to file\n\t' + \
+                '[l] load-zt-file = load zt data file, save to database\n\t' + \
+                '[o] open-zt-file = use notepad++ open zt data file\n\t' + \
+                '[x] scqx = load one scqx 定位到[市场情绪->数据分析]\n\t' + \
                 'help = print help'
         print(tip)
         while True:

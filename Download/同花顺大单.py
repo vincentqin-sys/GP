@@ -59,7 +59,8 @@ def autoLoadTop200Data():
                 lxFailTimes += 1
             if lxFailTimes >= 5:
                 break
-    except:
+    except Exception as e:
+        print('Exception: ', e)
         pass
     ddWin.closeDDLJ()
     thsWin.close()
