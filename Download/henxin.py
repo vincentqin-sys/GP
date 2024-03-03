@@ -282,7 +282,7 @@ class HexinUrl(Henxin):
 
     # @return today:  {name:xx, data: HexinUrl.ItemData}
     #         kline:  {'name': xx, 'today': today,  'data': [HexinUrl.ItemData, ...]}
-    #         fenshi: {}
+    #         fenshi: {name:xx, pre:xx, date:xxx, data: str;str;..., }  data: 时间，价格，成交额（元），分时均价，成交量（手）;
     def loadUrlData(self, url):
         resp = self.session.get(url)
         if resp.status_code != 200:

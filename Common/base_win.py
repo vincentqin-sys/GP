@@ -42,8 +42,11 @@ class BaseWindow:
             self._draw()
             return True
         if msg == win32con.WM_DESTROY:
-            win32gui.PostQuitMessage(0)
-            return True
+            style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+            if not (style & win32con.WS_POPUP) and not (style & win32con.WS_CHILD):
+                win32gui.PostQuitMessage(0)
+                return True
+            del BaseWindow.bindHwnds[hwnd]
         return False
 
     def _draw(self):
@@ -77,7 +80,9 @@ class BaseWindow:
 
     @staticmethod
     def _WinProc(hwnd, msg, wParam, lParam):
-        self = BaseWindow.bindHwnds[hwnd]
+        self = BaseWindow.bindHwnds.get(hwnd, None)
+        if not self:
+            return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
         rs = self.winProc(hwnd, msg, wParam, lParam)
         if rs == True:
             return 0
@@ -127,7 +132,41 @@ class Thread:
                 else:
                     fun()
                 self.tasks.pop(0)
-                #print('run task taskId=', taskId)
+
+class TimerThread:
+    def __init__(self) -> None:
+        self.tasks = []
+        self.stoped = False
+        self.started = False
+        self.thread = threading.Thread(target = Thread._run, args=(self,))
+
+    def addTask(self, delaySeconds, fun, *args):
+        self.tasks.append((fun, args, time.time() + delaySeconds))
+
+    def start(self):
+        if not self.started:
+            self.started = True
+            self.thread.start()
+
+    def stop(self):
+        self.stoped = True
+    
+    def runOnce(self):
+        idx = 0
+        while idx < len(self.tasks):
+            task = self.tasks[idx]
+            fun, args, _time,  *_ = task
+            if time.time() < _time:
+                idx += 1
+                continue
+            self.tasks.pop(idx)
+            fun(*args)
+    
+    @staticmethod
+    def _run(self):
+        while not self.stoped:
+            time.sleep(0.5)
+            self.runOnce()
 
 class Drawer:
     _instance = None
@@ -1116,10 +1155,13 @@ class PopupWindow(BaseWindow):
         self.ownerHwnd = None
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
-        style = win32con.WS_POPUP | win32con.WS_CHILD
+        #style = win32con.WS_POPUP | win32con.WS_CHILD
         self.ownerHwnd = parentWnd
         super().createWindow(parentWnd, rect, style, className, title)
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+
+    def updateOwner(self, ownerHwnd):
+        win32gui.SetWindowLong(self.hwnd, win32con.GWL_HWNDPARENT, ownerHwnd)
 
     # x, y is screen pos
     def show(self, x = None, y = None):
@@ -1152,12 +1194,16 @@ class PopupWindow(BaseWindow):
 class PopupMenu(PopupWindow):
     def __init__(self) -> None:
         super().__init__()
+        self.css['bgColor'] = 0xf0f0f0
+        self.css['selBgColor'] = 0xdfd0d0
+        self.css['textColor'] = 0x222222
+        self.css['disableTextColor'] = 0x909090
         self.LEFT_RIGHT_PADDING = 20
         self.SEPRATOR_HEIGHT = 2
         self.ARROW_HEIGHT = 10
         self.VISIBLE_MAX_ITEM = 20 # 最大显示的个数
         self.model = None  # [{title:xx, name:xx }, ...]   title = LINE 表示分隔线
-        self.rowHeight = 20
+        self.rowHeight = 24
         self.selIdx = -1
         self.startIdx = 0 # 开始显示的idx
 
@@ -1256,13 +1302,14 @@ class PopupMenu(PopupWindow):
             rc[3] += ih
             if i == self.selIdx and title != 'LINE':
                 rcs = [0, rc[1], w, rc[3]]
-                self.drawer.fillRect(hdc, rcs, 0x333333)
+                self.drawer.fillRect(hdc, rcs, self.css['selBgColor'])
             if title == 'LINE':
                 self.drawer.drawLine(hdc, rc[0], rc[1], rc[2], rc[1], 0x999999, width = 1)
             else:
+                color = self.css['textColor'] if m.get('enable', True) else self.css['disableTextColor']
                 bk = rc[1]
                 rc[1] += (self.rowHeight - 14) // 2
-                self.drawer.drawText(hdc, title, rc, 0xcccccc, win32con.DT_LEFT)
+                self.drawer.drawText(hdc, title, rc, color, win32con.DT_LEFT)
                 rc[1] = bk
             rc[1] = rc[3]
 
@@ -1278,7 +1325,7 @@ class PopupMenu(PopupWindow):
             y = (lParam >> 16) & 0xffff
             idx = self.getItemIdxAt(y)
             self.hide()
-            if idx >= 0 and self.model[idx].get('title', '') != 'LINE':
+            if idx >= 0 and self.model[idx].get('title', '') != 'LINE' and self.model[idx].get('enable', True):
                 self.notifyListener('select', self.model[idx])
             return True
         if msg == win32con.WM_MOUSEWHEEL:
@@ -1291,32 +1338,24 @@ class PopupMenu(PopupWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
 
 class PopupMenuHelper:
-    _ins = None
-    def __init__(self) -> None:
-        self._menu = PopupMenu()
-        self._callback = None
-        self._menu.addListener(self._onMenuSelect, None)
-
-    def _onMenuSelect(self, args, evtName, evtInfo):
-        if not self._callback:
-            return
-        self._callback(evtName, evtInfo)
-
-    def _create(self, model, callback):
-        if not self._menu.hwnd:
-            self._menu.createWindow(None, (0, 0, 1, 1))
-        self._menu.setModel(model)
-        self._callback = callback
-
+    _menu = None
     # x, y is screen position
-    # model = [{'title': xx}, ...]  title = LINE | ....
-    # callback = function(evtName, evtInfo)
+    # model = [{'title': xx, 'enable' : True(is default) | False}, ...]  title:必选项 = LINE | ...., enable: 可选项
+    # listener = function(args, evtName, evtInfo)
+    # return PopupMenu object
     @staticmethod
-    def show(x, y, model, callback):
-        if PopupMenuHelper._ins == None:
-            PopupMenuHelper._ins = PopupMenuHelper()
-        PopupMenuHelper._ins._create(model, callback)
-        PopupMenuHelper._ins._menu.show(x, y)
+    def create(parentHwnd, model, listener):
+        if PopupMenuHelper._menu:
+            menu = PopupMenuHelper._menu
+            menu.listeners.clear()
+            win32gui.SetWindowLong(menu.hwnd, win32con.GWL_HWNDPARENT, parentHwnd)
+        else:
+            menu = PopupMenu()
+            PopupMenuHelper._menu = menu
+            menu.createWindow(parentHwnd, (0, 0, 1, 1), title = 'I-PopupMenu')
+        menu.setModel(model)
+        menu.addListener(listener, None)
+        return menu
 
 class DatePopupWindow(PopupWindow):
     TOP_HEADER_HEIGHT = 40
@@ -1504,6 +1543,224 @@ class DatePicker(BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
+class Editor(BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.css['bgColor'] = 0xf0f0f0
+        self.css['textColor'] = 0x202020
+        self.css['borderColor'] = 0xdddddd
+        self.css['selBgColor'] = 0xf0c0c0
+        self._createdCaret = False
+        self.scrollX = 0 # always <= 0
+        self.paddingX = 3 # 左右padding
+        self.text = ''
+        self.insertPos = 0
+        self.selRange = None # (beginPos, endPos)
+
+    def setText(self, text):
+        if not text:
+            self.text = ''
+            return
+        if not isinstance(text, str):
+            text = str(text)
+        self.text = text
+        self.scrollX = 0
+        self.setInsertPos(0)
+    
+    def setInsertPos(self, pos):
+        self.selRange = None
+        self.insertPos = pos
+        if self._createdCaret and win32gui.GetFocus() == self.hwnd:
+            rc = self.getCaretRect()
+            win32gui.SetCaretPos(rc[0], rc[1])
+
+    def makePosVisible(self, pos):
+        if not self.text or pos < 0:
+            return
+        hdc = win32gui.GetDC(self.hwnd)
+        self.drawer.use(hdc, self.drawer.getFont(fontSize=self.css['fontSize']))
+        W, H = self.getClientSize()
+        stw, *_ = win32gui.GetTextExtentPoint32(hdc, self.text[0 : pos])
+        px = self.scrollX + stw + self.paddingX
+        if px < self.paddingX:
+            self.scrollX += self.paddingX - px
+        elif px > W - self.paddingX:
+            self.scrollX -= px - (W - self.paddingX)
+        win32gui.ReleaseDC(self.hwnd, hdc)
+        self.invalidWindow()
+
+    def setSelRange(self, beginPos, endPos):
+        if not self.text:
+            self.selRange = None
+            return
+        beginPos = max(beginPos, 0)
+        endPos = max(endPos, 0)
+        beginPos = min(beginPos, len(self.text))
+        endPos = min(endPos, len(self.text))
+        if beginPos == endPos:
+            self.selRange = None
+            return
+        if beginPos > endPos:
+            beginPos, endPos = endPos, beginPos
+        self.selRange = (beginPos, endPos)
+
+    def deleteSelRangeText(self):
+        if not self.selRange:
+            return
+        txt = self.text[0 : self.selRange[0]]
+        txt2 = self.text[self.selRange[1] : ]
+        self.text = txt + txt2
+        if not self.text:
+            self.insertPos = 0
+            self.scrollX = 0
+        self.selRange = None
+        self.invalidWindow()
+
+    def getXAtPos(self, pos):
+        if not self.text or pos < 0:
+            return self.paddingX
+        hdc = win32gui.GetDC(self.hwnd)
+        self.drawer.use(hdc, self.drawer.getFont(fontSize=self.css['fontSize']))
+        tw, *_ = win32gui.GetTextExtentPoint32(hdc, self.text[0 : pos])
+        x = self.scrollX + tw + self.paddingX
+        win32gui.ReleaseDC(self.hwnd, hdc)
+        return x
+    
+    def getPosAtX_Text(self, text, x):
+        if not text:
+            return 0
+        hdc = win32gui.GetDC(self.hwnd)
+        self.drawer.use(hdc, self.drawer.getFont(fontSize=self.css['fontSize']))
+        pos = -1
+        for i in range(0, len(text) + 1):
+            cw, *_ = win32gui.GetTextExtentPoint32(hdc, self.text[0 : i])
+            if x <= cw:
+                pos = i
+                break
+        win32gui.ReleaseDC(self.hwnd, hdc)
+        if pos >= 0:
+            return pos
+        return len(text)
+
+    def getPosAtX(self, x):
+        hdc = win32gui.GetDC(self.hwnd)
+        pos = self.getPosAtX_Text(self.text, x - self.paddingX)
+        win32gui.ReleaseDC(self.hwnd, hdc)
+        return pos
+    
+    def onChar(self, key):
+        if key < 32:
+            return
+        if self.selRange:
+            self.deleteSelRangeText()
+        ch = chr(key)
+        if not self.text:
+            self.text = ch
+        else:
+            self.text = self.text[0 : self.insertPos] + ch + self.text[self.insertPos : ]
+        pos = self.insertPos + 1
+        self.makePosVisible(pos)
+        self.setInsertPos(pos)
+
+    # (left, top, right, bottom)
+    def getCaretRect(self):
+        W, H = self.getClientSize()
+        lh = self.css['fontSize'] + 4
+        x = self.getXAtPos(self.insertPos)
+        y = (H - lh ) // 2
+        return (x, y, x + 1, y + lh)
+
+    def drawCaret(self, hdc):
+        if win32gui.GetFocus() != self.hwnd or self._createdCaret:
+            return
+        x, y, ex, ey = self.getCaretRect()
+        self.drawer.drawLine(hdc, x, y, x, ey, 0x202020)
+
+    def onDraw(self, hdc):
+        if not self.text:
+            self.drawCaret(hdc)
+            return
+        W, H = self.getClientSize()
+        lh = self.css['fontSize']
+        y = (H - lh) // 2
+        if self.selRange:
+            sx = self.getXAtPos(self.selRange[0])
+            ex = self.getXAtPos(self.selRange[1])
+            src = (sx, y - 2, ex, y + lh + 2)
+            self.drawer.fillRect(hdc, src, self.css['selBgColor'])
+        rc = (self.scrollX + self.paddingX, y, W, y + lh)
+        self.drawer.drawText(hdc, self.text, rc, color=self.css['textColor'], align=win32con.DT_LEFT)
+        self.drawCaret(hdc)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONDOWN:
+            win32gui.SetFocus(self.hwnd)
+            x = lParam & 0xffff
+            pos = self.getPosAtX(x)
+            self.setInsertPos(pos)
+            self.invalidWindow()
+            return True
+        if msg == win32con.WM_MOUSEMOVE:
+            if wParam & win32con.MK_LBUTTON:
+                x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+                pos = self.getPosAtX(x)
+                self.setSelRange(self.insertPos, pos)
+                self.invalidWindow()
+            return True
+        if msg == win32con.WM_LBUTTONDBLCLK:
+            if self.text:
+                self.setSelRange(0, len(self.text))
+                self.invalidWindow()
+            return True
+        if msg == win32con.WM_CHAR or msg == win32con.WM_IME_CHAR:
+            self.onChar(wParam)
+            return True
+        if msg == win32con.WM_KEYDOWN:
+            if wParam == win32con.VK_LEFT:
+                if self.insertPos > 0:
+                    pos = self.insertPos - 1
+                    self.makePosVisible(pos)
+                    self.setInsertPos(pos)
+            elif wParam == win32con.VK_RIGHT:
+                if self.text and self.insertPos < len(self.text):
+                    pos = self.insertPos + 1
+                    self.makePosVisible(pos)
+                    self.setInsertPos(pos)
+            elif wParam == win32con.VK_DELETE:
+                if self.selRange:
+                    self.deleteSelRangeText()
+                elif self.text and self.insertPos < len(self.text):
+                    self.text = self.text[0 : self.insertPos] + self.text[self.insertPos + 1 : ]
+                    self.makePosVisible(self.insertPos)
+                    self.setInsertPos(self.insertPos)
+                    self.invalidWindow()
+            elif wParam == win32con.VK_BACK:
+                if self.selRange:
+                    self.deleteSelRangeText()
+                elif self.text and self.insertPos > 0:
+                    self.text = self.text[0 : self.insertPos - 1] + self.text[self.insertPos : ]
+                    pos = self.insertPos - 1
+                    self.makePosVisible(pos)
+                    self.setInsertPos(pos)
+                    self.invalidWindow()
+            elif wParam == win32con.VK_RETURN:
+                self.notifyListener('PressEnter', None)
+            return True
+        if msg == win32con.WM_SETFOCUS:
+            rc = self.getCaretRect()
+            win32gui.CreateCaret(self.hwnd, None, 1, rc[3] - rc[1])
+            win32gui.SetCaretPos(rc[0], rc[1])
+            win32gui.ShowCaret(self.hwnd)
+            self._createdCaret = True
+            return True
+        if msg == win32con.WM_KILLFOCUS:
+            if self._createdCaret:
+                win32gui.HideCaret(self.hwnd)
+                win32gui.DestroyCaret()
+            self._createdCaret = False
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
+
 def testGridLayout():
     class TestMain(BaseWindow):
         def __init__(self, gl) -> None:
@@ -1567,5 +1824,9 @@ def testPopMenu():
 
 if __name__ == '__main__':
     #testGridLayout()
-    testPopMenu()
+    #testPopMenu()
+    editor = Editor()
+    editor.setText('Hel中国心人民')
+    editor.setSelRange(2, 5)
+    editor.createWindow(None, (300, 200, 200, 70), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE)
     win32gui.PumpMessages()
