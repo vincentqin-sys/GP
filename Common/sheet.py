@@ -343,7 +343,7 @@ class SheetWindow(base_win.BaseWindow):
         self.startCol = 0
         self.selRange = None # (startRow, startCol, endRow?, endCol?)
         self.editer = CellEditor()
-        self.editer.css['bgColor'] = 0xffd3ff
+        self.editer.css['bgColor'] = self.css['bgColor']
         self.editer.css['borderColor'] = self.css['bgColor']
         self.editer.addListener(self.onPressEnter, None)
 
@@ -585,7 +585,7 @@ class SheetWindow(base_win.BaseWindow):
         ex = self.getXOfCol(ec + 1)
         sy = self.getYOfRow(sr)
         ey = self.getYOfRow(er + 1)
-        
+
         if sr == -1: # col select mode
             rc = [sx, self.COLUMN_HEADER_HEIGHT, ex, H]
         elif sc == -1: # row select mode
@@ -602,9 +602,29 @@ class SheetWindow(base_win.BaseWindow):
         rc = self.getSelRangeRect()
         if not rc:
             return
-        #win32gui.SetROP2(hdc, win32con.R2_MERGEPEN)
-        self.drawer.fillRect(hdc, rc, 0xffdddd)
-        #win32gui.SetROP2(hdc, win32con.R2_COPYPEN)
+        win32gui.SetROP2(hdc, win32con.R2_MASKPEN)
+        self.drawer.use(hdc, self.drawer.getPen(0xffdddd))
+        self.drawer.use(hdc, self.drawer.getBrush(0xffdddd))
+        win32gui.Rectangle(hdc, *rc)
+        #win32gui.FillRect(hdc, tuple(rc), self.drawer.getBrush(0xffdddd)) #Rop2对此函数无效
+        win32gui.SetROP2(hdc, win32con.R2_COPYPEN)
+
+    def drawBgColor(self, hdc):
+        if not self.model:
+            return
+        mc = self.getLastVisibleCol() + 1
+        mr = self.getLastVisibleRow() + 1
+        sy = self.COLUMN_HEADER_HEIGHT
+        for r in range(self.startRow, mr):
+            sx = self.ROW_HEADER_WIDTH
+            rh = self.getRowHeight(r)
+            for c in range(self.startCol, mc):
+                cw = self.getColumnWidth(c)
+                cell = self.model.getCell(r, c)
+                if cell and hasattr(cell, 'bgColor'):
+                    self.drawer.fillRect(hdc, (sx, sy, sx + cw, sy + rh), cell.bgColor)
+                sx += cw
+            sy += rh
 
     def drawCell(self, hdc, row, col, x, y, cw, ch, mw, mh):
         cell = self.model.getCell(row, col)
@@ -619,8 +639,6 @@ class SheetWindow(base_win.BaseWindow):
         color = self.css['textColor']
         if hasattr(cell, 'color'):
             color = cell.color
-        if hasattr(cell, 'bgColor') and not self.isCellInSelRange(row, col):
-            self.drawer.fillRect(hdc, (x + 1, y + 1, x + cw, y + ch), cell.bgColor)
         self.drawer.drawText(hdc, cell.text, (x + 3, y, mw, y + ch), color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
     def drawGrid(self, hdc):
@@ -640,6 +658,7 @@ class SheetWindow(base_win.BaseWindow):
             sy += rh
 
     def onDraw(self, hdc):
+        self.drawBgColor(hdc)
         self.drawSelRange(hdc)
         self.drawGridLines(hdc)
         self.drawGrid(hdc)
