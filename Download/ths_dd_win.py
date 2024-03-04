@@ -16,7 +16,7 @@ class THS_Window:
                 return
         print('未开启同花顺, 自动开启')
         self.needClose = True
-        subprocess.Popen('D:\\Program Files\\THS\\hexin.exe', shell=True)
+        subprocess.Popen('C:\\Program Files (x86)\\THS\\hexin.exe', shell=True)
         time.sleep(8)
 
     def close(self):

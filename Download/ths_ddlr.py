@@ -198,6 +198,8 @@ class ThsDdlrDetailLoader:
         return rs
         
     def readDestFile(self, destfp):
+        if not os.path.exists(destfp):
+            return True, set(), []
         f = open(destfp, 'r', encoding= 'utf8')
         lines = f.readlines()
         f.close()

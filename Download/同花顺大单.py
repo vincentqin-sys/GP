@@ -1,6 +1,6 @@
 import peewee as pw
 from peewee import fn
-import os, json, time, sys, pyautogui, io, datetime, win32api, win32event, winerror
+import os, json, time, sys, pyautogui, io, datetime, win32api, win32event, winerror, traceback
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
@@ -10,22 +10,27 @@ from Download import fiddler, ths_dd_win, ths_ddlr
 from Common import holiday
 
 def autoLoadOne(code, ddWin : ths_dd_win.THS_DDWindow):
-    ddWin.grubFocusInSearchBox()
-    # clear input text
-    for i in range(20):
-        pyautogui.press('backspace')
-        pyautogui.press('delete')
-    pyautogui.typewrite(code, 0.1)
-    time.sleep(0.2)
-    pyautogui.press('enter')
-    time.sleep(5)
-    ddWin.releaseFocus()
-    if not ths_ddlr.codeExists(code):
+    try:
+        ddWin.grubFocusInSearchBox()
+        # clear input text
+        for i in range(20):
+            pyautogui.press('backspace')
+            pyautogui.press('delete')
+        pyautogui.typewrite(code, 0.1)
+        time.sleep(0.2)
+        pyautogui.press('enter')
+        time.sleep(5)
+        ddWin.releaseFocus()
+        if not ths_ddlr.codeExists(code):
+            return False
+        lds = ths_ddlr.ThsDdlrStructLoader()
+        ldd = ths_ddlr.ThsDdlrDetailLoader()
+        lds.loadOneFile(code, True)
+        ldd.loadOneFile(code, True)
+    except Exception as e:
+        print('[autoLoadOne] Exception: ', e)
+        traceback.print_exc()
         return False
-    lds = ths_ddlr.ThsDdlrStructLoader()
-    ldd = ths_ddlr.ThsDdlrDetailLoader()
-    lds.loadOneFile(code, True)
-    ldd.loadOneFile(code, True)
     return True
 
 # 自动下载同花顺热点Top200个股的大单数据
