@@ -35,6 +35,16 @@ class Cell:
             self.text = str(txt)
         self.loadFormula(self.text)
 
+    # set or del(attrVal is None) attr
+    def setAttr(self, attrName, attrVal):
+        if attrName == 'text':
+            self.setText('' if attrVal == None else attrVal)
+            return
+        if attrVal == None:
+            if hasattr(self, attrName): delattr(self, attrName)
+        else:
+            setattr(self, attrName, attrVal)
+
     def loadFormula(self, txt):
         if not txt:
             self.isFormula = False
@@ -138,24 +148,24 @@ class SheetModel:
         self.colStyle = {} # column view style { col: {width: xx} }
         self.rowStyle = {} # row view style {row : {height: xx}}
 
-    # cell = any python object(to str) | None
-    def setCell(self, row, col, cell):
+    # cell = any python object(to str)
+    def setCellText(self, row, col, text):
         if row < 0 or col < 0:
             return
         key = (row << 8) | col
-        #key = (row, col)
-        if (cell == None) and (key in self.data):
-            del self.data[key]
-            return
-        if isinstance(cell, Cell):
-            self.data[key] = cell
-            return
         cd = self.data.get(key, None)
         if not cd:
             cd = self.data[key] = Cell(self.sheetWindow)
-        cd.setText(cell)
+        cd.setText(text)
     
-    def clearCell(self, row, col):
+    def addCell(self, row, col):
+        key = (row << 8) | col
+        if key not in self.data:
+            self.data[key] = Cell(self.sheetWindow)
+            return self.data[key]
+        return None
+    
+    def delCell(self, row, col):
         if row < 0 and col < 0:
             self.data.clear()
         elif row < 0: # del column mode
@@ -255,14 +265,14 @@ class SheetModel:
         if not _range:
             return
         if len(_range) == 2:
-            self.clearCell(_range[0], _range[1])
+            self.delCell(_range[0], _range[1])
             return
         # range is 4
         sr, er = min(_range[0], _range[2]), max(_range[0], _range[2])
         sc, ec = min(_range[1], _range[3]), max(_range[1], _range[3])
         for r in range(sr, er + 1):
             for c in range(sc, ec + 1):
-                self.clearCell(r, c)
+                self.delCell(r, c)
 
     # return (row-num, col-num)
     def getMaxRowColNum(self):
@@ -280,17 +290,34 @@ class SheetModel:
         return self.rowStyle.get(row, None)
 
     def unserialize(self, srcData):
+        self.data = {}
+        self.colStyle = {}
+        self.rowStyle = {}
         if not srcData:
             return
-        # TODO:
+        js = json.loads(srcData)
+        rcData = js['data']
+        for k in rcData:
+            cell = rcData[k]
+            sdata = Cell(self.sheetWindow)
+            self.data[int(k)] = sdata
+            for cc in cell:
+                if cc == 'text': sdata.setText(cell[cc])
+                else: setattr(sdata, cc, cell[cc])
+        cs = js['colStyle']
+        for k in cs:
+            self.colStyle[int(k)] = cs[k]
+        rs = js['rowStyle']
+        for k in rs:
+            self.rowStyle[int(k)] = rs[k]
 
     def serialize(self):
         data = {}
         for k in self.data:
             cell = self.data[k]
             data[k] = {}
-            for k in Cell.ATTRS:
-                if hasattr(cell, k): data[k][k] = getattr(cell, k)
+            for m in Cell.ATTRS:
+                if hasattr(cell, m): data[k][m] = getattr(cell, m)
         rs = {'rowStyle': self.rowStyle, 'colStyle': self.colStyle, 'data': data}
         val = json.dumps(rs, ensure_ascii = False)
         return val
@@ -409,9 +436,8 @@ class SheetWindow(base_win.BaseWindow):
                 delattr(cell, attrName)
             return
         if not cell:
-            self.model.setCell(row, col, '')
-            cell = self.model.getCell(row, col)
-        setattr(cell, attrName, attrVal)
+            cell = self.model.addCell(row, col)
+        cell.setAttr(attrName, attrVal)
 
     def setCellColor(self, row, col, color):
         self.setCellAttr(row, col, 'color', color)
@@ -423,8 +449,8 @@ class SheetWindow(base_win.BaseWindow):
         cell = self.model.getCell(row, col)
         if not cell:
             return
-        if hasattr(cell, 'color'): delattr(cell, 'color')
-        if hasattr(cell, 'bgColor'): delattr(cell, 'bgColor')
+        cell.setAttr('color', None)
+        cell.setAttr('bgColor', None)
     
     def clearRangeCellFormat(self, range_):
         self.setRangeCellAttr(range_, 'color', None)
@@ -695,7 +721,7 @@ class SheetWindow(base_win.BaseWindow):
         if not txt and not cell:
             pass
         else:
-            self.model.setCell(self.editer.row, self.editer.col, txt)
+            self.model.setCellText(self.editer.row, self.editer.col, txt)
         win32gui.SetFocus(self.hwnd)
 
     def onPressEnter(self, evtName, evtInfo, args):
@@ -779,6 +805,7 @@ class SheetWindow(base_win.BaseWindow):
         elif evtInfo['name'] == 'ClearFormat':
             self.clearRangeCellFormat(evtInfo['range'])
         elif evtInfo['name'] == 'Save':
+            print(self.model.serialize())
             self.notifyListener('Save', self.model)
         self.invalidWindow()
         menu = args[1]
@@ -860,11 +887,13 @@ if __name__ == '__main__':
     sheet = SheetWindow()
     for r in range(5):
         for c in range(4):
-            sheet.model.setCell(r, c, f'{r},{c}')
+            #sheet.model.setCell(r, c, f'{r},{c}')
+            pass
+    #sx = sheet.model.serialize()
+    #print(sx)
+    ss = r'{"rowStyle": {"3": {"height": 55}}, "colStyle": {"2": {"width": 120}}, "data": {"0": {"text": "0,0"}, "1": {"text": "0,1"}, "2": {"text": "0,2"}, "3": {"text": "0,3"}, "256": {"text": "1,0"}, "257": {"text": "1,1"}, "258": {"text": "1,2"}, "259": {"text": "1,3", "bgColor": 6750105}, "512": {"text": "2,0"}, "513": {"text": "2,1", "bgColor": 16738047}, "514": {"text": "2,2"}, "515": {"text": "2,3", "bgColor": 6750105}, "768": {"text": "3,0"}, "769": {"text": "3,1", "bgColor": 16738047}, "770": {"text": "3,2", "color": 10092288, "bgColor": 16763904}, "771": {"text": "3,3", "color": 10092288, "bgColor": 6750105}, "1024": {"text": "4,0"}, "1025": {"text": "4,1", "bgColor": 16738047}, "1026": {"text": "4,2"}, "1027": {"text": "4,3", "bgColor": 6750105}, "1281": {"text": "", "bgColor": 16738047}, "1537": {"text": "", "bgColor": 16738047}, "1793": {"text": "", "bgColor": 16738047}, "772": {"text": "", "color": 10092288, "bgColor": 16763904}, "773": {"text": "", "bgColor": 16763904}, "1283": {"text": "", "bgColor": 6750105}, "1282": {"text": "20"}, "1538": {"text": "520你好呀"}}}'
+    sheet.model.unserialize(ss)
+
     sheet.createWindow(None, (0, 0, 1000, 500), win32con.WS_OVERLAPPEDWINDOW, title='I-Sheet')
     win32gui.ShowWindow(sheet.hwnd, win32con.SW_NORMAL)
-    #sh2 = SheetWindow()
-    #sh2.createWindow(sheet.hwnd, (100, 100, 200, 200))
-    #win32gui.ShowWindow(sh2.hwnd, win32con.SW_NORMAL)
-    #GS['sh2'] = sh2
     win32gui.PumpMessages()

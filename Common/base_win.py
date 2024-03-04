@@ -818,7 +818,10 @@ class TableWindow(BaseWindow):
             self.sortData = None
             return
         reverse = st == 'DSC'
-        self.sortData = sorted(self.data, key = lambda d: d[header['name']], reverse = reverse)
+        if self.data:
+            self.sortData = sorted(self.data, key = lambda d: d[header['name']], reverse = reverse)
+        else:
+            self.sortData = None
 
     def onClick(self, x, y):
         win32gui.SetFocus(self.hwnd)
