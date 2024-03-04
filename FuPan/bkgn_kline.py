@@ -2,7 +2,7 @@ import win32gui, win32con, threading, time, os, sys
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import ths_win
-from THS.download import henxin
+from Download import henxin
 from FuPan import multi_kline
 from Common import base_win, kline
 

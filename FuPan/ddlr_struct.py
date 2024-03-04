@@ -43,7 +43,7 @@ class DddlrStructWindow(base_win.BaseWindow):
             self.layout.setContent(1, i, lw)
         datePicker.addListener(self.onSelDayChanged, None)
 
-    def onSelDayChanged(self, args, evtName, evtInfo):
+    def onSelDayChanged(self, evtName, evtInfo, args):
         if evtName != 'DatePopupWindow.selDayChanged':
             return
         # TODO: change models

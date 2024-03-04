@@ -37,7 +37,7 @@ class InputDialog(base_win.PopupWindow):
         self.show(x, y)
         win32gui.SetFocus(self.editor.hwnd)
 
-    def onPressEnter(self, args, evtName, evtInfo):
+    def onPressEnter(self, evtName, evtInfo, args):
         if evtName == 'PressEnter':
             self.hide()
             win32gui.DestroyWindow(self.hwnd)

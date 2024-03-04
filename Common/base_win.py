@@ -14,14 +14,14 @@ class BaseWindow:
         self.cacheBitmap = False
         self.css = {'fontSize' : 14, 'bgColor': 0x000000, 'textColor': 0xffffff} # config css style
     
-    # func = function(args, evtName, evtInfo)
-    def addListener(self, func, args):
-        self.listeners.append((args, func))
+    # func = function(evtName, evtInfo, args)
+    def addListener(self, func, args = None):
+        self.listeners.append((func, args))
 
     def notifyListener(self, evtName, evtInfo):
         for ls in self.listeners:
-            args, func = ls
-            func(args, evtName, evtInfo)
+            func, args = ls
+            func(evtName, evtInfo, args)
 
     # @param rect = (x, y, width, height)
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''): #  0x00800000 | 
@@ -1338,23 +1338,17 @@ class PopupMenu(PopupWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
 
 class PopupMenuHelper:
-    _menu = None
     # x, y is screen position
     # model = [{'title': xx, 'enable' : True(is default) | False}, ...]  title:必选项 = LINE | ...., enable: 可选项
     # listener = function(args, evtName, evtInfo)
+    # args = listener args, a tuple object or None. Auto add menu object to args ==> listener-function([args, menu], evtName, evtInfo)
     # return PopupMenu object
     @staticmethod
-    def create(parentHwnd, model, listener):
-        if PopupMenuHelper._menu:
-            menu = PopupMenuHelper._menu
-            menu.listeners.clear()
-            win32gui.SetWindowLong(menu.hwnd, win32con.GWL_HWNDPARENT, parentHwnd)
-        else:
-            menu = PopupMenu()
-            PopupMenuHelper._menu = menu
-            menu.createWindow(parentHwnd, (0, 0, 1, 1), title = 'I-PopupMenu')
+    def create(parentHwnd, model, listener, args = None):
+        menu = PopupMenu()
+        menu.createWindow(parentHwnd, (0, 0, 1, 1), title = 'I-PopupMenu')
         menu.setModel(model)
-        menu.addListener(listener, None)
+        menu.addListener(listener, (args, menu))
         return menu
 
 class DatePopupWindow(PopupWindow):
@@ -1518,7 +1512,7 @@ class DatePicker(BaseWindow):
             return None
         return f'{day.year}-{day.month :02d}-{day.day :02d}'
 
-    def onSelDayChanged(self, target, evtName, evtInfo):
+    def onSelDayChanged(self, evtName, evtInfo, args):
         self.invalidWindow()
         self.notifyListener(evtName, evtInfo)
 

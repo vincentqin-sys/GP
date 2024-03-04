@@ -157,7 +157,7 @@ class MultiKLineWindow(base_win.BaseWindow):
         self.klines[klineIdx].setModel(md)
         self.klines[klineIdx].makeVisible(target.selIdx)
 
-    def onListen(self, args, evtName, evtInfo):
+    def onListen(self, evtName, evtInfo, args):
         curWinIdx = args
         for i, kl in enumerate(self.klines):
             if i == curWinIdx:

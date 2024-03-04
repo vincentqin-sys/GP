@@ -33,7 +33,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.layout.setContent(1, 0, self.cardLayout)
 
     
-    def changeGroup(self, args, evtName, evtInfo):
+    def changeGroup(self, evtName, evtInfo, args):
         idx = evtInfo['groupIdx']
         self.cardLayout.showCardByIdx(idx)
 

@@ -80,7 +80,7 @@ def showSortAndLiangDianWindow(show, move):
         if width > 1500:
             win32gui.SetWindowPos(simpleWindow.hwnd, None, 1087, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
 
-def onListen(args, evtName, evtInfo):
+def onListen(evtName, evtInfo, args):
     if args == 'ListenHotWindow' and evtName == 'mode.change':
         #showSortAndLiangDianWindow(not evtInfo['maxMode'], True)
         pass

@@ -300,6 +300,7 @@ class SheetModel:
             r, c = (k >> 8) & 0xffffff, k & 0xff
             print((r, c), '=', self.data[k].getText())
 
+# Listeners can be: 'Save'
 class SheetWindow(base_win.BaseWindow):
     COLUMN_HEADER_HEIGHT = 30 # 列头高
     ROW_HEADER_WIDTH = 40 # 行头宽
@@ -400,19 +401,23 @@ class SheetWindow(base_win.BaseWindow):
             rs = self.model.colStyle[col] = {}
         rs['width'] = width
 
-    def setCellColor(self, row, col, color):
+    # set attr , or delete attr (attrVal is None)
+    def setCellAttr(self, row, col, attrName, attrVal):
         cell = self.model.getCell(row, col)
+        if attrVal == None:
+            if cell and hasattr(cell, attrName):
+                delattr(cell, attrName)
+            return
         if not cell:
             self.model.setCell(row, col, '')
             cell = self.model.getCell(row, col)
-        cell.color = color
+        setattr(cell, attrName, attrVal)
+
+    def setCellColor(self, row, col, color):
+        self.setCellAttr(row, col, 'color', color)
 
     def setCellBgColor(self, row, col, color):
-        cell = self.model.getCell(row, col)
-        if not cell:
-            self.model.setCell(row, col, '')
-            cell = self.model.getCell(row, col)
-        cell.bgColor = color
+        self.setCellAttr(row, col, 'bgColor', color)
 
     def clearCellFormat(self, row, col):
         cell = self.model.getCell(row, col)
@@ -420,6 +425,44 @@ class SheetWindow(base_win.BaseWindow):
             return
         if hasattr(cell, 'color'): delattr(cell, 'color')
         if hasattr(cell, 'bgColor'): delattr(cell, 'bgColor')
+    
+    def clearRangeCellFormat(self, range_):
+        self.setRangeCellAttr(range_, 'color', None)
+        self.setRangeCellAttr(range_, 'bgColor', None)
+    
+    # return (left, top, right, bottom)
+    def formatRange(self, range_):
+        if not range_:
+            return None
+        if len(self.selRange) == 2:
+            sr, sc = self.selRange
+            er = sr
+            ec = sc
+        else:
+            sr, sc, er, ec = self.selRange
+        sc, ec = min(sc, ec), max(sc, ec)
+        sr, er = min(sr, er), max(sr, er)
+        return (sr, sc, er, ec)
+    
+    # param range_ is (left, top) or (left, top, right, bottom)
+    # attrVal is None : clear this attr
+    def setRangeCellAttr(self, range_, attrName, attrVal):
+        range_ = self.formatRange(range_)
+        if not range_:
+            return
+        sr, sc, er, ec = range_
+        for k in self.model.data:
+            r, c = (k >> 8) & 0xffffff, k & 0xff
+            if sr < 0: # column mode
+                if c >= sc and c <= ec:
+                    self.setCellAttr(r, c, attrName, attrVal)
+            elif sc < 0: # row mode
+                if r >= sr and r <= er:
+                    self.setCellAttr(r, c, attrName, attrVal)
+        if sr >= 0 and sc >= 0: # cell mode
+            for r in range(sr, er + 1):
+                for c in range(sc, ec + 1):
+                    self.setCellAttr(r, c, attrName, attrVal)
 
     # -1 is on headers
     def getRowAtY(self, y):
@@ -492,20 +535,25 @@ class SheetWindow(base_win.BaseWindow):
                 return col
             col += 1
         return col
+    
+    def isCellInSelRange(self, row, col):
+        if row < 0 or col < 0 or not self.selRange:
+            return False
+        sr, sc, er, ec = self.formatRange(self.selRange)
+        if sr >= 0:
+            if row < sr or row > er:
+                return False
+        if sc >= 0:
+            if col < sc or col > ec:
+                return False
+        return True
 
     def getSelRangeRect(self):
         if not self.selRange:
             return None
         if self.selRange[0] < -1 or self.selRange[1] < -1:
             return None
-        if len(self.selRange) == 2:
-            sr, sc = self.selRange
-            er = sr
-            ec = sc
-        else:
-            sr, sc, er, ec = self.selRange
-        sc, ec = min(sc, ec), max(sc, ec)
-        sr, er = min(sr, er), max(sr, er)
+        sr, sc, er, ec = self.formatRange(self.selRange)
         W, H = self.getClientSize()
         sx = self.getXOfCol(sc)
         ex = self.getXOfCol(ec + 1)
@@ -545,7 +593,7 @@ class SheetWindow(base_win.BaseWindow):
         color = self.css['textColor']
         if hasattr(cell, 'color'):
             color = cell.color
-        if hasattr(cell, 'bgColor'):
+        if hasattr(cell, 'bgColor') and not self.isCellInSelRange(row, col):
             self.drawer.fillRect(hdc, (x + 1, y + 1, x + cw, y + ch), cell.bgColor)
         self.drawer.drawText(hdc, cell.text, (x + 3, y, mw, y + ch), color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
@@ -643,10 +691,14 @@ class SheetWindow(base_win.BaseWindow):
         self.editer.inEdit = False
         win32gui.ShowWindow(self.editer.hwnd, win32con.SW_HIDE)
         txt = self.editer.text
-        self.model.setCell(self.editer.row, self.editer.col, txt)
+        cell = self.model.getCell(self.editer.row, self.editer.col)
+        if not txt and not cell:
+            pass
+        else:
+            self.model.setCell(self.editer.row, self.editer.col, txt)
         win32gui.SetFocus(self.hwnd)
 
-    def onPressEnter(self, args, evtName, evtInfo):
+    def onPressEnter(self, evtName, evtInfo, args):
         self.endEdit()
 
     def onContextMenu(self, row, col):
@@ -659,16 +711,18 @@ class SheetWindow(base_win.BaseWindow):
                  {'title': 'LINE'},
                  {'title': '设置行高', 'enable': row >= 0 and col < 0, 'name': 'SetRowHeight', 'pos': row},
                  {'title': '设置列宽', 'enable': col >= 0 and row < 0, 'name': 'SetColWidth', 'pos': col},
-                 {'title': '设置颜色', 'enable': col >= 0 and row >= 0, 'name': 'SetColor', 'row': row, 'col': col, 'x': x, 'y': y},
-                 {'title': '设置背景色', 'enable': col >= 0 and row >= 0, 'name': 'SetBgColor', 'row': row, 'col': col, 'x': x, 'y': y},
-                 {'title': '清除格式', 'enable': col >= 0 and row >= 0, 'name': 'ClearGS', 'row': row, 'col': col, 'x': x, 'y': y},
+                 {'title': '设置颜色', 'enable': col >= 0 and row >= 0, 'name': 'SetColor', 'range': self.selRange, 'x': x, 'y': y},
+                 {'title': '设置背景色', 'enable': col >= 0 and row >= 0, 'name': 'SetBgColor', 'range': self.selRange, 'x': x, 'y': y},
+                 {'title': '清除格式', 'enable': col >= 0 and row >= 0, 'name': 'ClearFormat', 'range': self.selRange, 'x': x, 'y': y},
+                 {'title': 'LINE'},
+                 {'title': '保存', 'name': 'Save'},
                  ]
 
         menu = base_win.PopupMenuHelper.create(self.hwnd, model, self.onContextMenuItemSelect)
         menu.show(x, y)
 
-    def onContextMenuItemSelect(self, args, evtName, evtInfo):
-        print('menu select: ', evtName, evtInfo)
+    def onContextMenuItemSelect(self, evtName, evtInfo, args):
+        #print('menu select: ', evtName, evtInfo)
         pos = int(evtInfo.get('pos', 0))
         if evtInfo['name'] == 'InsertRow':
             self.model.insertRow(pos)
@@ -683,7 +737,7 @@ class SheetWindow(base_win.BaseWindow):
             dlg.createWindow(self.hwnd, (0, 0, 200, 70))
             win32gui.SetWindowText(dlg.hwnd, f'设置行高（第{pos + 1}行）')
             dlg.setText(self.getRowHeight(pos))
-            def callback_1(row, evtName, evtInfo):
+            def callback_1(evtName, evtInfo, row):
                 txt = dlg.getText().strip()
                 if re.match(r'^\d+$', txt):
                     self.setRowHeight(pos, int(txt))
@@ -696,7 +750,7 @@ class SheetWindow(base_win.BaseWindow):
             dlg.createWindow(self.hwnd, (0, 0, 200, 70))
             win32gui.SetWindowText(dlg.hwnd, f'设置列宽（第{self.colIdxToChar(pos)}列）')
             dlg.setText(self.getColWidth(pos))
-            def callback_2(col, evtName, evtInfo):
+            def callback_2(evtName, evtInfo, col):
                 txt = dlg.getText().strip()
                 if re.match(r'^\d+$', txt):
                     self.setColWidth(col, int(txt))
@@ -707,24 +761,28 @@ class SheetWindow(base_win.BaseWindow):
         elif evtInfo['name'] == 'SetColor':
             dlg = dialog.PopupColorWindow()
             dlg.createWindow(self.hwnd)
-            def callback_3(args, evtName, evtInfo):
-                r, c = args
-                self.setCellColor(r, c, evtInfo)
+            def callback_3(evtName, evtInfo, args):
+                _range = args
+                self.setRangeCellAttr(_range, 'color', evtInfo)
                 self.invalidWindow()
-            dlg.addListener(callback_3, (evtInfo['row'], evtInfo['col']))
+            dlg.addListener(callback_3, evtInfo['range'])
             dlg.show(evtInfo['x'], evtInfo['y'])
         elif evtInfo['name'] == 'SetBgColor':
             dlg = dialog.PopupColorWindow()
             dlg.createWindow(self.hwnd)
-            def callback_4(args, evtName, evtInfo):
-                r, c = args
-                self.setCellBgColor(r, c, evtInfo)
+            def callback_4(evtName, evtInfo, args):
+                _range = args
+                self.setRangeCellAttr(_range, 'bgColor', evtInfo)
                 self.invalidWindow()
-            dlg.addListener(callback_4, (evtInfo['row'], evtInfo['col']))
+            dlg.addListener(callback_4, evtInfo['range'])
             dlg.show(evtInfo['x'], evtInfo['y'])
-        elif evtInfo['name'] == 'ClearGS':
-            self.clearCellFormat(evtInfo['row'], evtInfo['col'])
+        elif evtInfo['name'] == 'ClearFormat':
+            self.clearRangeCellFormat(evtInfo['range'])
+        elif evtInfo['name'] == 'Save':
+            self.notifyListener('Save', self.model)
         self.invalidWindow()
+        menu = args[1]
+        win32gui.DestroyWindow(menu.hwnd)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONDOWN:

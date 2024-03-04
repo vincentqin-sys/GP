@@ -227,7 +227,7 @@ class KPL_MgrWindow(base_win.BaseWindow):
         self.kplTableWin.addListener(self.onListenTable, 'TableWindow')
         self.layout.resize(0, 0, *self.getClientSize())
 
-    def onLisetenSelectDay(self, args, evtName, evtInfo):
+    def onLisetenSelectDay(self, evtName, evtInfo, args):
         #print('onLisetenSelectDay: ', target, evtName, evtInfo)
         if args == 'next':
             self.kplWin.nextDay()
@@ -238,17 +238,17 @@ class KPL_MgrWindow(base_win.BaseWindow):
             self.datePickerWin.setSelDay(self.kplWin.day)
             self.kplTableWin.updateDay(self.kplWin.day)
 
-    def onLisetenDatePickerChanged(self, args, evtName, evtInfo):
+    def onLisetenDatePickerChanged(self, evtName, evtInfo, args):
         day = evtInfo['curSelDay']
         #day = f'{day.year}-{day.month :02d}-{day.day :02d}'
         self.kplWin.updateDay(day)
         self.kplTableWin.updateDay(day)
 
-    def onLisetenEvent(self, args, evtName, evtInfo):
+    def onLisetenEvent(self, evtName, evtInfo, args):
         print('onLisetenEvent: ', args, evtName, evtInfo)
         pass
 
-    def onListenTable(self, args, evtName, evtInfo):
+    def onListenTable(self, evtName, evtInfo, args):
         if evtName == 'DbClick' or evtName == 'RowEnter':
             data = evtInfo['data']
             self.multiKLineWin.updateCode(data['code'])
