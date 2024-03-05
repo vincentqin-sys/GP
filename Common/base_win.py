@@ -1,8 +1,8 @@
 import win32gui, win32con , win32api, win32ui, win32gui_struct # pip install pywin32
 import threading, time, datetime, sys, os, copy, calendar, functools
 
-# listeners : ContextMenu = {x, y}
-#             DbClick = {x, y}
+# listeners : ContextMenu = {x, y} , default is diable
+#             DbClick = {x, y} , default is diable
 class BaseWindow:
     bindHwnds = {}
 
