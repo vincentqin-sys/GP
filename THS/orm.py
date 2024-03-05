@@ -151,7 +151,7 @@ class THS_ZS(pw.Model):
         table_name = '同花顺指数'
 
 class THS_ZS_ZD(pw.Model):
-    day = pw.CharField()
+    day = pw.CharField() # YYYY-MM-DD
     code = pw.CharField() #指数代码
     name = pw.CharField() #指数名称
     close = pw.FloatField()

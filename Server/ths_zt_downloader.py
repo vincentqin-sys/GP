@@ -1,6 +1,6 @@
 import peewee as pw
 import threading
-import requests, json, flask
+import requests, json, flask, traceback
 import datetime, time, sys, os, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
@@ -132,14 +132,19 @@ def autoLoadHistory():
 
 def run():
     while True:
-        time.sleep(100)
         now = datetime.datetime.now()
         if not acceptDay(now):
             continue
         curTime = now.strftime('%H:%M')
-        if curTime < '09:30' or curTime > '15:05':
+        if curTime < '09:30' or curTime > '16:00':
             continue
-        downloadOneDay(now)
+        try:
+            downloadOneDay(now)
+        except Exception as e:
+            print(e)
+            traceback.print_exc()
+        time.sleep(30 * 60)
+
 
 def autoLoadThsZT():
     th = threading.Thread(target = run)
@@ -147,4 +152,4 @@ def autoLoadThsZT():
 
 if __name__ == '__main__':
     #autoLoadHistory()
-    downloadOneDay(20240228)
+    downloadOneDay(20240305)

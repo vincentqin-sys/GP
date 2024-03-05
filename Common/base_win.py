@@ -1,5 +1,5 @@
 import win32gui, win32con , win32api, win32ui, win32gui_struct # pip install pywin32
-import threading, time, datetime, sys, os, copy, calendar
+import threading, time, datetime, sys, os, copy, calendar, functools
 
 class BaseWindow:
     bindHwnds = {}
@@ -600,7 +600,9 @@ class Cardayout(Layout):
 class TableWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.style = {}
+        self.css['bgColor'] = 0xf0f0f0
+        self.css['textColor'] = 0x333333
+        self.css['headerBgColor'] = 0xc3c3c3
         self.rowHeight = 20
         self.headHeight = 24
         self.tailHeight = 0
@@ -611,9 +613,10 @@ class TableWindow(BaseWindow):
 
         self.data = None # a data array, [{colName1: xx, colName2: xxx}, ...]
 
-        # headers : need set  [{title:xx, name:xxx, width: x, sortable:True|False, formater: func }, ...]
-        #                         width : int (fix width), float : int part is fix width, float part is stretch
-        #                      formater: function(colName, val, rowData) -> return format data
+        # headers : need set  [{title:xx, name:xxx, width: x, sortable:True|False, formater: func, sorter:func }, ...]
+        #                       width : int (fix width), float : int part is fix width, float part is stretch
+        #                       formater: function(colName, val, rowData) -> return format data
+        #                       sorter: function(colName, val, rowData, allDatas, asc:True|False)  -> return sorted value
         # name = '#idx' is index row column 
         self.headers = None # must be set TODO
 
@@ -678,6 +681,8 @@ class TableWindow(BaseWindow):
         if self.data == data:
             return
         self.data = data
+        self.sortData = None
+        self.sortHeader = {'header': None, 'state': None}
         self.startIdx = 0
         self.selRow = -1
 
@@ -715,7 +720,6 @@ class TableWindow(BaseWindow):
         self.invalidWindow()
 
     def onDraw(self, hdc):
-        self.drawer.fillRect(hdc, (0, 0, *self.getClientSize()), 0x151313)
         if not self.getHeaders():
             return
         self.drawHeaders(hdc)
@@ -731,6 +735,8 @@ class TableWindow(BaseWindow):
             self.drawRow(hdc, i, i + vr[0], rc)
 
     def drawSort(self, hdc, rc):
+        if not self.sortHeader:
+            return
         hd = self.sortHeader['header']
         state = self.sortHeader['state']
         if not hd or not state:
@@ -742,7 +748,7 @@ class TableWindow(BaseWindow):
             pts = [(sx + WH // 2, sy), (sx, sy + WH), (sx + WH, sy + WH)]
         else:
             pts = [(sx, sy), (sx + WH, sy), (sx + WH // 2, sy + WH)]
-        hbr = win32gui.CreateSolidBrush(0xaaaabb)
+        hbr = win32gui.CreateSolidBrush(0xff007f)
         win32gui.SelectObject(hdc, hbr)
         win32gui.Polygon(hdc, pts)
         win32gui.DeleteObject(hbr)
@@ -752,12 +758,12 @@ class TableWindow(BaseWindow):
         if self.headHeight <= 0 or not hds:
             return
         w = self.getClientSize()[0]
-        self.drawer.fillRect(hdc, (0, 0, w, self.headHeight), 0x191919)
+        self.drawer.fillRect(hdc, (0, 0, w, self.headHeight), self.css['headerBgColor'])
         rc = [0, 0, 0, self.headHeight]
         for i, hd in enumerate(hds):
             rc[2] += self.getColumnWidth(i, hd['name'])
             self.drawer.drawRect2(hdc, rc, 0x888888)
-            if self.sortHeader['header'] == hd:
+            if self.sortHeader and self.sortHeader['header'] == hd:
                 self.drawSort(hdc, rc)
             rc2 = rc.copy()
             rc2[1] = (self.headHeight - 14) // 2
@@ -768,7 +774,7 @@ class TableWindow(BaseWindow):
         formater = self.headers[col].get('formater', None)
         if formater:
             value = formater(colName, value, self.data[row])
-        self.drawer.drawText(hdc, str(value), rect, 0xffffff, align=win32con.DT_LEFT)
+        self.drawer.drawText(hdc, str(value), rect, self.css['textColor'], align=win32con.DT_LEFT)
 
     def drawRow(self, hdc, showIdx, row, rect):
         rc = [0, rect[1], 0, rect[3]]
@@ -776,7 +782,7 @@ class TableWindow(BaseWindow):
         if not hds:
             return
         if row == self.selRow:
-            self.drawer.fillRect(hdc, rect, 0x393533)
+            self.drawer.fillRect(hdc, rect, 0xf0a0a0)
         for i in range(len(hds)):
             colName = hds[i]['name']
             rc[2] += self.getColumnWidth(i, colName)
@@ -819,7 +825,13 @@ class TableWindow(BaseWindow):
             return
         reverse = st == 'DSC'
         if self.data:
-            self.sortData = sorted(self.data, key = lambda d: d[header['name']], reverse = reverse)
+            if 'sorter' in header:
+                def keyn(rowData):
+                    hdn = header['name']
+                    return header['sorter'](hdn, rowData[hdn], rowData, self.data, st == 'ASC')
+                self.sortData = sorted(self.data, key = keyn, reverse = reverse)
+            else:
+                self.sortData = sorted(self.data, key = lambda d: d[header['name']], reverse = reverse)
         else:
             self.sortData = None
 
@@ -1073,16 +1085,19 @@ class Button(BaseWindow):
     # btnInfo = {name: xxx, title: xxx}
     def __init__(self, btnInfo) -> None:
         super().__init__()
+        self.css['bgColor'] = 0x333333
+        self.css['borderColor'] = 0x202020
+        self.css['textColor'] = 0x2fffff
         self.info = btnInfo
     
     def onDraw(self, hdc):
         w, h = self.getClientSize()
         TH = 14
         rc = (0, 0,  w, h)
-        self.drawer.fillRect(hdc, rc, 0x333333)
-        self.drawer.drawRect2(hdc, rc, 0x202020)
+        self.drawer.fillRect(hdc, rc, self.css['bgColor'])
+        self.drawer.drawRect2(hdc, rc, self.css['borderColor'])
         rc = (0, (h - TH) // 2,  w, h - (h - TH) // 2)
-        self.drawer.drawText(hdc, self.info['title'], rc, 0x2fffff)
+        self.drawer.drawText(hdc, self.info['title'], rc, self.css['textColor'])
 
     def onClick(self, x, y):
         self.notifyListener('click', self.info)
@@ -1093,6 +1108,30 @@ class Button(BaseWindow):
             self.onClick(x, y)
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
+
+class Label(BaseWindow):
+    def __init__(self, text = None) -> None:
+        super().__init__()
+        self.css['borderColor'] = self.css['bgColor']
+        self.text = text
+    
+    def setText(self, text):
+        if text == None:
+            self.text = ''
+        elif isinstance(text, str):
+            self.text = text
+        else:
+            self.text = str(text)
+        self.invalidWindow()
+    
+    def onDraw(self, hdc):
+        w, h = self.getClientSize()
+        TH = 14
+        rc = (0, 0,  w, h)
+        self.drawer.fillRect(hdc, rc, self.css['bgColor'])
+        self.drawer.drawRect2(hdc, rc, self.css['borderColor'])
+        rc = (0, (h - TH) // 2,  w, h - (h - TH) // 2)
+        self.drawer.drawText(hdc, self.text, rc, self.css['textColor'], win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
 class CheckBox(BaseWindow):
     _groups = {}
