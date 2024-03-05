@@ -327,7 +327,7 @@ class SheetModel:
             r, c = (k >> 8) & 0xffffff, k & 0xff
             print((r, c), '=', self.data[k].getText())
 
-# Listeners can be: 'Save'
+# listeners : Save = sheet-model
 class SheetWindow(base_win.BaseWindow):
     COLUMN_HEADER_HEIGHT = 30 # 列头高
     ROW_HEADER_WIDTH = 40 # 行头宽
@@ -744,7 +744,8 @@ class SheetWindow(base_win.BaseWindow):
         win32gui.SetFocus(self.hwnd)
 
     def onPressEnter(self, evtName, evtInfo, args):
-        self.endEdit()
+        if evtName == 'PressEnter':
+            self.endEdit()
 
     def onContextMenu(self, row, col):
         x, y = win32gui.GetCursorPos()
@@ -783,6 +784,8 @@ class SheetWindow(base_win.BaseWindow):
             win32gui.SetWindowText(dlg.hwnd, f'设置行高（第{pos + 1}行）')
             dlg.setText(self.getRowHeight(pos))
             def callback_1(evtName, evtInfo, row):
+                if evtName != 'InputEnd':
+                    return
                 txt = dlg.getText().strip()
                 if re.match(r'^\d+$', txt):
                     self.setRowHeight(pos, int(txt))
@@ -796,6 +799,8 @@ class SheetWindow(base_win.BaseWindow):
             win32gui.SetWindowText(dlg.hwnd, f'设置列宽（第{self.colIdxToChar(pos)}列）')
             dlg.setText(self.getColWidth(pos))
             def callback_2(evtName, evtInfo, col):
+                if evtName != 'InputEnd':
+                    return
                 txt = dlg.getText().strip()
                 if re.match(r'^\d+$', txt):
                     self.setColWidth(col, int(txt))
@@ -807,6 +812,8 @@ class SheetWindow(base_win.BaseWindow):
             dlg = dialog.PopupColorWindow()
             dlg.createWindow(self.hwnd)
             def callback_3(evtName, evtInfo, args):
+                if evtName != 'InputEnd':
+                    return
                 _range = args
                 self.setRangeCellAttr(_range, 'color', evtInfo)
                 self.invalidWindow()
@@ -816,6 +823,8 @@ class SheetWindow(base_win.BaseWindow):
             dlg = dialog.PopupColorWindow()
             dlg.createWindow(self.hwnd)
             def callback_4(evtName, evtInfo, args):
+                if evtName != 'SelectColor':
+                    return
                 _range = args
                 self.setRangeCellAttr(_range, 'bgColor', evtInfo)
                 self.invalidWindow()

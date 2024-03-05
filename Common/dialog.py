@@ -2,6 +2,7 @@ import sys, win32con, win32gui
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
 
+# listeners : InputEnd = input-text
 class InputDialog(base_win.PopupWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -43,6 +44,7 @@ class InputDialog(base_win.PopupWindow):
             win32gui.DestroyWindow(self.hwnd)
             self.notifyListener('InputEnd', self.getText())
 
+# listeners : SelectColor = color
 class PopupColorWindow(base_win.PopupWindow):
     MAX_COL_NUM = 13
     CELL_SIZE = 15

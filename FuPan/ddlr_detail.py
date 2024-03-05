@@ -464,6 +464,8 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
         #self.updateCodeDay('601096', 20240119)
 
     def onListenMoney(self, evtName, evtInfo, args):
+        if evtName != 'ClickSelect':
+            return
         group = evtInfo['group']
         ds = self.fsWin.model.filterDDLR(group['val'])
         self.tableWin.setData(ds, group['desc'])
@@ -471,6 +473,8 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
         win32gui.InvalidateRect(self.fsWin.hwnd, None, True)
 
     def onListenRefresh(self, evtName, evtInfo, args):
+        if evtName != 'ClickSelect':
+            return
         code = self.shareMem.readCode()
         day = self.shareMem.readSelDay()
         if not code or not day:

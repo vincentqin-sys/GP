@@ -1025,6 +1025,8 @@ class SimpleHotZHWindow(CardWindow):
         #win32gui.DeleteObject(bk)
 
     def onDayChanged(self, evtName, evtInfo, args):
+        if evtName != 'Select':
+            return
         cv = self.getCurCardView()
         dc = getattr(cv, 'onDayChanged', None)
         if not dc:

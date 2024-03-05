@@ -44,10 +44,9 @@ class DddlrStructWindow(base_win.BaseWindow):
         datePicker.addListener(self.onSelDayChanged, None)
 
     def onSelDayChanged(self, evtName, evtInfo, args):
-        if evtName != 'DatePopupWindow.selDayChanged':
+        if evtName != 'Select':
             return
-        # TODO: change models
-        self.updateDay(evtInfo['curSelDay'])
+        self.updateDay(evtInfo['day'])
 
     def updateDay(self, day):
         if type(day) == int:

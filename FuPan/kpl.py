@@ -184,16 +184,6 @@ class KPL_ZT_TableWindow(base_win.TableWindow):
         self.setData([d.__data__ for d in qr])
         self.invalidWindow()
 
-    def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_LBUTTONDBLCLK:
-            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
-            if y > self.headHeight and y < self.getClientSize()[1] - self.tailHeight:
-                y -= self.headHeight
-                row = y // self.rowHeight + self.startIdx
-                self.notifyListener('DbClick', {'row': row, 'data': self.data[row]})
-            return True
-        return super().winProc(hwnd, msg, wParam, lParam)
-
 class KPL_MgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -228,6 +218,8 @@ class KPL_MgrWindow(base_win.BaseWindow):
         self.layout.resize(0, 0, *self.getClientSize())
 
     def onLisetenSelectDay(self, evtName, evtInfo, args):
+        if evtName != 'Click':
+            return
         #print('onLisetenSelectDay: ', target, evtName, evtInfo)
         if args == 'next':
             self.kplWin.nextDay()
@@ -239,7 +231,9 @@ class KPL_MgrWindow(base_win.BaseWindow):
             self.kplTableWin.updateDay(self.kplWin.day)
 
     def onLisetenDatePickerChanged(self, evtName, evtInfo, args):
-        day = evtInfo['curSelDay']
+        if evtName != 'Select':
+            return
+        day = evtInfo['day']
         #day = f'{day.year}-{day.month :02d}-{day.day :02d}'
         self.kplWin.updateDay(day)
         self.kplTableWin.updateDay(day)

@@ -37,6 +37,8 @@ class FuPanMgrWindow(base_win.BaseWindow):
 
     
     def changeGroup(self, evtName, evtInfo, args):
+        if evtName != 'ClickSelect':
+            return
         idx = evtInfo['groupIdx']
         self.cardLayout.showCardByIdx(idx)
 
