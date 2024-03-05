@@ -812,7 +812,7 @@ class SheetWindow(base_win.BaseWindow):
             dlg = dialog.PopupColorWindow()
             dlg.createWindow(self.hwnd)
             def callback_3(evtName, evtInfo, args):
-                if evtName != 'InputEnd':
+                if evtName != 'SelectColor':
                     return
                 _range = args
                 self.setRangeCellAttr(_range, 'color', evtInfo)
