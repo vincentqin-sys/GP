@@ -609,12 +609,14 @@ class Cardayout(Layout):
                 break
 
 # listeners : DbClick = {x, y, row, data(row data), model(all data)}
+#             RowEnter = {row, data, model}
 class TableWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.css['bgColor'] = 0xf0f0f0
         self.css['textColor'] = 0x333333
         self.css['headerBgColor'] = 0xc3c3c3
+        self.enableListeners['DbClick'] = True
         self.rowHeight = 20
         self.headHeight = 24
         self.tailHeight = 0
@@ -900,7 +902,7 @@ class TableWindow(BaseWindow):
             return True
         elif key == win32con.VK_RETURN:
             if self.selRow >= 0 and self.data:
-                self.notifyListener('RowEnter', {'src': self, 'selRow' : self.selRow, 'data': self.data[self.selRow]})
+                self.notifyListener('RowEnter', {'row' : self.selRow, 'data': self.data[self.selRow], 'model': self.data})
             return True
         return False
 
