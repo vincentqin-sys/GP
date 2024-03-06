@@ -475,6 +475,7 @@ class KLineWindow(base_win.BaseWindow):
 
     def addIndicator(self, indicator):
         self.indicators.append(indicator)
+        self.calcIndicatorsRect()
 
     # indicator = INDICATOR_KLINE | INDICATOR_AMOUNT | INDICATOR_RATE
     def addDefaultIndicator(self, indicator = 7):
@@ -487,8 +488,15 @@ class KLineWindow(base_win.BaseWindow):
         if indicator & KLineWindow.INDICATOR_AMOUNT:
             idt = AmountIndicator(self, {'height': 60, 'margins': (15, 2)})
             self.indicators.append(idt)
+        self.calcIndicatorsRect()
+
+    def setMarkDay(self, day):
+        if isinstance(self.indicators[0], KLineIndicator):
+            self.indicators[0].setMarkDay(day)
 
     def calcIndicatorsRect(self):
+        if not self.hwnd:
+            return
         w, h = self.getClientSize()
         fixHeight = 0
         for i in range(0, len(self.indicators)):
@@ -546,6 +554,10 @@ class KLineWindow(base_win.BaseWindow):
         if gntcObj and gntcObj.hy:
             self.model.gn = gntcObj.gn.replace('【', '').replace('】', '').split(';')
 
+    def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''):
+        super().createWindow(parentWnd, rect, style, className, title)
+        self.calcIndicatorsRect()
+    
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
         rt = super().winProc(hwnd, msg, wParam, lParam)
@@ -555,13 +567,13 @@ class KLineWindow(base_win.BaseWindow):
             return True
         if msg == win32con.WM_MOUSEMOVE:
             self.onMouseMove(lParam & 0xffff, (lParam >> 16) & 0xffff)
-            self.notifyListener('Event.MouseMove', {'src': self, 'x': lParam & 0xffff, 'y' : (lParam >> 16) & 0xffff})
+            self.notifyListener('MouseMove', {'src': self, 'x': lParam & 0xffff, 'y' : (lParam >> 16) & 0xffff})
             #self.notifyListener('WM_MOUSEMOVE', {'src': self, 'lParam': lParam, 'wParam' : wParam})
             return True
         if msg == win32con.WM_KEYDOWN:
             oem = lParam >> 16 & 0xff
             self.onKeyDown(oem)
-            self.notifyListener('Event.KeyDown', {'src': self, 'oem': oem})
+            self.notifyListener('KeyDown', {'src': self, 'oem': oem})
             #self.notifyListener('WM_KEYDOWN', {'src': self, 'lParam': lParam, 'wParam' : wParam})
             return True
         if msg == win32con.WM_LBUTTONDOWN:
@@ -569,9 +581,10 @@ class KLineWindow(base_win.BaseWindow):
             return True
         if msg == win32con.WM_LBUTTONDBLCLK:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            si = self.indicators[0].getIdxAtX(x)
-            if si >= 0:
-                self.notifyListener('Event.DbClick', {'src': self, 'idx': si, 'data': self.model.data[si]})
+            if y >= self.indicators[0].y and y < self.indicators[0].y + self.indicators[0].height: # in kline dbclick
+                si = self.indicators[0].getIdxAtX(x)
+                if si >= 0:
+                    self.notifyListener('DbClick', {'src': self, 'idx': si, 'data': self.model.data[si]})
             return True
         return False
 

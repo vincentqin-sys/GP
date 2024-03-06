@@ -216,13 +216,20 @@ class CLS_ZT(pw.Model):
         database = db_tck
         table_name = '财联社涨停'
 
+class CLS_SCQX(pw.Model):
+    day = pw.CharField() # YYYY-MM-DD
+    zhqd = pw.IntegerField(column_name='综合强度')
+
+    class Meta:
+        database = db_tck
+        table_name = '财联社市场情绪'
 
 db.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_GNTC, THS_Newest])
 db2.create_tables([THS_Hot, THS_HotZH])
 db3.create_tables([TaoGuBa_Remark])
 db5.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS, THS_ZS_ZD])
-db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX])
+db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX])
 
 
 if __name__ == '__main__':

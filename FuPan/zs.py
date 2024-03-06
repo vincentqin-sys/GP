@@ -7,7 +7,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import orm, ths_win
-from Common import base_win, timeline
+from Common import base_win, timeline, kline
 
 class ZSWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -17,7 +17,6 @@ class ZSWindow(base_win.BaseWindow):
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.listWins = []
         self.daysLabels =[]
-        self.bgColorBrush = self.drawer.getBrush(0x000000)
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -43,8 +42,8 @@ class ZSWindow(base_win.BaseWindow):
                    {'title': '指数名称', 'width': 0.1, 'name': 'name' },
                    {'title': '成交额', 'width': 80, 'name': 'money', 'formater': formateMoney },
                    {'title': '涨幅', 'width': 70, 'name': 'zdf', 'formater': formateRate},
-                   {'title': '排名_50亿', 'width': 70, 'name': 'zdf_50PM', 'sorter': sortPM},
-                   {'title': '排名_总', 'width': 70, 'name': 'zdf_PM', 'sorter': sortPM}]
+                   {'title': '50亿排名', 'width': 70, 'name': 'zdf_50PM', 'sorter': sortPM},
+                   {'title': '全市排名', 'width': 70, 'name': 'zdf_PM', 'sorter': sortPM}]
         for i in range(len(self.layout.templateColumns)):
             win = base_win.TableWindow()
             win.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -55,6 +54,7 @@ class ZSWindow(base_win.BaseWindow):
             lw.createWindow(self.hwnd, (0, 0, 1, 1))
             self.daysLabels.append(lw)
             self.layout.setContent(1, i, lw)
+            win.addListener(self.onDbClick, i)
         datePicker.addListener(self.onSelDayChanged, None)
 
     def onSelDayChanged(self, evtName, evtInfo, args):
@@ -62,6 +62,27 @@ class ZSWindow(base_win.BaseWindow):
             return
         # TODO: change models
         self.updateDay(evtInfo['day'])
+    
+    def onDbClick(self, evtName, evtInfo, idx):
+        if evtName != 'DbClick' and evtName != 'RowEnter':
+            return
+        data = evtInfo['data']
+        if not data:
+            return
+        win = kline.KLineWindow()
+        win.showSelTip = True
+        win.addDefaultIndicator(kline.KLineWindow.INDICATOR_KLINE | kline.KLineWindow.INDICATOR_AMOUNT)
+        dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
+        dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
+        W, H = 1000, 450
+        x = (dw - W) // 2
+        y = (dh - H) // 2
+        win.createWindow(self.hwnd, (x, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+        model = kline.KLineModel_Ths(data['code'])
+        model.loadDataFile()
+        win.setModel(model)
+        win.setMarkDay(data['day'])
+        win.makeVisible(-1)
 
     def updateDay(self, day):
         if type(day) == int:

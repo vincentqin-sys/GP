@@ -245,6 +245,8 @@ class KPL_MgrWindow(base_win.BaseWindow):
     def onListenTable(self, evtName, evtInfo, args):
         if evtName == 'DbClick' or evtName == 'RowEnter':
             data = evtInfo['data']
+            if not data:
+                return
             self.multiKLineWin.updateCode(data['code'])
             self.multiKLineWin.setMarkDay(data['day'])
             self.multiKLineWin.makeVisible(data['day'])

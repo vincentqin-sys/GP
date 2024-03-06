@@ -7,7 +7,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import orm, ths_win
-from Common import base_win, timeline
+from Common import base_win, timeline, kline
 
 class DddlrStructWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -41,7 +41,29 @@ class DddlrStructWindow(base_win.BaseWindow):
             lw = win32gui.CreateWindow('STATIC', '', win32con.WS_VISIBLE|win32con.WS_CHILD, 0, 0, 1, 1, self.hwnd, None, None, None)
             self.daysLabels.append(lw)
             self.layout.setContent(1, i, lw)
+            win.addListener(self.onDbClick, i)
         datePicker.addListener(self.onSelDayChanged, None)
+
+    def onDbClick(self, evtName, evtInfo, idx):
+        if evtName != 'DbClick' and evtName != 'RowEnter':
+            return
+        data = evtInfo['data']
+        if not data:
+            return
+        win = kline.KLineWindow()
+        win.showSelTip = True
+        win.addDefaultIndicator(kline.KLineWindow.INDICATOR_KLINE | kline.KLineWindow.INDICATOR_AMOUNT | kline.KLineWindow.INDICATOR_RATE)
+        dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
+        dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
+        W, H = 1000, 550
+        x = (dw - W) // 2
+        y = (dh - H) // 2
+        win.createWindow(self.hwnd, (x, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+        model = kline.KLineModel_Ths(data['code'])
+        model.loadDataFile()
+        win.setModel(model)
+        win.setMarkDay(data['day'])
+        win.makeVisible(-1)
 
     def onSelDayChanged(self, evtName, evtInfo, args):
         if evtName != 'Select':

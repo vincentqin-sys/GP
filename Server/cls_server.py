@@ -23,6 +23,19 @@ def saveCLS_ZT():
         print(f'[cls-server] save cls zt {day} {saveNum} / {num}')
     return {'status': 'OK'}
 
+def saveCLS_Degree():
+    js = request.json
+    day = js['day']
+    zhqd = js['degree']
+    obj = orm.CLS_SCQX.get_or_none(day = day)
+    if obj:
+        obj.zhqd = zhqd
+        obj.save()
+    else:
+        orm.CLS_SCQX.create(day = day, zhqd = zhqd)
+    return {'status': 'OK'}
+
 def startup(app : Flask):
     print('[cls-server]功能: 启动财联社服务')
     app.add_url_rule('/save-CLS-ZT', view_func=saveCLS_ZT, methods = ['POST'])
+    app.add_url_rule('/save-CLS-Degree', view_func=saveCLS_Degree, methods = ['POST'])

@@ -99,6 +99,29 @@ function sendToServer(data) {
     });
 }
 
+function loadDegree() {
+    let day = loadDay();
+    if (! day) {
+        return;
+    }
+    let degree = $('.heat-chart-text').text();
+    degree = parseInt(degree);
+    let data = {degree: degree, day: day};
+    $.ajax({
+        url: 'http://localhost:8071/save-CLS-Degree',
+        method: 'POST',
+        dataType: 'json',
+        contentType : 'application/json',
+        data: JSON.stringify(data),
+        success: function (res) {
+            console.log('Success: Send Degree to server success ', res);
+        },
+        error: function (res) {
+            console.log('Fail: Send Degree info to server fail ', data);
+        }
+    });
+}
+
 // YYYY-MM-DD
 function formatDate() {
     let d = new Date();
@@ -122,12 +145,13 @@ setTimeout(() => {
     headers = loadHeaders();
     data = loadPageData();
     sendToServer(data);
+    loadDegree();
 }, 15 * 1000);
 
 
 if (formatTime() >= '09:25' && formatTime() <= '15:00') {
     setTimeout(() => {
-        window.location.reload();
+        // window.location.reload();
     }, 3 * 60 * 1000);
 }
 

@@ -46,7 +46,7 @@ class BaseWindow:
             return True
         if msg == win32con.WM_DESTROY:
             style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-            if not (style & win32con.WS_POPUP) and not (style & win32con.WS_CHILD):
+            if not (style & win32con.WS_POPUP) and not (style & win32con.WS_CHILD) and not win32gui.GetParent(self.hwnd):
                 win32gui.PostQuitMessage(0)
                 return True
             del BaseWindow.bindHwnds[hwnd]
@@ -642,10 +642,10 @@ class TableWindow(BaseWindow):
             return None
         if colName == '#idx':
             return row + 1
-        if row < len(self.data):
+        if row >= 0 and row < len(self.data):
             if self.sortData:
-                return self.sortData[row][colName]
-            return self.data[row][colName]
+                return self.sortData[row].get(colName, None)
+            return self.data[row].get(colName, None)
         return None
 
     def getColumnWidth(self, colIdx, colName):
@@ -789,6 +789,8 @@ class TableWindow(BaseWindow):
         formater = self.headers[col].get('formater', None)
         if formater:
             value = formater(colName, value, self.data[row])
+        if value == None:
+            return
         self.drawer.drawText(hdc, str(value), rect, self.css['textColor'], align=win32con.DT_LEFT)
 
     def drawRow(self, hdc, showIdx, row, rect):
@@ -902,7 +904,8 @@ class TableWindow(BaseWindow):
             return True
         elif key == win32con.VK_RETURN:
             if self.selRow >= 0 and self.data:
-                self.notifyListener('RowEnter', {'row' : self.selRow, 'data': self.data[self.selRow], 'model': self.data})
+                dx = self.sortData if self.sortData else self.data
+                self.notifyListener('RowEnter', {'row' : self.selRow, 'data': dx[self.selRow], 'model': dx})
             return True
         return False
 
@@ -920,8 +923,9 @@ class TableWindow(BaseWindow):
         if msg == win32con.WM_LBUTTONDBLCLK and self.enableListeners['DbClick']:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
             row = self.getRowIdx(y)
-            dt = self.data[row] if row >= 0 else None
-            self.notifyListener('DbClick', {'x': x, 'y': y, 'row': row, 'data': dt, 'model': self.data})
+            if row >= 0:
+                dx = self.sortData if self.sortData else self.data
+                self.notifyListener('DbClick', {'x': x, 'y': y, 'row': row, 'data': dx[row], 'model': dx})
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
