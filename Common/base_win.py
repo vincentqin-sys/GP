@@ -616,6 +616,8 @@ class TableWindow(BaseWindow):
         self.css['bgColor'] = 0xf0f0f0
         self.css['textColor'] = 0x333333
         self.css['headerBgColor'] = 0xc3c3c3
+        self.css['cellBorder'] = 0xc0c0c0
+        self.css['selBgColor'] = 0xf0a0a0
         self.enableListeners['DbClick'] = True
         self.rowHeight = 20
         self.headHeight = 24
@@ -627,11 +629,15 @@ class TableWindow(BaseWindow):
 
         self.data = None # a data array, [{colName1: xx, colName2: xxx}, ...]
 
-        # headers : need set  [{title:xx, name:xxx, width: x, sortable:True|False, formater: func, sorter:func }, ...]
-        #                       width : int (fix width), float : int part is fix width, float part is stretch
-        #                       formater: function(colName, val, rowData) -> return format data
-        #                       sorter: function(colName, val, rowData, allDatas, asc:True|False)  -> return sorted value
-        # name = '#idx' is index row column 
+        # headers : need set a list , items of
+        #    { name:xxx,   '#idx' is index row column 
+        #      title:xx,  
+        #      sortable:True | False (default is False),
+        #      width : int, fix width
+        #      stretch: int, how stretch less width, is part of all stretchs
+        #      formater: function(colName, val, rowData) -> return format str data
+        #      sorter: function(colName, val, rowData, allDatas, asc:True|False)  -> return sorted value
+        #      textAlign: int, win32con.DT_LEFT(is default) | .....
         self.headers = None # must be set TODO
 
     def getHeaders(self):
@@ -649,26 +655,29 @@ class TableWindow(BaseWindow):
         return None
 
     def getColumnWidth(self, colIdx, colName):
+        BASE_WIDTH = 40
         w, h = self.getClientSize()
-        baseWidth = w // self.getColumnCount()
+        hd = self.headers[colIdx]
+        cw = int(hd.get('width', -1))
+        if cw < 0:
+            return BASE_WIDTH
+        stretch = int(hd.get('stretch', 0))
+        if stretch <= 0:
+            return cw
+
         fixWidth = 0
         frs = 0
         for hd in self.headers:
-            cw = hd.get('width', 0)
-            if cw <= 0:
-                fixWidth += baseWidth
+            cw = int(hd.get('width', -1))
+            if cw < 0:
+                fixWidth += BASE_WIDTH
             else:
-                fixWidth += int(cw)
-                frs += float(cw) - int(cw)
+                fixWidth += cw
+            frs += int(hd.get('stretch', 0))
         lessWidth = w - fixWidth
-        cw = self.headers[colIdx].get('width', 0)
-        if cw <= 0:
-            return int(baseWidth)
-
-        fr = cw - int(cw) # float part
-        if type(cw) == int or fr == 0:
+        if lessWidth <= 0 or frs <= 0:
             return cw
-        return int(cw) + int(lessWidth * fr / frs)
+        return cw + int(lessWidth * stretch / frs)
     
     def getColumnCount(self):
         if not self.headers:
@@ -735,7 +744,7 @@ class TableWindow(BaseWindow):
         self.invalidWindow()
 
     def onDraw(self, hdc):
-        if not self.getHeaders():
+        if not self.headers:
             return
         self.drawHeaders(hdc)
         if not self.data:
@@ -786,20 +795,21 @@ class TableWindow(BaseWindow):
             rc[0] = rc[2]
         
     def drawCell(self, hdc, row, col, colName, value, rect):
-        formater = self.headers[col].get('formater', None)
+        hd = self.headers[col]
+        formater = hd.get('formater', None)
         if formater:
             value = formater(colName, value, self.data[row])
-        if value == None:
+        if value == None or value == '':
             return
-        self.drawer.drawText(hdc, str(value), rect, self.css['textColor'], align=win32con.DT_LEFT)
+        align = hd.get('textAlign', win32con.DT_LEFT)
+        self.drawer.drawText(hdc, str(value), rect, self.css['textColor'], align = align)
 
     def drawRow(self, hdc, showIdx, row, rect):
         rc = [0, rect[1], 0, rect[3]]
-        hds = self.getHeaders()
-        if not hds:
-            return
+        self.drawer.drawLine(hdc, rect[0], rect[3], rect[2], rect[3], self.css['cellBorder'])
+        hds = self.headers
         if row == self.selRow:
-            self.drawer.fillRect(hdc, rect, 0xf0a0a0)
+            self.drawer.fillRect(hdc, rect, self.css['selBgColor'])
         for i in range(len(hds)):
             colName = hds[i]['name']
             rc[2] += self.getColumnWidth(i, colName)

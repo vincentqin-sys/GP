@@ -25,15 +25,15 @@ class TCK_Window(base_win.BaseWindow):
             return f'{int(val)}'
         def sortPM(colName, val, rowData, allDatas, asc):
             return val
-        headers = [ {'title': '', 'width': 60, 'name': '#idx' },
-                   {'title': '日期', 'width': 100, 'name': 'day' },
-                   {'title': '名称', 'width': 80, 'name': 'name' },
-                   {'title': '代码', 'width': 80, 'name': 'code' },
-                   {'title': '开盘啦', 'width': 200, 'name': 'kpl_ztReason' },
+        headers = [ {'title': '', 'width': 30, 'name': '#idx' },
+                   {'title': '日期', 'width': 80, 'name': 'day' },
+                   {'title': '名称', 'width': 70, 'name': 'name' },
+                   {'title': '代码', 'width': 70, 'name': 'code' },
+                   {'title': '开盘啦', 'width': 120, 'name': 'kpl_ztReason' },
                    {'title': '同花顺', 'width': 80, 'name': 'ths_status' },
-                   {'title': '同花顺', 'width': 250, 'name': 'ths_ztReason' },
-                   {'title': '财联社', 'width': 120, 'name': 'cls_ztReason' },
-                   {'title': '财联社详细', 'width': 0.1, 'name': 'cls_detail' },
+                   {'title': '同花顺', 'width': 200, 'name': 'ths_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK },
+                   {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK },
+                   {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK},
                    ]
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -67,12 +67,13 @@ class TCK_Window(base_win.BaseWindow):
         model = kline.KLineModel_Ths(data['code'])
         model.loadDataFile()
         win.setModel(model)
+        win.setMarkDay(data['day'])
         win.makeVisible(-1)
 
     def loadAllData(self):
         if self.tckData:
             return
-        kplQr = orm.KPL_ZT.select().dicts()
+        kplQr = orm.KPL_ZT.select().order_by(orm.KPL_ZT.day.desc(), orm.KPL_ZT.id.asc()).dicts()
         thsQr = orm.THS_ZT.select().dicts()
         clsQr = orm.CLS_ZT.select().dicts()
         
@@ -84,6 +85,12 @@ class TCK_Window(base_win.BaseWindow):
             k = d['day'] + ':' + d['code']
             kpl[k] = d
             d['kpl_ztReason'] = d['ztReason']
+            ztNum = d.get('ztNum', 0)
+            if type(ztNum) == str:
+                print(d)
+                ztNum = 0
+            if ztNum >= 4:
+                d['kpl_ztReason'] += f"({d['ztNum']})"
             rs.append(d)
         for d in thsQr:
             k = d['day'] + ':' + d['code']
