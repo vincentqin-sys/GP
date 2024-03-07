@@ -15,10 +15,11 @@ class TCK_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (60, 300, '1fr')
+        self.cols = (60, 300, 150, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
         self.editorWin = base_win.Editor()
+        self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.tckData = None
         self.tckSearchData = None
 
@@ -38,9 +39,9 @@ class TCK_Window(base_win.BaseWindow):
                    {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
                    {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
+        self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.tableWin.enableListeners['R_DbClick'] = True
         self.tableWin.rowHeight = 40
         self.tableWin.headers = headers
         btn = base_win.Button({'title': '刷新'})
@@ -48,10 +49,10 @@ class TCK_Window(base_win.BaseWindow):
         btn.addListener(self.onRefresh)
         self.layout.setContent(0, 0, btn)
         self.layout.setContent(0, 1, self.editorWin)
+        self.layout.setContent(0, 2, self.checkBox)
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
         self.editorWin.addListener(self.onEditEnd, None)
         self.tableWin.addListener(self.onDbClick, None)
-        self.tableWin.addListener(self.onR_DbClick, None)
 
     def onRefresh(self, evtName, evtInfo, args):
         if evtName == 'Click':
@@ -68,30 +69,31 @@ class TCK_Window(base_win.BaseWindow):
         self.tableWin.setData(self.tckSearchData)
         self.tableWin.invalidWindow()
     
-    def onR_DbClick(self, evtName, evtInfo, args):
-        if evtName != 'R_DbClick' and evtName != 'DbClick':
-            return
-        idx = self.tableWin.getRowIdx(evtInfo['y'])
-        if idx < 0:
-            return
-        if not thsWin.topHwnd:
+    def openInThsWindow(self, data):
+        if not thsWin.topHwnd or not win32gui.IsWindow(thsWin.topHwnd):
+            thsWin.topHwnd = None
             thsWin.init()
         if not thsWin.topHwnd:
             return
         win32gui.SetForegroundWindow(thsWin.topHwnd)
         time.sleep(0.5)
-        data = self.tableWin.data[idx]
         pyautogui.typewrite(data['code'], 0.1)
         time.sleep(0.2)
         pyautogui.press('enter')
         
 
     def onDbClick(self, evtName, evtInfo, args):
-        if evtName != 'RowEnter':
+        if evtName != 'RowEnter' and evtName != 'DbClick':
             return
         data = evtInfo['data']
         if not data:
             return
+        if self.checkBox.isChecked():
+            self.openInThsWindow(data)
+        else:
+            self.openInCurWindow(data)
+        
+    def openInCurWindow(self, data):
         win = kline.KLineWindow()
         win.showSelTip = True
         win.addDefaultIndicator(kline.KLineWindow.INDICATOR_KLINE | kline.KLineWindow.INDICATOR_AMOUNT | kline.KLineWindow.INDICATOR_RATE)

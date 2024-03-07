@@ -1238,19 +1238,22 @@ class CheckBox(BaseWindow):
 
     def onDraw(self, hdc):
         w, h = self.getClientSize()
-        R = 14
-        RR = 8
-        sy = (h - R) // 2
-        rc = (0, sy, R, sy + R)
-        self.drawer.drawCycle(hdc, rc, 0x606060, 2)
+        BRD = 2
+        WH = self.css['fontSize']
+        sy = (h - WH) // 2
+        rc = (0, sy, WH, sy + WH)
+        self.drawer.drawRect2(hdc, rc, 0x606060, penWidth = BRD)
         
         if self.isChecked():
-            sy = (h - RR) // 2
-            sx = (R - RR) // 2
-            rc2 = (sx, sy, sx + RR, sy + RR)
-            self.drawer.fillCycle(hdc, rc2, 0x338833)
+            SP = 4
+            iwh = WH - SP * 2
+            sy = rc[1] + SP
+            sx = rc[0] + SP
+            rc2 = (sx, sy, sx + iwh, sy + iwh)
+            self.drawer.fillRect(hdc, rc2, 0x338833)
+
         if 'title' in self.info:
-            rc3 = (rc[2] + 3, (h - 14) // 2, w, h)
+            rc3 = (rc[2] + 3, (h - WH) // 2, w, h)
             self.drawer.drawText(hdc, self.info['title'], rc3, 0x2fffff, win32con.DT_LEFT)
 
     def isChecked(self):
