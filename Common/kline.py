@@ -696,7 +696,7 @@ class KLineWindow(base_win.BaseWindow):
             am = f'{amx :.1f}'
         else:
             am =  f'{amx :.2f}'
-        txt = f'涨幅\n{d.zhangFu:.2f}%\n\n成交额\n{am}亿' # 时间\n{d.day//10000}\n{d.day%10000:04d}\n\n
+        txt = f'涨幅\n{getattr(d, "zhangFu", 0):.2f}%\n\n成交额\n{am}亿' # 时间\n{d.day//10000}\n{d.day%10000:04d}\n\n
         if hasattr(d, 'rate'):
             txt += f'\n\n换手率\n{d.rate :.1f}%'
         TIP_HEIGHT = 110

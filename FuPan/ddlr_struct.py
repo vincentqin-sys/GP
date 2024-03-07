@@ -27,11 +27,11 @@ class DddlrStructWindow(base_win.BaseWindow):
         self.layout.setContent(0, 0, absLayout)
         def formateFloat(colName, val, rowData):
             return f'{val :.02f}'
-        headers = [{'title': '', 'width': 60, 'name': '#idx' },
-                   {'title': '股票名称', 'width': 0.1, 'name': 'name' },
-                   {'title': '净流入', 'width': 70, 'name': 'total', 'formater': formateFloat },
-                   {'title': '流入', 'width': 70, 'name': 'in', 'formater': formateFloat},
-                   {'title': '流出', 'width': 70, 'name': 'out', 'formater': formateFloat }]
+        headers = [{'title': '', 'width': 40, 'name': '#idx' },
+                   {'title': '股票名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True  },
+                   {'title': '净流入', 'width': 70, 'name': 'total', 'formater': formateFloat, 'sortable':True  },
+                   {'title': '流入', 'width': 70, 'name': 'in', 'formater': formateFloat, 'sortable':True },
+                   {'title': '流出', 'width': 70, 'name': 'out', 'formater': formateFloat , 'sortable':True }]
         for i in range(len(self.layout.templateColumns)):
             win = base_win.TableWindow()
             win.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -58,7 +58,7 @@ class DddlrStructWindow(base_win.BaseWindow):
         W, H = 1000, 550
         x = (dw - W) // 2
         y = (dh - H) // 2
-        win.createWindow(self.hwnd, (x, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+        win.createWindow(self.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
         model = kline.KLineModel_Ths(data['code'])
         model.loadDataFile()
         win.setModel(model)
@@ -94,3 +94,14 @@ class DddlrStructWindow(base_win.BaseWindow):
             self.invalidWindow()
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
+    
+if __name__ == '__main__':
+    tab = base_win.TableWindow()
+    tab.createWindow(None, (0, 0, 400, 100), win32con.WS_OVERLAPPEDWINDOW)
+    tab.headers = [{'title': '', 'width': 40, 'name': '#idx' },
+                   {'title': '股票名称', 'width': 0, 'stretch': 1, 'name': 'name' },
+                   {'title': '净流入', 'width': 70, 'name': 'total' },
+                   {'title': '流入', 'width': 70, 'name': 'in'},
+                   {'title': '流出', 'width': 70, 'name': 'out'}]
+    win32gui.ShowWindow(tab.hwnd, win32con.SW_SHOW)
+    win32gui.PumpMessages()

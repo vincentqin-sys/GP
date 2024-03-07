@@ -39,11 +39,11 @@ class ZSWindow(base_win.BaseWindow):
                 return 10000
             return -10000
         headers = [ #{'title': '', 'width': 60, 'name': '#idx' },
-                   {'title': '指数名称', 'width': 0.1, 'name': 'name' },
-                   {'title': '成交额', 'width': 80, 'name': 'money', 'formater': formateMoney },
-                   {'title': '涨幅', 'width': 70, 'name': 'zdf', 'formater': formateRate},
-                   {'title': '50亿排名', 'width': 70, 'name': 'zdf_50PM', 'sorter': sortPM},
-                   {'title': '全市排名', 'width': 70, 'name': 'zdf_PM', 'sorter': sortPM}]
+                   {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True  },
+                   {'title': '成交额', 'width': 80, 'name': 'money', 'formater': formateMoney , 'sortable':True },
+                   {'title': '涨幅', 'width': 70, 'name': 'zdf', 'formater': formateRate, 'sortable':True },
+                   {'title': '50亿排名', 'width': 70, 'name': 'zdf_50PM', 'sorter': sortPM, 'sortable':True },
+                   {'title': '全市排名', 'width': 70, 'name': 'zdf_PM', 'sorter': sortPM, 'sortable':True }]
         for i in range(len(self.layout.templateColumns)):
             win = base_win.TableWindow()
             win.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -77,7 +77,7 @@ class ZSWindow(base_win.BaseWindow):
         W, H = 1000, 450
         x = (dw - W) // 2
         y = (dh - H) // 2
-        win.createWindow(self.hwnd, (x, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+        win.createWindow(self.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
         model = kline.KLineModel_Ths(data['code'])
         model.loadDataFile()
         win.setModel(model)

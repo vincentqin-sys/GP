@@ -1,8 +1,9 @@
 import win32gui, win32con , win32api, win32ui, win32gui_struct # pip install pywin32
 import threading, time, datetime, sys, os, copy, calendar, functools
 
-# listeners : ContextMenu = {x, y} , default is diable
-#             DbClick = {x, y} , default is diable
+# listeners : ContextMenu = {src, x, y} , default is diable
+#             DbClick = {src, x, y} , default is diable
+#             R_DbClick = {src, x, y} , default is diable
 class BaseWindow:
     bindHwnds = {}
 
@@ -15,7 +16,8 @@ class BaseWindow:
         self._bitmapSize = None
         self.cacheBitmap = False
         self.css = {'fontSize' : 14, 'bgColor': 0x000000, 'textColor': 0xffffff} # config css style
-        self.enableListeners = {'ContextMenu': False, 'DbClick': False}
+        self.enableListeners = {'ContextMenu': False, 'DbClick': False, 'R_DbClick': False}
+        self.dispatchEvent = None # can set, return True:已处理,  False: 未处理 = function(src, msg, wparam, lparam)
     
     # func = function(evtName, evtInfo, args)
     def addListener(self, func, args = None):
@@ -52,11 +54,15 @@ class BaseWindow:
             del BaseWindow.bindHwnds[hwnd]
         if msg == win32con.WM_RBUTTONUP and self.enableListeners['ContextMenu']:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            self.notifyListener('ContextMenu', {'x': x, 'y': y})
+            self.notifyListener('ContextMenu', {'src': self, 'x': x, 'y': y})
             return True
         if msg == win32con.WM_LBUTTONDBLCLK and self.enableListeners['DbClick']:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
-            self.notifyListener('DbClick', {'x': x, 'y': y})
+            self.notifyListener('DbClick', {'src': self, 'x': x, 'y': y})
+            return True
+        if msg == win32con.WM_RBUTTONDBLCLK and self.enableListeners['R_DbClick']:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            self.notifyListener('R_DbClick', {'src': self, 'x': x, 'y': y})
             return True
         return False
 
@@ -94,6 +100,8 @@ class BaseWindow:
         self = BaseWindow.bindHwnds.get(hwnd, None)
         if not self:
             return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
+        if self.dispatchEvent and self.dispatchEvent(self, msg, wParam, lParam) == True:
+            return 0
         rs = self.winProc(hwnd, msg, wParam, lParam)
         if rs == True:
             return 0
@@ -275,7 +283,28 @@ class Drawer:
             win32gui.SetTextColor(hdc, color)
         if type(rect) == list:
             rect = tuple(rect)
-        win32gui.DrawText(hdc, text, len(text), rect, align)
+        if (align & win32con.DT_VCENTER) and (align & win32con.DT_WORDBREAK):
+            rect = self.calcTextRect(hdc, text, rect, align)
+            win32gui.DrawText(hdc, text, len(text), rect, win32con.DT_WORDBREAK | win32con.DT_LEFT)
+        else:
+            win32gui.DrawText(hdc, text, len(text), rect, align)
+
+    # return rect, is tuple object, or None
+    def calcTextRect(self, hdc, text, srcRect, align):
+        if text == None or not srcRect:
+            return None
+        m, rect = win32gui.DrawText(hdc, text, len(text), srcRect, win32con.DT_CALCRECT | align)
+        if m == 0:
+            return srcRect
+        left = rect[0]
+        top = max(rect[1], srcRect[1])
+        right = min(rect[2], srcRect[2])
+        bottom = min(rect[3], srcRect[3])
+        if (align & win32con.DT_VCENTER) and (align & win32con.DT_WORDBREAK):
+            topn = ((srcRect[3] - srcRect[1]) - (bottom - top)) // 2
+            top = topn + top
+            bottom = topn + bottom
+        return (left, top, right, bottom)
 
     # rect = list or tuple (left, top, right, bottom)
     def fillCycle(self, hdc, rect, color):
@@ -619,7 +648,7 @@ class TableWindow(BaseWindow):
         self.css['cellBorder'] = 0xc0c0c0
         self.css['selBgColor'] = 0xf0a0a0
         self.enableListeners['DbClick'] = True
-        self.rowHeight = 20
+        self.rowHeight = 24
         self.headHeight = 24
         self.tailHeight = 0
         self.startIdx = 0
@@ -638,6 +667,7 @@ class TableWindow(BaseWindow):
         #      formater: function(colName, val, rowData) -> return format str data
         #      sorter: function(colName, val, rowData, allDatas, asc:True|False)  -> return sorted value
         #      textAlign: int, win32con.DT_LEFT(is default) | .....
+        #      fontSize: 14 (default)
         self.headers = None # must be set TODO
 
     def getHeaders(self):
@@ -658,26 +688,25 @@ class TableWindow(BaseWindow):
         BASE_WIDTH = 40
         w, h = self.getClientSize()
         hd = self.headers[colIdx]
-        cw = int(hd.get('width', -1))
-        if cw < 0:
-            return BASE_WIDTH
         stretch = int(hd.get('stretch', 0))
+        cw = int(hd.get('width', BASE_WIDTH))
         if stretch <= 0:
             return cw
 
         fixWidth = 0
         frs = 0
         for hd in self.headers:
-            cw = int(hd.get('width', -1))
-            if cw < 0:
-                fixWidth += BASE_WIDTH
+            st = int(hd.get('stretch', 0))
+            if st <= 0:
+                cw = int(hd.get('width', BASE_WIDTH))
             else:
-                fixWidth += cw
-            frs += int(hd.get('stretch', 0))
+                cw = int(hd.get('width', 0))
+            fixWidth += cw
+            frs += st
         lessWidth = w - fixWidth
         if lessWidth <= 0 or frs <= 0:
             return cw
-        return cw + int(lessWidth * stretch / frs)
+        return int(lessWidth * stretch / frs)
     
     def getColumnCount(self):
         if not self.headers:
@@ -801,7 +830,9 @@ class TableWindow(BaseWindow):
             value = formater(colName, value, self.data[row])
         if value == None or value == '':
             return
-        align = hd.get('textAlign', win32con.DT_LEFT)
+        fs = hd.get('fontSize', self.css['fontSize'])
+        self.drawer.use(hdc, self.drawer.getFont(fontSize = fs))
+        align = hd.get('textAlign', win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
         self.drawer.drawText(hdc, str(value), rect, self.css['textColor'], align = align)
 
     def drawRow(self, hdc, showIdx, row, rect):
@@ -881,7 +912,7 @@ class TableWindow(BaseWindow):
         row = self.getRowIdx(y)
         if row == -2: # click headers
             hd = self.getHeaderAtX(x)
-            if hd:
+            if hd and hd.get('sortable', False) == True:
                self.setSortHeader(hd)
                self.invalidWindow()
         elif row >= 0:
@@ -915,7 +946,7 @@ class TableWindow(BaseWindow):
         elif key == win32con.VK_RETURN:
             if self.selRow >= 0 and self.data:
                 dx = self.sortData if self.sortData else self.data
-                self.notifyListener('RowEnter', {'row' : self.selRow, 'data': dx[self.selRow], 'model': dx})
+                self.notifyListener('RowEnter', {'src': self, 'row' : self.selRow, 'data': dx[self.selRow], 'model': dx})
             return True
         return False
 
@@ -935,7 +966,7 @@ class TableWindow(BaseWindow):
             row = self.getRowIdx(y)
             if row >= 0:
                 dx = self.sortData if self.sortData else self.data
-                self.notifyListener('DbClick', {'x': x, 'y': y, 'row': row, 'data': dx[row], 'model': dx})
+                self.notifyListener('DbClick', {'src': self, 'x': x, 'y': y, 'row': row, 'data': dx[row], 'model': dx})
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
@@ -1012,7 +1043,7 @@ class ColumnWindow(BaseWindow):
         for i in range(0, colNum):
             self.drawColumnHead(hdc, i)
 
-# listeners : Select = {selIdx}
+# listeners : Select = {src, idx}
 class ListWindow(BaseWindow):
     def __init__(self, hwnd):
         super().__init__(hwnd)
@@ -1076,7 +1107,7 @@ class ListWindow(BaseWindow):
             if self.selIdx != idx:
                 self.selIdx = idx
                 win32gui.InvalidateRect(self.hwnd, None, True)
-                self.notifyListener('Select', {'selIdx': idx})
+                self.notifyListener('Select', {'src': self, 'idx': idx})
             return True
         if msg == win32con.WM_KEYDOWN:
             if wParam == win32con.VK_DOWN:
@@ -1094,7 +1125,7 @@ class ListWindow(BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-# listeners : ClickSelect = {group, groupIdx}
+# listeners : ClickSelect = {src, group, groupIdx}
 class GroupButton(BaseWindow):
     def __init__(self, groups) -> None:
         super().__init__()
@@ -1126,7 +1157,7 @@ class GroupButton(BaseWindow):
         if self.selGroupIdx == idx:
             return
         self.selGroupIdx = idx
-        self.notifyListener('ClickSelect', {'group': self.groups[idx], 'groupIdx': idx})
+        self.notifyListener('ClickSelect', {'src': self, 'group': self.groups[idx], 'groupIdx': idx})
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -1136,7 +1167,7 @@ class GroupButton(BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)        
 
-# listeners : Click = {info}
+# listeners : Click = {src, info}
 class Button(BaseWindow):
     # btnInfo = {name: xxx, title: xxx}
     def __init__(self, btnInfo) -> None:
@@ -1156,7 +1187,7 @@ class Button(BaseWindow):
         self.drawer.drawText(hdc, self.info['title'], rc, self.css['textColor'])
 
     def onClick(self, x, y):
-        self.notifyListener('Click', self.info)
+        self.notifyListener('Click', {'src': self, 'info': self.info})
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONUP:
@@ -1189,7 +1220,7 @@ class Label(BaseWindow):
         rc = (0, (h - TH) // 2,  w, h - (h - TH) // 2)
         self.drawer.drawText(hdc, self.text, rc, self.css['textColor'], win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
-# listeners : Checked = {info}
+# listeners : Checked = {src, info}
 class CheckBox(BaseWindow):
     _groups = {}
 
@@ -1233,7 +1264,7 @@ class CheckBox(BaseWindow):
             self.uncheckedGroup(name)
         self.info['checked'] = checked
         self.invalidWindow()
-        self.notifyListener('Checked', self.info)
+        self.notifyListener('Checked', {'src': self, 'info': self.info})
 
     def uncheckedGroup(self, name):
         if not name:
@@ -1304,7 +1335,7 @@ class PopupWindow(BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-# listeners : Select = model[idx]
+# listeners : Select = {src, item, model}
 class PopupMenu(PopupWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -1440,7 +1471,7 @@ class PopupMenu(PopupWindow):
             idx = self.getItemIdxAt(y)
             self.hide()
             if idx >= 0 and self.model[idx].get('title', '') != 'LINE' and self.model[idx].get('enable', True):
-                self.notifyListener('Select', self.model[idx])
+                self.notifyListener('Select', {'src': self, 'item' : self.model[idx], 'model': self.model})
             return True
         if msg == win32con.WM_MOUSEWHEEL:
             delta = (wParam >> 16) & 0xffff
@@ -1465,7 +1496,7 @@ class PopupMenuHelper:
         menu.addListener(listener, (args, menu))
         return menu
 
-# listeners :  Select = {day: int}
+# listeners :  Select = {src, day: int}
 class DatePopupWindow(PopupWindow):
     TOP_HEADER_HEIGHT = 40
     PADDING = 10
@@ -1607,11 +1638,11 @@ class DatePopupWindow(PopupWindow):
                     self.setSelDay(day)
                     self.hide()
                     sdd = self.curSelDay.year * 10000 + self.curSelDay.month * 100 + self.curSelDay.day
-                    self.notifyListener('Select', {'day': sdd})
+                    self.notifyListener('Select', {'src': self, 'day': sdd})
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-# listeners :  Select = {day: int}
+# listeners :  Select = {src, day: int}
 class DatePicker(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -1629,9 +1660,10 @@ class DatePicker(BaseWindow):
         return f'{day.year}-{day.month :02d}-{day.day :02d}'
 
     def onSelDayChanged(self, evtName, evtInfo, args):
-        if args != 'DatePopupWindow':
+        if args != 'DatePopupWindow' and evtName != 'Select':
             return
         self.invalidWindow()
+        evtInfo['src'] = self
         self.notifyListener(evtName, evtInfo)
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
@@ -1655,7 +1687,7 @@ class DatePicker(BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-# listeners : PressEnter = None
+# listeners : PressEnter = {src, text}
 class Editor(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -1857,7 +1889,7 @@ class Editor(BaseWindow):
                     self.setInsertPos(pos)
                     self.invalidWindow()
             elif wParam == win32con.VK_RETURN:
-                self.notifyListener('PressEnter', None)
+                self.notifyListener('PressEnter', {'src': self, 'text': self.text})
             return True
         if msg == win32con.WM_SETFOCUS:
             rc = self.getCaretRect()

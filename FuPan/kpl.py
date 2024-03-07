@@ -168,7 +168,7 @@ class KPL_ZT_TableWindow(base_win.TableWindow):
                         {'name':'name', 'title':'股票名称', 'width': 70}, 
                         {'name':'ztTime', 'title':'涨停时间', 'width': 60}, 
                         {'name':'status', 'title':'状态', 'width': 60}, 
-                        {'name':'ztReason', 'title':'涨停原因', 'width': 60.5}] # {'name':'#idx', 'title':''}, 
+                        {'name':'ztReason', 'title':'涨停原因', 'width': 0, 'stretch': 1}] # {'name':'#idx', 'title':''}, 
 
     def updateDay(self, day):
         if not day:

@@ -1,7 +1,6 @@
-from win32.lib.win32con import WS_CHILD, WS_VISIBLE
 import win32gui, win32con , win32api, win32ui # pip install pywin32
-import threading, time, datetime, sys, os, copy
-import os, sys, requests
+import threading, time, datetime, sys, os, copy, pyautogui
+import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
@@ -9,15 +8,19 @@ from Download import henxin, ths_ddlr
 from THS import orm, ths_win
 from Common import base_win, timeline, kline
 
+thsWin = ths_win.ThsWindow()
+thsWin.init()
+
 class TCK_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (300, '1fr')
+        self.cols = (60, 300, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
         self.editorWin = base_win.Editor()
         self.tckData = None
+        self.tckSearchData = None
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -26,31 +29,65 @@ class TCK_Window(base_win.BaseWindow):
         def sortPM(colName, val, rowData, allDatas, asc):
             return val
         headers = [ {'title': '', 'width': 30, 'name': '#idx' },
-                   {'title': '日期', 'width': 80, 'name': 'day' },
-                   {'title': '名称', 'width': 70, 'name': 'name' },
-                   {'title': '代码', 'width': 70, 'name': 'code' },
-                   {'title': '开盘啦', 'width': 120, 'name': 'kpl_ztReason' },
-                   {'title': '同花顺', 'width': 80, 'name': 'ths_status' },
-                   {'title': '同花顺', 'width': 200, 'name': 'ths_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK },
-                   {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK },
-                   {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK},
+                   {'title': '日期', 'width': 80, 'name': 'day', 'sortable':True },
+                   {'title': '名称', 'width': 70, 'name': 'name', 'sortable':True },
+                   {'title': '热度', 'width': 70, 'name': 'zhHotOrder', 'sortable':True },
+                   {'title': '开盘啦', 'width': 120, 'name': 'kpl_ztReason', 'sortable':True },
+                   {'title': '同花顺', 'width': 80, 'name': 'ths_status', 'sortable':True },
+                   {'title': '同花顺', 'width': 200, 'name': 'ths_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True},
+                   {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
+                   {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.tableWin.enableListeners['R_DbClick'] = True
         self.tableWin.rowHeight = 40
         self.tableWin.headers = headers
-        self.layout.setContent(0, 0, self.editorWin)
+        btn = base_win.Button({'title': '刷新'})
+        btn.createWindow(self.hwnd, (0, 0, 1, 1))
+        btn.addListener(self.onRefresh)
+        self.layout.setContent(0, 0, btn)
+        self.layout.setContent(0, 1, self.editorWin)
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
         self.editorWin.addListener(self.onEditEnd, None)
         self.tableWin.addListener(self.onDbClick, None)
+        self.tableWin.addListener(self.onR_DbClick, None)
+
+    def onRefresh(self, evtName, evtInfo, args):
+        if evtName == 'Click':
+            self.tckData = None
+            self.onEditEnd('PressEnter', {'text': self.editorWin.text}, None)
 
     def onEditEnd(self, evtName, evtInfo, args):
         if evtName != 'PressEnter':
             return
-        self.doSearch(evtInfo)
+        self.tableWin.setData(None)
+        self.tableWin.invalidWindow()
+        self.loadAllData()
+        self.doSearch(evtInfo['text'])
+        self.tableWin.setData(self.tckSearchData)
+        self.tableWin.invalidWindow()
+    
+    def onR_DbClick(self, evtName, evtInfo, args):
+        if evtName != 'R_DbClick' and evtName != 'DbClick':
+            return
+        idx = self.tableWin.getRowIdx(evtInfo['y'])
+        if idx < 0:
+            return
+        if not thsWin.topHwnd:
+            thsWin.init()
+        if not thsWin.topHwnd:
+            return
+        win32gui.SetForegroundWindow(thsWin.topHwnd)
+        time.sleep(0.5)
+        data = self.tableWin.data[idx]
+        pyautogui.typewrite(data['code'], 0.1)
+        time.sleep(0.2)
+        pyautogui.press('enter')
+        
 
     def onDbClick(self, evtName, evtInfo, args):
-        if evtName != 'DbClick' and evtName != 'RowEnter':
+        if evtName != 'RowEnter':
             return
         data = evtInfo['data']
         if not data:
@@ -63,7 +100,7 @@ class TCK_Window(base_win.BaseWindow):
         W, H = 1000, 550
         x = (dw - W) // 2
         y = (dh - H) // 2
-        win.createWindow(self.hwnd, (x, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+        win.createWindow(self.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
         model = kline.KLineModel_Ths(data['code'])
         model.loadDataFile()
         win.setModel(model)
@@ -71,16 +108,23 @@ class TCK_Window(base_win.BaseWindow):
         win.makeVisible(-1)
 
     def loadAllData(self):
-        if self.tckData:
+        if self.tckData != None:
             return
         kplQr = orm.KPL_ZT.select().order_by(orm.KPL_ZT.day.desc(), orm.KPL_ZT.id.asc()).dicts()
         thsQr = orm.THS_ZT.select().dicts()
         clsQr = orm.CLS_ZT.select().dicts()
+        hotZH = orm.THS_HotZH.select().dicts()
         
         kpl = {}
         ths = []
         cls = []
+        hots = {}
         rs = []
+        for d in hotZH:
+            day = d['day']
+            day = f"{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}"
+            k = f"{day}:{d['code'] :06d}"
+            hots[k] = d['zhHotOrder']
         for d in kplQr:
             k = d['day'] + ':' + d['code']
             kpl[k] = d
@@ -91,6 +135,7 @@ class TCK_Window(base_win.BaseWindow):
                 ztNum = 0
             if ztNum >= 4:
                 d['kpl_ztReason'] += f"({d['ztNum']})"
+            d['zhHotOrder'] = hots.get(k, None)
             rs.append(d)
         for d in thsQr:
             k = d['day'] + ':' + d['code']
@@ -108,12 +153,35 @@ class TCK_Window(base_win.BaseWindow):
                 obj['cls_ztReason'] = d['ztReason']
             else:
                 cls.append(d)
+        
         self.tckData = rs
 
-    def doSearch(self, search):
-        self.loadAllData()
-        self.tableWin.setData(self.tckData)
-        self.tableWin.invalidWindow()
+    def doSearch(self, search : str):
+        if not self.tckData:
+            self.tckSearchData = None
+            return
+        if not search or not search.strip():
+            self.tckSearchData = self.tckData
+            return
+        search = search.strip()
+        ls = search.split(' ')
+        st = []
+        for k in ls:
+            if k: st.append(k)
+        keys = ('day', 'code', 'name', 'kpl_ztReason', 'ths_ztReason', 'cls_ztReason', 'cls_detail')
+        def contains(v):
+            for m in st:
+                if m in v: return True
+                return False
+        rs = []
+        for d in self.tckData:
+            for k in keys:
+                x = d.get(k, None)
+                if x and type(x) == str and contains(x):
+                    rs.append(d)
+                    break
+        self.tckSearchData = rs
+
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:
@@ -122,3 +190,10 @@ class TCK_Window(base_win.BaseWindow):
             self.invalidWindow()
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
+    
+if __name__ == '__main__':
+    ls = 'ddd    cc    mm'.strip()
+    print(ls)
+    ls = ls.split('+')
+    print(ls)
+    pass
