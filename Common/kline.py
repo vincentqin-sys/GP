@@ -1098,7 +1098,7 @@ class KLineWindow(base_win.BaseWindow):
             if isinstance(it, CustomIndicator):
                 h = it.y - 2
                 break
-        wp = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xffffff)
+        wp = win32gui.CreatePen(win32con.PS_DOT, 1, 0xffffff)
         win32gui.SelectObject(hdc, wp)
         win32gui.MoveToEx(hdc, self.LEFT_MARGIN, y)
         win32gui.LineTo(hdc, w, y)

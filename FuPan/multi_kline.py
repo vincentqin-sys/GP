@@ -45,8 +45,8 @@ class MultiKLineWindow(base_win.BaseWindow):
         self.klines.clear()
         for i in range(childKlineNum):
             win = kline.KLineWindow()
-            idt = kline.KLineIndicator(win, {'height': -1, 'margins': (10, 10)})
-            win.addIndicator(idt)
+            #idt = kline.KLineIndicator(win, {'height': -1, 'margins': (10, 10)})
+            #win.addIndicator(idt)
             idt = kline.AmountIndicator(win, {'height': 50, 'margins': (10, 3)})
             win.addIndicator(idt)
             self.klines.append(win)
@@ -162,9 +162,9 @@ class MultiKLineWindow(base_win.BaseWindow):
         for i, kl in enumerate(self.klines):
             if i == curWinIdx:
                 continue
-            if evtName == 'Event.MouseMove':
+            if evtName == 'MouseMove':
                 kl.onMouseMove(evtInfo['x'], evtInfo['y'])
-            elif evtName == 'Event.KeyDown':
+            elif evtName == 'KeyDown':
                 kl.onKeyDown(evtInfo['oem'])
 
     def winProc(self, hwnd, msg, wParam, lParam):
