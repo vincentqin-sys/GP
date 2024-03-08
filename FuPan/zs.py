@@ -71,7 +71,9 @@ class ZSWindow(base_win.BaseWindow):
             return
         win = kline.KLineWindow()
         win.showSelTip = True
-        win.addDefaultIndicator(kline.KLineWindow.INDICATOR_KLINE | kline.KLineWindow.INDICATOR_AMOUNT)
+        win.addDefaultIndicator('amount')
+        win.addIndicator(kline.DayIndicator(win, None))
+        win.addIndicator(kline.ThsZsPMIndicator(win, None))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
         dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
         W, H = 1000, 450

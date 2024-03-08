@@ -76,10 +76,13 @@ class DddlrStructWindow(base_win.BaseWindow):
     def openInCurWindow(self, data):
         win = kline.KLineWindow()
         win.showSelTip = True
-        win.addDefaultIndicator(kline.KLineWindow.INDICATOR_KLINE | kline.KLineWindow.INDICATOR_AMOUNT | kline.KLineWindow.INDICATOR_RATE)
+        win.addDefaultIndicator('rate | amount')
+        win.addIndicator(kline.DayIndicator(win, {}))
+        win.addIndicator(kline.DdlrIndicator(win, {'height': 100}))
+        win.addIndicator(kline.HotIndicator(win, {}))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
         dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
-        W, H = 1000, 550
+        W, H = 1100, 650
         x = (dw - W) // 2
         y = (dh - H) // 2
         win.createWindow(self.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)

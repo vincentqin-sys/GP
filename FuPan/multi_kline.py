@@ -26,7 +26,7 @@ class MultiKLineWindow(base_win.BaseWindow):
             k.invalidWindow()
         
     def makeVisible(self, day):
-        model = self.klines[0].indicators[0].model
+        model = self.klines[0].model
         if not model or not day:
             return
         if type(day) == str:

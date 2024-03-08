@@ -306,10 +306,11 @@ class HexinUrl(Henxin):
         url = self.getKLineUrl(code)
         klineRs = self.loadUrlData(url)
         data = klineRs['data']
-        if not data or data[-1].day != klineRs['today']:
-            url = self.getTodayKLineUrl(code)
-            todayRs = self.loadUrlData(url)
-            data.append(todayRs['data'])
+        url = self.getTodayKLineUrl(code)
+        todayRs = self.loadUrlData(url)
+        if data and data[-1].day == int(klineRs['today']):
+            data.pop(-1)
+        data.append(todayRs['data'])
         return klineRs
     
     def parseTodayData(self, txt : str):
