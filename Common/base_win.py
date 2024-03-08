@@ -252,17 +252,18 @@ class Drawer:
 
     # only draw borders
     # rect = list or tuple (left, top, right, bottom)
-    def drawRect(self, hdc, rect, pen):
+    def drawRect(self, hdc, rect, borderColor, borderWidth = 1):
         if not rect:
             return
-        self.use(hdc, pen)
-        hbr = win32gui.GetStockObject(win32con.NULL_BRUSH)
-        win32gui.SelectObject(hdc, hbr)
-        win32gui.Rectangle(hdc, *rect)
-    
-    def drawRect2(self, hdc, rect, penColor, penStyle = win32con.PS_SOLID, penWidth = 1):
-        pen = self.getPen(penColor, penStyle, penWidth)
-        self.drawRect(hdc, rect, pen)
+        hbr = self.getBrush(borderColor)
+        rc = (rect[0], rect[1], rect[2], rect[1] + borderWidth)
+        win32gui.FillRect(hdc, rc, hbr)
+        rc = (rect[0], rect[3] - borderWidth, rect[2], rect[3])
+        win32gui.FillRect(hdc, rc, hbr)
+        rc = (rect[0], rect[1], rect[0] + borderWidth, rect[3])
+        win32gui.FillRect(hdc, rc, hbr)
+        rc = (rect[2] - borderWidth, rect[1], rect[2], rect[3])
+        win32gui.FillRect(hdc, rc, hbr)
 
     # rect = list or tuple (left, top, right, botton)
     # color = int (0xbbggrr color)
@@ -716,7 +717,8 @@ class TableWindow(BaseWindow):
     def getPageSize(self):
         h = self.getClientSize()[1]
         h -= self.headHeight + self.tailHeight
-        maxRowCount = (h + self.rowHeight - 1) // self.rowHeight
+        #maxRowCount = (h + self.rowHeight - 1) // self.rowHeight
+        maxRowCount = h // self.rowHeight
         return maxRowCount
     
     # [startIdx, end)
@@ -759,7 +761,7 @@ class TableWindow(BaseWindow):
     
     def showRow(self, row):
         rg = self.getVisibleRange()
-        if not rg:
+        if not rg or row < 0:
             return
         num = rg[1] - rg[0]
         if num == 0:
@@ -815,7 +817,7 @@ class TableWindow(BaseWindow):
         rc = [0, 0, 0, self.headHeight]
         for i, hd in enumerate(hds):
             rc[2] += self.getColumnWidth(i, hd['name'])
-            self.drawer.drawRect2(hdc, rc, 0x888888)
+            self.drawer.drawRect(hdc, rc, 0x888888)
             if self.sortHeader and self.sortHeader['header'] == hd:
                 self.drawSort(hdc, rc)
             rc2 = rc.copy()
@@ -1146,7 +1148,7 @@ class GroupButton(BaseWindow):
             color = 0x00008C if i == self.selGroupIdx else 0x333333
             rc = [int(cw * i), 0,  int((i + 1) * cw), h]
             self.drawer.fillRect(hdc, rc, color)
-            self.drawer.drawRect(hdc, rc, self.drawer.getPen(0x202020))
+            self.drawer.drawRect(hdc, rc, 0x202020)
             rc[1] = (h - 16) // 2
             self.drawer.drawText(hdc, item['title'], rc, 0x2fffff)
 
@@ -1182,7 +1184,7 @@ class Button(BaseWindow):
         TH = 14
         rc = (0, 0,  w, h)
         self.drawer.fillRect(hdc, rc, self.css['bgColor'])
-        self.drawer.drawRect2(hdc, rc, self.css['borderColor'])
+        self.drawer.drawRect(hdc, rc, self.css['borderColor'])
         rc = (0, (h - TH) // 2,  w, h - (h - TH) // 2)
         self.drawer.drawText(hdc, self.info['title'], rc, self.css['textColor'])
 
@@ -1216,7 +1218,7 @@ class Label(BaseWindow):
         TH = 14
         rc = (0, 0,  w, h)
         self.drawer.fillRect(hdc, rc, self.css['bgColor'])
-        self.drawer.drawRect2(hdc, rc, self.css['borderColor'])
+        self.drawer.drawRect(hdc, rc, self.css['borderColor'])
         rc = (0, (h - TH) // 2,  w, h - (h - TH) // 2)
         self.drawer.drawText(hdc, self.text, rc, self.css['textColor'], win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
@@ -1239,10 +1241,10 @@ class CheckBox(BaseWindow):
     def onDraw(self, hdc):
         w, h = self.getClientSize()
         BRD = 2
-        WH = self.css['fontSize']
+        WH = self.css['fontSize'] // 2 * 2
         sy = (h - WH) // 2
         rc = (0, sy, WH, sy + WH)
-        self.drawer.drawRect2(hdc, rc, 0x606060, penWidth = BRD)
+        self.drawer.drawRect(hdc, rc, 0x606060, borderWidth = BRD)
         
         if self.isChecked():
             SP = 4
@@ -1328,7 +1330,7 @@ class PopupWindow(BaseWindow):
         win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
 
     def onDraw(self, hdc):
-        self.drawer.drawRect2(hdc, (0, 0, *self.getClientSize()), 0xAAAAAA)
+        self.drawer.drawRect(hdc, (0, 0, *self.getClientSize()), 0xAAAAAA)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_ACTIVATE:
@@ -1488,15 +1490,13 @@ class PopupMenu(PopupWindow):
 class PopupMenuHelper:
     # x, y is screen position
     # model = [{'title': xx, 'enable' : True(is default) | False}, ...]  title:必选项 = LINE | ...., enable: 可选项
-    # listener = function(args, evtName, evtInfo)
-    # args = listener args. Auto add menu object to args ==> listener-function([args, menu], evtName, evtInfo)
+    # listener = function(evtName, evtInfo, args)
     # return PopupMenu object
     @staticmethod
-    def create(parentHwnd, model, listener, args = None):
+    def create(parentHwnd, model):
         menu = PopupMenu()
         menu.createWindow(parentHwnd, (0, 0, 1, 1), title = 'I-PopupMenu')
         menu.setModel(model)
-        menu.addListener(listener, (args, menu))
         return menu
 
 # listeners :  Select = {src, day: int}
@@ -1524,7 +1524,7 @@ class DatePopupWindow(PopupWindow):
         self.setSelDay(self.curSelDay)
 
     def onDraw(self, hdc):
-        self.drawer.drawRect2(hdc, (0, 0, *self.getClientSize()), 0xAAAAAA)
+        self.drawer.drawRect(hdc, (0, 0, *self.getClientSize()), 0xAAAAAA)
         self.drawHeader(hdc, self.curYear, self.curMonth)
         self.drawContent(hdc, self.curYear, self.curMonth)
 
@@ -1556,7 +1556,7 @@ class DatePopupWindow(PopupWindow):
                 continue
             rc = [self.PADDING + int(c * ITEM_WIDTH), int(sy), self.PADDING + int(c * ITEM_WIDTH + ITEM_WIDTH), int(sy + ITEM_HEIGHT)]
             if self.curSelDay == day:
-                self.drawer.drawRect2(hdc, rc, 0x00aa00)
+                self.drawer.drawRect(hdc, rc, 0x00aa00)
             rc[1] += int(DPY)
             txt = day if type(day) == str else str(day.day)
             if isinstance(day, datetime.date) and day == today:
@@ -1675,7 +1675,7 @@ class DatePicker(BaseWindow):
 
     def onDraw(self, hdc):
         w, h = self.getClientSize()
-        self.drawer.drawRect2(hdc, (0, 0, w, h), 0xcccccc)
+        self.drawer.drawRect(hdc, (0, 0, w, h), 0xcccccc)
         if not self.getSelDay():
             return
         sy = (h - 2 - 14) // 2
@@ -1973,8 +1973,7 @@ def testPopMenu():
 if __name__ == '__main__':
     #testGridLayout()
     #testPopMenu()
-    editor = Editor()
-    editor.setText('Hel中国心人民')
-    editor.setSelRange(2, 5)
+    editor = CheckBox({'title': 'Hello'})
+    #editor.css['bgColor'] = 0x00ff00
     editor.createWindow(None, (300, 200, 200, 70), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE)
     win32gui.PumpMessages()

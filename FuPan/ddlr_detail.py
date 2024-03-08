@@ -283,7 +283,7 @@ class DDMoneyWindow(base_win.BaseWindow):
 
     def drawBackground(self, hdc):
         mc = self.getMainRect()
-        self.drawer.drawRect(hdc, mc, self.drawer.getPen(0x36332E))
+        self.drawer.drawRect(hdc, mc, 0x36332E)
         ms = (1000, 1030, 1100, 1300, 1330, 1400, 1430)
         for m in ms:
             idx = self.timeToIdx(m)
@@ -370,7 +370,7 @@ class DDMoneyWindow(base_win.BaseWindow):
             win32gui.SetROP2(hdc, vs)
 
     def onDraw(self, hdc):
-        self.drawer.drawRect(hdc, (0, 0, *self.getClientSize()), self.drawer.getPen(0x36332E))
+        self.drawer.drawRect(hdc, (0, 0, *self.getClientSize()), 0x36332E)
         rect = self.getMainRect()
         if not self.data:
             return

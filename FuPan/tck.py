@@ -97,6 +97,7 @@ class TCK_Window(base_win.BaseWindow):
         win = kline.KLineWindow()
         win.showSelTip = True
         win.addDefaultIndicator('rate | amount')
+        win.addIndicator(kline.DayIndicator(win, {}))
         win.addIndicator(kline.DdlrIndicator(win, {'height': 100}))
         win.addIndicator(kline.HotIndicator(win, None))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)

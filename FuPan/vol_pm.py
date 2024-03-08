@@ -3,7 +3,7 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from Tdx import datafile
+from Tdx import datafile, orm as tdx_orm
 from Download import henxin, ths_ddlr
 from THS import orm, ths_win
 from Common import base_win, timeline, kline
@@ -11,12 +11,12 @@ from Common import base_win, timeline, kline
 thsWin = ths_win.ThsWindow()
 thsWin.init()
 
-class DddlrStructWindow(base_win.BaseWindow):
+class VolPMWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, 20, '1fr')
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
-        self.colsNum = min(dw // 330, 5)
+        self.colsNum = 5
         cols = ('1fr ' * self.colsNum).strip().split(' ')
         self.layout = base_win.GridLayout(rows, cols, (5, 10))
         self.listWins = []
@@ -35,13 +35,14 @@ class DddlrStructWindow(base_win.BaseWindow):
         self.layout.setContent(0, 0, absLayout)
         def formateFloat(colName, val, rowData):
             return f'{val :.02f}'
-        headers = [{'title': '', 'width': 40, 'name': '#idx' },
-                   {'title': '股票名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True  },
-                   {'title': '净流入', 'width': 70, 'name': 'total', 'formater': formateFloat, 'sortable':True  },
-                   {'title': '流入', 'width': 70, 'name': 'in', 'formater': formateFloat, 'sortable':True },
-                   {'title': '流出', 'width': 70, 'name': 'out', 'formater': formateFloat , 'sortable':True }]
+        headers = [#{'title': '', 'width': 40, 'name': '#idx' },
+                   {'title': '股票名称', 'width': 0, 'stretch': 1, 'name': 'name' },
+                   {'title': '成交额', 'width': 70, 'name': 'amount', 'sortable':True, 'formater': formateFloat},
+                   {'title': '排名', 'width': 70, 'name': 'pm', 'sortable':True },
+                   ]
         for i in range(len(self.layout.templateColumns)):
             win = base_win.TableWindow()
+            win.enableListeners['ContextMenu'] = True
             win.createWindow(self.hwnd, (0, 0, 1, 1))
             win.headers = headers
             self.layout.setContent(2, i, win)
@@ -50,7 +51,39 @@ class DddlrStructWindow(base_win.BaseWindow):
             self.daysLabels.append(lw)
             self.layout.setContent(1, i, lw)
             win.addListener(self.onDbClick, i)
+            win.addListener(self.onContextMenu, i)
         datePicker.addListener(self.onSelDayChanged, None)
+
+    def onContextMenu(self, evtName, evtInfo, tabIdx):
+        if evtName != 'ContextMenu':
+            return
+        win : base_win.TableWindow = self.listWins[tabIdx]
+        if win.selRow < 0:
+            return
+        code = win.data[win.selRow]['code']
+        model = [{'title': '关联选中'}]
+        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu.addListener(self.onMenuItemSelect, (tabIdx, code))
+        x, y = win32gui.GetCursorPos()
+        menu.show(x, y)
+
+    def findIdx(self, datas, code):
+        for i, d in enumerate(datas):
+            if d['code'] == code:
+                return i
+        return -1
+    
+    def onMenuItemSelect(self, evtName, evtInfo, args):
+        if evtName != 'Select':
+            return
+        tabIdx, code = args
+        for i, win in enumerate(self.listWins):
+            if i == tabIdx:
+                continue
+            idx = self.findIdx(win.data, code)
+            win.selRow = idx
+            win.showRow(idx)
+            win.invalidWindow()
 
     def onDbClick(self, evtName, evtInfo, idx):
         if evtName != 'DbClick' and evtName != 'RowEnter':
@@ -100,19 +133,16 @@ class DddlrStructWindow(base_win.BaseWindow):
         self.updateDay(evtInfo['day'])
 
     def updateDay(self, day):
-        if type(day) == int:
-            day = str(day)
-        day = day.replace('-', '')
-        q = orm.THS_DDLR.select(orm.THS_DDLR.day).distinct().where(orm.THS_DDLR.day <= day).order_by(orm.THS_DDLR.day.desc()).limit(self.colsNum).tuples()
+        if type(day) == str:
+            day = int(day.replace('-', ''))
+        q = tdx_orm.TdxVolPMModel.select(tdx_orm.TdxVolPMModel.day).distinct().where(tdx_orm.TdxVolPMModel.day <= day).order_by(tdx_orm.TdxVolPMModel.day.desc()).limit(self.colsNum).tuples()
         for i, d in enumerate(q):
             cday = d[0]
-            ds = orm.THS_DDLR.select().where(orm.THS_DDLR.day == cday)
+            ds = tdx_orm.TdxVolPMModel.select().where(tdx_orm.TdxVolPMModel.day == cday)
             datas = [d.__data__ for d in ds]
-            for xd in datas:
-                xd['in'] = xd['activeIn'] + xd['positiveIn']
-                xd['out'] = xd['activeOut'] + xd['positiveOut']
             self.listWins[i].data = datas
             self.listWins[i].invalidWindow()
+            cday = str(cday)
             sday = cday[0 : 4] + '-' + cday[4 : 6] + '-' + cday[6 : ]
             win32gui.SetWindowText(self.daysLabels[i], sday)
 
