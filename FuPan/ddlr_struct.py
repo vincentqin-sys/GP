@@ -50,7 +50,42 @@ class DddlrStructWindow(base_win.BaseWindow):
             self.daysLabels.append(lw)
             self.layout.setContent(1, i, lw)
             win.addListener(self.onDbClick, i)
+            win.enableListeners['ContextMenu'] = True
+            win.addListener(self.onContextMenu, i)
         datePicker.addListener(self.onSelDayChanged, None)
+
+    def onContextMenu(self, evtName, evtInfo, tabIdx):
+        if evtName != 'ContextMenu':
+            return
+        win : base_win.TableWindow = self.listWins[tabIdx]
+        if win.selRow < 0:
+            return
+        wdata = win.sortData or win.data
+        code = wdata[win.selRow]['code']
+        model = [{'title': '关联选中'}]
+        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu.addListener(self.onMenuItemSelect, (tabIdx, code))
+        x, y = win32gui.GetCursorPos()
+        menu.show(x, y)
+
+    def findIdx(self, win, code):
+        datas = win.sortData or win.data
+        for i, d in enumerate(datas):
+            if d['code'] == code:
+                return i
+        return -1
+    
+    def onMenuItemSelect(self, evtName, evtInfo, args):
+        if evtName != 'Select':
+            return
+        tabIdx, code = args
+        for i, win in enumerate(self.listWins):
+            if i == tabIdx:
+                continue
+            idx = self.findIdx(win, code)
+            win.selRow = idx
+            win.showRow(idx)
+            win.invalidWindow()
 
     def onDbClick(self, evtName, evtInfo, idx):
         if evtName != 'DbClick' and evtName != 'RowEnter':
@@ -81,6 +116,7 @@ class DddlrStructWindow(base_win.BaseWindow):
         win.addDefaultIndicator('rate | amount')
         win.addIndicator(kline.DayIndicator(win, {}))
         win.addIndicator(kline.DdlrIndicator(win, {'height': 100}))
+        win.addIndicator(kline.DdlrIndicator(win, {'height': 40}, False))
         win.addIndicator(kline.HotIndicator(win, {}))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
         dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)

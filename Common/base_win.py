@@ -120,7 +120,7 @@ class Thread:
         self.stoped = False
         self.started = False
         self.event = threading.Event()
-        self.thread = threading.Thread(target = Thread._run, args=(self,))
+        self.thread = threading.Thread(target = Thread._run, args=(self,), daemon = True)
 
     def addTask(self, taskId, fun, args = None):
         for tk in self.tasks:
@@ -184,7 +184,7 @@ class TimerThread:
     @staticmethod
     def _run(self):
         while not self.stoped:
-            time.sleep(0.5)
+            time.sleep(0.1)
             self.runOnce()
 
 class Drawer:
@@ -1256,7 +1256,7 @@ class CheckBox(BaseWindow):
 
         if 'title' in self.info:
             rc3 = (rc[2] + 3, (h - WH) // 2, w, h)
-            self.drawer.drawText(hdc, self.info['title'], rc3, 0x2fffff, win32con.DT_LEFT)
+            self.drawer.drawText(hdc, self.info['title'], rc3, self.css['textColor'], win32con.DT_LEFT)
 
     def isChecked(self):
         return self.info and self.info.get('checked', False)

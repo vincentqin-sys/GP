@@ -60,14 +60,16 @@ class VolPMWindow(base_win.BaseWindow):
         win : base_win.TableWindow = self.listWins[tabIdx]
         if win.selRow < 0:
             return
-        code = win.data[win.selRow]['code']
+        wdata = win.sortData or win.data
+        code = wdata[win.selRow]['code']
         model = [{'title': '关联选中'}]
         menu = base_win.PopupMenuHelper.create(self.hwnd, model)
         menu.addListener(self.onMenuItemSelect, (tabIdx, code))
         x, y = win32gui.GetCursorPos()
         menu.show(x, y)
 
-    def findIdx(self, datas, code):
+    def findIdx(self, win, code):
+        datas = win.sortData or win.data
         for i, d in enumerate(datas):
             if d['code'] == code:
                 return i
@@ -80,7 +82,7 @@ class VolPMWindow(base_win.BaseWindow):
         for i, win in enumerate(self.listWins):
             if i == tabIdx:
                 continue
-            idx = self.findIdx(win.data, code)
+            idx = self.findIdx(win, code)
             win.selRow = idx
             win.showRow(idx)
             win.invalidWindow()
@@ -114,6 +116,7 @@ class VolPMWindow(base_win.BaseWindow):
         win.addDefaultIndicator('rate | amount')
         win.addIndicator(kline.DayIndicator(win, {}))
         win.addIndicator(kline.DdlrIndicator(win, {'height': 100}))
+        win.addIndicator(kline.DdlrIndicator(win, {'height': 30}, False))
         win.addIndicator(kline.HotIndicator(win, {}))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
         dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)

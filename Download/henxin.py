@@ -308,7 +308,7 @@ class HexinUrl(Henxin):
         data = klineRs['data']
         url = self.getTodayKLineUrl(code)
         todayRs = self.loadUrlData(url)
-        if data and data[-1].day == int(klineRs['today']):
+        if data and data[-1].day == todayRs['data'].day:
             data.pop(-1)
         data.append(todayRs['data'])
         return klineRs

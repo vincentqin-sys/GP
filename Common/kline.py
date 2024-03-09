@@ -571,10 +571,16 @@ class CustomIndicator(Indicator):
         pass
 
 class DdlrIndicator(CustomIndicator):
-    PADDING_TOP = 40
-    def __init__(self, klineWin, config) -> None:
+    PADDING_TOP = 25
+    def __init__(self, klineWin, config, isDetail = True) -> None:
         super().__init__(klineWin, config)
-        self.config['title'] = '[大单流入]'
+        if isDetail:
+            self.config['title'] = '[大单流入]'
+        else:
+            self.config['title'] = '[大单净流入]'
+            if 'show-rate' not in self.config:
+                self.config['show-rate'] = False
+        self.isDetail = isDetail
 
     def setData(self, data):
         super().setData(data)
@@ -586,19 +592,20 @@ class DdlrIndicator(CustomIndicator):
         for d in ddlr:
             d['in'] = d['activeIn'] + d['positiveIn']
             d['out'] = d['activeOut'] + d['positiveOut']
+            if d['amount'] > 0:
+                d['ddRate'] = int(max(d['in'], d['out']) / d['amount'] * 100)
+            else:
+                d['ddRate'] = 0
             maps[int(d['day'])] = d
         rs = []
         for d in data:
             fd = maps.get(d.day, None)
             if not fd:
-                fd = {'day': str(d.day), 'in': 0, 'out': 0}
+                fd = {'day': str(d.day), 'isNone': True, 'in': 0, 'out': 0, 'ddRate' : 0, 'total': 0}
             rs.append(fd)
         self.setCustomData(rs)
 
     def drawItem(self, idx, hdc, pens, hbrs, x):
-        if not self.valueRange:
-            return
-        ITW = 5
         WW = self.config['itemWidth']
         data = self.customData[idx]
         selIdx = self.klineWin.selIdx
@@ -607,11 +614,46 @@ class DdlrIndicator(CustomIndicator):
         rc = (x, 1, x + WW, self.height)
         if selDay == int(data['__day']):
             win32gui.FillRect(hdc, rc, hbrs['light_dark'])
+        if self.isDetail:
+            self.drawItem_Detail(idx, hdc, pens, hbrs, x)
+        else:
+            self.drawItem_Sum(idx, hdc, pens, hbrs, x)
+        win32gui.SelectObject(hdc, pens['light_drak_dash_dot'])
+        win32gui.MoveToEx(hdc, x + WW, 0)
+        win32gui.LineTo(hdc, x + WW, self.height)
+    
+    def drawItem_Sum(self, idx, hdc, pens, hbrs, x):
+        WW = self.config['itemWidth']
+        data = self.customData[idx]
+        if 'isNone' in data:
+            return
+        jlr = f"{data['total']: .1f} 亿"
+        zb = f"({data['ddRate']}%)"
+        if self.config['show-rate']:
+            HH = self.height // 2
+        else:
+            HH = self.height
+        if data['total'] > 0:
+            win32gui.SetTextColor(hdc, 0x0000dd)
+        elif data['total'] < 0:
+            win32gui.SetTextColor(hdc, 0x00dd00)
+        else:
+            win32gui.SetTextColor(hdc, 0xcccccc)
+        win32gui.DrawText(hdc, jlr, -1, (x, 0, x + WW, HH), win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+        if self.config['show-rate']:
+            win32gui.DrawText(hdc, zb, -1, (x, HH, x + WW, self.height), win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+
+    def drawItem_Detail(self, idx, hdc, pens, hbrs, x):
+        if not self.valueRange:
+            return
+        WW = self.config['itemWidth']
+        ITW = 5
         sx = x + 20
+        data = self.customData[idx]
         sy = self.getYAtValue(data['in'])
         rc = (sx, sy, sx + ITW, self.getYAtValue(0))
         win32gui.FillRect(hdc, rc, hbrs['red'])
-        rcx = (sx - 15, sy - 20, sx + 15 + ITW, sy)
+        rcx = (sx - 15, 3, sx + 15 + ITW, self.PADDING_TOP)
         if data['in'] > 0:
             win32gui.DrawText(hdc, f"{data['in'] :.1f}", -1, rcx, win32con.DT_CENTER)
 
@@ -619,13 +661,9 @@ class DdlrIndicator(CustomIndicator):
         sy = self.getYAtValue(data['out'])
         rc = (sx, sy, sx + ITW, self.getYAtValue(0))
         win32gui.FillRect(hdc, rc, hbrs['green'])
-        rcx = (sx - 15, sy - 20, sx + 15 + ITW, sy)
+        rcx = (sx - 15, 3, sx + 15 + ITW, self.PADDING_TOP)
         if data['out'] > 0:
             win32gui.DrawText(hdc, f"{data['out'] :.1f}", -1, rcx, win32con.DT_CENTER)
-
-        win32gui.SelectObject(hdc, pens['light_drak_dash_dot'])
-        win32gui.MoveToEx(hdc, x + WW, 0)
-        win32gui.LineTo(hdc, x + WW, self.height)
 
     def getYAtValue(self, value):
         return self.getYAtValue2(value, self.height - self.PADDING_TOP - 3) + self.PADDING_TOP
