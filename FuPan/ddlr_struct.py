@@ -7,6 +7,7 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import orm, ths_win
 from Common import base_win, timeline, kline
+import ddlr_detail
 
 thsWin = ths_win.ThsWindow()
 thsWin.init()
@@ -129,6 +130,16 @@ class DddlrStructWindow(base_win.BaseWindow):
         win.setModel(model)
         win.setMarkDay(data['day'])
         win.makeVisible(-1)
+        win.addListener(self.openKlineMinutes, win)
+
+    def openKlineMinutes(self, evtName, evt, parent):
+        if evtName != 'DbClick':
+            return
+        win = ddlr_detail.DDLR_MinuteMgrWindow()
+        rc = win32gui.GetWindowRect(parent.hwnd)
+        win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+        day = evt['data'].day
+        win.updateCodeDay(evt['code'], day)
 
     def onSelDayChanged(self, evtName, evtInfo, args):
         if evtName != 'Select':

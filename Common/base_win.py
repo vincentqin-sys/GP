@@ -15,7 +15,8 @@ class BaseWindow:
         self._bitmap = None
         self._bitmapSize = None
         self.cacheBitmap = False
-        self.css = {'fontSize' : 14, 'bgColor': 0x000000, 'textColor': 0xffffff} # config css style
+        self.css = {'fontSize' : 14, 'bgColor': 0x000000, 'textColor': 0xffffff,
+                    'enableBorder': False, 'borderColor': 0x0} # config css style
         self.enableListeners = {'ContextMenu': False, 'DbClick': False, 'R_DbClick': False}
         self.dispatchEvent = None # can set, return True:已处理,  False: 未处理 = function(src, msg, wparam, lparam)
     
@@ -79,6 +80,8 @@ class BaseWindow:
             bmp = self._bitmap
         win32gui.SelectObject(mdc, bmp)
         self.drawer.fillRect(mdc, win32gui.GetClientRect(self.hwnd), self.css['bgColor'])
+        if self.css['enableBorder']:
+            self.drawer.drawRect(mdc, win32gui.GetClientRect(self.hwnd), self.css['borderColor'])
         win32gui.SetBkMode(mdc, win32con.TRANSPARENT)
         win32gui.SetTextColor(mdc, self.css['textColor'])
         self.drawer.use(mdc, self.drawer.getFont(fontSize = self.css['fontSize']))
@@ -115,18 +118,24 @@ class BaseWindow:
         win32gui.InvalidateRect(self.hwnd, None, True)
 
 class Thread:
-    def __init__(self) -> None:
+    _num = 0
+    def __init__(self, threadName = None) -> None:
+        Thread._num += 1
         self.tasks = []
         self.stoped = False
         self.started = False
         self.event = threading.Event()
-        self.thread = threading.Thread(target = Thread._run, args=(self,), daemon = True)
+        if not threadName:
+            threadName = f'Thread-{Thread._num}'
+        self.name = threadName
+        self.thread = threading.Thread(target = Thread._run, args=(self,), name=threadName, daemon = True)
 
-    def addTask(self, taskId, fun, args = None):
+    def addTask(self, taskId, fun, *args):
         for tk in self.tasks:
-            if tk[2] == taskId:
+            if tk['task_id'] == taskId:
                 return
-        self.tasks.append((fun, args, taskId))
+        task = {'func': fun, 'args': args, 'task_id': taskId}
+        self.tasks.append(task)
         self.event.set()
 
     def start(self):
@@ -145,22 +154,48 @@ class Thread:
                 self.event.clear()
             else:
                 task = self.tasks[0]
-                fun, args, taskId,  *_ = task
-                if args != None:
-                    fun(*args)
-                else:
-                    fun()
+                func = task['func']
+                func( *task['args'] )
                 self.tasks.pop(0)
 
 class TimerThread:
-    def __init__(self) -> None:
+    _num = 0
+    def __init__(self, threadName = None) -> None:
+        TimerThread._num += 1
         self.tasks = []
         self.stoped = False
         self.started = False
-        self.thread = threading.Thread(target = Thread._run, args=(self,))
+        if not threadName:
+            threadName = f"TimerThread-{TimerThread._num}"
+        self.name = threadName
+        self.thread = threading.Thread(target = TimerThread._run, name = threadName, args=(self,), daemon = True)
 
-    def addTask(self, delaySeconds, fun, *args):
-        self.tasks.append((fun, args, time.time() + delaySeconds))
+    # param delay : float seconds
+    def addTimerTask(self, taskId, delay, func, *args):
+        for tk in self.tasks:
+            if tk['task_id'] == taskId:
+                return
+        tsk = {'func': func, 'args': args, 'delay': time.time() + delay, 'task_id': taskId}
+        self.tasks.append(tsk)
+
+    # param intervalTime : float seconds
+    def addIntervalTask(self, taskId, intervalTime, func, *args):
+        for tk in self.tasks:
+            if tk['task_id'] == taskId:
+                return
+        tsk = {'func': func, 'args': args, 'interval': intervalTime, 'delay': time.time() + intervalTime, 'task_id': taskId}
+        self.tasks.append(tsk)
+
+    def removeTask(self, taskId):
+        idx = -1
+        for i, tk in enumerate(self.tasks):
+            if tk['task_id'] == taskId:
+                idx = i
+                break
+        if idx < 0:
+            return False
+        self.tasks.pop(idx)
+        return True
 
     def start(self):
         if not self.started:
@@ -174,18 +209,46 @@ class TimerThread:
         idx = 0
         while idx < len(self.tasks):
             task = self.tasks[idx]
-            fun, args, _time,  *_ = task
-            if time.time() < _time:
+            if time.time() < task['delay']:
                 idx += 1
                 continue
-            self.tasks.pop(idx)
-            fun(*args)
-    
+            func = task['func']
+            func( *task['args'] )
+            if 'interval' in task:
+                task['delay'] = time.time() + task['interval']
+                idx += 1
+            else:
+                self.tasks.pop(idx)
+
     @staticmethod
     def _run(self):
         while not self.stoped:
             time.sleep(0.1)
             self.runOnce()
+
+class ThreadPool:
+    _ins = None
+    def __init__(self) -> None:
+        self.thread = Thread()
+        self.timerThread = TimerThread()
+
+    @staticmethod
+    def start():
+        ThreadPool._ins = ThreadPool()
+        ThreadPool._ins.thread.start()
+        ThreadPool._ins.timerThread.start()
+
+    @staticmethod
+    def addTask(taskId, func, *args):
+        ThreadPool._ins.thread.addTask(taskId, func, *args)
+
+    @staticmethod
+    def addTimerTask(taskId, delay, func, *args):
+        ThreadPool._ins.timerThread.addTimerTask(taskId, delay, func, *args)
+
+    @staticmethod
+    def addIntervalTask(taskId, intervalTime, func, *args):
+        ThreadPool._ins.timerThread.addIntervalTask(taskId, intervalTime, func, *args)
 
 class Drawer:
     _instance = None
@@ -1047,8 +1110,10 @@ class ColumnWindow(BaseWindow):
 
 # listeners : Select = {src, idx}
 class ListWindow(BaseWindow):
-    def __init__(self, hwnd):
-        super().__init__(hwnd)
+    def __init__(self):
+        super().__init__()
+        self.css['bgColor'] = 0xf0f0f0
+        self.css['textColor'] = 0x333333
         self.ROW_HEIGHT = 18
         self.selIdx = -1
         self.pageIdx = 0
@@ -1175,6 +1240,7 @@ class Button(BaseWindow):
     def __init__(self, btnInfo) -> None:
         super().__init__()
         self.css['bgColor'] = 0x333333
+        self.css['enableBorder'] = True
         self.css['borderColor'] = 0x202020
         self.css['textColor'] = 0x2fffff
         self.info = btnInfo
@@ -1183,8 +1249,6 @@ class Button(BaseWindow):
         w, h = self.getClientSize()
         TH = 14
         rc = (0, 0,  w, h)
-        self.drawer.fillRect(hdc, rc, self.css['bgColor'])
-        self.drawer.drawRect(hdc, rc, self.css['borderColor'])
         rc = (0, (h - TH) // 2,  w, h - (h - TH) // 2)
         self.drawer.drawText(hdc, self.info['title'], rc, self.css['textColor'])
 
@@ -1201,7 +1265,6 @@ class Button(BaseWindow):
 class Label(BaseWindow):
     def __init__(self, text = None) -> None:
         super().__init__()
-        self.css['borderColor'] = self.css['bgColor']
         self.text = text
     
     def setText(self, text):
@@ -1217,8 +1280,6 @@ class Label(BaseWindow):
         w, h = self.getClientSize()
         TH = 14
         rc = (0, 0,  w, h)
-        self.drawer.fillRect(hdc, rc, self.css['bgColor'])
-        self.drawer.drawRect(hdc, rc, self.css['borderColor'])
         rc = (0, (h - TH) // 2,  w, h - (h - TH) // 2)
         self.drawer.drawText(hdc, self.text, rc, self.css['textColor'], win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
 
@@ -1302,6 +1363,8 @@ class PopupWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.ownerHwnd = None
+        self.css['enableBorder'] = True
+        self.css['borderColor'] = 0xaaaaaa
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
         #style = win32con.WS_POPUP | win32con.WS_CHILD
@@ -1328,9 +1391,6 @@ class PopupWindow(BaseWindow):
 
     def hide(self):
         win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
-
-    def onDraw(self, hdc):
-        self.drawer.drawRect(hdc, (0, 0, *self.getClientSize()), 0xAAAAAA)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_ACTIVATE:
@@ -1524,7 +1584,6 @@ class DatePopupWindow(PopupWindow):
         self.setSelDay(self.curSelDay)
 
     def onDraw(self, hdc):
-        self.drawer.drawRect(hdc, (0, 0, *self.getClientSize()), 0xAAAAAA)
         self.drawHeader(hdc, self.curYear, self.curMonth)
         self.drawContent(hdc, self.curYear, self.curMonth)
 
@@ -1698,6 +1757,7 @@ class Editor(BaseWindow):
         self.css['textColor'] = 0x202020
         self.css['borderColor'] = 0xdddddd
         self.css['selBgColor'] = 0xf0c0c0
+        self.css['enableBorder'] = True
         self._createdCaret = False
         self.scrollX = 0 # always <= 0
         self.paddingX = 3 # 左右padding
@@ -1758,10 +1818,16 @@ class Editor(BaseWindow):
         txt = self.text[0 : self.selRange[0]]
         txt2 = self.text[self.selRange[1] : ]
         self.text = txt + txt2
+        ip = self.insertPos
+        if self.insertPos >= self.selRange[0] and self.insertPos < self.selRange[1]:
+            ip = self.selRange[0]
+        elif self.insertPos >= self.selRange[1]:
+            ip = self.insertPos - (self.selRange[1] - self.selRange[0])
         if not self.text:
-            self.insertPos = 0
+            ip = 0
             self.scrollX = 0
         self.selRange = None
+        self.setInsertPos(ip)
         self.invalidWindow()
 
     def getXAtPos(self, pos):

@@ -6,30 +6,25 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import orm, ths_win
-from Common import base_win, timeline, kline
+from Common import base_win, timeline, kline, sheet
 
 thsWin = ths_win.ThsWindow()
 thsWin.init()
 
-class TCK_Window(base_win.BaseWindow):
+class TCGN_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (60, 300, 150, '1fr')
+        self.cols = (250, 150, 80, 80, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
+        self.sheetWin = sheet.SheetWindow()
         self.editorWin = base_win.Editor()
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
-        self.tckData = None
+        self.tckData = []
         self.tckSearchData = None
-        
-        base_win.ThreadPool.addTask('TCK', self.runTask)
-
-    def runTask(self):
-        self.loadAllData()
-        if not self.tableWin.hwnd:
-            return
-        self.onEditEnd('PressEnter', {'text': self.editorWin.text}, None)
+        #base_win.ThreadPool.addTask()
+        self.curData = None
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -38,38 +33,69 @@ class TCK_Window(base_win.BaseWindow):
         def sortPM(colName, val, rowData, allDatas, asc):
             return val
         headers = [ {'title': '', 'width': 30, 'name': '#idx' },
-                   {'title': '日期', 'width': 80, 'name': 'day', 'sortable':True },
-                   {'title': '名称', 'width': 70, 'name': 'name', 'sortable':True },
-                   {'title': '热度', 'width': 70, 'name': 'zhHotOrder', 'sortable':True },
-                   {'title': '开盘啦', 'width': 120, 'name': 'kpl_ztReason', 'sortable':True },
-                   {'title': '同花顺', 'width': 80, 'name': 'ths_status', 'sortable':True },
-                   {'title': '同花顺', 'width': 200, 'name': 'ths_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True},
-                   {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
-                   {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
+                   {'title': '题材概念', 'width': 0, 'stretch': 1, 'name': 'tcgn', 'sortable':True },
+                   #{'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.sheetWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.rowHeight = 40
         self.tableWin.headers = headers
-        btn = base_win.Button({'title': '刷新'})
-        btn.createWindow(self.hwnd, (0, 0, 1, 1))
-        btn.addListener(self.onRefresh)
-        self.layout.setContent(0, 0, btn)
-        self.layout.setContent(0, 1, self.editorWin)
-        self.layout.setContent(0, 2, self.checkBox)
-        self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
+        newBtn = base_win.Button({'title': 'New'})
+        newBtn.createWindow(self.hwnd, (0, 0, 1, 1))
+
+        self.layout.setContent(0, 0, self.editorWin)
+        self.layout.setContent(0, 1, self.checkBox)
+        self.layout.setContent(0, 2, newBtn)
+
+        self.layout.setContent(1, 0, self.tableWin)
+        self.layout.setContent(1, 1, self.sheetWin, {'horExpand': -1})
         self.editorWin.addListener(self.onEditEnd, None)
         self.tableWin.addListener(self.onDbClick, None)
+        self.sheetWin.addListener(self.onSheetSave, None)
+        newBtn.addListener(self.onNew, None)
 
-    def onRefresh(self, evtName, evtInfo, args):
-        if evtName == 'Click':
-            self.tckData = None
-            self.onEditEnd('PressEnter', {'text': self.editorWin.text}, None)
+        self.loadAllData()
+        self.tableWin.setData(self.tckData)
+
+    def onNew(self, evtName, evt, args):
+        if evtName != 'Click':
+            return
+        self.curData = None
+        self.sheetWin.model.clearAll()
+        self.sheetWin.model.setCellText(0, 0, '[input title]')
+        self.sheetWin.invalidWindow()
+        self.tableWin.invalidWindow()
+
+    def onSheetSave(self, evtName, evt, args):
+        if evtName != 'Save':
+            return
+        model : sheet.SheetModel = evt
+        cell = model.getCell(0, 0)
+        tcgn = ''
+        if cell:
+            tcgn = cell.getText()
+        if not tcgn or not tcgn.strip():
+            win32gui.MessageBox(self.hwnd, '需要在单元格A1输入题材概念标题', 'Error', win32con.MB_OK)
+            return
+        tcgn = tcgn.strip()
+        info = model.serialize()
+        if self.curData:
+            self.curData['tcgn'] = tcgn
+            self.curData['info'] = info
+            qr = orm.TCK_TCGN.update({'tcgn': tcgn, 'info': info}).where(orm.TCK_TCGN.id == self.curData['id'])
+            qr.execute()
+        else:
+            obj = orm.TCK_TCGN.create(tcgn = tcgn, info = info)
+            self.curData = obj.__data__
+            self.tckData.append(self.curData)
+        self.tableWin.invalidWindow()
 
     def onEditEnd(self, evtName, evtInfo, args):
         if evtName != 'PressEnter':
             return
+        return
         self.tableWin.setData(None)
         self.tableWin.invalidWindow()
         self.loadAllData()
@@ -89,17 +115,15 @@ class TCK_Window(base_win.BaseWindow):
         time.sleep(0.2)
         pyautogui.press('enter')
         
-
     def onDbClick(self, evtName, evtInfo, args):
         if evtName != 'RowEnter' and evtName != 'DbClick':
             return
         data = evtInfo['data']
         if not data:
             return
-        if self.checkBox.isChecked():
-            self.openInThsWindow(data)
-        else:
-            self.openInCurWindow(data)
+        self.curData = data
+        self.sheetWin.model.unserialize(data['info'])
+        self.sheetWin.invalidWindow()
         
     def openInCurWindow(self, data):
         win = kline.KLineWindow()
@@ -122,52 +146,10 @@ class TCK_Window(base_win.BaseWindow):
         win.makeVisible(-1)
 
     def loadAllData(self):
-        if self.tckData != None:
-            return
-        kplQr = orm.KPL_ZT.select().order_by(orm.KPL_ZT.day.desc(), orm.KPL_ZT.id.asc()).dicts()
-        thsQr = orm.THS_ZT.select().dicts()
-        clsQr = orm.CLS_ZT.select().dicts()
-        hotZH = orm.THS_HotZH.select().dicts()
-        
-        kpl = {}
-        ths = []
-        cls = []
-        hots = {}
+        qr = orm.TCK_TCGN.select().dicts()
         rs = []
-        for d in hotZH:
-            day = d['day']
-            day = f"{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}"
-            k = f"{day}:{d['code'] :06d}"
-            hots[k] = d['zhHotOrder']
-        for d in kplQr:
-            k = d['day'] + ':' + d['code']
-            kpl[k] = d
-            d['kpl_ztReason'] = d['ztReason']
-            ztNum = d.get('ztNum', 0)
-            if type(ztNum) == str:
-                print(d)
-                ztNum = 0
-            if ztNum >= 4:
-                d['kpl_ztReason'] += f"({d['ztNum']})"
-            d['zhHotOrder'] = hots.get(k, None)
+        for d in qr:
             rs.append(d)
-        for d in thsQr:
-            k = d['day'] + ':' + d['code']
-            obj = kpl.get(k, None)
-            if obj:
-                obj['ths_status'] = d['status']
-                obj['ths_ztReason'] = d['ztReason']
-            else:
-                ths.append(d)
-        for d in clsQr:
-            k = d['day'] + ':' + d['code']
-            obj = kpl.get(k, None)
-            if obj:
-                obj['cls_detail'] = d['detail']
-                obj['cls_ztReason'] = d['ztReason']
-            else:
-                cls.append(d)
-        
         self.tckData = rs
 
     def doSearch(self, search : str):
@@ -182,7 +164,7 @@ class TCK_Window(base_win.BaseWindow):
         st = []
         for k in ls:
             if k: st.append(k)
-        keys = ('day', 'code', 'name', 'kpl_ztReason', 'ths_ztReason', 'cls_ztReason', 'cls_detail')
+        keys = ('tcgn', 'info')
         def contains(v):
             for m in st:
                 if m in v: return True
@@ -195,7 +177,6 @@ class TCK_Window(base_win.BaseWindow):
                     rs.append(d)
                     break
         self.tckSearchData = rs
-
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:

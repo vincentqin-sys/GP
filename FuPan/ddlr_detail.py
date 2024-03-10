@@ -421,8 +421,7 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''):
         super().createWindow(parentWnd, rect, style, title = '大单复盘')
-        self.shareMem.open()
-        
+
         size = self.getClientSize()
         self.tableWin = TableWindow()
         rc = (0, 50, 250, size[1] - 50)
@@ -475,6 +474,7 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
     def onListenRefresh(self, evtName, evtInfo, args):
         if evtName != 'ClickSelect':
             return
+        self.shareMem.open()
         code = self.shareMem.readCode()
         day = self.shareMem.readSelDay()
         if not code or not day:
@@ -483,6 +483,10 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
         self.updateCodeDay(code, day)
 
     def updateCodeDay(self, code, day):
+        if type(code) == int:
+            code = f'{code :06d}'
+        if type(day) == str:
+            day = int(day.replace('-', ''))
         xx = orm.THS_Newest.get_or_none(orm.THS_Newest.code == code)
         name = xx.name if xx else ''
         title = f'{code} {name} {day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'

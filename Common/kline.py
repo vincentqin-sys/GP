@@ -269,9 +269,9 @@ class KLineIndicator(Indicator):
         moveToFlag = False
         for i in range(bi, self.visibleRange[1]):
             if not moveToFlag:
-                mx = getattr(self.data[bi], ma, 0)
+                mx = getattr(self.data[i], ma, 0)
                 if mx > 0:
-                    win32gui.MoveToEx(hdc, self.getCenterX(bi), self.getYAtValue(mx))
+                    win32gui.MoveToEx(hdc, self.getCenterX(i), self.getYAtValue(mx))
                     moveToFlag = True
                 continue
             win32gui.LineTo(hdc, self.getCenterX(i), self.getYAtValue(getattr(self.data[i], ma)))
@@ -906,9 +906,9 @@ class KLineWindow(base_win.BaseWindow):
             #self.notifyListener('WM_MOUSEMOVE', {'src': self, 'lParam': lParam, 'wParam' : wParam})
             return True
         if msg == win32con.WM_KEYDOWN:
-            oem = lParam >> 16 & 0xff
-            self.onKeyDown(oem)
-            self.notifyListener('KeyDown', {'src': self, 'oem': oem})
+            keyCode = lParam >> 16 & 0xff
+            self.onKeyDown(keyCode)
+            self.notifyListener('KeyDown', {'src': self, 'keyCode': keyCode})
             #self.notifyListener('WM_KEYDOWN', {'src': self, 'lParam': lParam, 'wParam' : wParam})
             return True
         if msg == win32con.WM_LBUTTONDOWN:
@@ -919,7 +919,7 @@ class KLineWindow(base_win.BaseWindow):
             if y >= self.klineIndicator.y and y < self.klineIndicator.y + self.klineIndicator.height: # in kline dbclick
                 si = self.klineIndicator.getIdxAtX(x)
                 if si >= 0:
-                    self.notifyListener('DbClick', {'src': self, 'idx': si, 'data': self.model.data[si]})
+                    self.notifyListener('DbClick', {'src': self, 'idx': si, 'data': self.model.data[si], 'code': self.model.code})
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
@@ -957,20 +957,20 @@ class KLineWindow(base_win.BaseWindow):
         self.mouseXY = (x, y)
         self.updateAttr('selIdx', idx)
 
-    def onKeyDown(self, oem):
-        if oem == 73: # page up
+    def onKeyDown(self, keyCode):
+        if keyCode == 73: # page up
             pass
-        elif oem == 81: # page down
+        elif keyCode == 81: # page down
             pass
-        elif oem == 75: # left arrow key
+        elif keyCode == 75: # left arrow key
             if self.selIdx > 0:
                 ni = self.selIdx - 1
                 self.setSelIdx(ni)
-        elif oem == 77: # right arrow key
+        elif keyCode == 77: # right arrow key
             if self.klineIndicator.visibleRange and self.selIdx < self.klineIndicator.visibleRange[1] - 1:
                 ni = self.selIdx + 1
                 self.setSelIdx(ni)
-        elif oem == 72: # up arrow key
+        elif keyCode == 72: # up arrow key
             self.klineWidth += 2
             if self.klineWidth // 2 > self.klineSpace:
                 self.klineSpace = min(self.klineSpace + 1, 2)
@@ -979,7 +979,7 @@ class KLineWindow(base_win.BaseWindow):
                 x = self.klineIndicator.getCenterX(self.selIdx)
                 self.mouseXY = (x, self.mouseXY[1])
             win32gui.InvalidateRect(self.hwnd, None, True)
-        elif oem == 80: # down arrow key
+        elif keyCode == 80: # down arrow key
             self.klineWidth = max(self.klineWidth - 2, 1)
             if self.klineWidth // 2 < self.klineSpace:
                 self.klineSpace = max(self.klineSpace - 1, 0)

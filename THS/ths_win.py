@@ -201,6 +201,8 @@ class ThsShareMemory:
                 self.notifyListener(curCode, curDay)
 
     def open(self):
+        if self.shm:
+            return
         try:
             if self.create:
                 self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', True, size = 512)

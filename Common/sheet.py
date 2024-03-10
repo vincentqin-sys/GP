@@ -7,7 +7,6 @@ from Download import henxin
 from Common import base_win, dialog
 
 tasks = base_win.Thread()
-tasks.start()
 
 class Cell:
     ATTRS = ('text', 'color', 'bgColor') # 序列化属性
@@ -72,6 +71,8 @@ class Cell:
         if func == 'load_GP':
             if len(params) >= 1 and re.match(r'^\d{6}$', params[0]):
                 self.draw = self.draw_loadGP
+                if not tasks.started:
+                    tasks.start()
                 tasks.addTask(time.time(), self.load_GP, (params[0], ))
             else:
                 self.hasError = True
@@ -113,6 +114,7 @@ class Cell:
 class CellEditor(base_win.Editor):
     def __init__(self) -> None:
         super().__init__()
+        self.css['borderColor'] = 0x2faffff
         self.maxWidth = 0
         self.row = 0
         self.col = 0
@@ -130,16 +132,16 @@ class CellEditor(base_win.Editor):
             win32gui.SetWindowPos(self.hwnd, 0, 0, 0, tw, H, win32con.SWP_NOMOVE | win32con.SWP_NOZORDER)
 
     def onChar(self, key):
-        if key < 32:
-            return
-        ch = chr(key)
-        if not self.text:
-            self.text = ch
-        else:
-            self.text = self.text[0 : self.insertPos] + ch + self.text[self.insertPos : ]
-        self.insertPos += 1
+        super().onChar(key)
         self.adjustSize()
         self.makePosVisible(self.insertPos)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        #if msg == win32con.WM_SETFOCUS:
+        #    win32gui.SetCapture(hwnd)
+        #if msg == win32con.WM_KILLFOCUS:
+        #    win32gui.ReleaseCapture()
+        return super().winProc(hwnd, msg, wParam, lParam)
 
 class SheetModel:
     def __init__(self, sheetWindow) -> None:
@@ -274,6 +276,11 @@ class SheetModel:
             for c in range(sc, ec + 1):
                 self.delCell(r, c)
 
+    def clearAll(self):
+        self.data.clear()
+        self.colStyle.clear()
+        self.rowStyle.clear()
+
     # return (row-num, col-num)
     def getMaxRowColNum(self):
         mr, mc = -1, -1
@@ -317,7 +324,8 @@ class SheetModel:
             cell = self.data[k]
             data[k] = {}
             for m in Cell.ATTRS:
-                if hasattr(cell, m): data[k][m] = getattr(cell, m)
+                if hasattr(cell, m) and getattr(cell, m) != None:
+                    data[k][m] = getattr(cell, m)
         rs = {'rowStyle': self.rowStyle, 'colStyle': self.colStyle, 'data': data}
         val = json.dumps(rs, ensure_ascii = False)
         return val
@@ -344,7 +352,7 @@ class SheetWindow(base_win.BaseWindow):
         self.selRange = None # (startRow, startCol, endRow?, endCol?)
         self.editer = CellEditor()
         self.editer.css['bgColor'] = self.css['bgColor']
-        self.editer.css['borderColor'] = self.css['bgColor']
+        self.editer.css['borderColor'] = 0x2fffff
         self.editer.addListener(self.onPressEnter, None)
 
     def colIdxToChar(self, col):
@@ -764,21 +772,25 @@ class SheetWindow(base_win.BaseWindow):
                  {'title': '保存', 'name': 'Save'},
                  ]
 
-        menu = base_win.PopupMenuHelper.create(self.hwnd, model, self.onContextMenuItemSelect)
+        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu.addListener(self.onContextMenuItemSelect, None)
         menu.show(x, y)
 
     def onContextMenuItemSelect(self, evtName, evtInfo, args):
         #print('menu select: ', evtName, evtInfo)
-        pos = int(evtInfo.get('pos', 0))
-        if evtInfo['name'] == 'InsertRow':
+        if evtName != "Select":
+            return
+        item = evtInfo['item']
+        pos = int(item.get('pos', 0))
+        if item['name'] == 'InsertRow':
             self.model.insertRow(pos)
-        elif evtInfo['name'] == 'InsertCol':
+        elif item['name'] == 'InsertCol':
             self.model.insertColumn(pos)
-        elif evtInfo['name'] == 'DelRow':
+        elif item['name'] == 'DelRow':
             self.model.delRow(pos)
-        elif evtInfo['name'] == 'DelCol':
+        elif item['name'] == 'DelCol':
             self.model.delColumn(pos)
-        elif evtInfo['name'] == 'SetRowHeight':
+        elif item['name'] == 'SetRowHeight':
             dlg = dialog.InputDialog()
             dlg.createWindow(self.hwnd, (0, 0, 200, 70))
             win32gui.SetWindowText(dlg.hwnd, f'设置行高（第{pos + 1}行）')
@@ -793,7 +805,7 @@ class SheetWindow(base_win.BaseWindow):
             dlg.addListener(callback_1, pos)
             dlg.selectAll()
             dlg.showCenter()
-        elif evtInfo['name'] == 'SetColWidth':
+        elif item['name'] == 'SetColWidth':
             dlg = dialog.InputDialog()
             dlg.createWindow(self.hwnd, (0, 0, 200, 70))
             win32gui.SetWindowText(dlg.hwnd, f'设置列宽（第{self.colIdxToChar(pos)}列）')
@@ -808,7 +820,7 @@ class SheetWindow(base_win.BaseWindow):
             dlg.addListener(callback_2, pos)
             dlg.selectAll()
             dlg.showCenter()
-        elif evtInfo['name'] == 'SetColor':
+        elif item['name'] == 'SetColor':
             dlg = dialog.PopupColorWindow()
             dlg.createWindow(self.hwnd)
             def callback_3(evtName, evtInfo, args):
@@ -817,9 +829,9 @@ class SheetWindow(base_win.BaseWindow):
                 _range = args
                 self.setRangeCellAttr(_range, 'color', evtInfo)
                 self.invalidWindow()
-            dlg.addListener(callback_3, evtInfo['range'])
-            dlg.show(evtInfo['x'], evtInfo['y'])
-        elif evtInfo['name'] == 'SetBgColor':
+            dlg.addListener(callback_3, item['range'])
+            dlg.show(item['x'], item['y'])
+        elif item['name'] == 'SetBgColor':
             dlg = dialog.PopupColorWindow()
             dlg.createWindow(self.hwnd)
             def callback_4(evtName, evtInfo, args):
@@ -828,16 +840,14 @@ class SheetWindow(base_win.BaseWindow):
                 _range = args
                 self.setRangeCellAttr(_range, 'bgColor', evtInfo)
                 self.invalidWindow()
-            dlg.addListener(callback_4, evtInfo['range'])
-            dlg.show(evtInfo['x'], evtInfo['y'])
-        elif evtInfo['name'] == 'ClearFormat':
-            self.clearRangeCellFormat(evtInfo['range'])
-        elif evtInfo['name'] == 'Save':
-            print(self.model.serialize())
+            dlg.addListener(callback_4, item['range'])
+            dlg.show(item['x'], item['y'])
+        elif item['name'] == 'ClearFormat':
+            self.clearRangeCellFormat(item['range'])
+        elif item['name'] == 'Save':
+            #print(self.model.serialize())
             self.notifyListener('Save', self.model)
         self.invalidWindow()
-        menu = args[1]
-        win32gui.DestroyWindow(menu.hwnd)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONDOWN:

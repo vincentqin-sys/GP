@@ -3,7 +3,7 @@ import win32gui, win32con, sys, os
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
-import ddlr_detail, kpl, multi_kline, ddlr_struct, zs, tck, vol_pm
+import ddlr_detail, kpl, multi_kline, ddlr_struct, zs, tck, vol_pm, tcgn
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -14,14 +14,16 @@ class FuPanMgrWindow(base_win.BaseWindow):
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
-        gp = base_win.GroupButton([{'name': 'KPL', 'title': '开盘啦'}, 
+        gpInfos = [{'name': 'KPL', 'title': '开盘啦'},
             {'name': 'DDLR_STRUCT', 'title': '大单流入'}, 
             {'name': 'THS_ZS', 'title': '指数'}, 
             {'name': 'VOL_PM', 'title': '成交额排名'},
             {'name': 'TCK', 'title': '题材库'}, 
-            ])
+            {'name': 'TCGN', 'title': '题材梳理'}, 
+            ]
+        gp = base_win.GroupButton(gpInfos)
         gp.setSelGroup(0)
-        gp.createWindow(self.hwnd, (0, 0, 400, 30))
+        gp.createWindow(self.hwnd, (0, 0, 80 * len(gpInfos), 30))
         gp.addListener(self.changeGroup, 'GroupButton')
         gpLy = base_win.AbsLayout()
         gpLy.setContent(0, 0, gp)
@@ -48,6 +50,10 @@ class FuPanMgrWindow(base_win.BaseWindow):
         tckWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(tckWin)
 
+        tcgnWin = tcgn.TCGN_Window()
+        tcgnWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.cardLayout.addContent(tcgnWin)
+
         self.cardLayout.showCardByIdx(0)
         self.layout.setContent(1, 0, self.cardLayout)
 
@@ -66,6 +72,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
 
 if __name__ == '__main__':
+    base_win.ThreadPool.start()
     fp = FuPanMgrWindow()
     fp.createWindow(None, (0, 0, 1000, 500), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
     win32gui.ShowWindow(fp.hwnd, win32con.SW_MAXIMIZE)
