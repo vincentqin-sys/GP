@@ -224,17 +224,17 @@ class CLS_SCQX(pw.Model):
         database = db_tck
         table_name = '财联社市场情绪'
 
-# 题材梳理
+# 题材库-题材梳理
 class TCK_TCGN(pw.Model):
     tcgn = pw.CharField() # 题材、概念 （大类）
-    #tcgn_2 = pw.CharField() # 题材、概念 （小类类）
-    #code = pw.CharField()
-    #name = pw.CharField()
-    info = pw.TextField(null=True) # 详细信息 
+    tcgn_sub = pw.CharField() # 题材、概念 （小类）
+    code = pw.CharField()
+    name = pw.CharField()
+    info = pw.TextField(null=True) # 详细信息
 
     class Meta:
         database = db_tck
-        table_name = '题材梳理'
+        table_name = '题材梳理A'
 
 db.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_GNTC, THS_Newest])
 db2.create_tables([THS_Hot, THS_HotZH])

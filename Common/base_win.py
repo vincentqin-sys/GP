@@ -794,6 +794,24 @@ class TableWindow(BaseWindow):
         end = min(end, num)
         return (self.startIdx, end)
     
+    def getColumnX(self, col):
+        if col <= 0 or not self.headers or col < len(self.headers):
+            return 0
+        hds = self.headers
+        x = 0
+        for i in range(col):
+            colName = hds[i]['name']
+            x += self.getColumnWidth(i, colName)
+        return x
+    
+    def getYOfRow(self, row):
+        vr = self.getVisibleRange()
+        if not vr:
+            return -1
+        if row >= vr[0] and row < vr[1]: # is visible
+            return self.headHeight + (row - vr[0]) * self.rowHeight
+        return -1 # not visible
+    
     def setData(self, data):
         if self.data == data:
             return
@@ -918,14 +936,20 @@ class TableWindow(BaseWindow):
             return
 
     def getHeaderAtX(self, x):
-        if not self.headers or x < 0:
+        idx = self.getColAtX(x)
+        if idx < 0:
             return None
+        return self.headers[idx]
+
+    def getColAtX(self, x):
+        if not self.headers or x < 0:
+            return -1
         for i, hd in enumerate(self.headers):
             iw = self.getColumnWidth(i, hd['name'])
             if x <= iw:
-                return hd
+                return i
             x -= iw
-        return None
+        return -1
 
     def setSortHeader(self, header):
         hd = self.sortHeader['header']
@@ -959,7 +983,7 @@ class TableWindow(BaseWindow):
             self.sortData = None
 
     # get row idx, -2: in header, -3: in tail, -1: in empty rows
-    def getRowIdx(self, y):
+    def getRowAtY(self, y):
         if not self.data:
             return -1
         if y <= self.headHeight:
@@ -974,7 +998,7 @@ class TableWindow(BaseWindow):
 
     def onClick(self, x, y):
         win32gui.SetFocus(self.hwnd)
-        row = self.getRowIdx(y)
+        row = self.getRowAtY(y)
         if row == -2: # click headers
             hd = self.getHeaderAtX(x)
             if hd and hd.get('sortable', False) == True:
@@ -1028,7 +1052,7 @@ class TableWindow(BaseWindow):
             return tg
         if msg == win32con.WM_LBUTTONDBLCLK and self.enableListeners['DbClick']:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
-            row = self.getRowIdx(y)
+            row = self.getRowAtY(y)
             if row >= 0:
                 dx = self.sortData if self.sortData else self.data
                 self.notifyListener('DbClick', {'src': self, 'x': x, 'y': y, 'row': row, 'data': dx[row], 'model': dx})
