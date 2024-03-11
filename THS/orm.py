@@ -227,7 +227,10 @@ class CLS_SCQX(pw.Model):
 # 题材梳理
 class TCK_TCGN(pw.Model):
     tcgn = pw.CharField() # 题材、概念 （大类）
-    info = pw.TextField(null=True) # 关联股票信息 json data
+    #tcgn_2 = pw.CharField() # 题材、概念 （小类类）
+    #code = pw.CharField()
+    #name = pw.CharField()
+    info = pw.TextField(null=True) # 详细信息 
 
     class Meta:
         database = db_tck

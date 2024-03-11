@@ -545,7 +545,7 @@ class SimpleWindow(CardWindow):
         super().createWindow(parentWnd, rect, style, title='SimpleWindow')
         #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
-        self.addCardView(SortCardView(self.hwnd))
+        #self.addCardView(SortCardView(self.hwnd))
         self.addCardView(HotCardView(self.hwnd))
         self.addCardView(KPLCardView(self.hwnd))
         self.addCardView(THS_ZTCardView(self.hwnd))
@@ -814,11 +814,11 @@ class HotZHCardView(ListView):
         if ('HX_updateTime' not in data) or (time.time() - data['HX_updateTime'] > 120): # 120 seconds
             data['HX_updateTime'] = time.time()
             if self.curSelDay == 0 or self.curSelDay == self.maxHotDay:
-                self.thread.addTask(code + '-Native', self.loadCodeInfoNative, (code, True))
-                self.thread.addTask(code + '-Net', self.loadCodeInfoNet, (code, ))
+                self.thread.addTask(code + '-Native', self.loadCodeInfoNative, code, True)
+                self.thread.addTask(code + '-Net', self.loadCodeInfoNet, code)
             else:
-                self.thread.addTask(code + '-Native', self.loadCodeInfoNative, (code, False))
-                self.thread.addTask(code + '-Net', self.loadCodeInfoNet, (code, ))
+                self.thread.addTask(code + '-Native', self.loadCodeInfoNative, code, False)
+                self.thread.addTask(code + '-Net', self.loadCodeInfoNet, code)
             return data
         return data
 

@@ -52,6 +52,7 @@ def autoLoadTop200Data():
             raise Exception()
         print('开始下载同花顺大单数据...')
         cs = getCodes()
+        total = len(cs)
         for i in range(len(cs) - 1, -1, -1):
             info = cs[i]
             sc = autoLoadOne(info['code'], ddWin)
@@ -70,14 +71,14 @@ def autoLoadTop200Data():
     ddWin.closeDDLJ()
     thsWin.close()
     fd.close()
-    print(f'Load success {successTimes}')
+    print(f'Load success {successTimes}, total {total}')
 
 def checkLoadFinised():
     cs = getCodes()
     fails = []
     for i in range(len(cs) - 1, -1, -1):
         info = cs[i]
-        if info['times'] >= 3:
+        if info['times'] >= 2:
             fails.append(info['code'])
             cs.pop(i)
     if len(fails) > 0:
@@ -133,7 +134,7 @@ def getCodes():
     if curDay in _codes:
         return _codes[curDay]
     ds = hot_utils.calcHotZHOnDay(curDay)
-    datas = [{'code': f"{d['code'] :06d}", 'times': 0} for d in ds]
+    datas = [{'code': f"{d['code'] :06d}", 'times': 0} for d in ds if d['code'] // 100000 != 8]
     datas.reverse()
     _codes[curDay] = datas
     return datas

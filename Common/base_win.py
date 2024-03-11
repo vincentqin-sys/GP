@@ -1,4 +1,4 @@
-import win32gui, win32con , win32api, win32ui, win32gui_struct # pip install pywin32
+import win32gui, win32con , win32api, win32ui, win32gui_struct, win32clipboard # pip install pywin32
 import threading, time, datetime, sys, os, copy, calendar, functools
 
 # listeners : ContextMenu = {src, x, y} , default is diable
@@ -1865,14 +1865,19 @@ class Editor(BaseWindow):
     def onChar(self, key):
         if key < 32:
             return
+        ch = chr(key)
+        self.insertText(ch)
+
+    def insertText(self, text):
+        if not text:
+            return
         if self.selRange:
             self.deleteSelRangeText()
-        ch = chr(key)
         if not self.text:
-            self.text = ch
+            self.text = text
         else:
-            self.text = self.text[0 : self.insertPos] + ch + self.text[self.insertPos : ]
-        pos = self.insertPos + 1
+            self.text = self.text[0 : self.insertPos] + text + self.text[self.insertPos : ]
+        pos = self.insertPos + len(text)
         self.makePosVisible(pos)
         self.setInsertPos(pos)
 
@@ -1959,6 +1964,25 @@ class Editor(BaseWindow):
                     self.invalidWindow()
             elif wParam == win32con.VK_RETURN:
                 self.notifyListener('PressEnter', {'src': self, 'text': self.text})
+            elif wParam == ord('V') and win32api.GetKeyState(win32con.VK_CONTROL):
+                win32clipboard.OpenClipboard()
+                try:
+                    txt = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT) # CF_UNICODETEXT
+                    self.insertText(txt)
+                except:
+                    pass
+                win32clipboard.CloseClipboard()
+            elif wParam == ord('C') and win32api.GetKeyState(win32con.VK_CONTROL) and self.selRange and self.text:
+                win32clipboard.OpenClipboard()
+                txt = self.text[self.selRange[0] : self.selRange[1]]
+                win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
+                win32clipboard.CloseClipboard()
+            elif wParam == ord('X') and win32api.GetKeyState(win32con.VK_CONTROL) and self.selRange and self.text:
+                win32clipboard.OpenClipboard()
+                txt = self.text[self.selRange[0] : self.selRange[1]]
+                win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
+                win32clipboard.CloseClipboard()
+                self.deleteSelRangeText()
             return True
         if msg == win32con.WM_SETFOCUS:
             rc = self.getCaretRect()
@@ -2039,7 +2063,9 @@ def testPopMenu():
 if __name__ == '__main__':
     #testGridLayout()
     #testPopMenu()
-    editor = CheckBox({'title': 'Hello'})
+    label = Label('Hello')
+    label.createWindow(None, (300, 200, 300, 100), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE)
+    editor = Editor()
     #editor.css['bgColor'] = 0x00ff00
-    editor.createWindow(None, (300, 200, 200, 70), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE)
+    editor.createWindow(label.hwnd, (20, 20, 200, 30))
     win32gui.PumpMessages()

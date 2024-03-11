@@ -1,5 +1,5 @@
-import os, sys, re, time, json
-import win32gui, win32con
+import os, sys, re, time, json, io
+import win32gui, win32con, win32api, win32clipboard
 import requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
@@ -849,6 +849,53 @@ class SheetWindow(base_win.BaseWindow):
             self.notifyListener('Save', self.model)
         self.invalidWindow()
 
+    def copy(self):
+        range_ = self.formatRange(self.selRange)
+        if not range_:
+            return
+        buf = io.StringIO()
+        sr, sc, er, ec = range_
+        for r in range(sr, er + 1):
+            for c in range(sc, ec + 1):
+                cell = self.model.getCell(r, c)
+                txt = ''
+                if cell:
+                    txt = cell.getText() or ''
+                buf.write(txt)
+                if c != ec:
+                    buf.write('\t')
+            if r != er:
+                buf.write('\n')
+        txt = buf.getvalue()
+        #print(txt)
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
+        win32clipboard.CloseClipboard()
+
+    def paste(self):
+        range_ = self.formatRange(self.selRange)
+        if not range_:
+            return
+        sr, sc, er, ec = range_
+        win32clipboard.OpenClipboard()
+        txt = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT)
+        win32clipboard.CloseClipboard()
+        if not txt:
+            return
+        txt = txt.replace('\r\n', '\n')
+        lines = txt.splitlines()
+        for r, line in enumerate(lines):
+            items = line.split('\t')
+            #print('items =', items)
+            for c, it in enumerate(items):
+                self.model.setCellText(r + sr, sc + c, it)
+        self.invalidWindow()
+
+    def copyDelete(self):
+        self.copy()
+        self.model.clearRange(self.selRange)
+
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONDOWN:
             self.endEdit()
@@ -900,6 +947,12 @@ class SheetWindow(base_win.BaseWindow):
             elif wParam == win32con.VK_DELETE:
                 self.model.clearRange(self.selRange)
                 self.invalidWindow()
+            elif wParam == ord('C') and win32api.GetKeyState(win32con.VK_CONTROL):
+                self.copy()
+            elif wParam == ord('V') and win32api.GetKeyState(win32con.VK_CONTROL):
+                self.paste()
+            elif wParam == ord('X') and win32api.GetKeyState(win32con.VK_CONTROL):
+                self.copyDelete()
             return True
         if msg == win32con.WM_RBUTTONUP:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
