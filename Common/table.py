@@ -31,7 +31,7 @@ class ExTableWindow(base_win.TableWindow):
         self.editor.col = col
         sx = self.getColumnX(col)
         sy = self.getYOfRow(row)
-        cw = self.getColumnWidth(col)
+        cw = self.getColumnWidth(col, self.headers[col]['name'])
         ch = self.rowHeight
         if not self.editor.hwnd:
             self.editor.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -57,8 +57,8 @@ class ExTableWindow(base_win.TableWindow):
         hd = self.headers[col]
         rowData = self.data[row]
         cellVal = rowData[hd['name']]
-        if cellVal == self.editor.text:
-            return
+        #if cellVal == self.editor.text:
+        #    return
         rowData[hd['name']] = self.editor.text
         self.notifyListener('CellChanged', {'src': self, 'row': row, 'col': col, 'data': rowData, 'header': hd, 'model': self.data})
 

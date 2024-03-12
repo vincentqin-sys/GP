@@ -733,6 +733,7 @@ class TableWindow(BaseWindow):
         #      sorter: function(colName, val, rowData, allDatas, asc:True|False)  -> return sorted value
         #      textAlign: int, win32con.DT_LEFT(is default) | .....
         #      fontSize: 14 (default)
+        #      cellRender: function(win, hdc, row, col, colName, value, rect)  cell-render
         self.headers = None # must be set TODO
 
     def getData(self):
@@ -801,7 +802,7 @@ class TableWindow(BaseWindow):
         return (self.startIdx, end)
     
     def getColumnX(self, col):
-        if col <= 0 or not self.headers or col < len(self.headers):
+        if col <= 0 or not self.headers or col >= len(self.headers):
             return 0
         hds = self.headers
         x = 0
@@ -913,6 +914,10 @@ class TableWindow(BaseWindow):
             rc[0] = rc[2]
         
     def drawCell(self, hdc, row, col, colName, value, rect):
+        cellRender = hd.get('cellRender', None)
+        if cellRender:
+            cellRender(self, hdc, row, col, colName, value, rect)
+            return
         hd = self.headers[col]
         formater = hd.get('formater', None)
         if formater:

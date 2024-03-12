@@ -6,7 +6,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import orm, ths_win
-from Common import base_win, timeline, kline, sheet, dialog
+from Common import base_win, timeline, kline, sheet, dialog, table
 import ddlr_detail
 
 thsWin = ths_win.ThsWindow()
@@ -16,10 +16,10 @@ class TCGN_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (250, 150, 60, 60, 60, '1fr')
+        self.cols = (250, 150, 60, 60, 60, 60, 60, 60, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
-        self.tableCntWin = base_win.TableWindow()
+        self.tableCntWin = table.ExTableWindow()
         self.editorWin = base_win.Editor()
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.tckData = []
@@ -39,10 +39,10 @@ class TCGN_Window(base_win.BaseWindow):
                    ]
         headers2 = [
             {'title': '', 'width': 30, 'name': '#idx' },
-            {'title': '二级题材概念', 'width': 200, 'name': 'tcgn_sub' },
-            {'title': '股票代码', 'width': 100, 'name': 'code'},
-            {'title': '股票名称', 'width': 150, 'name': 'name'},
-            {'title': '详情', 'stretch': 1, 'name': 'info'},
+            {'title': '二级题材概念', 'width': 200, 'name': 'tcgn_sub', 'editable': True},
+            {'title': '股票代码', 'width': 100, 'name': 'code', 'editable': True},
+            {'title': '股票名称', 'width': 150, 'name': 'name', 'editable': True},
+            {'title': '详情', 'stretch': 1, 'name': 'info', 'editable': True},
         ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -58,24 +58,76 @@ class TCGN_Window(base_win.BaseWindow):
         insertBtn.createWindow(self.hwnd, (0, 0, 1, 1))
         newBtn = base_win.Button({'title': 'New'})
         newBtn.createWindow(self.hwnd, (0, 0, 1, 1))
+        delBtn = base_win.Button({'title': 'Del'})
+        delBtn.createWindow(self.hwnd, (0, 0, 1, 1))
+        openBtn = base_win.Button({'title': 'Open'})
+        openBtn.createWindow(self.hwnd, (0, 0, 1, 1))
 
         self.layout.setContent(0, 0, self.editorWin)
         self.layout.setContent(0, 1, self.checkBox)
         self.layout.setContent(0, 2, addBtn)
         self.layout.setContent(0, 3, insertBtn)
-        self.layout.setContent(0, 4, newBtn)
+        self.layout.setContent(0, 4, delBtn)
+        self.layout.setContent(0, 6, newBtn)
+        self.layout.setContent(0, 7, openBtn)
 
         self.layout.setContent(1, 0, self.tableWin)
         self.layout.setContent(1, 1, self.tableCntWin, {'horExpand': -1})
-        self.editorWin.addListener(self.onQuery, None)
-        self.tableWin.addListener(self.onSelect, None)
-        self.tableCntWin.addListener(self.onTableDbClick, None)
+        self.editorWin.addListener(self.onQuery)
+        self.tableWin.addListener(self.onSelect)
+        self.tableCntWin.addListener(self.onCellChanged)
         addBtn.addListener(self.onAddInsert, 'Add')
         insertBtn.addListener(self.onAddInsert, 'Insert')
         newBtn.addListener(self.onNew, 'New')
+        delBtn.addListener(self.onDel, 'Del')
+        openBtn.addListener(self.onOpen, 'Open')
 
         self.loadAllData()
         self.tableWin.setData(self.tckData)
+
+    def onCellChanged(self, evtName, evt, args):
+        if evtName != 'CellChanged':
+            return
+        name = evt['header']['name']
+        cellVal = evt['data'][name].strip()
+        qr = orm.TCK_TCGN.update({name : cellVal}).where(orm.TCK_TCGN.id == evt['data']['id'])
+        qr.execute()
+        if name != 'name':
+            return
+        code = self.getCodeByName(cellVal)
+        if not code or evt['data']['code'] == code:
+            return
+        qr = orm.TCK_TCGN.update({'code' : code}).where(orm.TCK_TCGN.id == evt['data']['id'])
+        qr.execute()
+        evt['data']['code'] = code
+
+    def onDel(self, evtName, evt, args):
+        if evtName != 'Click':
+            return
+        row = self.tableCntWin.selRow
+        if row < 0:
+            return
+        model = self.tableCntWin.getData()
+        data = model[row]
+        orm.TCK_TCGN.delete_by_id(data['id'])
+        model.pop(row)
+        self.tableCntWin.invalidWindow()
+
+    def onOpen(self, evtName, evt, args):
+        if evtName != 'Click':
+            return
+        row = self.tableCntWin.selRow
+        if row < 0:
+            return
+        model = self.tableCntWin.getData()
+        data = model[row]
+        code = data['code']
+        if not self.isCode(code):
+            return
+        if self.checkBox.isChecked():
+            self.openInThsWindow(data)
+        else:
+            self.openInCurWindow(data)
 
     def onNew(self, evtName, evt, args):
         if evtName != 'Click':
@@ -129,7 +181,8 @@ class TCGN_Window(base_win.BaseWindow):
             model = []
             self.tableCntWin.setData(model)
         model.insert(cur['order_'], cur)
-        orm.TCK_TCGN.create(**cur)
+        obj = orm.TCK_TCGN.create(**cur)
+        cur['id'] = obj.id
         self.tableCntWin.invalidWindow()
         self.tableWin.invalidWindow()
 
@@ -151,22 +204,6 @@ class TCGN_Window(base_win.BaseWindow):
         if not obj:
             return ''
         return obj.code
-
-    def onTableDbClick(self, evtName, evt, args):
-        if evtName != 'DbClick' or evtName != 'SelectRow':
-            return
-        ds = self.tableCntWin.getData()
-        selRow = self.tableCntWin.selRow
-        if selRow < 0:
-            return
-        data = ds[selRow]
-        if not self.isCode(data['code']):
-            return
-        if self.checkBox.isChecked():
-            self.openInThsWindow(data)
-        else:
-            self.openInCurWindow(data)
-
 
     def onQuery(self, evtName, evtInfo, args):
         if evtName != 'PressEnter':
