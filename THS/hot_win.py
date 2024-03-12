@@ -227,6 +227,10 @@ class HotWindow(base_win.BaseWindow):
         if day == self.selectDay:
             sdc = win32gui.SaveDC(hdc)
             win32gui.SetTextColor(hdc, 0xEE00EE)
+            hbrBlack = win32gui.CreateSolidBrush(0xd0d0d0)
+            #win32gui.FillRect(hdc, (x + 40, self.rect[3] - 15, x + 70, self.rect[3] - 10), hbrBlack)
+            win32gui.FillRect(hdc, (x, 0, x + itemWidth, 20), hbrBlack)
+            win32gui.DeleteObject(hbrBlack)
         win32gui.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
         return sdc
 
@@ -249,11 +253,11 @@ class HotWindow(base_win.BaseWindow):
         sdc = self.drawDayTitle(hdc, x, day, itemWidth)
 
         # 显示当前选中日期的图标
-        if day == self.selectDay:
-            hbrBlack = win32gui.CreateSolidBrush(0xd0d0d0)
-            #win32gui.FillRect(hdc, (x + 40, self.rect[3] - 15, x + 70, self.rect[3] - 10), hbrBlack)
-            win32gui.FillRect(hdc, (x, 50, x + itemWidth, self.rect[3]), hbrBlack)
-            win32gui.DeleteObject(hbrBlack)
+        #if day == self.selectDay:
+        #    hbrBlack = win32gui.CreateSolidBrush(0xd0d0d0)
+        #    #win32gui.FillRect(hdc, (x + 40, self.rect[3] - 15, x + 70, self.rect[3] - 10), hbrBlack)
+        #    win32gui.FillRect(hdc, (x, 50, x + itemWidth, self.rect[3]), hbrBlack)
+        #    win32gui.DeleteObject(hbrBlack)
         #info = '  排名: ' + str(data['pm'])
         #win32gui.DrawText(hdc, info, len(info), (x, 20, x + itemWidth, 80), win32con.DT_LEFT)
 
