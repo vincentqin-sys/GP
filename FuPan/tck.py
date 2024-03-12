@@ -41,6 +41,7 @@ class TCK_Window(base_win.BaseWindow):
         headers = [ {'title': '', 'width': 30, 'name': '#idx' },
                    {'title': '日期', 'width': 80, 'name': 'day', 'sortable':True },
                    {'title': '名称', 'width': 70, 'name': 'name', 'sortable':True },
+                   {'title': '代码', 'width': 60, 'name': 'code', 'sortable':True },
                    {'title': '热度', 'width': 70, 'name': 'zhHotOrder', 'sortable':True },
                    {'title': '开盘啦', 'width': 120, 'name': 'kpl_ztReason', 'sortable':True },
                    {'title': '同花顺', 'width': 80, 'name': 'ths_status', 'sortable':True },

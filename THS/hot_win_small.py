@@ -409,6 +409,15 @@ class HotCardView(CardView):
                     last['zhHotOrder'] = rd['zhHotOrder']
                     last['avgHotOrder'] = rd['avgHotOrder']
                     last['avgHotValue'] = rd['avgHotValue']
+        win32gui.SetWindowText(self.hwnd, self.getWindowTitle())
+
+    def getWindowTitle(self):
+        obj = orm.THS_Newest.get_or_none(code = f"{self.code :06d}")
+        if obj:
+            title = f"{self.code :06d}  {obj.name}"
+        else:
+            title = f"{self.code :06d}"
+        return title
 
     def isInRect(self, x, y, rect):
         if not rect:
@@ -468,22 +477,35 @@ class KPLCardView(CardView):
         self.ormClazz = orm.KPL_ZT
         self.emptyLine = '\n\n无开盘啦涨停信息'
         self.fontSize = 14
+        self.code = None
 
     def updateSelectDay(self, selDay):
         self.selectDay = selDay
 
     def updateCode(self, code):
+        if type(code) == int:
+            code = f'{code :06d}'
+        self.code = code
         qq = self.ormClazz.select().where(self.ormClazz.code == code).order_by(self.ormClazz.day.asc())
         def fmtDay(d): 
             d['day'] = d['day'].replace('-', '')
             return d
         self.kplZTData = [fmtDay(d) for d in qq.dicts()]
+        win32gui.SetWindowText(self.hwnd, self.getWindowTitle())
 
     def drawLine(self, hdc, kpl, rect):
         day = kpl['day']
         day = day[2 : 4] + '-' + day[4 : 6] + '-' + day[6 : ]
         line = f"{day} {kpl['ztReason']}({kpl['ztNum']})"
         win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT)
+
+    def getWindowTitle(self):
+        obj = orm.THS_Newest.get_or_none(code = self.code)
+        if obj:
+            title = f"{self.code}  {obj.name}"
+        else:
+            title = f"{self.code}"
+        return title
 
     def onDraw(self, hdc):
         win32gui.SetTextColor(hdc, 0xdddddd)
@@ -529,7 +551,6 @@ class THS_ZTCardView(KPLCardView):
         rc2 = (rect[0] + 35, rect[1], rect[2], rect[3])
         win32gui.DrawText(hdc, line, len(line), rc2, win32con.DT_LEFT | win32con.DT_WORDBREAK)
         win32gui.DrawText(hdc, day, len(day), rect, win32con.DT_LEFT)
-
 
 class SimpleWindow(CardWindow):
     def __init__(self) -> None:
@@ -670,7 +691,7 @@ class ListView(CardView):
         pyautogui.typewrite(code, interval=0.05)
         pyautogui.press('enter')
         #win32gui.SetActiveWindow(self.hwnd)
-        self.thread.addTask('AW', self.activeWindow, None)
+        self.thread.addTask('AW', self.activeWindow)
     
     def activeWindow(self):
         time.sleep(1)
@@ -879,34 +900,35 @@ class HotZHCardView(ListView):
         return self.windowTitle
 
     def onDayChanged(self, target, evtName, evtInfo):
-        if evtName == 'DatePopupWindow.selDayChanged':
-            selDay = evtInfo['curSelDay']
-            if selDay > self.maxHotDay:
-                return
-            if self.curSelDay == selDay:
-                return
-            qr = orm.THS_Newest.select()
-            self.codeInfos.clear()
-            for q in qr:
-                self.codeInfos[q.code] = {'name': q.name}
-            self.curSelDay = selDay
-            self.selIdx = -1
-            self.pageIdx = 0
-            if selDay == self.maxHotDay:
-                self.windowTitle = f'HotZH'
-                win32gui.SetWindowText(self.hwnd, self.windowTitle)
-            else:
-                tradeDays = hot_utils.getTradeDaysByHot()
-                bef = 0
-                for i in range(len(tradeDays) - 1, 0, -1):
-                    if selDay < tradeDays[i]:
-                        bef += 1
-                    else:
-                        break
-                self.windowTitle = f'HotZH   {selDay}   {bef}天前'
-                win32gui.SetWindowText(self.hwnd, self.windowTitle)
-            self.updateData(True)
-            win32gui.InvalidateRect(self.hwnd, None, True)
+        if evtName != 'Select':
+            return
+        selDay = evtInfo['day']
+        if selDay > self.maxHotDay:
+            return
+        if self.curSelDay == selDay:
+            return
+        qr = orm.THS_Newest.select()
+        self.codeInfos.clear()
+        for q in qr:
+            self.codeInfos[q.code] = {'name': q.name}
+        self.curSelDay = selDay
+        self.selIdx = -1
+        self.pageIdx = 0
+        if selDay == self.maxHotDay:
+            self.windowTitle = f'HotZH'
+            win32gui.SetWindowText(self.hwnd, self.windowTitle)
+        else:
+            tradeDays = hot_utils.getTradeDaysByHot()
+            bef = 0
+            for i in range(len(tradeDays) - 1, 0, -1):
+                if selDay < tradeDays[i]:
+                    bef += 1
+                else:
+                    break
+            self.windowTitle = f'HotZH   {selDay}   {bef}天前'
+            win32gui.SetWindowText(self.hwnd, self.windowTitle)
+        self.updateData(True)
+        win32gui.InvalidateRect(self.hwnd, None, True)
 
 class KPL_AllCardView(ListView):
     def __init__(self, hwnd):
@@ -990,7 +1012,7 @@ class KPL_AllCardView(ListView):
             self.drawItem(hdc, self.data[i], i)
 
     def onDayChanged(self, target, evtName, evtInfo):
-        selDay = evtInfo['curSelDay']
+        selDay = evtInfo['day']
         if selDay == self.curSelDay:
             return
         self.updateData(selDay)
@@ -1037,6 +1059,7 @@ class SimpleHotZHWindow(CardWindow):
         if msg == win32con.WM_CONTEXTMENU:
             if not getattr(self, 'DP', None):
                 self.DP = base_win.DatePopupWindow()
+                self.DP.destroyOnHide = False
                 self.DP.createWindow(hwnd)
                 self.DP.addListener(self.onDayChanged, 'DatePicker')
             rc = win32gui.GetWindowRect(hwnd)

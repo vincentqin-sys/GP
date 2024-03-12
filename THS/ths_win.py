@@ -138,9 +138,9 @@ class ThsWindow(base_win.BaseWindow):
 
         if (not self.mainHwnd) or (not self.topHwnd) or (not self.selDayHwnd):
             return False
-        print('ThsWindow.topHwnd = %#X' % self.topHwnd)
-        print('ThsWindow.mainHwnd = %#X' % self.mainHwnd)
-        print('ThsWindow.selDayHwnd = %#X' % self.selDayHwnd)
+        #print('ThsWindow.topHwnd = %#X' % self.topHwnd)
+        #print('ThsWindow.mainHwnd = %#X' % self.mainHwnd)
+        #print('ThsWindow.selDayHwnd = %#X' % self.selDayHwnd)
         return True
 
 class ThsFuPingWindow(ThsWindow):

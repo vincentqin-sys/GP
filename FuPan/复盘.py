@@ -3,7 +3,7 @@ import win32gui, win32con, sys, os
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
-import ddlr_detail, kpl, multi_kline, ddlr_struct, zs, tck, vol_pm, tcgn
+import ddlr_detail, kpl, multi_kline, ddlr_struct, zs, tck, vol_pm, tcgn2
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -50,7 +50,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         tckWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(tckWin)
 
-        tcgnWin = tcgn.TCGN_Window()
+        tcgnWin = tcgn2.TCGN_Window()
         tcgnWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(tcgnWin)
 

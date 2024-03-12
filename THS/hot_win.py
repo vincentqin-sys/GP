@@ -247,6 +247,13 @@ class HotWindow(base_win.BaseWindow):
             return
         day = data['day']
         sdc = self.drawDayTitle(hdc, x, day, itemWidth)
+
+        # 显示当前选中日期的图标
+        if day == self.selectDay:
+            hbrBlack = win32gui.CreateSolidBrush(0xd0d0d0)
+            #win32gui.FillRect(hdc, (x + 40, self.rect[3] - 15, x + 70, self.rect[3] - 10), hbrBlack)
+            win32gui.FillRect(hdc, (x, 50, x + itemWidth, self.rect[3]), hbrBlack)
+            win32gui.DeleteObject(hbrBlack)
         #info = '  排名: ' + str(data['pm'])
         #win32gui.DrawText(hdc, info, len(info), (x, 20, x + itemWidth, 80), win32con.DT_LEFT)
 
@@ -326,11 +333,7 @@ class HotWindow(base_win.BaseWindow):
                 rc = (x + itemWidth // 2 - 15, 20, x + itemWidth // 2 + 15, 50)
                 self.drawer.drawText(hdc, str(zhqd), rc, color)
             win32gui.RestoreDC(hdc, xdc)
-        # 显示当前选中日期的图标
-        if day == self.selectDay:
-            hbrBlack = win32gui.CreateSolidBrush(0x000000)
-            win32gui.FillRect(hdc, (x + 40, self.rect[3] - 15, x + 70, self.rect[3] - 10), hbrBlack)
-            win32gui.DeleteObject(hbrBlack)
+        
         win32gui.DeleteObject(hbrRed)
         win32gui.DeleteObject(hbrGreen)
         win32gui.DeleteObject(hbrBlue)
@@ -455,10 +458,10 @@ class HotWindow(base_win.BaseWindow):
 
         ds = orm.THS_Hot.select().where(orm.THS_Hot.code == int(code))
         hts = [formatThsHot(d.__data__) for d in ds]
-        if len(hts) > 0:
-            print('Load ', code, ' Count:', len(hts))
-        elif code:
-            print('Load ', code , ' not find in DB')
+        #if len(hts) > 0:
+        #    print('Load ', code, ' Count:', len(hts))
+        #elif code:
+        #    print('Load ', code , ' not find in DB')
         data = hts
         self.selectDay = None
         lastDay = None

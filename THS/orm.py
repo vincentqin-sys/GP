@@ -231,6 +231,7 @@ class TCK_TCGN(pw.Model):
     code = pw.CharField()
     name = pw.CharField()
     info = pw.TextField(null=True) # 详细信息
+    order_ = pw.IntegerField()
 
     class Meta:
         database = db_tck

@@ -701,8 +701,9 @@ class Cardayout(Layout):
                 self.showCardByIdx(i)
                 break
 
-# listeners : DbClick = {x, y, row, data(row data), model(all data)}
-#             RowEnter = {row, data, model}
+# listeners : DbClick = {src, x, y, row, data(row data), model(all data)}
+#             RowEnter = {src, row, data, model}
+#             SelectRow = {src, row, oldRow, data, model}
 class TableWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -733,6 +734,11 @@ class TableWindow(BaseWindow):
         #      textAlign: int, win32con.DT_LEFT(is default) | .....
         #      fontSize: 14 (default)
         self.headers = None # must be set TODO
+
+    def getData(self):
+        if self.sortData:
+            return self.sortData
+        return self.data
 
     def getHeaders(self):
         return self.headers
@@ -996,6 +1002,18 @@ class TableWindow(BaseWindow):
             return row
         return -1
 
+    def setSelRow(self, row):
+        oldRow = self.selRow
+        data = self.getData()
+        if not self.data or row < 0 or row >= len(self.data):
+            if self.selRow != row:
+                self.selRow = -1
+                self.notifyListener('SelectRow', {'src': self, 'row': self.selRow, 'oldRow': oldRow, 'data': None, 'model': data})
+            return
+        if self.selRow != row:
+            self.selRow = row
+            self.notifyListener('SelectRow', {'src': self, 'row': row, 'oldRow': oldRow, 'data': data[row], 'model': data})
+
     def onClick(self, x, y):
         win32gui.SetFocus(self.hwnd)
         row = self.getRowAtY(y)
@@ -1005,7 +1023,7 @@ class TableWindow(BaseWindow):
                self.setSortHeader(hd)
                self.invalidWindow()
         elif row >= 0:
-            self.selRow = row
+            self.setSelRow(row)
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def onMouseWheel(self, delta):
@@ -1022,13 +1040,13 @@ class TableWindow(BaseWindow):
             return False
         if key == win32con.VK_DOWN:
             if self.selRow < len(self.data) - 1:
-                self.selRow += 1
+                self.setSelRow(self.selRow + 1)
                 self.showRow(self.selRow)
                 self.invalidWindow()
             return True
         elif key == win32con.VK_UP:
             if self.selRow > 0:
-                self.selRow -= 1
+                self.setSelRow(self.selRow - 1)
                 self.showRow(self.selRow)
                 self.invalidWindow()
             return True
@@ -1389,6 +1407,7 @@ class PopupWindow(BaseWindow):
         self.ownerHwnd = None
         self.css['enableBorder'] = True
         self.css['borderColor'] = 0xaaaaaa
+        self.destroyOnHide = True
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
         #style = win32con.WS_POPUP | win32con.WS_CHILD
@@ -1415,6 +1434,10 @@ class PopupWindow(BaseWindow):
 
     def hide(self):
         win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+        if self.destroyOnHide and self.hwnd:
+            hwnd = self.hwnd
+            self.hwnd = None
+            win32gui.DestroyWindow(hwnd)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_ACTIVATE:
@@ -1733,6 +1756,7 @@ class DatePicker(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.popWin = DatePopupWindow()
+        self.popWin.destroyOnHide = False
         self.popWin.addListener(self.onSelDayChanged, 'DatePopupWindow')
 
     def setSelDay(self, selDay):
