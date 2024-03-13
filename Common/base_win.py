@@ -914,11 +914,11 @@ class TableWindow(BaseWindow):
             rc[0] = rc[2]
         
     def drawCell(self, hdc, row, col, colName, value, rect):
+        hd = self.headers[col]
         cellRender = hd.get('cellRender', None)
         if cellRender:
             cellRender(self, hdc, row, col, colName, value, rect)
             return
-        hd = self.headers[col]
         formater = hd.get('formater', None)
         if formater:
             value = formater(colName, value, self.data[row])
@@ -1803,6 +1803,7 @@ class DatePicker(BaseWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
 
 # listeners : PressEnter = {src, text}
+#             PressTab = {src, text}
 class Editor(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -1819,17 +1820,16 @@ class Editor(BaseWindow):
         self.selRange = None # (beginPos, endPos)
 
     def setText(self, text):
+        self.scrollX = 0
+        self.selRange = None
         if not text:
-            self.text = ''
-            return
+            text = ''
         if not isinstance(text, str):
             text = str(text)
         self.text = text
-        self.scrollX = 0
         self.setInsertPos(0)
     
     def setInsertPos(self, pos):
-        self.selRange = None
         self.insertPos = pos
         if self._createdCaret and win32gui.GetFocus() == self.hwnd:
             rc = self.getCaretRect()
@@ -1969,6 +1969,7 @@ class Editor(BaseWindow):
             win32gui.SetFocus(self.hwnd)
             x = lParam & 0xffff
             pos = self.getPosAtX(x)
+            self.selRange = None
             self.setInsertPos(pos)
             self.invalidWindow()
             return True
@@ -1991,11 +1992,13 @@ class Editor(BaseWindow):
             if wParam == win32con.VK_LEFT:
                 if self.insertPos > 0:
                     pos = self.insertPos - 1
+                    self.selRange = None
                     self.makePosVisible(pos)
                     self.setInsertPos(pos)
             elif wParam == win32con.VK_RIGHT:
                 if self.text and self.insertPos < len(self.text):
                     pos = self.insertPos + 1
+                    self.selRange = None
                     self.makePosVisible(pos)
                     self.setInsertPos(pos)
             elif wParam == win32con.VK_DELETE:
@@ -2003,6 +2006,7 @@ class Editor(BaseWindow):
                     self.deleteSelRangeText()
                 elif self.text and self.insertPos < len(self.text):
                     self.text = self.text[0 : self.insertPos] + self.text[self.insertPos + 1 : ]
+                    self.selRange = None
                     self.makePosVisible(self.insertPos)
                     self.setInsertPos(self.insertPos)
                     self.invalidWindow()
@@ -2012,11 +2016,25 @@ class Editor(BaseWindow):
                 elif self.text and self.insertPos > 0:
                     self.text = self.text[0 : self.insertPos - 1] + self.text[self.insertPos : ]
                     pos = self.insertPos - 1
+                    self.selRange = None
                     self.makePosVisible(pos)
                     self.setInsertPos(pos)
                     self.invalidWindow()
             elif wParam == win32con.VK_RETURN:
                 self.notifyListener('PressEnter', {'src': self, 'text': self.text})
+            elif wParam == win32con.VK_TAB:
+                self.notifyListener('PressTab', {'src': self, 'text': self.text})
+            elif wParam == win32con.VK_HOME:
+                self.selRange = None
+                self.makePosVisible(0)
+                self.setInsertPos(0)
+                self.invalidWindow()
+            elif wParam == win32con.VK_END:
+                self.selRange = None
+                pos = len(self.text)
+                self.makePosVisible(pos)
+                self.setInsertPos(pos)
+                self.invalidWindow()
             elif wParam == ord('V') and win32api.GetKeyState(win32con.VK_CONTROL):
                 win32clipboard.OpenClipboard()
                 try:

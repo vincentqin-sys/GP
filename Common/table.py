@@ -9,7 +9,7 @@ from Common import base_win, dialog
 class CellEditor(base_win.Editor):
     def __init__(self) -> None:
         super().__init__()
-        self.css['borderColor'] = 0x2faffff
+        self.css['borderColor'] = 0x2020D0
         self.row = 0
         self.col = 0
         self.inEdit = False
@@ -45,6 +45,9 @@ class ExTableWindow(base_win.TableWindow):
         W, H = self.getClientSize()
         win32gui.ShowWindow(self.editor.hwnd, win32con.SW_SHOW)
         win32gui.SetFocus(self.editor.hwnd)
+        self.editor.setInsertPos(len(self.editor.text))
+        self.editor.setSelRange(0, len(self.editor.text))
+        self.editor.invalidWindow()
 
     def endEdit(self):
         if not self.editor.inEdit:
@@ -65,6 +68,10 @@ class ExTableWindow(base_win.TableWindow):
     def onPressEnter(self, evtName, evtInfo, args):
         if evtName == 'PressEnter':
             self.endEdit()
+        elif evtName == 'PressTab':
+            col = self.editor.col + 1
+            if col < len(self.headers):
+                self.beginEdit(self.editor.row, col)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONDOWN:
