@@ -290,7 +290,7 @@ class HexinUrl(Henxin):
             raise Exception('[HexinUrl.loadUrlData]', resp)
         txt = resp.content.decode('utf-8')
         bi = txt.index('(')
-        ei = txt.index(')')
+        ei = txt.rindex(')')
         txt = txt[bi + 1 : ei]
         #print(txt)
         if '/last1800.js' in url:
