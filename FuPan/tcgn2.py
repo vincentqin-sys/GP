@@ -40,8 +40,8 @@ class TCGN_Window(base_win.BaseWindow):
         headers2 = [
             {'title': '', 'width': 30, 'name': '#idx' },
             {'title': '二级题材概念', 'width': 200, 'name': 'tcgn_sub', 'editable': True},
-            {'title': '股票代码', 'width': 100, 'name': 'code', 'editable': True},
             {'title': '股票名称', 'width': 150, 'name': 'name', 'editable': True},
+            {'title': '股票代码', 'width': 100, 'name': 'code', 'editable': True},
             {'title': '详情', 'stretch': 1, 'name': 'info', 'editable': True},
         ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
