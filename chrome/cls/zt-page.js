@@ -145,7 +145,7 @@ setTimeout(() => {
     headers = loadHeaders();
     data = loadPageData();
     sendToServer(data);
-    loadDegree();
+    // loadDegree();
 }, 15 * 1000);
 
 

@@ -8,6 +8,7 @@
 	"permissions": [
 		"https://www.cls.cn/*",
 		"http://www.cls.cn/*",
+		"https://x-quote.cls.cn/*",
 		"tabs",
 		"webRequest",
 		"webRequestBlocking",

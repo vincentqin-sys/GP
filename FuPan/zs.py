@@ -58,6 +58,10 @@ class ZSWindow(base_win.BaseWindow):
             win.enableListeners['ContextMenu'] = True
             win.addListener(self.onContextMenu, i)
         datePicker.addListener(self.onSelDayChanged, None)
+        # init view
+        today = datetime.date.today()
+        day = today.strftime('%Y%m%d')
+        self.updateDay(day)
     
     def onContextMenu(self, evtName, evtInfo, tabIdx):
         if evtName != 'ContextMenu':

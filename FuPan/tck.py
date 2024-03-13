@@ -45,7 +45,7 @@ class TCK_Window(base_win.BaseWindow):
                    {'title': '热度', 'width': 70, 'name': 'zhHotOrder', 'sortable':True },
                    {'title': '开盘啦', 'width': 120, 'name': 'kpl_ztReason', 'sortable':True },
                    {'title': '同花顺', 'width': 80, 'name': 'ths_status', 'sortable':True },
-                   {'title': '同花顺', 'width': 200, 'name': 'ths_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True},
+                   {'title': '同花顺', 'width': 200, 'name': 'ths_ztReason',  'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True},
                    {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
                    {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
@@ -159,8 +159,7 @@ class TCK_Window(base_win.BaseWindow):
             if type(ztNum) == str:
                 print(d)
                 ztNum = 0
-            if ztNum >= 4:
-                d['kpl_ztReason'] += f"({d['ztNum']})"
+            d['kpl_ztReason'] += f"({d['ztNum']})"
             d['zhHotOrder'] = hots.get(k, None)
             rs.append(d)
         for d in thsQr:

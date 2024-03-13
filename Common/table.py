@@ -70,6 +70,7 @@ class ExTableWindow(base_win.TableWindow):
             self.endEdit()
         elif evtName == 'PressTab':
             col = self.editor.col + 1
+            self.endEdit()
             if col < len(self.headers):
                 self.beginEdit(self.editor.row, col)
 

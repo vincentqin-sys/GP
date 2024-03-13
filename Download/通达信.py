@@ -399,10 +399,54 @@ def checkUserNoInputTime():
     sec = diff / 1000
     return sec >= 5 * 60
 
+def getMaxDay(paths):
+    md = None
+    for p in paths:
+        bn = os.path.basename(p)
+        if '-' not in bn:
+            continue
+        sp = bn.split('-')
+        if not md:
+            md = sp[-1]
+        elif md < sp[-1]:
+            md = sp[-1]
+    return md
+
+
+def renameDirs():
+    ldays = datafile.DataFileUtils.getLDayDirs()
+    mins = datafile.DataFileUtils.getMinlineDirs()
+    ldaysLast = getMaxDay(ldays)
+    minsLast = getMaxDay(mins)
+    maxday = max(ldaysLast, minsLast)
+    maxday = datetime.datetime.strptime(maxday, '%Y%m%d')
+    tds = datafile.DataFileUtils.calcDays(0, True)
+    existsLastDay = datetime.datetime.strptime(str(tds[-1]), '%Y%m%d')
+    diff = existsLastDay - maxday
+    if diff.days < 15:
+        return
+    maxday += datetime.timedelta(days=1)
+    maxday = maxday.strftime('%Y%m%d')
+    newName = f'-{maxday}-{tds[-1]}'
+
+    sh1 = os.path.join(datafile.VIPDOC_BASE_PATH, 'sh', 'lday')
+    sh2 = os.path.join(datafile.VIPDOC_BASE_PATH, 'sh', 'minline')
+    sz1 = os.path.join(datafile.VIPDOC_BASE_PATH, 'sz', 'lday')
+    sz2 = os.path.join(datafile.VIPDOC_BASE_PATH, 'sz', 'minline')
+    ls = [sh1, sh2, sz1, sz2]
+    for s in ls:
+        try:
+            os.rename(s, s + newName)
+            os.mkdir(s)
+        except Exception as e:
+            print('[renameDirs] fail', e)
+            pass
+
 def autoMain():
     lastDay = 0
     while True:
         today = datetime.datetime.now()
+        renameDirs()
         if today.weekday() >= 5: #周六周日
             time.sleep(60 * 60)
             continue

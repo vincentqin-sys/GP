@@ -1,7 +1,8 @@
 proc_info = {
     clsZTWindowId: 0,
     lastOpenZSPageTime : 0,
-    savedDays : {} // day : True
+    savedDays : {}, // day : True
+    savedDaysDegree : {} // day : True
 };
 
 // YYYY-MM-DD
@@ -106,13 +107,79 @@ function updateHeaders(hds, name, value) {
 	hds.push({'name': name, 'value': value});
 }
 
+
+function sendDegreeToServer(day, degree) {
+    let curDay = formatDate(new Date());
+    if (proc_info.savedDaysDegree[curDay]) {
+        return;
+    }
+
+    degree = parseInt(parseFloat(degree) * 100);
+    let data = {degree: degree, day: day};
+    $.ajax({
+        url: 'http://localhost:8071/save-CLS-Degree',
+        method: 'POST',
+        dataType: 'json',
+        contentType : 'application/json',
+        data: JSON.stringify(data),
+        success: function (res) {
+            console.log('Success: Send Degree to server success ', res);
+            let curDay = formatDate(new Date());
+            proc_info.savedDaysDegree[curDay] = true;
+        },
+        error: function (res) {
+            console.log('Fail: Send Degree info to server fail ', data);
+        }
+    });
+}
+
+function loadDegree(url) {
+    let tag = '&_s=1';
+    if (url.indexOf(tag) > 0) {
+        return
+    }
+    $.get(url + tag, function(rdata, status) {
+        console.log('degree', rdata);
+        try {
+            let date = rdata.data.date;
+            let degree = rdata.data.market_degree;
+            console.log(date, degree);
+            let curTime = formatTime(new Date());
+            let curDay = formatDate(new Date())
+            if (curTime > '15:00') {
+                sendDegreeToServer(date, degree);
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    });
+}
+
 chrome.webRequest.onHeadersReceived.addListener(function(details) {
 		let hds = details.responseHeaders;
+        // console.log(details);
 		updateHeaders(hds, 'Access-Control-Allow-Origin', '*');
 		updateHeaders(hds, 'Access-Control-Allow-Credentials', 'true');
 		updateHeaders(hds, 'Access-Control-Allow-Methods', '*');
+        let url = details.url;
+        if (url && url.indexOf('https://x-quote.cls.cn/quote/stock/emotion_options') >= 0) {
+            loadDegree(url);
+        }
 		return {responseHeaders : hds};
 	},
 	{urls: ['https://www.cls.cn/*', '*://*/*']},
-	['responseHeaders','blocking', 'extraHeaders']
+	['blocking', 'responseHeaders', 'extraHeaders'] // , 
 );
+
+/*
+chrome.webRequest.onCompleted.addListener(function(details) {
+        let url = details.url;
+        console.log(url);
+        $.get(url, function(data, status) {
+            console.log(data);
+        });
+    },
+    {urls : ['https://x-quote.cls.cn/quote/stock/emotion_options*']},
+    ['blocking', 'responseHeaders']
+);
+*/

@@ -16,7 +16,7 @@ class TCGN_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (250, 150, 60, 60, 60, 60, 60, 60, '1fr')
+        self.cols = (250, 150, 100, 60, 60, 60, 60, 60, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
         self.tableCntWin = table.ExTableWindow()
@@ -48,6 +48,7 @@ class TCGN_Window(base_win.BaseWindow):
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableCntWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.tableCntWin.enableListeners['ContextMenu'] = True
         self.tableWin.rowHeight = 30
         self.tableWin.headers = headers
         self.tableCntWin.rowHeight = 30
@@ -56,7 +57,7 @@ class TCGN_Window(base_win.BaseWindow):
         addBtn.createWindow(self.hwnd, (0, 0, 1, 1))
         insertBtn = base_win.Button({'title': 'Insert'})
         insertBtn.createWindow(self.hwnd, (0, 0, 1, 1))
-        newBtn = base_win.Button({'title': 'New'})
+        newBtn = base_win.Button({'title': '新建一级概念'})
         newBtn.createWindow(self.hwnd, (0, 0, 1, 1))
         delBtn = base_win.Button({'title': 'Del'})
         delBtn.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -65,17 +66,19 @@ class TCGN_Window(base_win.BaseWindow):
 
         self.layout.setContent(0, 0, self.editorWin)
         self.layout.setContent(0, 1, self.checkBox)
-        self.layout.setContent(0, 2, addBtn)
-        self.layout.setContent(0, 3, insertBtn)
-        self.layout.setContent(0, 4, delBtn)
-        self.layout.setContent(0, 6, newBtn)
-        self.layout.setContent(0, 7, openBtn)
+        
+        self.layout.setContent(0, 2, newBtn)
+        #self.layout.setContent(0, 4, addBtn)
+        #self.layout.setContent(0, 5, insertBtn)
+        #self.layout.setContent(0, 6, delBtn)
+        #self.layout.setContent(0, 7, openBtn)
 
         self.layout.setContent(1, 0, self.tableWin)
         self.layout.setContent(1, 1, self.tableCntWin, {'horExpand': -1})
         self.editorWin.addListener(self.onQuery)
         self.tableWin.addListener(self.onSelect)
         self.tableCntWin.addListener(self.onCellChanged)
+        self.tableCntWin.addListener(self.onContextMenu)
         addBtn.addListener(self.onAddInsert, 'Add')
         insertBtn.addListener(self.onAddInsert, 'Insert')
         newBtn.addListener(self.onNew, 'New')
@@ -84,6 +87,31 @@ class TCGN_Window(base_win.BaseWindow):
 
         self.loadAllData()
         self.tableWin.setData(self.tckData)
+
+    def onContextMenu(self, evtName, evt, args):
+        if evtName != 'ContextMenu':
+            return
+        data = self.tableCntWin.getData() or []
+        selRow = self.tableCntWin.selRow
+        model = [{'title': '在选中行前插入', 'name': 'Insert', 'enable': selRow >= 0 or len(data) == 0}, 
+                 {'title': '在选中行后添加', 'name': 'Add', 'enable': selRow >= 0 or len(data) == 0}, 
+                 {'title': '删除选中行', 'name': 'Del', 'enable': selRow >= 0}, 
+                 {'title': 'LINE'}, {'title' : '打开股票', 'name': 'Open', 'enable': selRow >= 0} ]
+        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu.addListener(self.onContextMenuItemSelect)
+        pos = win32gui.GetCursorPos()
+        menu.show(*pos)
+    
+    def onContextMenuItemSelect(self, evtName, evt, args):
+        if evtName != 'Select':
+            return
+        item = evt['item']
+        if item['name'] == 'Insert' or item['name'] == 'Add':
+            self.onAddInsert('Click', None, item['name'])
+        elif item['name'] == 'Del':
+            self.onDel('Click', None, 'Del')
+        elif item['name'] == 'Open':
+            self.onOpen('Click', None, 'Open')
 
     def onCellChanged(self, evtName, evt, args):
         if evtName != 'CellChanged':
