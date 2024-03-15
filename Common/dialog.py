@@ -63,7 +63,7 @@ class InputDialog(Dialog):
 
     def onPressEnter(self, evtName, evtInfo, args):
         if evtName == 'PressEnter':
-            win32gui.DestroyWindow(self.hwnd)
+            self.close()
             self.notifyListener('InputEnd', {'src': self, 'text': self.getText()})
 
 # listeners : SelectColor = color

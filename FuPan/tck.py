@@ -189,11 +189,13 @@ class TCK_Window(base_win.BaseWindow):
             if obj:
                 obj['ths_status'] = d['status']
                 obj['ths_ztReason'] = d['ztReason']
+                d['zhHotOrder'] = hots.get(k, None)
             else:
                 #ths.append(d)
                 if kplLastDay < d['day']:
                     d['ths_status'] = d['status']
                     d['ths_ztReason'] = d['ztReason']
+                    d['zhHotOrder'] = hots.get(k, None)
                     del d['status']
                     del d['ztReason']
                     rs.insert(0, d)

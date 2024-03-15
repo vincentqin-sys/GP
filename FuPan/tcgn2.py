@@ -49,6 +49,7 @@ class TCGN_Window(base_win.BaseWindow):
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableCntWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableCntWin.enableListeners['ContextMenu'] = True
+        self.tableWin.enableListeners['ContextMenu'] = True
         self.tableWin.rowHeight = 30
         self.tableWin.headers = headers
         self.tableCntWin.rowHeight = 30
@@ -67,7 +68,7 @@ class TCGN_Window(base_win.BaseWindow):
         self.layout.setContent(0, 0, self.editorWin)
         self.layout.setContent(0, 1, self.checkBox)
         
-        self.layout.setContent(0, 2, newBtn)
+        #self.layout.setContent(0, 2, newBtn)
         #self.layout.setContent(0, 4, addBtn)
         #self.layout.setContent(0, 5, insertBtn)
         #self.layout.setContent(0, 6, delBtn)
@@ -77,16 +78,41 @@ class TCGN_Window(base_win.BaseWindow):
         self.layout.setContent(1, 1, self.tableCntWin, {'horExpand': -1})
         self.editorWin.addListener(self.onQuery)
         self.tableWin.addListener(self.onSelect)
+        self.tableWin.addListener(self.onContextMenu_1)
         self.tableCntWin.addListener(self.onCellChanged)
         self.tableCntWin.addListener(self.onContextMenu)
         addBtn.addListener(self.onAddInsert, 'Add')
         insertBtn.addListener(self.onAddInsert, 'Insert')
-        newBtn.addListener(self.onNew, 'New')
+        newBtn.addListener(self.onNewOrUpdate, 'New')
         delBtn.addListener(self.onDel, 'Del')
         openBtn.addListener(self.onOpen, 'Open')
 
         self.loadAllData()
         self.tableWin.setData(self.tckData)
+
+    def onContextMenu_1(self, evtName, evt, args):
+        if evtName != 'ContextMenu':
+            return
+        selRow = self.tableWin.selRow
+        rd = None
+        if selRow >= 0:
+            rd = self.tableWin.getData()[selRow]
+        model = [{'title': '新建', 'name': 'Insert'}, 
+                 {'title': '更新', 'name': 'Update', 'enable': selRow >= 0},
+                 ]
+        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu.addListener(self.onContextMenuItemSelect_1, rd)
+        pos = win32gui.GetCursorPos()
+        menu.show(*pos)
+
+    def onContextMenuItemSelect_1(self, evtName, evt, args):
+        if evtName != 'Select':
+            return
+        item = evt['item']
+        if item['name'] == 'Insert':
+            self.onNewOrUpdate('Click', None, None)
+        elif item['name'] == 'Update':
+            self.onNewOrUpdate('Click', None, args)
 
     def onContextMenu(self, evtName, evt, args):
         if evtName != 'ContextMenu':
@@ -157,32 +183,40 @@ class TCGN_Window(base_win.BaseWindow):
         else:
             self.openInCurWindow(data)
 
-    def onNew(self, evtName, evt, args):
+    def onNewOrUpdate(self, evtName, evt, args):
         if evtName != 'Click':
             return
         dlg = dialog.InputDialog()
         dlg.createWindow(self.hwnd, (0, 0, 300, 70), title='一级题材概念')
+        if args: # is update
+            dlg.setText(args['tcgn'])
         dlg.showCenter()
-        dlg.addListener(self.onDialogInputEnd)
+        dlg.addListener(self.onDialogInputEnd, args)
 
     def onDialogInputEnd(self, evtName, evt, args):
         if evtName != 'InputEnd':
             return
-        self.curTcgn = evt['text'] or ''
-        self.curTcgn = self.curTcgn.strip()
-        if not self.curTcgn:
+        txt = evt['text'] or ''
+        if not txt:
             return
-        self.tableCntWin.setData([])
+        if txt and txt.strip():
+            self.curTcgn = txt.strip()
+        if not args: # insert
+            self.tableCntWin.setData([])
+            dt = self.tableWin.getData()
+            if dt == None:
+                dt = []
+                self.tableWin.setData(dt)
+            dt.append({'tcgn': self.curTcgn})
+            self.tableWin.setSelRow(len(dt) - 1)
+            self.tableWin.showRow(len(dt) - 1)
+        else: # update
+            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.tcgn : self.curTcgn}).where(orm.TCK_TCGN.tcgn == args['tcgn'])
+            qr.execute()
+            args['tcgn'] = self.curTcgn
         self.tableCntWin.invalidWindow()
-        dt = self.tableWin.getData()
-        if dt == None:
-            dt = []
-            self.tableWin.setData(dt)
-        dt.append({'tcgn': self.curTcgn})
         self.tableWin.invalidWindow()
-        self.tableWin.setSelRow(len(dt) - 1)
-        self.tableWin.showRow(len(dt) - 1)
-
+        
     def onAddInsert(self, evtName, evt, args):
         if evtName != 'Click':
             return

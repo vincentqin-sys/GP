@@ -1828,6 +1828,9 @@ class Editor(BaseWindow):
             text = str(text)
         self.text = text
         self.setInsertPos(0)
+
+    def getText(self):
+        return self.text
     
     def setInsertPos(self, pos):
         self.insertPos = pos

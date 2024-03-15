@@ -22,6 +22,7 @@ class ExTableWindow(base_win.TableWindow):
         super().__init__()
         self.editor = CellEditor()
         self.editor.addListener(self.onPressEnter)
+        self.trimText = True
 
     def beginEdit(self, row, col):
         if row < 0 or col < 0:
@@ -62,7 +63,8 @@ class ExTableWindow(base_win.TableWindow):
         cellVal = rowData[hd['name']]
         #if cellVal == self.editor.text:
         #    return
-        rowData[hd['name']] = self.editor.text
+        txt = self.editor.text.strip() if self.trimText else self.editor.text
+        rowData[hd['name']] = txt
         self.notifyListener('CellChanged', {'src': self, 'row': row, 'col': col, 'data': rowData, 'header': hd, 'model': self.data})
 
     def onPressEnter(self, evtName, evtInfo, args):
