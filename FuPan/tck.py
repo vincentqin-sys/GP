@@ -16,11 +16,12 @@ class TCK_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (60, 300, 150, '1fr')
+        self.cols = (60, 300, 150, 120, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
         self.editorWin = base_win.Editor()
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
+        self.autoSyncCheckBox = base_win.CheckBox({'title': '自动同步显示'})
         self.tckData = None
         self.tckSearchData = None
         
@@ -50,6 +51,7 @@ class TCK_Window(base_win.BaseWindow):
                    {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.autoSyncCheckBox.createWindow(self.hwnd, (0, 0, 1, 1))
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.rowHeight = 40
@@ -60,9 +62,26 @@ class TCK_Window(base_win.BaseWindow):
         self.layout.setContent(0, 0, btn)
         self.layout.setContent(0, 1, self.editorWin)
         self.layout.setContent(0, 2, self.checkBox)
+        self.layout.setContent(0, 3, self.autoSyncCheckBox)
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
         self.editorWin.addListener(self.onEditEnd, None)
         self.tableWin.addListener(self.onDbClick, None)
+        self.sm = ths_win.ThsShareMemory()
+        self.sm.open()
+        self.sm.addListener('ListenSync', self.onAutoSync)
+
+    def onAutoSync(self, code, day):
+        checked = self.autoSyncCheckBox.isChecked()
+        if not checked:
+            return
+        code = f'{code :06d}'
+        txt = self.editorWin.text
+        if txt == code:
+            return
+        self.editorWin.setText(code)
+        self.editorWin.invalidWindow()
+        self.onEditEnd('PressEnter', {'text': self.editorWin.text}, None)
+
 
     def onRefresh(self, evtName, evtInfo, args):
         if evtName == 'Click':
@@ -162,6 +181,8 @@ class TCK_Window(base_win.BaseWindow):
             d['kpl_ztReason'] += f"({d['ztNum']})"
             d['zhHotOrder'] = hots.get(k, None)
             rs.append(d)
+
+        kplLastDay = rs[0]['day']
         for d in thsQr:
             k = d['day'] + ':' + d['code']
             obj = kpl.get(k, None)
@@ -169,7 +190,15 @@ class TCK_Window(base_win.BaseWindow):
                 obj['ths_status'] = d['status']
                 obj['ths_ztReason'] = d['ztReason']
             else:
-                ths.append(d)
+                #ths.append(d)
+                if kplLastDay < d['day']:
+                    d['ths_status'] = d['status']
+                    d['ths_ztReason'] = d['ztReason']
+                    del d['status']
+                    del d['ztReason']
+                    rs.insert(0, d)
+                    kpl[k] = d
+
         for d in clsQr:
             k = d['day'] + ':' + d['code']
             obj = kpl.get(k, None)

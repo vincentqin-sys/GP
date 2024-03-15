@@ -294,7 +294,4 @@ class ThsDdlrDetailData:
 
 if __name__ == '__main__':
     ddlr = ThsDdlrDetailLoader()
-    lds = os.listdir(DEST_DETAIL_PATH)
-    for fn in lds:
-        fn = os.path.join(DEST_DETAIL_PATH, fn)
-        ddlr.writeDestData(None, fn)
+    ddlr.loadAllFilesData()

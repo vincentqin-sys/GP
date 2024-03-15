@@ -39,8 +39,33 @@ def showHotWindow():
     win32gui.SetWindowPos(hotWindow.hwnd, 0, x, y, 0, 0, 0x0010|0x0200|0x0001|0x0004)
     hotWindow.rect = (x, y, hotWindow.rect[2], hotWindow.rect[3])
 
+windowsInfo = {}
+def updateWindowInfo(thsWin):
+    _id = id(thsWin)
+    if _id not in windowsInfo:
+        windowsInfo[_id] = {'curPageName': None}
+    wi = windowsInfo[_id]
+    curPageName = thsWin.getPageName()
+    if not curPageName:
+        return
+    if wi['curPageName'] != curPageName: # changed page
+        wi['curPageName'] = curPageName
+        if curPageName not in wi:
+            wi[curPageName] = {'s1': None, 's2': None}
+        cp = wi[curPageName]
+        simpleWindow.setWindowState(cp['s1'])
+        simpleHotZHWindow.setWindowState(cp['s2'])
+        if curPageName == '技术分析':
+            ths_win.ThsSmallF10Window.adjustPos()
+    else:
+        if curPageName not in wi:
+            wi[curPageName] = {'s1': None, 's2': None}
+        cp = wi[curPageName]
+        cp['s1'] = simpleWindow.getWindowState()
+        cp['s2'] = simpleHotZHWindow.getWindowState()
+
 def _workThread(thsWin):
-    global curCode
+    global curCode, windowsInfo
     while True:
         time.sleep(0.5)
         #mywin.eyeWindow.show()
@@ -52,6 +77,7 @@ def _workThread(thsWin):
         #showHotWindow()
         if win32gui.GetForegroundWindow() != thsWin.topHwnd:
             continue
+        updateWindowInfo(thsWin)
         nowCode = thsWin.findCode()
         if curCode != nowCode:
             updateCode(nowCode)

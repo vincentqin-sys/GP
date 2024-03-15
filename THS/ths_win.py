@@ -18,6 +18,25 @@ class ThsWindow(base_win.BaseWindow):
         self.selDayHwnd = None
         self.ocr = number_ocr.NumberOCR()
 
+    def getPageName(self):
+        if not self.topHwnd:
+            return None
+        if not win32gui.IsWindow(self.topHwnd):
+            return None
+        title = win32gui.GetWindowText(self.topHwnd)
+        if not title:
+            return None
+        if not title.startswith('同花顺'):
+            print('ThsWindow.getPageName not unknown widow type: ', title)
+            return title
+        if '技术分析' in title:
+            return '技术分析'
+        if '分时走势' in title:
+            return '分时走势'
+        if '-' in title:
+            title = title[title.index('-') + 1 : ].strip()
+        return title
+
     def findLevel2CodeWnd(self, hwnd):
         child = win32gui.GetWindow(hwnd, win32con.GW_CHILD)
         while child:
@@ -75,6 +94,11 @@ class ThsWindow(base_win.BaseWindow):
         if '逐笔成交--' in title:
             code = title[6 : 12]
         return code
+
+    def hasCodeWindow(self):
+        if not self.level2CodeHwnd:
+            return False
+        return win32gui.IsWindow(self.level2CodeHwnd) and win32gui.IsWindowVisible(self.level2CodeHwnd)
 
     def getSelectDay(self):
         if not win32gui.IsWindowVisible(self.selDayHwnd):
@@ -163,6 +187,23 @@ class ThsFuPingWindow(ThsWindow):
         print('ThsFuPingWindow.mainHwnd = %#X' % self.mainHwnd)
         print('ThsFuPingWindow.selDayHwnd = %#X' % self.selDayHwnd)
         return True  
+
+class ThsSmallF10Window:
+    hwnd = None
+
+    @classmethod
+    def findWindow(cls):
+        if cls.hwnd and win32gui.IsWindow(cls.hwnd):
+            return cls.hwnd
+        cls.hwnd =  win32gui.FindWindow('smallF10_dlg', '小F10')
+        return cls.hwnd
+
+    @classmethod
+    def adjustPos(cls):
+        hwnd = cls.findWindow()
+        if not hwnd:
+            return
+        win32gui.SetWindowPos(hwnd, 0, 25, 540, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
 
 class ThsShareMemory:
     POS_CODE = 0

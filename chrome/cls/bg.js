@@ -110,7 +110,7 @@ function updateHeaders(hds, name, value) {
 
 function sendDegreeToServer(day, degree) {
     let curDay = formatDate(new Date());
-    if (proc_info.savedDaysDegree[curDay]) {
+    if (proc_info.savedDaysDegree[day]) {
         return;
     }
 
@@ -124,8 +124,7 @@ function sendDegreeToServer(day, degree) {
         data: JSON.stringify(data),
         success: function (res) {
             console.log('Success: Send Degree to server success ', res);
-            let curDay = formatDate(new Date());
-            proc_info.savedDaysDegree[curDay] = true;
+            proc_info.savedDaysDegree[day] = true;
         },
         error: function (res) {
             console.log('Fail: Send Degree info to server fail ', data);
@@ -134,9 +133,12 @@ function sendDegreeToServer(day, degree) {
 }
 
 function loadDegree(url) {
+    if (formatTime(new Date()) <= '15:00') {
+        return;
+    }
     let tag = '&_s=1';
     if (url.indexOf(tag) > 0) {
-        return
+        return;
     }
     $.get(url + tag, function(rdata, status) {
         console.log('degree', rdata);

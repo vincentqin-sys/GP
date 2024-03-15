@@ -1,5 +1,4 @@
-from win32.lib.win32con import WS_CHILD, WS_VISIBLE
-import win32gui, win32con, sys, os
+import win32gui, win32con, sys, os, win32api
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
@@ -74,6 +73,9 @@ class FuPanMgrWindow(base_win.BaseWindow):
 if __name__ == '__main__':
     base_win.ThreadPool.start()
     fp = FuPanMgrWindow()
-    fp.createWindow(None, (0, 0, 1000, 500), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
-    win32gui.ShowWindow(fp.hwnd, win32con.SW_MAXIMIZE)
+    w = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+    h = 500
+    fp.createWindow(None, (0, 520, w, h), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
+    fp.layout.resize(0, 0, w, h)
+    #win32gui.ShowWindow(fp.hwnd, win32con.SW_MAXIMIZE)
     win32gui.PumpMessages()

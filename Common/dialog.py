@@ -24,8 +24,12 @@ class Dialog(base_win.BaseWindow):
         win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
         win32gui.SetActiveWindow(self.hwnd)
 
+    def hide(self):
+        win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+
     def close(self):
-        win32gui.CloseWindow(self.hwnd)
+        #win32gui.CloseWindow(self.hwnd)
+        win32gui.DestroyWindow(self.hwnd)
 
 # listeners : InputEnd = {src, text}
 class InputDialog(Dialog):

@@ -148,6 +148,20 @@ class CardWindow(base_win.BaseWindow):
         self.maxMode = True
         self.curCardViewIdx = 0
 
+    def getWindowState(self):
+        rc = win32gui.GetWindowRect(self.hwnd)
+        return {'maxMode': self.maxMode, 'pos': (rc[0], rc[1])}
+    
+    def setWindowState(self, state):
+        if not state:
+            return
+        x, y = state['pos']
+        self.maxMode = state['maxMode']
+        if state['maxMode']:
+            win32gui.SetWindowPos(self.hwnd, 0, x, y, *self.MAX_SIZE, win32con.SWP_NOZORDER)
+        else:
+            win32gui.SetWindowPos(self.hwnd, 0, x, y, *self.MIN_SIZE, win32con.SWP_NOZORDER)
+
     def addCardView(self, cardView):
         self.cardViews.append(cardView)
 

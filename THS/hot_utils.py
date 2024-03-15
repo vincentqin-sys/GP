@@ -58,6 +58,8 @@ def getTradeDaysByHot():
     return days
 
 if __name__ == '__main__':
+    calcAllHotZHAndSave()
+    
     print(os.getcwd())
     # 计算最热的30个股的综合排名
     hots = calcHotZHOnDay(20240124)

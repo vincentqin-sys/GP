@@ -1,5 +1,4 @@
-from win32.lib.win32con import WS_CHILD, WS_VISIBLE
-import win32gui, win32con , win32api, win32ui # pip install pywin32
+import win32gui, win32con , win32api, win32ui, pyautogui # pip install pywin32
 import threading, time, datetime, sys, os, copy
 import os, sys, requests
 
@@ -9,6 +8,9 @@ from Download import henxin, ths_ddlr
 from THS import orm, ths_win
 from Common import base_win, timeline, kline
 
+thsWin = ths_win.ThsWindow()
+thsWin.init()
+
 class ZSWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -17,14 +19,19 @@ class ZSWindow(base_win.BaseWindow):
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.listWins = []
         self.daysLabels =[]
+        self.checkBox = None
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
         datePicker = base_win.DatePicker()
         datePicker.createWindow(self.hwnd, (10, 10, 200, 30))
+        self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
+        self.checkBox.createWindow(self.hwnd, (0, 0, 200, 30))
         absLayout = base_win.AbsLayout()
         absLayout.setContent(0, 0, datePicker)
+        absLayout.setContent(230, 0, self.checkBox)
         self.layout.setContent(0, 0, absLayout)
+        
         def formateRate(colName, val, rowData):
             return f'{val :.02f}%'
         def formateMoney(colName, val, rowData):
@@ -108,14 +115,34 @@ class ZSWindow(base_win.BaseWindow):
         data = evtInfo['data']
         if not data:
             return
+        if self.checkBox.isChecked():
+            self.openInThsWindow(data)
+        else:
+            self.openInCurWindow(data)
+
+    def openInThsWindow(self, data):
+        if not thsWin.topHwnd or not win32gui.IsWindow(thsWin.topHwnd):
+            thsWin.topHwnd = None
+            thsWin.init()
+        if not thsWin.topHwnd:
+            return
+        win32gui.SetForegroundWindow(thsWin.topHwnd)
+        time.sleep(0.5)
+        pyautogui.typewrite(data['code'], 0.1)
+        time.sleep(0.2)
+        pyautogui.press('enter')
+        
+    def openInCurWindow(self, data):
         win = kline.KLineWindow()
         win.showSelTip = True
-        win.addDefaultIndicator('amount')
-        win.addIndicator(kline.DayIndicator(win, None))
-        win.addIndicator(kline.ThsZsPMIndicator(win, None))
+        win.addDefaultIndicator('rate | amount')
+        win.addIndicator(kline.DayIndicator(win, {}))
+        win.addIndicator(kline.DdlrIndicator(win, {'height': 100}))
+        win.addIndicator(kline.DdlrIndicator(win, {'height': 30}, False))
+        win.addIndicator(kline.HotIndicator(win, {}))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
         dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
-        W, H = 1000, 450
+        W, H = 1100, 650
         x = (dw - W) // 2
         y = (dh - H) // 2
         win.createWindow(self.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
