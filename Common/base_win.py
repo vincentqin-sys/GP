@@ -1903,7 +1903,7 @@ class Editor(BaseWindow):
         self.drawer.use(hdc, self.drawer.getFont(fontSize=self.css['fontSize']))
         pos = -1
         for i in range(0, len(text) + 1):
-            cw, *_ = win32gui.GetTextExtentPoint32(hdc, self.text[0 : i])
+            cw, *_ = win32gui.GetTextExtentPoint32(hdc, text[0 : i])
             if x <= cw:
                 pos = i
                 break
@@ -2072,6 +2072,474 @@ class Editor(BaseWindow):
             self._createdCaret = False
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
+        
+# listeners :
+class MutiEditor(BaseWindow):
+    class Pos:
+        def __init__(self, row, col) -> None:
+            self.row = row
+            self.col = col
+        def __eq__(self, oth) -> bool:
+            return self.row == oth.row and self.col == oth.col
+        def __ne__(self, oth) -> bool:
+            return self.row != oth.row or self.col != oth.col
+        def __gt__(self, oth):
+            if self.row > oth.row:
+                return True
+            if self.row == oth.row:
+                return self.col > oth.col
+            return False
+        def __ge__(self, oth):
+            if self.row > oth.row:
+                return True
+            if self.row == oth.row:
+                return self.col >= oth.col
+            return False
+        def __lt__(self, oth):
+            return oth > self
+        def __le__(self, oth):
+            return oth >= self
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.css['bgColor'] = 0xf0f0f0
+        self.css['textColor'] = 0x202020
+        self.css['borderColor'] = 0xdddddd
+        self.css['selBgColor'] = 0xf0c0c0
+        self.css['enableBorder'] = True
+        self.css['fontSize'] = 18
+        self._createdCaret = False
+        self.startRow = 0
+        self.paddingX = 5
+        self.lines = [] # items of { text,  }
+        self.lineHeight = 24
+        self.insertPos = None # Pos object
+        self.selRange = None # (begin-Pos, end-Pos)
+        self.readOnly = False
+
+    def setText(self, text):
+        self.selRange = None
+        if not text:
+            text = ''
+        if not isinstance(text, str):
+            text = str(text)
+        ls = text.splitlines()
+        for l in ls:
+            self.lines.append({'text': l})
+        self.setInsertPos(0, 0)
+
+    def getText(self):
+        txt = ''
+        for ln in self.lines:
+            txt += ln['text'] + '\n'
+        return txt
+
+    def getLineAttr(self, row, attrName):
+        if row >= len(self.lines):
+            return None
+        ln = self.lines[row]
+        if attrName == 'text':
+            return ln.get(attrName, '')
+        return ln.get(attrName, None)
+    
+    def setInsertPos(self, pos):
+        self.adjustPos(pos)
+        self.insertPos = pos
+        if not pos: # clear pos
+            if self._createdCaret:
+                win32gui.HideCaret(self.hwnd)
+                win32gui.DestroyCaret()
+            self._createdCaret = False
+            return
+        if self._createdCaret and win32gui.GetFocus() == self.hwnd:
+            rc = self.getCaretRect()
+            win32gui.SetCaretPos(rc[0], rc[1])
+
+    def adjustPos(self, pos):
+        if not pos:
+            return
+        if not self.lines:
+            pos.row = 0
+            pos.col = 0
+            return
+        pos.row = min(pos.row, len(self.lines) - 1)
+        lt = self.lines[pos.row]['text']
+        pos.col = min(pos.col, len(lt))
+
+    def setSelRange(self, beginPos, endPos):
+        self.adjustPos(beginPos)
+        self.adjustPos(endPos)
+        if not beginPos or not endPos:
+            self.selRange = None
+            return
+        self.selRange = (beginPos, endPos)
+
+    def getSelRange(self, sorted):
+        if not self.hasSelRange():
+            return None
+        b, e = self.selRange
+        if sorted and b > e:
+            return (e, b)
+        return self.selRange
+
+    def hasSelRange(self):
+        if not self.selRange:
+            return False
+        return self.selRange[0] != self.selRange[1]
+
+    def getSelRangeText(self):
+        if not self.hasSelRange():
+            return ''
+        b, e = self.getSelRange(True)
+        txt = ''
+        if b.row == e.row:
+            ln = self.getLineAttr(b.row, 'text')
+            return ln[b.col : e.col]
+        for r in range(b.row, e.row + 1):
+            ln = self.getLineAttr(r, 'text')
+            if r == b.row:
+                txt += ln[b.col : ] + '\n'
+            elif r == e.row:
+                txt += ln[0 : e.col]
+            else:
+                txt += ln + '\n'
+        return txt
+
+    def updateRowText(self, row, text):
+        self.lines[row]['text'] = text
+        self.lines[row]['modified'] = True
+
+    def deleteSelRangeText(self):
+        if not self.hasSelRange():
+            return
+        b, e = self.getSelRange(True)
+        self.setSelRange(None, None)
+        if b.row == e.row:
+            if b.row >= len(self.lines):
+                return
+            ln = self.lines[b.row]['text']
+            self.updateRowText(b.row, ln[0 : b.col] + ln[e.col : ])
+            return
+        for r in range(b.row, e.row + 1):
+            if r == b.row:
+                self.updateRowText(r, self.lines[r]['text'][0 : b.col])
+            elif r == e.row:
+                self.updateRowText(r, self.lines[r]['text'][e.col : ])
+        for r in range(e.row - 1, b.row, -1):
+            self.lines.pop(r)
+
+    def getXAtPos(self, pos):
+        if not self.lines or not pos:
+            return self.paddingX
+        if pos.row > len(self.lines):
+            return self.paddingX
+        line = self.lines[pos.row]['text']
+        if pos.col > len(line):
+            return self.paddingX
+        hdc = win32gui.GetDC(self.hwnd)
+        self.drawer.use(hdc, self.drawer.getFont(fontSize = self.css['fontSize']))
+        tw, *_ = win32gui.GetTextExtentPoint32(hdc, line[0 : pos.col])
+        x = tw + self.paddingX
+        win32gui.ReleaseDC(self.hwnd, hdc)
+        return x
+
+    def getYAtPos(self, pos):
+        if not self.lines or not pos:
+            return 0
+        row = min(pos.row, len(self.lines) - 1)
+        return (row - self.startRow) * self.lineHeight
+    
+    def getColAtX_Text(self, text, x):
+        if not text:
+            return 0
+        hdc = win32gui.GetDC(self.hwnd)
+        self.drawer.use(hdc, self.drawer.getFont(fontSize = self.css['fontSize']))
+        pos = -1
+        for i in range(0, len(text) + 1):
+            cw, *_ = win32gui.GetTextExtentPoint32(hdc, text[0 : i])
+            if x <= cw:
+                pos = i
+                break
+        win32gui.ReleaseDC(self.hwnd, hdc)
+        if pos >= 0:
+            return pos
+        return len(text)
+
+    def getColAtX(self, row, x):
+        if not self.lines or row < 0 or row >= len(self.lines):
+            return 0
+        pos = self.getColAtX_Text(self.lines[row]['text'], x - self.paddingX)
+        return pos
+    
+    def getRowAtY(self, y):
+        if y <= 0:
+            return 0
+        row = y // self.lineHeight
+        row += self.startRow
+        if not self.lines:
+            return 0
+        row = min(row, len(self.lines) - 1)
+        return row
+
+    def getPosAtXY(self, x, y):
+        row = self.getRowAtY(y)
+        col = self.getColAtX(row, x)
+        return MutiEditor.Pos(row, col)
+    
+    def onChar(self, key):
+        if key < 32:
+            return
+        ch = chr(key)
+        self.insertText(ch)
+        self.invalidWindow()
+
+    def insertText(self, text):
+        if not text:
+            return
+        ip = self.insertPos
+        if self.hasSelRange():
+            sr = self.getSelRange(True)
+            self.deleteSelRangeText()
+            ip = sr[0]
+        if not self.lines:
+            self.lines.append({'text': ''})
+        if not ip:
+            raise Exception('[insertText] Not find insert pos')
+        row = ip.row
+        col = ip.col
+        for ch in text:
+            if ch == '\r':
+                continue
+            if ch == '\n':
+                ln = self.lines[row]['text']
+                self.updateRowText(row, ln[0 : col])
+                row += 1
+                self.lines.insert(row, {'text': ''})
+                self.updateRowText(row, ln[col : ])
+                col = 0
+            else:
+                tx = self.lines[row]['text']
+                self.updateRowText(row, tx[0 : col] + ch + tx[col : ])
+                col += 1
+        self.setInsertPos(MutiEditor.Pos(row, col))
+
+    # (left, top, right, bottom)
+    def getCaretRect(self):
+        lh = self.lineHeight #self.css['fontSize'] + 4
+        x = self.getXAtPos(self.insertPos)
+        sy = self.getYAtPos(self.insertPos)
+        dy = (self.lineHeight - lh) // 2
+        y = sy + dy
+        return (x, y, x + 1, y + lh)
+
+    def left(self):
+        if self.hasSelRange():
+            sr = self.getSelRange(True)
+            self.setSelRange(None, None)
+            self.setInsertPos(sr[0])
+            return
+        self.setSelRange(None, None)
+        if not self.insertPos or self.insertPos.col <= 0:
+            return
+        self.insertPos.col -= 1
+        self.setInsertPos(self.insertPos)
+        self.invalidWindow()
+
+    def right(self):
+        if self.hasSelRange():
+            sr = self.getSelRange(True)
+            self.setSelRange(None, None)
+            self.setInsertPos(sr[1])
+            return
+        self.setSelRange(None, None)
+        if not self.insertPos or self.insertPos.row >= len(self.lines):
+            return
+        line = self.lines[self.insertPos.row]['text']
+        if self.insertPos.col < len(line):
+            self.insertPos.col += 1
+        self.setInsertPos(self.insertPos)
+        self.invalidWindow()
+
+    def delete(self):
+        if self.hasSelRange():
+            sr = self.getSelRange(True)
+            self.deleteSelRangeText()
+            self.invalidWindow()
+            self.setInsertPos(sr[0])
+            return
+        self.setSelRange(None, None)
+        if self.insertPos and self.insertPos.row < len(self.lines):
+            row, col = self.insertPos.row, self.insertPos.col
+            line = self.lines[row]['text']
+            if col < len(line):
+                self.updateRowText(row, line[0 : col] + line[col + 1 : ])
+            else:
+                if row + 1 < len(self.lines):
+                    self.updateRowText(row, line + self.lines[row + 1]['text'])
+                    self.lines.pop(row + 1)
+            self.setInsertPos(self.insertPos)
+            self.invalidWindow()
+
+    def back(self):
+        if self.hasSelRange():
+            sr = self.getSelRange(True)
+            self.deleteSelRangeText()
+            self.invalidWindow()
+            self.setInsertPos(sr[0])
+            self.invalidWindow()
+            return
+        if not self.insertPos or self.insertPos.row >= len(self.lines):
+            return
+        row, col = self.insertPos.row, self.insertPos.col
+        if col <= 0 and row <= 0:
+            return
+        line = self.lines[row]['text']
+        if col == 0:
+            ln = len(self.lines[row - 1]['text'])
+            self.updateRowText(row - 1, self.lines[row - 1]['text'] + line)
+            self.lines.pop(row)
+            self.setInsertPos(MutiEditor.Pos(row - 1, ln))
+        else:
+            self.updateRowText(row, line[0 : col - 1] + line[col : ])
+            self.setInsertPos(MutiEditor.Pos(row, col - 1))
+        self.invalidWindow()
+
+    def enter(self):
+        if self.hasSelRange():
+            return
+        self.insertText('\n')
+        self.invalidWindow()
+
+    def drawSelRange(self, hdc):
+        if not self.hasSelRange():
+            return
+        W, H = self.getClientSize()
+        b, e = self.getSelRange(True)
+        if b.row == e.row:
+            sy = self.getYAtPos(b)
+            sx = self.getXAtPos(b)
+            ex = self.getXAtPos(e)
+            rc = (sx, sy, ex, sy + self.lineHeight)
+            self.drawer.fillRect(hdc, rc, self.css['selBgColor'])
+            return
+        for r in range(b.row, e.row + 1):
+            pos = MutiEditor.Pos(r, 0)
+            sy = self.getYAtPos(pos)
+            if r == b.row:
+                rc = (self.getXAtPos(b), sy, W, sy + self.lineHeight)
+            elif r == e.row:
+                rc = (self.getXAtPos(pos), sy, self.getXAtPos(e), sy + self.lineHeight)
+            else:
+                rc = (self.getXAtPos(pos), sy, W, sy + self.lineHeight)
+            self.drawer.fillRect(hdc, rc, self.css['selBgColor'])
+
+    def drawRow(self, hdc, row, rc):
+        self.drawer.drawText(hdc, self.lines[row]['text'], rc, color = self.css['textColor'], align = win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+
+    def onDraw(self, hdc):
+        W, H = self.getClientSize()
+        lh = self.css['fontSize']
+        self.drawSelRange(hdc)
+        for r in range(self.startRow, len(self.lines)):
+            pos = MutiEditor.Pos(r, 0)
+            sy = self.getYAtPos(pos)
+            sx = self.getXAtPos(pos)
+            rc = (sx, sy, W, sy + self.lineHeight)
+            self.drawRow(hdc, r, rc)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONDOWN:
+            win32gui.SetFocus(self.hwnd)
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            pos = self.getPosAtXY(x, y)
+            self.setSelRange(pos, pos)
+            self.setInsertPos(pos)
+            self.invalidWindow()
+            return True
+        if msg == win32con.WM_MOUSEMOVE:
+            if wParam & win32con.MK_LBUTTON:
+                x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+                pos = self.getPosAtXY(x, y)
+                if self.selRange:
+                    self.setSelRange(self.selRange[0], pos)
+                self.setInsertPos(pos)
+                self.invalidWindow()
+            return True
+        if msg == win32con.WM_LBUTTONDBLCLK:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            row = self.getRowAtY(y)
+            col = self.getColAtX(row, x)
+            self.setSelRange(MutiEditor.Pos(row, 0), MutiEditor.Pos(row, col))
+            self.invalidWindow()
+            return True
+        if msg == win32con.WM_CHAR or msg == win32con.WM_IME_CHAR:
+            if not self.readOnly:
+                self.onChar(wParam)
+            return True
+        if msg == win32con.WM_KEYDOWN:
+            if wParam == win32con.VK_LEFT:
+                self.left()
+            elif wParam == win32con.VK_RIGHT:
+                self.right()
+            elif wParam == win32con.VK_DELETE and (not self.readOnly):
+                self.delete()
+            elif wParam == win32con.VK_BACK and (not self.readOnly):
+                self.back()
+            elif wParam == win32con.VK_RETURN:
+                self.enter()
+            elif wParam == win32con.VK_TAB:
+                for i in range(4):
+                    self.onChar(ord(' '))
+            elif wParam == win32con.VK_HOME:
+                self.setSelRange(None, None)
+                if self.insertPos and self.insertPos.row < len(self.lines):
+                    row = self.insertPos.row
+                    self.setInsertPos(MutiEditor.Pos(row, 0))
+                self.invalidWindow()
+            elif wParam == win32con.VK_END:
+                self.setSelRange(None, None)
+                if self.insertPos and self.insertPos.row < len(self.lines):
+                    row = self.insertPos.row
+                    self.setInsertPos(MutiEditor.Pos(row, len(self.lines[row]['text'])))
+                self.invalidWindow()
+            elif wParam == ord('V') and win32api.GetKeyState(win32con.VK_CONTROL):
+                win32clipboard.OpenClipboard()
+                try:
+                    txt = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT) # CF_UNICODETEXT
+                    self.insertText(txt)
+                    self.invalidWindow()
+                except:
+                    pass
+                win32clipboard.CloseClipboard()
+            elif wParam == ord('C') and win32api.GetKeyState(win32con.VK_CONTROL):
+                txt = self.getSelRangeText()
+                if txt:
+                    win32clipboard.OpenClipboard()
+                    win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
+                    win32clipboard.CloseClipboard()
+            elif wParam == ord('X') and win32api.GetKeyState(win32con.VK_CONTROL):
+                txt = self.getSelRangeText()
+                if txt:
+                    win32clipboard.OpenClipboard()
+                    win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
+                    win32clipboard.CloseClipboard()
+                    self.deleteSelRangeText()
+                    self.invalidWindow()
+            return True
+        if msg == win32con.WM_SETFOCUS:
+            rc = self.getCaretRect()
+            win32gui.CreateCaret(self.hwnd, None, 2, rc[3] - rc[1])
+            win32gui.SetCaretPos(rc[0], rc[1])
+            win32gui.ShowCaret(self.hwnd)
+            self._createdCaret = True
+            return True
+        if msg == win32con.WM_KILLFOCUS:
+            if self._createdCaret:
+                win32gui.HideCaret(self.hwnd)
+                win32gui.DestroyCaret()
+            self._createdCaret = False
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)        
 
 def testGridLayout():
     class TestMain(BaseWindow):
