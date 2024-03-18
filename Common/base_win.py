@@ -2528,6 +2528,9 @@ class MutiEditor(BaseWindow):
             self.drawRow(hdc, r, rc)
 
     def winProc(self, hwnd, msg, wParam, lParam):
+        def isKeyPress(vk):
+            return win32api.GetKeyState(vk) & 0x80000000
+        
         if msg == win32con.WM_LBUTTONDOWN:
             win32gui.SetFocus(self.hwnd)
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
@@ -2593,12 +2596,12 @@ class MutiEditor(BaseWindow):
                     row = self.insertPos.row
                     self.setInsertPos(MutiEditor.Pos(row, len(self.lines[row]['text'])))
                 self.invalidWindow()
-            elif wParam == ord('A') and win32api.GetKeyState(win32con.VK_CONTROL):
+            elif wParam == ord('A') and isKeyPress(win32con.VK_CONTROL):
                 if self.lines:
                     lastLine = self.lines[-1]['text']
                     self.setSelRange(MutiEditor.Pos(0, 0), MutiEditor.Pos(len(self.lines) - 1, len(lastLine)))
                     self.invalidWindow()
-            elif wParam == ord('V') and win32api.GetKeyState(win32con.VK_CONTROL):
+            elif wParam == ord('V') and isKeyPress(win32con.VK_CONTROL):
                 win32clipboard.OpenClipboard()
                 try:
                     txt = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT) # CF_UNICODETEXT
@@ -2607,13 +2610,13 @@ class MutiEditor(BaseWindow):
                 except:
                     pass
                 win32clipboard.CloseClipboard()
-            elif wParam == ord('C') and win32api.GetKeyState(win32con.VK_CONTROL):
+            elif wParam == ord('C') and isKeyPress(win32con.VK_CONTROL):
                 txt = self.getSelRangeText()
                 if txt:
                     win32clipboard.OpenClipboard()
                     win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
                     win32clipboard.CloseClipboard()
-            elif wParam == ord('X') and win32api.GetKeyState(win32con.VK_CONTROL):
+            elif wParam == ord('X') and isKeyPress(win32con.VK_CONTROL):
                 txt = self.getSelRangeText()
                 if txt:
                     win32clipboard.OpenClipboard()
