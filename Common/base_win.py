@@ -15,7 +15,8 @@ class BaseWindow:
         self._bitmap = None
         self._bitmapSize = None
         self.cacheBitmap = False
-        self.css = {'fontSize' : 14, 'bgColor': 0x000000, 'textColor': 0xffffff,
+        self.css = {'fontSize' : 14, 'fontName' : '新宋体', 'fontWeight' : 0,
+                    'bgColor': 0x000000, 'textColor': 0xffffff,
                     'enableBorder': False, 'borderColor': 0x0} # config css style
         self.enableListeners = {'ContextMenu': False, 'DbClick': False, 'R_DbClick': False}
         self.dispatchEvent = None # can set, return True:已处理,  False: 未处理 = function(src, msg, wparam, lparam)
@@ -41,6 +42,9 @@ class BaseWindow:
             return None
         l, t, r, b = win32gui.GetClientRect(self.hwnd)
         return (r, b)
+    
+    def getDefFont(self):
+        return self.drawer.getFont(name = self.css['fontName'], fontSize = self.css['fontSize'], weight=self.css['fontWeight'])
     
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -84,7 +88,7 @@ class BaseWindow:
             self.drawer.drawRect(mdc, win32gui.GetClientRect(self.hwnd), self.css['borderColor'])
         win32gui.SetBkMode(mdc, win32con.TRANSPARENT)
         win32gui.SetTextColor(mdc, self.css['textColor'])
-        self.drawer.use(mdc, self.drawer.getFont(fontSize = self.css['fontSize']))
+        self.drawer.use(mdc, self.getDefFont())
         self.onDraw(mdc)
         win32gui.BitBlt(hdc, 0, 0, w, h, mdc, 0, 0, win32con.SRCCOPY)
         win32gui.EndPaint(self.hwnd, ps)
@@ -1486,7 +1490,7 @@ class PopupMenu(PopupWindow):
         if not self.model:
             return (100, self.rowHeight)
         hdc = win32gui.GetDC(self.hwnd)
-        self.drawer.use(hdc, self.drawer.getFont())
+        self.drawer.use(hdc, self.getDefFont())
         # calc max height
         for i in range(self.startIdx, min(self.startIdx + self.VISIBLE_MAX_ITEM, len(self.model))):
             m = self.model[i]
@@ -1843,7 +1847,7 @@ class Editor(BaseWindow):
         if not self.text or pos < 0:
             return
         hdc = win32gui.GetDC(self.hwnd)
-        self.drawer.use(hdc, self.drawer.getFont(fontSize=self.css['fontSize']))
+        self.drawer.use(hdc, self.getDefFont())
         W, H = self.getClientSize()
         stw, *_ = win32gui.GetTextExtentPoint32(hdc, self.text[0 : pos])
         px = self.scrollX + stw + self.paddingX
@@ -1891,7 +1895,7 @@ class Editor(BaseWindow):
         if not self.text or pos < 0:
             return self.paddingX
         hdc = win32gui.GetDC(self.hwnd)
-        self.drawer.use(hdc, self.drawer.getFont(fontSize=self.css['fontSize']))
+        self.drawer.use(hdc, self.getDefFont())
         tw, *_ = win32gui.GetTextExtentPoint32(hdc, self.text[0 : pos])
         x = self.scrollX + tw + self.paddingX
         win32gui.ReleaseDC(self.hwnd, hdc)
@@ -1901,7 +1905,7 @@ class Editor(BaseWindow):
         if not text:
             return 0
         hdc = win32gui.GetDC(self.hwnd)
-        self.drawer.use(hdc, self.drawer.getFont(fontSize=self.css['fontSize']))
+        self.drawer.use(hdc, self.getDefFont())
         pos = -1
         for i in range(0, len(text) + 1):
             cw, *_ = win32gui.GetTextExtentPoint32(hdc, text[0 : i])
@@ -2109,7 +2113,8 @@ class MutiEditor(BaseWindow):
         self.css['selBgColor'] = 0xf0c0c0
         self.css['enableBorder'] = True
         self.css['fontSize'] = 18
-        self._createdCaret = False
+        self._caretCreated = False
+        self._caretVisible = False
         self.startRow = 0
         self.paddingX = 5
         self.lines = [] # items of { text,  }
@@ -2143,16 +2148,32 @@ class MutiEditor(BaseWindow):
             return ln.get(attrName, '')
         return ln.get(attrName, None)
     
+    def makePosVisible(self, pos):
+        if not pos or pos.row < 0 or pos.row >= len(self.lines):
+            return
+        mrn = self.getMaxRowNum()
+        if pos.row < self.startRow:
+            diff = self.startRow - pos.row
+            self.scroll(-diff)
+        elif pos.row >= self.startRow + mrn:
+            diff = pos.row - (self.startRow + mrn - 1)
+            self.scroll(diff)
+
     def setInsertPos(self, pos):
         self.adjustPos(pos)
         self.insertPos = pos
         if not pos: # clear pos
-            if self._createdCaret:
+            if self._caretCreated:
                 win32gui.HideCaret(self.hwnd)
                 win32gui.DestroyCaret()
-            self._createdCaret = False
+            self._caretVisible = False
+            self._caretCreated = False
             return
-        if self._createdCaret and win32gui.GetFocus() == self.hwnd:
+        if self._caretCreated and win32gui.GetFocus() == self.hwnd:
+            self.makePosVisible(self.insertPos)
+            if not self._caretVisible:
+                self._caretVisible = True
+                win32gui.ShowCaret(self.hwnd)
             rc = self.getCaretRect()
             win32gui.SetCaretPos(rc[0], rc[1])
 
@@ -2238,7 +2259,7 @@ class MutiEditor(BaseWindow):
         if pos.col > len(line):
             return self.paddingX
         hdc = win32gui.GetDC(self.hwnd)
-        self.drawer.use(hdc, self.drawer.getFont(fontSize = self.css['fontSize']))
+        self.drawer.use(hdc, self.getDefFont())
         tw, *_ = win32gui.GetTextExtentPoint32(hdc, line[0 : pos.col])
         x = tw + self.paddingX
         win32gui.ReleaseDC(self.hwnd, hdc)
@@ -2254,13 +2275,18 @@ class MutiEditor(BaseWindow):
         if not text:
             return 0
         hdc = win32gui.GetDC(self.hwnd)
-        self.drawer.use(hdc, self.drawer.getFont(fontSize = self.css['fontSize']))
+        self.drawer.use(hdc, self.getDefFont())
         pos = -1
-        for i in range(0, len(text) + 1):
-            cw, *_ = win32gui.GetTextExtentPoint32(hdc, text[0 : i])
-            if x <= cw:
+        sx = 0
+        for i in range(0, len(text)):
+            cw, *_ = win32gui.GetTextExtentPoint32(hdc, text[i])
+            if x <= sx + cw // 2:
                 pos = i
                 break
+            if i == len(text) - 1:
+                pos = i + 1
+                break
+            sx += cw
         win32gui.ReleaseDC(self.hwnd, hdc)
         if pos >= 0:
             return pos
@@ -2338,12 +2364,11 @@ class MutiEditor(BaseWindow):
             sr = self.getSelRange(True)
             self.setSelRange(None, None)
             self.setInsertPos(sr[0])
-            return
-        self.setSelRange(None, None)
-        if not self.insertPos or self.insertPos.col <= 0:
-            return
-        self.insertPos.col -= 1
-        self.setInsertPos(self.insertPos)
+        else:
+            self.setSelRange(None, None)
+            if self.insertPos and self.insertPos.col > 0:
+                self.insertPos.col -= 1
+                self.setInsertPos(self.insertPos)
         self.invalidWindow()
 
     def right(self):
@@ -2351,14 +2376,37 @@ class MutiEditor(BaseWindow):
             sr = self.getSelRange(True)
             self.setSelRange(None, None)
             self.setInsertPos(sr[1])
-            return
-        self.setSelRange(None, None)
-        if not self.insertPos or self.insertPos.row >= len(self.lines):
-            return
-        line = self.lines[self.insertPos.row]['text']
-        if self.insertPos.col < len(line):
-            self.insertPos.col += 1
-        self.setInsertPos(self.insertPos)
+        else:
+            self.setSelRange(None, None)
+            if self.insertPos and self.insertPos.row < len(self.lines):
+                line = self.lines[self.insertPos.row]['text']
+                if self.insertPos.col < len(line):
+                    self.insertPos.col += 1
+                    self.setInsertPos(self.insertPos)
+        self.invalidWindow()
+
+    def up(self):
+        if self.hasSelRange():
+            sr = self.getSelRange(True)
+            self.setSelRange(None, None)
+            self.setInsertPos(sr[0])
+        else:
+            self.setSelRange(None, None)
+            if self.insertPos and self.insertPos.row > 0:
+                self.insertPos.row -= 1
+                self.setInsertPos(self.insertPos)
+        self.invalidWindow()
+
+    def down(self):
+        if self.hasSelRange():
+            sr = self.getSelRange(True)
+            self.setSelRange(None, None)
+            self.setInsertPos(sr[1])
+        else:
+            self.setSelRange(None, None)
+            if self.insertPos and self.insertPos.row < len(self.lines) - 1:
+                self.insertPos.row += 1
+                self.setInsertPos(self.insertPos)
         self.invalidWindow()
 
     def delete(self):
@@ -2410,6 +2458,37 @@ class MutiEditor(BaseWindow):
             return
         self.insertText('\n')
         self.invalidWindow()
+
+    def getMaxRowNum(self):
+        W, H = self.getClientSize()
+        return H // self.lineHeight
+    
+    def scroll(self, delta):
+        mrn = self.getMaxRowNum()
+        si = self.startRow
+        if delta > 0:
+            LESS = int(mrn * 0.5)
+            maxRowIdx = len(self.lines) - LESS
+            if maxRowIdx < 0:
+                maxRowIdx = 0
+            self.startRow = min(self.startRow + delta, maxRowIdx)
+        else:
+            self.startRow = max(self.startRow + delta, 0)
+        self.invalidWindow()
+        diff = self.startRow - si
+        if not self.insertPos or not self._caretCreated or diff == 0:
+            return
+        # check insertPos visible
+        if self.insertPos.row < self.startRow or self.insertPos.row >= self.startRow + mrn:
+            if self._caretVisible:
+                self._caretVisible = False
+                win32gui.HideCaret(self.hwnd)
+        else:
+            if not self._caretVisible:
+                self._caretVisible = True
+                win32gui.ShowCaret(self.hwnd)
+            rc = self.getCaretRect()
+            win32gui.SetCaretPos(rc[0], rc[1])
 
     def drawSelRange(self, hdc):
         if not self.hasSelRange():
@@ -2473,6 +2552,13 @@ class MutiEditor(BaseWindow):
             self.setSelRange(MutiEditor.Pos(row, 0), MutiEditor.Pos(row, col))
             self.invalidWindow()
             return True
+        if msg == win32con.WM_MOUSEWHEEL:
+            delta = (wParam >> 16) & 0xffff
+            if delta & 0x8000:
+                delta = delta - 0xffff - 1
+            delta = delta // 120
+            self.scroll(- delta * 3)
+            win32gui.InvalidateRect(self.hwnd, None, True)
         if msg == win32con.WM_CHAR or msg == win32con.WM_IME_CHAR:
             if not self.readOnly:
                 self.onChar(wParam)
@@ -2486,6 +2572,10 @@ class MutiEditor(BaseWindow):
                 self.delete()
             elif wParam == win32con.VK_BACK and (not self.readOnly):
                 self.back()
+            elif wParam == win32con.VK_UP:
+                self.up()
+            elif wParam == win32con.VK_DOWN:
+                self.down()
             elif wParam == win32con.VK_RETURN:
                 self.enter()
             elif wParam == win32con.VK_TAB:
@@ -2503,6 +2593,11 @@ class MutiEditor(BaseWindow):
                     row = self.insertPos.row
                     self.setInsertPos(MutiEditor.Pos(row, len(self.lines[row]['text'])))
                 self.invalidWindow()
+            elif wParam == ord('A') and win32api.GetKeyState(win32con.VK_CONTROL):
+                if self.lines:
+                    lastLine = self.lines[-1]['text']
+                    self.setSelRange(MutiEditor.Pos(0, 0), MutiEditor.Pos(len(self.lines) - 1, len(lastLine)))
+                    self.invalidWindow()
             elif wParam == ord('V') and win32api.GetKeyState(win32con.VK_CONTROL):
                 win32clipboard.OpenClipboard()
                 try:
@@ -2532,13 +2627,16 @@ class MutiEditor(BaseWindow):
             win32gui.CreateCaret(self.hwnd, None, 2, rc[3] - rc[1])
             win32gui.SetCaretPos(rc[0], rc[1])
             win32gui.ShowCaret(self.hwnd)
-            self._createdCaret = True
+            self._caretCreated = True
+            self._caretVisible = True
             return True
         if msg == win32con.WM_KILLFOCUS:
-            if self._createdCaret:
+            if self._caretCreated:
                 win32gui.HideCaret(self.hwnd)
                 win32gui.DestroyCaret()
-            self._createdCaret = False
+            self._caretCreated = False
+            self._caretVisible = False
+            self.insertPos = None
             return True
         return super().winProc(hwnd, msg, wParam, lParam)        
 

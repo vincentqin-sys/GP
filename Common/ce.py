@@ -10,14 +10,15 @@ class CodeEditor(MutiEditor):
     def __init__(self) -> None:
         super().__init__()
         self.css['bgColor'] = 0xfdfdfd
+        self.css['fontName'] = '新宋体'
         self.paddingX = 40
         self.KEYS = ('def', 'None', 'False', 'True', 'and', 'or', 
                     'break', 'class', 'continue', 'del', 'if', 'elif', 'else',
                     'for', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 
-                    'pass', 'return', 'while', 'super')
-        self.DEF_FUNCS = ('print', 'range' )
+                    'pass', 'return', 'while', 'super', 'from')
+        self.DEF_FUNCS = ('print', 'range', 'list' )
         self.COLORS = {
-            'KEY': 0xff7700, 'DEF_FUNC': 0x900090, 'STR': 0x808080
+            'KEY': 0x0077ff, 'DEF_FUNC': 0x900090, 'STR': 0x808080
         }
         self.excInfo = None # {lineno, exc, }
 
@@ -31,40 +32,57 @@ class CodeEditor(MutiEditor):
         if self.excInfo and self.excInfo['lineno'] == row + 1:
             self.excInfo = None
 
+    def drawLeadings(self, hdc, row, rc):
+        line = self.lines[row]['text']
+        numSpace = 0
+        for ch in line:
+            if ch == ' ': numSpace += 1
+            else: break
+        numLD = numSpace // 4
+        scw, *_ = win32gui.GetTextExtentPoint32(hdc, ' ')
+        scw *= 4
+        for i in range(numLD):
+            sx = scw * i + rc[0]
+            self.drawer.drawLine(hdc, sx, rc[1], sx, rc[3], 0xd0d0d0)
+
     def drawRow(self, hdc, row, rc):
         if self.excInfo and self.excInfo['lineno'] == row + 1:
             self.drawer.drawRect(hdc, rc, 0x0000ff)
-            pass
-        self.drawer.drawText(hdc, self.lines[row]['text'], rc, color = self.css['textColor'], align = win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+        align = win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER
+        self.drawLeadings(hdc, row, rc)
+        b = 0
+        sx = 0
         tokens = self.lines[row]['tokens']
-        for tk in tokens:
+        line = self.lines[row]['text']
+        for i in range(len(tokens)):
+            tk = tokens[i]
+            if b != tk['b']:
+                irc = (sx + rc[0], rc[1], rc[0] + tk['sx'], rc[3])
+                cotx = line[b : tk['b']]
+                self.drawer.drawText(hdc, cotx, irc, color = self.css['textColor'], align = align)
             irc = (rc[0] + tk['sx'], rc[1], rc[0] + tk['ex'], rc[3])
-            self.drawer.drawText(hdc, tk['name'], irc, color = self.COLORS[tk['type']], align = win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+            self.drawer.drawText(hdc, tk['name'], irc, color = self.COLORS[tk['type']], align = align)
+            b = tk['e']
+            sx = tk['ex']
+        # draw tail
+        if b == len(line):
+            return
+        if len(tokens) == 0:
+            self.drawer.drawText(hdc, line, rc, color = self.css['textColor'], align = align)
+        else:
+            tk = tokens[-1]
+            irc = (tk['ex'] + rc[0], rc[1], rc[2], rc[3])
+            self.drawer.drawText(hdc, line[tk['e'] : ], irc, color = self.css['textColor'], align = align)
+        
 
     def participles(self, txt):
         #isalpha = lambda ch : (ch >= 'A' and ch <= 'Z') or (ch >= 'a' and ch <= 'z')
+        buf = io.StringIO()
+        buf.write(txt)
         tokens = []
         if not txt:
             return tokens
-        b = -1
-        for i in range(len(txt) + 1):
-            if i == len(txt):
-                ch = ' '
-            else:
-                ch = txt[i]
-            if (ch >= 'A' and ch <= 'Z') or (ch >= 'a' and ch <= 'z'):
-                if b == -1:
-                    b = i
-                continue
-            if b == -1:
-                continue
-            # is not alpha
-            tk = txt[b : i]
-            if tk in self.KEYS:
-                tokens.append({'type' : 'KEY', 'name': tk, 'b': b, 'e': i}) # type = KEY | DEF_FUNC | STR
-            elif tk in self.DEF_FUNCS:
-                tokens.append({'type' : 'DEF_FUNC', 'name': tk, 'b': b, 'e': i}) # type = KEY | DEF_FUNC | STR
-            b = -1
+        
         # find strs
         b = -1
         dsq_1 = 0
@@ -80,8 +98,33 @@ class CodeEditor(MutiEditor):
                 if dsq_1 == dsq:
                     tk = txt[b : i + 1]
                     tokens.append({'type' : 'STR', 'name': tk, 'b': b, 'e': i + 1}) # type = KEY | DEF_FUNC | STR
+                    buf.seek(b)
+                    buf.write(' ' * len(tk))
                     b = -1
                     dsq_1 = 0
+
+        # find keys...
+        b = -1
+        buf.seek(0)
+        for i in range(len(txt) + 1):
+            if i == len(txt):
+                ch = ' '
+            else:
+                ch = buf.read(1)  #txt[i]
+            if (ch >= 'A' and ch <= 'Z') or (ch >= 'a' and ch <= 'z'):
+                if b == -1:
+                    b = i
+                continue
+            if b == -1:
+                continue
+            # is not alpha
+            tk = txt[b : i]
+            if tk in self.KEYS:
+                tokens.append({'type' : 'KEY', 'name': tk, 'b': b, 'e': i}) # type = KEY | DEF_FUNC | STR
+            elif tk in self.DEF_FUNCS:
+                tokens.append({'type' : 'DEF_FUNC', 'name': tk, 'b': b, 'e': i}) # type = KEY | DEF_FUNC | STR
+            b = -1
+        tokens.sort(key = lambda t : t['b'])
         return tokens
 
     def beautiful(self, row, hdc):
