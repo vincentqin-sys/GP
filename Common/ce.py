@@ -1,4 +1,4 @@
-import win32gui, win32con , win32api, win32ui, win32event # pip install pywin32
+import win32gui, win32con , win32api, win32ui, win32event, win32process # pip install pywin32
 import threading, time, datetime, sys, os, copy, calendar, functools
 import traceback, io
 
@@ -165,7 +165,8 @@ class CodeEditor(MutiEditor):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-class Console(base_win.BaseWindow):
+class Console(base_win.BaseEditor):
+    PADDING_LEFT = 5
     def __init__(self) -> None:
         super().__init__()
         self.infos = [] # item of {text, color}
@@ -178,8 +179,6 @@ class Console(base_win.BaseWindow):
         self.reading = False
         self.myin = ''
         self.event = None
-        self._caretCreated = False
-        self._caretVisible = False
 
     def redirect(self):
         self.clear()
@@ -204,12 +203,14 @@ class Console(base_win.BaseWindow):
     def makeLastVisible(self):
         W, H = self.getClientSize()
         mx = H // self.lineHeight
-        idx = len(self.infos)
-        if idx + self.startRow >= mx:
-            self.startRow += (idx + self.startRow) - mx
+        if not self.infos:
+            return
+        idx = len(self.infos) - self.startRow - 1
+        if idx >= mx:
+            self.startRow += idx - mx + 1
             self.invalidWindow()
     
-    def showCared(self):
+    def showInput(self):
         # make last row visible
         self.makeLastVisible()
         hdc = win32gui.GetDC(self.hwnd)
@@ -218,30 +219,23 @@ class Console(base_win.BaseWindow):
         sy = 0
         if self.infos:
             lastTxt = self.infos[-1]['text']
-            sy = (len(self.infos) - 1) * self.lineHeight
-        scw, *_ = win32gui.GetTextExtentPoint32(hdc, lastTxt)
-        if not self._caretCreated:
-            self._caretCreated = True
-            win32gui.CreateCaret(self.hwnd, None, 2, self.lineHeight)
-        if not self._caretVisible:
-            self._caretVisible = True
-            win32gui.ShowCaret(self.hwnd)
-        win32gui.SetCaretPos(scw, sy)
+            sy = (len(self.infos) - 1 - self.startRow) * self.lineHeight
+        scw, *_ = win32gui.GetTextExtentPoint32(hdc, lastTxt + self.myin)
         win32gui.ReleaseDC(self.hwnd, hdc)
+        self.setCaretPos(scw + self.PADDING_LEFT, sy)
+        self.showCaret()
 
-    def closeCaret(self):
-        if self._caretVisible:
-            self._caretVisible = False
-            win32gui.HideCaret(self.hwnd)
-        if self._caretCreated:
-            self._caretCreated = False
-            win32gui.DestroyCaret()
+    def setFocus(self):
+        th, *_ = win32process.GetWindowThreadProcessId(self.hwnd)
+        win32process.AttachThreadInput(win32api.GetCurrentThreadId(), th, True)
+        win32gui.SetFocus(self.hwnd)
 
     def readline(self):
         # begin read
         self.event = win32event.CreateEvent(None, True, False, f'_io_read_{id(self)}')
         self.myin = ''
         self.reading = True
+        self.setFocus()
         sig = win32event.WaitForSingleObject(self.event, 0xffffffff)
         self.reading = False
         # sig == WAIT_OBJECT_0
@@ -251,7 +245,7 @@ class Console(base_win.BaseWindow):
         self.event = None
         return val
 
-    def newRow(self, color):
+    def newRow(self, color = 0x202020):
         self.infos.append({'text': '', 'color': color})
 
     def addText(self, txt, color = 0x202020):
@@ -274,6 +268,7 @@ class Console(base_win.BaseWindow):
     def clear(self):
         self.startRow = 0
         self.infos.clear()
+        self.myin = ''
         self.invalidWindow()
 
     def addException(self, log):
@@ -287,57 +282,61 @@ class Console(base_win.BaseWindow):
         align = win32con.DT_VCENTER | win32con.DT_LEFT | win32con.DT_SINGLELINE
         W, H = self.getClientSize()
         sy = 0
-        PADDING_LEFT = 5
         for r in range(self.startRow, len(self.infos)):
             info = self.infos[r]
-            rc = (PADDING_LEFT, sy, W, sy + self.lineHeight)
+            rc = (self.PADDING_LEFT, sy, W, sy + self.lineHeight)
             self.drawer.drawText(hdc, info['text'], rc, color = info['color'], align = align)
+            if info.get('input', None):
+                sx, *_ = win32gui.GetTextExtentPoint32(hdc, info['text'])
+                rc = (self.PADDING_LEFT + sx, sy, W, sy + self.lineHeight)
+                self.drawer.drawText(hdc, info['input'], rc, color = self.css['inputColor'], align = align)
             sy += self.lineHeight
 
         if self.reading and self.myin:
             lx = self.infos[-1]['text'] if self.infos else ''
             sx, *_ = win32gui.GetTextExtentPoint32(hdc, lx)
             sy = 0
-            if self.infos: 
+            if self.infos:
                 sy = (len(self.infos) - 1 - self.startRow) * self.lineHeight
-            rc = (PADDING_LEFT + sx, sy, W, sy + self.lineHeight)
-            self.drawer.drawText(hdc, self.myin, rc, color = 0x202020, align = align)
+            rc = (self.PADDING_LEFT + int(sx), sy, W, sy + self.lineHeight)
+            self.drawer.drawText(hdc, self.myin, rc, color = self.css['inputColor'], align = align)
+
+    def endInput(self):
+        if not self.infos:
+            self.newRow()
+        last = self.infos[-1]
+        last['input'] = self.myin
+        self.newRow()
+        self.makeLastVisible()
+        self.reading = False
+        self.hideCaret()
+        self.invalidWindow()
+        win32event.SetEvent(self.event)
 
     def onChar(self, ch):
         if ch == win32con.VK_RETURN:
-            # input end
-            val = self.myin
-            self.addText(val, self.css['inputColor'])
-            self.addChar('\n')
-            self.makeLastVisible()
-            self.invalidWindow()
-            self.reading = False
-            win32event.SetEvent(self.event)
+            self.endInput()
             return
         if ch == win32con.VK_BACK:
             if self.myin:
                 self.myin = self.myin[0 : -1]
                 self.invalidWindow()
-                self.showCared()
+                self.showInput()
             return
         if ch == 127 or ch < 32:
             return
         self.myin += chr(ch)
         self.invalidWindow()
-        self.showCared()
+        self.showInput()
+
+    def onSetFocus(self):
+        super().onSetFocus()
+        self.showInput()
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONDOWN:
             if self.reading:
-                win32gui.SetFocus(hwnd)
-            return True
-        if msg == win32con.WM_SETFOCUS:
-            if self.reading:
-                self.showCared()
-            return True
-        if msg == win32con.WM_KILLFOCUS:
-            if self.reading:
-                self.closeCaret()
+                win32gui.SetFocus(self.hwnd)
             return True
         if msg == win32con.WM_CHAR or msg == win32con.WM_IME_CHAR:
             if self.reading:
@@ -363,9 +362,9 @@ def formatException(ex):
     return {'lineno': lineno, 'exc' : txt}
 
 def runCode_(code, editor : CodeEditor, console : Console):
-    console.clear()
     editor.excInfo = None
     editor.invalidWindow()
+    console.clear()
     console.redirect()
     try:
         exec(code, {}, {})

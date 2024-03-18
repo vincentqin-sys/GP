@@ -1807,9 +1807,59 @@ class DatePicker(BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
+class BaseEditor(BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.lineHeight = 18
+        self._caretCreated = False
+        self._caretVisible = False
+
+    def showCaret(self):
+        if (not self._caretCreated) or self._caretVisible or (win32gui.GetFocus() != self.hwnd):
+            return
+        self._caretVisible = True
+        win32gui.ShowCaret(self.hwnd)
+
+    def hideCaret(self):
+        if (not self._caretCreated) or (not self._caretVisible):
+            return
+        self._caretVisible = False
+        win32gui.HideCaret(self.hwnd)
+    
+    def setCaretPos(self, x, y):
+        if not self._caretCreated:
+            return
+        win32gui.SetCaretPos(x, y)
+
+    def onSetFocus(self):
+        pass
+    
+    def onKillFocus(self):
+        pass
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_SETFOCUS:
+            self._caretCreated = False
+            self._caretVisible = False
+            ok = win32gui.CreateCaret(hwnd, None, 2, self.lineHeight)
+            if ok != 0: # success
+                self._caretCreated = True
+            self.onSetFocus()
+            return True
+        if msg == win32con.WM_KILLFOCUS:
+            if self._caretCreated:
+                if self._caretVisible:
+                    win32gui.HideCaret(self.hwnd)
+                win32gui.DestroyCaret()
+            self._caretCreated = False
+            self._caretVisible = False
+            self.onKillFocus()
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
+
 # listeners : PressEnter = {src, text}
 #             PressTab = {src, text}
-class Editor(BaseWindow):
+class Editor(BaseEditor):
     def __init__(self) -> None:
         super().__init__()
         self.css['bgColor'] = 0xf0f0f0
@@ -1817,7 +1867,6 @@ class Editor(BaseWindow):
         self.css['borderColor'] = 0xdddddd
         self.css['selBgColor'] = 0xf0c0c0
         self.css['enableBorder'] = True
-        self._createdCaret = False
         self.scrollX = 0 # always <= 0
         self.paddingX = 3 # 左右padding
         self.text = ''
@@ -1839,9 +1888,9 @@ class Editor(BaseWindow):
     
     def setInsertPos(self, pos):
         self.insertPos = pos
-        if self._createdCaret and win32gui.GetFocus() == self.hwnd:
-            rc = self.getCaretRect()
-            win32gui.SetCaretPos(rc[0], rc[1])
+        rc = self.getCaretRect()
+        self.setCaretPos(rc[0], rc[1])
+        self.showCaret()
 
     def makePosVisible(self, pos):
         if not self.text or pos < 0:
@@ -1907,11 +1956,13 @@ class Editor(BaseWindow):
         hdc = win32gui.GetDC(self.hwnd)
         self.drawer.use(hdc, self.getDefFont())
         pos = -1
-        for i in range(0, len(text) + 1):
-            cw, *_ = win32gui.GetTextExtentPoint32(hdc, text[0 : i])
-            if x <= cw:
+        totalX = 0
+        for i in range(0, len(text)):
+            cw, *_ = win32gui.GetTextExtentPoint32(hdc, text[i])
+            if x <= totalX + cw // 2:
                 pos = i
                 break
+            totalX += cw
         win32gui.ReleaseDC(self.hwnd, hdc)
         if pos >= 0:
             return pos
@@ -1948,17 +1999,10 @@ class Editor(BaseWindow):
         lh = self.css['fontSize'] + 4
         x = self.getXAtPos(self.insertPos)
         y = (H - lh ) // 2
-        return (x, y, x + 1, y + lh)
-
-    def drawCaret(self, hdc):
-        if win32gui.GetFocus() != self.hwnd or self._createdCaret:
-            return
-        x, y, ex, ey = self.getCaretRect()
-        self.drawer.drawLine(hdc, x, y, x, ey, 0x202020)
+        return (x, y, x, y + lh)
 
     def onDraw(self, hdc):
         if not self.text:
-            self.drawCaret(hdc)
             return
         W, H = self.getClientSize()
         lh = self.css['fontSize']
@@ -1970,7 +2014,6 @@ class Editor(BaseWindow):
             self.drawer.fillRect(hdc, src, self.css['selBgColor'])
         rc = (self.scrollX + self.paddingX, y, W, y + lh)
         self.drawer.drawText(hdc, self.text, rc, color=self.css['textColor'], align=win32con.DT_LEFT)
-        self.drawCaret(hdc)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONDOWN:
@@ -2043,7 +2086,7 @@ class Editor(BaseWindow):
                 self.makePosVisible(pos)
                 self.setInsertPos(pos)
                 self.invalidWindow()
-            elif wParam == ord('V') and win32api.GetKeyState(win32con.VK_CONTROL):
+            elif wParam == ord('V') and (win32api.GetKeyState(win32con.VK_CONTROL) & 0x80000000):
                 win32clipboard.OpenClipboard()
                 try:
                     txt = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT) # CF_UNICODETEXT
@@ -2051,35 +2094,22 @@ class Editor(BaseWindow):
                 except:
                     pass
                 win32clipboard.CloseClipboard()
-            elif wParam == ord('C') and win32api.GetKeyState(win32con.VK_CONTROL) and self.selRange and self.text:
+            elif wParam == ord('C') and (win32api.GetKeyState(win32con.VK_CONTROL) & 0x80000000) and self.selRange and self.text:
                 win32clipboard.OpenClipboard()
                 txt = self.text[self.selRange[0] : self.selRange[1]]
                 win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
                 win32clipboard.CloseClipboard()
-            elif wParam == ord('X') and win32api.GetKeyState(win32con.VK_CONTROL) and self.selRange and self.text:
+            elif wParam == ord('X') and (win32api.GetKeyState(win32con.VK_CONTROL) & 0x80000000) and self.selRange and self.text:
                 win32clipboard.OpenClipboard()
                 txt = self.text[self.selRange[0] : self.selRange[1]]
                 win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
                 win32clipboard.CloseClipboard()
                 self.deleteSelRangeText()
             return True
-        if msg == win32con.WM_SETFOCUS:
-            rc = self.getCaretRect()
-            win32gui.CreateCaret(self.hwnd, None, 1, rc[3] - rc[1])
-            win32gui.SetCaretPos(rc[0], rc[1])
-            win32gui.ShowCaret(self.hwnd)
-            self._createdCaret = True
-            return True
-        if msg == win32con.WM_KILLFOCUS:
-            if self._createdCaret:
-                win32gui.HideCaret(self.hwnd)
-                win32gui.DestroyCaret()
-            self._createdCaret = False
-            return True
         return super().winProc(hwnd, msg, wParam, lParam)
-        
+
 # listeners :
-class MutiEditor(BaseWindow):
+class MutiEditor(BaseEditor):
     class Pos:
         def __init__(self, row, col) -> None:
             self.row = row
@@ -2107,18 +2137,16 @@ class MutiEditor(BaseWindow):
 
     def __init__(self) -> None:
         super().__init__()
+        self.lineHeight = 24
+        self.css['fontSize'] = 18
         self.css['bgColor'] = 0xf0f0f0
         self.css['textColor'] = 0x202020
         self.css['borderColor'] = 0xdddddd
         self.css['selBgColor'] = 0xf0c0c0
         self.css['enableBorder'] = True
-        self.css['fontSize'] = 18
-        self._caretCreated = False
-        self._caretVisible = False
         self.startRow = 0
         self.paddingX = 5
         self.lines = [] # items of { text,  }
-        self.lineHeight = 24
         self.insertPos = None # Pos object
         self.selRange = None # (begin-Pos, end-Pos)
         self.readOnly = False
@@ -2163,19 +2191,12 @@ class MutiEditor(BaseWindow):
         self.adjustPos(pos)
         self.insertPos = pos
         if not pos: # clear pos
-            if self._caretCreated:
-                win32gui.HideCaret(self.hwnd)
-                win32gui.DestroyCaret()
-            self._caretVisible = False
-            self._caretCreated = False
-            return
-        if self._caretCreated and win32gui.GetFocus() == self.hwnd:
+            self.hideCaret()
+        else:
             self.makePosVisible(self.insertPos)
-            if not self._caretVisible:
-                self._caretVisible = True
-                win32gui.ShowCaret(self.hwnd)
             rc = self.getCaretRect()
-            win32gui.SetCaretPos(rc[0], rc[1])
+            self.setCaretPos(rc[0], rc[1])
+            self.showCaret()
 
     def adjustPos(self, pos):
         if not pos:
@@ -2357,7 +2378,7 @@ class MutiEditor(BaseWindow):
         sy = self.getYAtPos(self.insertPos)
         dy = (self.lineHeight - lh) // 2
         y = sy + dy
-        return (x, y, x + 1, y + lh)
+        return (x, y, x, y + lh)
 
     def left(self):
         if self.hasSelRange():
@@ -2480,15 +2501,11 @@ class MutiEditor(BaseWindow):
             return
         # check insertPos visible
         if self.insertPos.row < self.startRow or self.insertPos.row >= self.startRow + mrn:
-            if self._caretVisible:
-                self._caretVisible = False
-                win32gui.HideCaret(self.hwnd)
+            self.hideCaret()
         else:
-            if not self._caretVisible:
-                self._caretVisible = True
-                win32gui.ShowCaret(self.hwnd)
             rc = self.getCaretRect()
-            win32gui.SetCaretPos(rc[0], rc[1])
+            self.setCaretPos(rc[0], rc[1])
+            self.showCaret()
 
     def drawSelRange(self, hdc):
         if not self.hasSelRange():
@@ -2526,6 +2543,15 @@ class MutiEditor(BaseWindow):
             sx = self.getXAtPos(pos)
             rc = (sx, sy, W, sy + self.lineHeight)
             self.drawRow(hdc, r, rc)
+
+    def onSetFocus(self):
+        super().onSetFocus()
+        #if not self.insertPos:
+        #    return
+        #x = self.getXAtPos(self.insertPos)
+        #y = self.getYAtPos(self.insertPos)
+        #self.setCaretPos(x, y)
+        #self.showCaret()
 
     def winProc(self, hwnd, msg, wParam, lParam):
         def isKeyPress(vk):
@@ -2610,38 +2636,35 @@ class MutiEditor(BaseWindow):
                 except:
                     pass
                 win32clipboard.CloseClipboard()
-            elif wParam == ord('C') and isKeyPress(win32con.VK_CONTROL):
+            elif wParam == ord('C') and isKeyPress(win32con.VK_CONTROL) and False:
                 txt = self.getSelRangeText()
                 if txt:
                     win32clipboard.OpenClipboard()
-                    win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
+                    try:
+                        win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
+                    except:
+                        pass
                     win32clipboard.CloseClipboard()
-            elif wParam == ord('X') and isKeyPress(win32con.VK_CONTROL):
+            elif wParam == ord('X') and isKeyPress(win32con.VK_CONTROL) and False:
                 txt = self.getSelRangeText()
                 if txt:
                     win32clipboard.OpenClipboard()
-                    win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
+                    try:
+                        win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
+                    except:
+                        pass
                     win32clipboard.CloseClipboard()
                     self.deleteSelRangeText()
                     self.invalidWindow()
             return True
-        if msg == win32con.WM_SETFOCUS:
-            rc = self.getCaretRect()
-            win32gui.CreateCaret(self.hwnd, None, 2, rc[3] - rc[1])
-            win32gui.SetCaretPos(rc[0], rc[1])
-            win32gui.ShowCaret(self.hwnd)
-            self._caretCreated = True
-            self._caretVisible = True
-            return True
-        if msg == win32con.WM_KILLFOCUS:
-            if self._caretCreated:
-                win32gui.HideCaret(self.hwnd)
-                win32gui.DestroyCaret()
-            self._caretCreated = False
-            self._caretVisible = False
-            self.insertPos = None
-            return True
-        return super().winProc(hwnd, msg, wParam, lParam)        
+        return super().winProc(hwnd, msg, wParam, lParam)   
+
+    def onSetFocus(self):
+        if not self.insertPos:
+            self.insertPos = MutiEditor.Pos(0, 0)
+        rc = self.getCaretRect()
+        self.setCaretPos(rc[0], rc[1])
+        super().onSetFocus()
 
 def testGridLayout():
     class TestMain(BaseWindow):
@@ -2708,8 +2731,10 @@ if __name__ == '__main__':
     #testGridLayout()
     #testPopMenu()
     label = Label('Hello')
-    label.createWindow(None, (300, 200, 300, 100), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE)
-    editor = Editor()
-    #editor.css['bgColor'] = 0x00ff00
-    editor.createWindow(label.hwnd, (20, 20, 200, 30))
+    label.createWindow(None, (300, 200, 300, 300), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE)
+    editor1 = Editor()
+    editor1.createWindow(label.hwnd, (20, 20, 200, 30))
+
+    editor2 = Editor()
+    editor2.createWindow(label.hwnd, (20, 80, 200, 30))
     win32gui.PumpMessages()
