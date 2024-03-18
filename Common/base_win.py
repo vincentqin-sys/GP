@@ -227,28 +227,29 @@ class TimerThread:
             self.runOnce()
 
 class ThreadPool:
-    _ins = None
-    def __init__(self) -> None:
-        self.thread = Thread()
-        self.timerThread = TimerThread()
+    _thread = Thread()
+    _timerThread = TimerThread()
+    _started = False
 
     @staticmethod
     def start():
-        ThreadPool._ins = ThreadPool()
-        ThreadPool._ins.thread.start()
-        ThreadPool._ins.timerThread.start()
+        if ThreadPool._started == True:
+            return
+        ThreadPool._started = True
+        ThreadPool._thread.start()
+        ThreadPool._timerThread.start()
 
     @staticmethod
     def addTask(taskId, func, *args):
-        ThreadPool._ins.thread.addTask(taskId, func, *args)
+        ThreadPool._thread.addTask(taskId, func, *args)
 
     @staticmethod
     def addTimerTask(taskId, delay, func, *args):
-        ThreadPool._ins.timerThread.addTimerTask(taskId, delay, func, *args)
+        ThreadPool._timerThread.addTimerTask(taskId, delay, func, *args)
 
     @staticmethod
     def addIntervalTask(taskId, intervalTime, func, *args):
-        ThreadPool._ins.timerThread.addIntervalTask(taskId, intervalTime, func, *args)
+        ThreadPool._timerThread.addIntervalTask(taskId, intervalTime, func, *args)
 
 class Drawer:
     _instance = None
