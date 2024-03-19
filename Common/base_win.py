@@ -721,7 +721,7 @@ class TableWindow(BaseWindow):
         self.rowHeight = 24
         self.headHeight = 24
         self.tailHeight = 0
-        self.startIdx = 0
+        self.startRow = 0
         self.selRow = -1
         self.sortHeader = {'header': None, 'state': None} # state: 'ASC' | 'DSC' |  None
         self.sortData = None
@@ -802,9 +802,9 @@ class TableWindow(BaseWindow):
             return (0, 0)
         num = len(self.data)
         maxRowCount = self.getPageSize()
-        end = self.startIdx + maxRowCount
+        end = self.startRow + maxRowCount
         end = min(end, num)
-        return (self.startIdx, end)
+        return (self.startRow, end)
     
     def getColumnX(self, col):
         if col <= 0 or not self.headers or col >= len(self.headers):
@@ -831,14 +831,14 @@ class TableWindow(BaseWindow):
         self.sortData = None
         for k in self.sortHeader:
             self.sortHeader[k] = None
-        self.startIdx = 0
+        self.startRow = 0
         self.selRow = -1
 
     # delta > 0 : up scroll
     # delta < 0 : down scroll
     def scroll(self, delta):
         if delta >= 0:
-            self.startIdx = max(self.startIdx - delta, 0)
+            self.startRow = max(self.startRow - delta, 0)
             self.invalidWindow()
             return
         delta = -delta
@@ -849,7 +849,7 @@ class TableWindow(BaseWindow):
             return
         mx = nn - psz // 2
         delta = min(delta, mx)
-        self.startIdx += delta
+        self.startRow += delta
         self.invalidWindow()
     
     def showRow(self, row):
@@ -862,9 +862,9 @@ class TableWindow(BaseWindow):
         if row >= rg[0] and row < rg[1]:
             return # is visible
         if row < rg[0]:
-            self.startIdx -= rg[0] - row
+            self.startRow -= rg[0] - row
         elif row >= rg[1]:
-            self.startIdx += row - rg[1] + 1
+            self.startRow += row - rg[1] + 1
         self.invalidWindow()
 
     def onDraw(self, hdc):
@@ -1007,7 +1007,7 @@ class TableWindow(BaseWindow):
         if y >= self.getClientSize()[1] - self.tailHeight:
             return -3
         y -= self.headHeight
-        row = y // self.rowHeight + self.startIdx
+        row = y // self.rowHeight + self.startRow
         if row >= 0 and row < len(self.data):
             return row
         return -1

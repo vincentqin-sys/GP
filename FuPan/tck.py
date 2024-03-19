@@ -66,9 +66,9 @@ class TCK_Window(base_win.BaseWindow):
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
         self.editorWin.addListener(self.onEditEnd, None)
         self.tableWin.addListener(self.onDbClick, None)
-        self.sm = ths_win.ThsShareMemory()
-        self.sm.open()
-        self.sm.addListener('ListenSync', self.onAutoSync)
+        sm = ths_win.ThsShareMemory.instance()
+        sm.open()
+        sm.addListener('ListenSync_TCK', self.onAutoSync)
 
     def onAutoSync(self, code, day):
         checked = self.autoSyncCheckBox.isChecked()

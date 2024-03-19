@@ -16,16 +16,18 @@ class TCGN_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (250, 150, 100, 60, 60, 60, 60, 60, '1fr')
+        self.cols = (250, 150, 60, 200, 100, 60, 60, 60, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
         self.tableCntWin = table.ExTableWindow()
         self.editorWin = base_win.Editor()
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
-        self.tckData = []
-        self.tckSearchData = None
+        self.autoSyncCheckBox = base_win.CheckBox({'title': '自动同步显示'})
+        self.tcgnDatas = []
+        self.allDatas = []
         #base_win.ThreadPool.addTask()
         self.curTcgn = None
+        self.sm = base_win
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -45,6 +47,7 @@ class TCGN_Window(base_win.BaseWindow):
             {'title': '详情', 'stretch': 1, 'name': 'info', 'editable': True},
         ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.autoSyncCheckBox.createWindow(self.hwnd, (0, 0, 1, 1))
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableCntWin.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -65,14 +68,16 @@ class TCGN_Window(base_win.BaseWindow):
         openBtn = base_win.Button({'title': 'Open'})
         openBtn.createWindow(self.hwnd, (0, 0, 1, 1))
 
-        self.layout.setContent(0, 0, self.editorWin)
-        self.layout.setContent(0, 1, self.checkBox)
         
+        self.layout.setContent(0, 1, self.checkBox)
         #self.layout.setContent(0, 2, newBtn)
         #self.layout.setContent(0, 4, addBtn)
         #self.layout.setContent(0, 5, insertBtn)
         #self.layout.setContent(0, 6, delBtn)
         self.layout.setContent(0, 2, openBtn)
+
+        self.layout.setContent(0, 3, self.editorWin)
+        self.layout.setContent(0, 4, self.autoSyncCheckBox)
 
         self.layout.setContent(1, 0, self.tableWin)
         self.layout.setContent(1, 1, self.tableCntWin, {'horExpand': -1})
@@ -87,8 +92,11 @@ class TCGN_Window(base_win.BaseWindow):
         delBtn.addListener(self.onDel, 'Del')
         openBtn.addListener(self.onOpen, 'Open')
 
-        self.loadAllData()
-        self.tableWin.setData(self.tckData)
+        self.loadAllTcgnDatas()
+        self.tableWin.setData(self.tcgnDatas)
+        sm = ths_win.ThsShareMemory.instance()
+        sm.open()
+        sm.addListener('ListenSync_TCGN', self.onAutoSync)
 
     def onContextMenu_1(self, evtName, evt, args):
         if evtName != 'ContextMenu':
@@ -156,7 +164,20 @@ class TCGN_Window(base_win.BaseWindow):
             return
         if item['name'].startswith('Move'):
             self.onMove(item['name'])
-        
+    
+    def reload(self, tcgn, newSelRow):
+        tab = self.tableCntWin
+        if not tcgn:
+            tab.setData([])
+        else:
+            si = tab.startRow
+            qr = orm.TCK_TCGN.select().where(orm.TCK_TCGN.tcgn == tcgn).order_by(orm.TCK_TCGN.order_.asc()).dicts()
+            dx = [d for d in qr]
+            tab.setData(dx)
+            tab.setSelRow(newSelRow)
+            tab.startRow = si
+        tab.invalidWindow()
+
     def onMove(self, name):
         datas = self.tableCntWin.getData()
         if len(datas) <= 1:
@@ -164,14 +185,6 @@ class TCGN_Window(base_win.BaseWindow):
         selRow = self.tableCntWin.selRow
         selData = datas[selRow]
         tcgn = selData['tcgn']
-
-        def reload(row):
-            qr = orm.TCK_TCGN.select().where(orm.TCK_TCGN.tcgn == tcgn).order_by(orm.TCK_TCGN.order_.asc()).dicts()
-            dx = [d for d in qr]
-            self.tableCntWin.setData(dx)
-            self.tableCntWin.setSelRow(row)
-            self.tableCntWin.invalidWindow()
-
         if name == 'MoveUp' or name == 'MoveDown':
             delta = 1 if name == 'MoveUp' else -1
             preData = datas[selRow - delta]
@@ -179,19 +192,19 @@ class TCGN_Window(base_win.BaseWindow):
             qr.execute()
             qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : selData['order_']}).where(orm.TCK_TCGN.id == preData['id'])
             qr.execute()
-            reload(selRow - delta)
+            self.reload(tcgn, selRow - delta)
         elif name == 'MoveBottom':
             newOrder = datas[-1]['order_'] + 1
             qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : newOrder}).where(orm.TCK_TCGN.id == selData['id'], orm.TCK_TCGN.tcgn == tcgn)
             qr.execute()
-            reload(len(datas) - 1)
+            self.reload(tcgn, len(datas) - 1)
         elif name == 'MoveTop':
             newOrder = datas[0]['order_']
             qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : orm.TCK_TCGN.order_ + 1}).where(orm.TCK_TCGN.order_ < selData['order_'], orm.TCK_TCGN.tcgn == tcgn)
             qr.execute()
             qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : newOrder}).where(orm.TCK_TCGN.id == selData['id'])
             qr.execute()
-            reload(0)
+            self.reload(tcgn, 0)
 
     def onCellChanged(self, evtName, evt, args):
         if evtName != 'CellChanged':
@@ -277,30 +290,43 @@ class TCGN_Window(base_win.BaseWindow):
         if not self.curTcgn:
             return
         cur = {'tcgn' : self.curTcgn, 'tcgn_sub': '', 'code': '', 'name':'', 'info':'', 'order_': 0}
+
+        def getMaxOrder(model):
+            if not model:
+                return 0
+            order = 0
+            for m in model:
+                order = max(order, m['order_'])
+            return order
+
         model = self.tableCntWin.getData()
         curSelRow = self.tableCntWin.selRow
+        rl = -1
         if not model:
             cur['order_'] = 0
+            rl = 0
         elif curSelRow < 0:
-            cur['order_'] = len(model)
+            cur['order_'] = getMaxOrder(model)
+            rl = len(model)
         elif args == 'Add':
-            cur['order_'] = curSelRow + 1
-            cur['tcgn_sub'] = model[curSelRow]['tcgn_sub']
-            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : orm.TCK_TCGN.order_ + 1}).where(orm.TCK_TCGN.tcgn == self.curTcgn, orm.TCK_TCGN.order_ > curSelRow)
+            rl = curSelRow + 1
+            selData = model[curSelRow]
+            cur['order_'] = selData['order_'] + 1
+            cur['tcgn_sub'] = selData['tcgn_sub']
+            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : orm.TCK_TCGN.order_ + 1}).where(orm.TCK_TCGN.tcgn == self.curTcgn, orm.TCK_TCGN.order_ > selData['order_'])
             qr.execute()
         elif args == 'Insert':
-            cur['order_'] = curSelRow
-            cur['tcgn_sub'] = model[curSelRow]['tcgn_sub']
-            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : orm.TCK_TCGN.order_ + 1}).where(orm.TCK_TCGN.tcgn == self.curTcgn, orm.TCK_TCGN.order_ >= curSelRow)
+            rl = curSelRow
+            selData = model[curSelRow]
+            cur['order_'] = selData['order_']
+            cur['tcgn_sub'] = selData['tcgn_sub']
+            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : orm.TCK_TCGN.order_ + 1}).where(orm.TCK_TCGN.tcgn == self.curTcgn, orm.TCK_TCGN.order_ >= selData['order_'])
             qr.execute()
         if model == None:
             model = []
             self.tableCntWin.setData(model)
-        model.insert(cur['order_'], cur)
         obj = orm.TCK_TCGN.create(**cur)
-        cur['id'] = obj.id
-        self.tableCntWin.invalidWindow()
-        self.tableWin.invalidWindow()
+        self.reload(cur['tcgn'], rl)
 
     def isCode(self, s):
         if not s:
@@ -321,16 +347,38 @@ class TCGN_Window(base_win.BaseWindow):
             return ''
         return obj.code
 
+    def onAutoSync(self, code, day):
+        checked = self.autoSyncCheckBox.isChecked()
+        if not checked:
+            return
+        code = f'{code :06d}'
+        txt = self.editorWin.text
+        if txt == code:
+            return
+        self.editorWin.setText(code)
+        self.editorWin.invalidWindow()
+        self.onQuery('PressEnter', {'text': self.editorWin.text}, None)
+
     def onQuery(self, evtName, evtInfo, args):
         if evtName != 'PressEnter':
             return
-        return
-        self.tableWin.setData(None)
-        self.tableWin.invalidWindow()
-        self.loadAllData()
-        self.doSearch(evtInfo['text'])
-        self.tableWin.setData(self.tckSearchData)
-        self.tableWin.invalidWindow()
+        queryText = evtInfo['text']
+        if not queryText:
+            self.reload(self.curTcgn, 0)
+            return
+        llt = getattr(self, 'last_load_time', 0)
+        if time.time() - llt > 10 * 60: # 10 minutes
+            qr = orm.TCK_TCGN.select().dicts()
+            self.allDatas = [d for d in qr]
+            setattr(self, 'last_load_time', time.time())
+        searchDatas = []
+        for d in self.allDatas:
+            for k in d:
+                if k != 'id' and isinstance(d[k], str) and (queryText in d[k]):
+                    searchDatas.append(d)
+                    break
+        self.tableCntWin.setData(searchDatas)
+        self.tableCntWin.invalidWindow()
     
     def openInThsWindow(self, data):
         if not thsWin.topHwnd or not win32gui.IsWindow(thsWin.topHwnd):
@@ -385,38 +433,12 @@ class TCGN_Window(base_win.BaseWindow):
         day = evt['data'].day
         win.updateCodeDay(evt['code'], day)
 
-    def loadAllData(self):
+    def loadAllTcgnDatas(self):
         qr = orm.TCK_TCGN.select(orm.TCK_TCGN.tcgn).distinct().dicts()
         rs = []
         for d in qr:
             rs.append(d)
-        self.tckData = rs
-
-    def doSearch(self, search : str):
-        if not self.tckData:
-            self.tckSearchData = None
-            return
-        if not search or not search.strip():
-            self.tckSearchData = self.tckData
-            return
-        search = search.strip()
-        ls = search.split(' ')
-        st = []
-        for k in ls:
-            if k: st.append(k)
-        keys = ('tcgn', 'info')
-        def contains(v):
-            for m in st:
-                if m in v: return True
-                return False
-        rs = []
-        for d in self.tckData:
-            for k in keys:
-                x = d.get(k, None)
-                if x and type(x) == str and contains(x):
-                    rs.append(d)
-                    break
-        self.tckSearchData = rs
+        self.tcgnDatas = rs
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:
