@@ -605,16 +605,27 @@ class GridLayout(Layout):
         w, h = rect[2] - rect[0], rect[3] - rect[1]
         x += rect[0]
         y += rect[1]
-        if style['autoFit']:
-            if isinstance(win, BaseWindow):
+        
+        if isinstance(win, BaseWindow):
+            if style['autoFit']:
                 win32gui.SetWindowPos(win.hwnd, None, x, y, w, h, win32con.SWP_NOZORDER)
-            elif type(win) == int:
-                # is HWND object
+            else:
+                win32gui.SetWindowPos(win.hwnd, None, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+        elif type(win) == int:
+            # is HWND object
+            if style['autoFit']:
                 win32gui.SetWindowPos(win, None, x, y, w, h, win32con.SWP_NOZORDER)
-            elif isinstance(win, Layout):
+            else:
+                win32gui.SetWindowPos(win, None, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+        elif isinstance(win, Layout):
+            if style['autoFit']:
                 win.resize(x, y, w, h)
             else:
-                print('[GridLayout.adjustContentRect] unsport win type: ', winInfo)
+                if win.rect:
+                    *_, w, h = win.rect
+                    win.resize(x, y, w, h)
+        else:
+            print('[GridLayout.adjustContentRect] unsport win type: ', winInfo)
 
     def setVisible(self, visible):
         for k in self.winsInfo:
@@ -2172,7 +2183,7 @@ class MutiEditor(BaseEditor):
         ls = text.splitlines()
         for l in ls:
             self.lines.append({'text': l})
-        self.setInsertPos(0, 0)
+        self.setInsertPos(MutiEditor.Pos(0, 0))
 
     def getText(self):
         txt = ''

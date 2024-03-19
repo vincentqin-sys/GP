@@ -361,6 +361,20 @@ def formatException(ex):
     txt = '\n'.join(rs)
     return {'lineno': lineno, 'exc' : txt}
 
+FILE_PATH = 'D:/gwq'
+def loadFromFile():
+    if not os.path.exists(FILE_PATH):
+        return ''
+    f = open(FILE_PATH, 'r')
+    code = f.read()
+    f.close()
+    return code
+
+def saveToFile(code):
+    f = open(FILE_PATH, 'w')
+    f.write(code)
+    f.close()
+
 def runCode_1(code, editor : CodeEditor, console : Console):
     editor.excInfo = None
     editor.invalidWindow()
@@ -378,6 +392,7 @@ def runCode_1(code, editor : CodeEditor, console : Console):
     console.restore()
 
 def runCode_2(code, editor : CodeEditor, args):
+    os.system('cls')
     editor.excInfo = None
     editor.invalidWindow()
     try:
@@ -388,27 +403,46 @@ def runCode_2(code, editor : CodeEditor, args):
         exc = formatException(ex)
         editor.excInfo = exc
         editor.invalidWindow()
+        print(ex)
 
 def runCode(evtName, evt, console):
     if evtName != 'Run':
         return
-    base_win.ThreadPool.addTask('run', runCode_2, evt['code'], evt['src'], console)
+    saveToFile(evt['code'])
+    tskFunc = runCode_1 if console else runCode_2
+    base_win.ThreadPool.addTask('run', tskFunc, evt['code'], evt['src'], console)
     base_win.ThreadPool.start()
 
 if __name__ == '__main__':
+    MODE_SIMPLE = True
+
     label = base_win.Label()
-    label.css['bgColor'] = 0x505050
-    label.createWindow(None, (150, 0, 1000, 700), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE, title='高绾卿')
+    label.css['bgColor'] = 0xd0d0d0
+    label.createWindow(None, (150, 0, 600, 600), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE, title='高绾卿')
     editor = CodeEditor()
     editor.createWindow(label.hwnd, (0, 0, 1, 1))
-    console = Console()
-    console.css['bgColor'] = 0xdddddd
-    console.createWindow(label.hwnd, (0, 0, 1, 1))
-    editor.addListener(runCode, console)
 
-    layout = base_win.GridLayout(('3fr', '1fr'), ('100%', ), (5, 5))
-    layout.setContent(0, 0, editor)
-    layout.setContent(1, 0, console)
+    if MODE_SIMPLE:
+        layout = base_win.GridLayout(('1fr', 30), ('100%', ), (5, 5))
+        layout.setContent(0, 0, editor)
+        editor.addListener(runCode, None)
+        btn = base_win.Button({'title': '执行(运行)'})
+        def rr(en, evt, args):
+            if en == 'Click':
+                base_win.ThreadPool.addTask('run', runCode_2, editor.getText(), editor, None)
+                base_win.ThreadPool.start()
+        btn.addListener(rr)
+        btn.createWindow(label.hwnd, (10, 5, 100, 25))
+        layout.setContent(1, 0, btn, {'autoFit': False})
+    else:
+        console = Console()
+        console.css['bgColor'] = 0xdddddd
+        console.createWindow(label.hwnd, (0, 0, 1, 1))
+        layout = base_win.GridLayout(('3fr', '1fr'), ('100%', ), (5, 5))
+        editor.addListener(runCode, console)
+        layout.setContent(0, 0, editor)
+        layout.setContent(1, 0, console)
     W, H = label.getClientSize()
-    layout.resize(0, 0, W, H)
+    layout.resize(10, 3, W - 13, H - 6)
+    editor.setText(loadFromFile())
     win32gui.PumpMessages()
