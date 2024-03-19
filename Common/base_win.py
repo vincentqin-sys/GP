@@ -1836,6 +1836,26 @@ class BaseEditor(BaseWindow):
     
     def onKillFocus(self):
         pass
+    
+    # is ctrl shift key is pressed
+    def getKeyState(self, vk):
+        return (win32api.GetKeyState(vk) & 0x80000000) != 0
+
+    def copyToClipboard(self, text):
+        # copy digit text fail, fix by : pip install pywin32 == 301 把pywin32版本降到301
+        if not text:
+            return False
+        win32clipboard.OpenClipboard(None)
+        win32clipboard.EmptyClipboard() # 写入清必须清空，得到剪贴板占有权
+        win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, text)
+        win32clipboard.CloseClipboard()
+        return True
+
+    def copyFromClipboard(self):
+        win32clipboard.OpenClipboard(None)
+        val = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
+        win32clipboard.CloseClipboard()
+        return val
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SETFOCUS:
@@ -2086,25 +2106,16 @@ class Editor(BaseEditor):
                 self.makePosVisible(pos)
                 self.setInsertPos(pos)
                 self.invalidWindow()
-            elif wParam == ord('V') and (win32api.GetKeyState(win32con.VK_CONTROL) & 0x80000000):
-                win32clipboard.OpenClipboard()
-                try:
-                    txt = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT) # CF_UNICODETEXT
-                    self.insertText(txt)
-                except:
-                    pass
-                win32clipboard.CloseClipboard()
-            elif wParam == ord('C') and (win32api.GetKeyState(win32con.VK_CONTROL) & 0x80000000) and self.selRange and self.text:
-                win32clipboard.OpenClipboard()
+            elif wParam == ord('V') and self.getKeyState(win32con.VK_CONTROL):
+                txt = self.copyFromClipboard()
+                self.insertText(txt)
+            elif wParam == ord('C') and self.getKeyState(win32con.VK_CONTROL) and self.selRange and self.text:
                 txt = self.text[self.selRange[0] : self.selRange[1]]
-                win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
-                win32clipboard.CloseClipboard()
-            elif wParam == ord('X') and (win32api.GetKeyState(win32con.VK_CONTROL) & 0x80000000) and self.selRange and self.text:
-                win32clipboard.OpenClipboard()
+                self.copyToClipboard(txt)
+            elif wParam == ord('X') and self.getKeyState(win32con.VK_CONTROL) and self.selRange and self.text:
                 txt = self.text[self.selRange[0] : self.selRange[1]]
-                win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
-                win32clipboard.CloseClipboard()
-                self.deleteSelRangeText()
+                if self.copyToClipboard(txt):
+                    self.deleteSelRangeText()
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
@@ -2554,9 +2565,6 @@ class MutiEditor(BaseEditor):
         #self.showCaret()
 
     def winProc(self, hwnd, msg, wParam, lParam):
-        def isKeyPress(vk):
-            return win32api.GetKeyState(vk) & 0x80000000
-        
         if msg == win32con.WM_LBUTTONDOWN:
             win32gui.SetFocus(self.hwnd)
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
@@ -2622,38 +2630,21 @@ class MutiEditor(BaseEditor):
                     row = self.insertPos.row
                     self.setInsertPos(MutiEditor.Pos(row, len(self.lines[row]['text'])))
                 self.invalidWindow()
-            elif wParam == ord('A') and isKeyPress(win32con.VK_CONTROL):
+            elif wParam == ord('A') and self.getKeyState(win32con.VK_CONTROL):
                 if self.lines:
                     lastLine = self.lines[-1]['text']
                     self.setSelRange(MutiEditor.Pos(0, 0), MutiEditor.Pos(len(self.lines) - 1, len(lastLine)))
                     self.invalidWindow()
-            elif wParam == ord('V') and isKeyPress(win32con.VK_CONTROL):
-                win32clipboard.OpenClipboard()
-                try:
-                    txt = win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT) # CF_UNICODETEXT
+            elif wParam == ord('V') and self.getKeyState(win32con.VK_CONTROL):
+                    txt = self.copyFromClipboard()
                     self.insertText(txt)
                     self.invalidWindow()
-                except:
-                    pass
-                win32clipboard.CloseClipboard()
-            elif wParam == ord('C') and isKeyPress(win32con.VK_CONTROL) and False:
+            elif wParam == ord('C') and self.getKeyState(win32con.VK_CONTROL):
                 txt = self.getSelRangeText()
-                if txt:
-                    win32clipboard.OpenClipboard()
-                    try:
-                        win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
-                    except:
-                        pass
-                    win32clipboard.CloseClipboard()
-            elif wParam == ord('X') and isKeyPress(win32con.VK_CONTROL) and False:
+                self.copyToClipboard(txt)
+            elif wParam == ord('X') and self.getKeyState(win32con.VK_CONTROL):
                 txt = self.getSelRangeText()
-                if txt:
-                    win32clipboard.OpenClipboard()
-                    try:
-                        win32clipboard.SetClipboardData(win32con.CF_UNICODETEXT, txt)
-                    except:
-                        pass
-                    win32clipboard.CloseClipboard()
+                if self.copyToClipboard(txt):
                     self.deleteSelRangeText()
                     self.invalidWindow()
             return True
