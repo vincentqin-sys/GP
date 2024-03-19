@@ -19,7 +19,6 @@ class BaseWindow:
                     'bgColor': 0x000000, 'textColor': 0xffffff,
                     'enableBorder': False, 'borderColor': 0x0} # config css style
         self.enableListeners = {'ContextMenu': False, 'DbClick': False, 'R_DbClick': False}
-        self.dispatchEvent = None # can set, return True:已处理,  False: 未处理 = function(src, msg, wparam, lparam)
     
     # func = function(evtName, evtInfo, args)
     def addListener(self, func, args = None):
@@ -49,7 +48,9 @@ class BaseWindow:
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_PAINT:
-            self._draw()
+            hdc, ps = win32gui.BeginPaint(self.hwnd)
+            self._draw(hdc)
+            win32gui.EndPaint(self.hwnd, ps)
             return True
         if msg == win32con.WM_DESTROY:
             style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
@@ -71,8 +72,7 @@ class BaseWindow:
             return True
         return False
 
-    def _draw(self):
-        hdc, ps = win32gui.BeginPaint(self.hwnd)
+    def _draw(self, hdc):
         l, t, r, b = win32gui.GetClientRect(self.hwnd)
         w, h = r - l, b - t
         mdc = win32gui.CreateCompatibleDC(hdc)
@@ -91,7 +91,6 @@ class BaseWindow:
         self.drawer.use(mdc, self.getDefFont())
         self.onDraw(mdc)
         win32gui.BitBlt(hdc, 0, 0, w, h, mdc, 0, 0, win32con.SRCCOPY)
-        win32gui.EndPaint(self.hwnd, ps)
         win32gui.DeleteObject(mdc)
         if not self.cacheBitmap:
             win32gui.DeleteObject(self._bitmap)
@@ -107,8 +106,6 @@ class BaseWindow:
         self = BaseWindow.bindHwnds.get(hwnd, None)
         if not self:
             return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
-        if self.dispatchEvent and self.dispatchEvent(self, msg, wParam, lParam) == True:
-            return 0
         rs = self.winProc(hwnd, msg, wParam, lParam)
         if rs == True:
             return 0
@@ -310,6 +307,60 @@ class Drawer:
         g = (rgb >> 8) & 0xff
         b = rgb & 0xff
         return (b << 16) | (g << 8) | r
+
+    @staticmethod
+    # return 0xbbggrr
+    # h : 0 - 359
+    # s, v:  0 - 1.1
+    def hsv2rgb(h, s, v):
+        C = v * s
+        hh = h / 60
+        ys = int(hh) % 2 + (hh - int(hh))
+        X = C * (1.0 - abs(ys - 1.0))
+        r, g, b = 0, 0, 0
+        if hh >= 0 and hh < 1:
+            r, g = C, X
+        elif hh >= 1 and hh < 2:
+            r, g = X, C
+        elif hh >= 2 and hh < 3:
+            g, b = C, X
+        elif hh >= 3 and hh < 4:
+            g, b = X, C
+        elif hh >= 4 and hh < 5:
+            r, b = X, C
+        else:
+            r, b = C, X
+        m = v - C
+        r += m
+        g += m
+        b += m
+        r = int(r * 255)
+        g = int(g * 255)
+        b = int(b * 255)
+        return r | (g << 8) | (b << 16)
+
+    # rgb = 0xbbggrr
+    # return h (0 - 359), s(0 - 1.0), v (0 - 1.0)
+    def rgb2hsv(rgb):
+        def ys(v, k):
+            return int(v) % k + (v - int(v))
+        r, g, b = rgb & 0xff, (rgb >> 8) & 0xff, (rgb >> 16) & 0xff
+        r /= 255
+        g /= 255
+        b /= 255
+        M = max(r, g, b)
+        m = min(r, g, b)
+        C = M - m
+        if C == 0:  h = 0
+        elif M == r: h = ys((g - b) / C, 6)
+        elif M == g: h= (b - r) / C + 2
+        else: h = (r - g) / C + 4
+        h *= 60
+        if h < 0: h += 360
+        v = M
+        if v == 0: s = 0
+        else: s = C / v
+        return round(h), s, v
 
     # color = int(0xbbggrr color)
     def drawLine(self, hdc, sx, sy, ex, ey, color, style = win32con.PS_SOLID, width = 1):
@@ -1318,7 +1369,25 @@ class Button(BaseWindow):
     def onClick(self, x, y):
         self.notifyListener('Click', {'src': self, 'info': self.info})
 
+    def lightness(self, color):
+        h, s, v = Drawer.rgb2hsv(color)
+        if v <= 0.8: v += 0.2
+        else: v -= 0.2
+        color = Drawer.hsv2rgb(h, s, v)
+        return color
+
     def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONDOWN:
+            hdc = win32gui.GetDC(hwnd)
+            bgColor = self.css['bgColor']
+            color = self.lightness(bgColor)
+            self.css['bgColor'] = color
+            self._draw(hdc)
+            self.css['bgColor'] = bgColor
+            win32gui.ReleaseDC(hwnd, hdc)
+            time.sleep(0.05)
+            self.invalidWindow()
+            return True
         if msg == win32con.WM_LBUTTONUP:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
             self.onClick(x, y)
@@ -2731,12 +2800,19 @@ def testPopMenu():
     btn.addListener(back, None)
 
 if __name__ == '__main__':
+    rgb = Drawer.hsv2rgb(59, 0.265, 0.785)
+    print(f'{rgb: X}')
+    h, s, v = Drawer.rgb2hsv(0xf3da56)
     #testGridLayout()
     #testPopMenu()
     label = Label('Hello')
     label.createWindow(None, (300, 200, 300, 300), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE)
-    editor1 = Editor()
-    editor1.createWindow(label.hwnd, (20, 20, 200, 30))
+
+    btn = Button({'title': "Ni hao ma"})
+    btn.createWindow(label.hwnd, (20, 20, 120, 30))
+    
+    #editor1 = Editor()
+    #editor1.createWindow(label.hwnd, (20, 20, 200, 30))
 
     editor2 = Editor()
     editor2.createWindow(label.hwnd, (20, 80, 200, 30))
