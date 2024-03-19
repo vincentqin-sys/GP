@@ -162,7 +162,7 @@ class DddlrStructWindow(base_win.BaseWindow):
             for xd in datas:
                 xd['in'] = xd['activeIn'] + xd['positiveIn']
                 xd['out'] = xd['activeOut'] + xd['positiveOut']
-            self.listWins[i].data = datas
+            self.listWins[i].setData(datas)
             self.listWins[i].invalidWindow()
             sday = cday[0 : 4] + '-' + cday[4 : 6] + '-' + cday[6 : ]
             win32gui.SetWindowText(self.daysLabels[i], sday)

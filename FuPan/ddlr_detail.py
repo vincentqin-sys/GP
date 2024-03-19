@@ -414,7 +414,7 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
         super().__init__()
         self.fsWin = None
         self.tableWin = None
-        self.shareMem = ths_win.ThsShareMemory(False)
+        self.shareMem = ths_win.ThsShareMemory.instance()
         trs = (40, 340, 'auto')
         tcs = (250, 'auto')
         self.gridLayout = base_win.GridLayout(trs, tcs, (10, 5))

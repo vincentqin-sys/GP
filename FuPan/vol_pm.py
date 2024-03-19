@@ -158,7 +158,7 @@ class VolPMWindow(base_win.BaseWindow):
             cday = d[0]
             ds = tdx_orm.TdxVolPMModel.select().where(tdx_orm.TdxVolPMModel.day == cday)
             datas = [d.__data__ for d in ds]
-            self.listWins[i].data = datas
+            self.listWins[i].setData(datas)
             self.listWins[i].invalidWindow()
             cday = str(cday)
             sday = cday[0 : 4] + '-' + cday[4 : 6] + '-' + cday[6 : ]

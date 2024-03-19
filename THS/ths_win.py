@@ -208,24 +208,33 @@ class ThsSmallF10Window:
 class ThsShareMemory:
     POS_CODE = 0
     POS_SEL_DAY = 1
-    _thread = None
 
     def __init__(self, create : bool = False) -> None:
         self.create = create
         self.listeners = []
         self.shm = None
+        self.thread = None
+
+    @classmethod
+    def instance(cls):
+        ins = getattr(cls, '_ins_', None)
+        if not ins:
+            ins = ThsShareMemory()
+            setattr(cls, '_ins_', ins)
+        return ins
 
     # func = function(code, day)
     def addListener(self, name, func):
-        for ls in self.listeners:
-            if ls[0] == name:
+        if not name or not func:
+            return
+        for lt in self.listeners:
+            if lt['name'] == name:
                 return
-        if func:
-            self.listeners.append((name, func))
+        self.listeners.append({'name' : name, 'func' : func})
 
     def notifyListener(self, curCode, curDay):
         for ls in self.listeners:
-            func = ls[1]
+            func = ls['func']
             func(curCode, curDay)
 
     def onListenThread(self):
@@ -252,9 +261,9 @@ class ThsShareMemory:
                 buf[self.POS_SEL_DAY] = 0
             else:
                 self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', False)
-            if not ThsShareMemory._thread:
-                ThsShareMemory._thread = threading.Thread(target = self.onListenThread, daemon = True)
-                ThsShareMemory._thread.start()
+            if not self.thread:
+                self.thread = threading.Thread(target = self.onListenThread, daemon = True)
+                self.thread.start()
         except Exception as e:
             print('ths_win.ThsShareMemory.open exception: ', e)
 
