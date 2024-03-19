@@ -43,19 +43,19 @@ class TCGN_Window(base_win.BaseWindow):
         self.sheetWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.rowHeight = 40
         self.tableWin.headers = headers
-        newBtn = base_win.Button({'title': 'New'})
-        newBtn.createWindow(self.hwnd, (0, 0, 1, 1))
+        openBtn = base_win.Button({'title': '打开'})
+        openBtn.createWindow(self.hwnd, (0, 0, 1, 1))
 
         self.layout.setContent(0, 0, self.editorWin)
         self.layout.setContent(0, 1, self.checkBox)
-        self.layout.setContent(0, 2, newBtn)
+        self.layout.setContent(0, 2, openBtn)
 
         self.layout.setContent(1, 0, self.tableWin)
         self.layout.setContent(1, 1, self.sheetWin, {'horExpand': -1})
         self.editorWin.addListener(self.onEditEnd, None)
         self.tableWin.addListener(self.onDbClick, None)
         self.sheetWin.addListener(self.onSheetSave, None)
-        newBtn.addListener(self.onNew, None)
+        openBtn.addListener(self.onOpen, None)
 
         self.loadAllData()
         self.tableWin.setData(self.tckData)

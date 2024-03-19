@@ -1975,7 +1975,7 @@ class Editor(BaseEditor):
         return pos
     
     def onChar(self, key):
-        if key < 32:
+        if key < 32 or key == 127:
             return
         ch = chr(key)
         self.insertText(ch)
@@ -1983,6 +1983,7 @@ class Editor(BaseEditor):
     def insertText(self, text):
         if not text:
             return
+        text = text.replace('\r', '').replace('\n', '')
         if self.selRange:
             self.deleteSelRangeText()
         if not self.text:

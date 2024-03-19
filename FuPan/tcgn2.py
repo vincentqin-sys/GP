@@ -72,7 +72,7 @@ class TCGN_Window(base_win.BaseWindow):
         #self.layout.setContent(0, 4, addBtn)
         #self.layout.setContent(0, 5, insertBtn)
         #self.layout.setContent(0, 6, delBtn)
-        #self.layout.setContent(0, 7, openBtn)
+        self.layout.setContent(0, 2, openBtn)
 
         self.layout.setContent(1, 0, self.tableWin)
         self.layout.setContent(1, 1, self.tableCntWin, {'horExpand': -1})
@@ -121,8 +121,15 @@ class TCGN_Window(base_win.BaseWindow):
         selRow = self.tableCntWin.selRow
         model = [{'title': '在选中行前插入', 'name': 'Insert', 'enable': selRow >= 0 or len(data) == 0}, 
                  {'title': '在选中行后添加', 'name': 'Add', 'enable': selRow >= 0 or len(data) == 0}, 
+                 {'title': 'LINE'},
                  {'title': '删除选中行', 'name': 'Del', 'enable': selRow >= 0}, 
-                 {'title': 'LINE'}, {'title' : '打开股票', 'name': 'Open', 'enable': selRow >= 0} ]
+                 {'title': 'LINE'},
+                 #{'title' : '打开股票', 'name': 'Open', 'enable': selRow >= 0},
+                 {'title': '置顶', 'name': 'MoveTop', 'enable': selRow > 0},
+                 {'title': '上移', 'name': 'MoveUp', 'enable': selRow > 0},
+                 {'title': '下移', 'name': 'MoveDown', 'enable': selRow >= 0 and selRow < len(data) - 1},
+                 {'title': '置底', 'name': 'MoveBottom', 'enable': selRow >= 0 and selRow < len(data) - 1},
+                 ]
         menu = base_win.PopupMenuHelper.create(self.hwnd, model)
         menu.addListener(self.onContextMenuItemSelect)
         pos = win32gui.GetCursorPos()
@@ -134,10 +141,57 @@ class TCGN_Window(base_win.BaseWindow):
         item = evt['item']
         if item['name'] == 'Insert' or item['name'] == 'Add':
             self.onAddInsert('Click', None, item['name'])
-        elif item['name'] == 'Del':
-            self.onDel('Click', None, 'Del')
-        elif item['name'] == 'Open':
+            return
+        if item['name'] == 'Del':
+            dlg = dialog.ConfirmDialog('确定要删除吗?')
+            def _ds(en, evt, args):
+                if en == 'OK':
+                    self.onDel('Click', None, 'Del')
+            dlg.createWindow(self.hwnd, title='Confirm')
+            dlg.showCenter()
+            dlg.addListener(_ds)
+            return
+        if item['name'] == 'Open':
             self.onOpen('Click', None, 'Open')
+            return
+        if item['name'].startswith('Move'):
+            self.onMove(item['name'])
+        
+    def onMove(self, name):
+        datas = self.tableCntWin.getData()
+        if len(datas) <= 1:
+            return
+        selRow = self.tableCntWin.selRow
+        selData = datas[selRow]
+        tcgn = selData['tcgn']
+
+        def reload(row):
+            qr = orm.TCK_TCGN.select().where(orm.TCK_TCGN.tcgn == tcgn).order_by(orm.TCK_TCGN.order_.asc()).dicts()
+            dx = [d for d in qr]
+            self.tableCntWin.setData(dx)
+            self.tableCntWin.setSelRow(row)
+            self.tableCntWin.invalidWindow()
+
+        if name == 'MoveUp' or name == 'MoveDown':
+            delta = 1 if name == 'MoveUp' else -1
+            preData = datas[selRow - delta]
+            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : preData['order_']}).where(orm.TCK_TCGN.id == selData['id'])
+            qr.execute()
+            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : selData['order_']}).where(orm.TCK_TCGN.id == preData['id'])
+            qr.execute()
+            reload(selRow - delta)
+        elif name == 'MoveBottom':
+            newOrder = datas[-1]['order_'] + 1
+            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : newOrder}).where(orm.TCK_TCGN.id == selData['id'], orm.TCK_TCGN.tcgn == tcgn)
+            qr.execute()
+            reload(len(datas) - 1)
+        elif name == 'MoveTop':
+            newOrder = datas[0]['order_']
+            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : orm.TCK_TCGN.order_ + 1}).where(orm.TCK_TCGN.order_ < selData['order_'], orm.TCK_TCGN.tcgn == tcgn)
+            qr.execute()
+            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : newOrder}).where(orm.TCK_TCGN.id == selData['id'])
+            qr.execute()
+            reload(0)
 
     def onCellChanged(self, evtName, evt, args):
         if evtName != 'CellChanged':

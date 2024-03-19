@@ -66,6 +66,38 @@ class InputDialog(Dialog):
             self.close()
             self.notifyListener('InputEnd', {'src': self, 'text': self.getText()})
 
+# listeners: OK = {src(is dialog)}
+#            Cancel = {src(is dialog)}
+class ConfirmDialog(Dialog):
+    # info : tip msg
+    def __init__(self, info : str) -> None:
+        super().__init__()
+        self.info = info
+
+    def createWindow(self, parentWnd, rect = (0, 0, 300, 150), style = win32con.WS_POPUP | win32con.WS_CHILD | win32con.WS_CAPTION, className='STATIC', title='I-ConfirmDialog'):
+        super().createWindow(parentWnd, rect, style, className, title)
+        w, h = self.getClientSize()
+        layout = base_win.GridLayout(('1fr', 25), ('1fr', 60, 60), (10, 20))
+        label = base_win.Label(self.info)
+        label.createWindow(self.hwnd, (0, 0, 1, 1))
+        okBtn = base_win.Button({'title': 'OK'})
+        okBtn.createWindow(self.hwnd, (0, 0, 1, 1))
+        calncelBtn = base_win.Button({'title': 'Cancel'})
+        calncelBtn.createWindow(self.hwnd, (0, 0, 1, 1))
+
+        layout.setContent(0, 0, label, {'horExpand': -1})
+        layout.setContent(1, 1, okBtn)
+        layout.setContent(1, 2, calncelBtn)
+        layout.resize(10, 10, w - 20, h - 15)
+        okBtn.addListener(self.onListen, 'OK')
+        calncelBtn.addListener(self.onListen, 'Cancel')
+
+    def onListen(self, evtName, evt, args):
+        if evtName != 'Click':
+            return
+        self.close()
+        self.notifyListener(args, {'src': self})
+
 # listeners : SelectColor = color
 class PopupColorWindow(base_win.PopupWindow):
     MAX_COL_NUM = 13
@@ -120,9 +152,12 @@ class PopupColorWindow(base_win.PopupWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-
 if __name__ == '__main__':
-    cw = PopupColorWindow()
-    cw.createWindow(None, (100, 100, 0, 0)) # , win32con.WS_OVERLAPPEDWINDOW
+    #cw = PopupColorWindow()
+    #cw.createWindow(None, (100, 100, 0, 0)) # , win32con.WS_OVERLAPPEDWINDOW
+    cw = ConfirmDialog("确认删除吗？")
+    cw.createWindow(None)
+    cw.showCenter()
+
     win32gui.ShowWindow(cw.hwnd, win32con.SW_SHOW)
     win32gui.PumpMessages()

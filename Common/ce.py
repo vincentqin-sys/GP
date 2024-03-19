@@ -361,7 +361,7 @@ def formatException(ex):
     txt = '\n'.join(rs)
     return {'lineno': lineno, 'exc' : txt}
 
-def runCode_(code, editor : CodeEditor, console : Console):
+def runCode_1(code, editor : CodeEditor, console : Console):
     editor.excInfo = None
     editor.invalidWindow()
     console.clear()
@@ -377,10 +377,22 @@ def runCode_(code, editor : CodeEditor, console : Console):
         console.addException(exc['exc'])
     console.restore()
 
+def runCode_2(code, editor : CodeEditor, args):
+    editor.excInfo = None
+    editor.invalidWindow()
+    try:
+        exec(code, {}, {})
+    except Exception as e:
+        #excName, excVal, exc_traceback = sys.exc_info()
+        ex = traceback.format_exc()
+        exc = formatException(ex)
+        editor.excInfo = exc
+        editor.invalidWindow()
+
 def runCode(evtName, evt, console):
     if evtName != 'Run':
         return
-    base_win.ThreadPool.addTask('run', runCode_, evt['code'], evt['src'], console)
+    base_win.ThreadPool.addTask('run', runCode_2, evt['code'], evt['src'], console)
     base_win.ThreadPool.start()
 
 if __name__ == '__main__':
