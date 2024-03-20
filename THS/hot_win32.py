@@ -11,6 +11,7 @@ thsWindow = ths_win.ThsWindow()
 thsFPWindow = ths_win.ThsFuPingWindow()
 hotWindow = hot_win.HotWindow()
 simpleWindow = hot_win_small.SimpleWindow()
+simpleWindow2 = hot_win_small.SimpleWindow()
 thsShareMem = ths_win.ThsShareMemory()
 simpleHotZHWindow = hot_win_small.SimpleHotZHWindow()
 
@@ -25,6 +26,7 @@ def updateCode(nowCode):
     curCode = nowCode
     hotWindow.updateCode(nowCode)
     simpleWindow.changeCode(nowCode)
+    simpleWindow2.changeCode(nowCode)
     thsShareMem.writeCode(nowCode)
 
 def showHotWindow():
@@ -51,9 +53,10 @@ def updateWindowInfo(thsWin):
     if wi['curPageName'] != curPageName: # changed page
         wi['curPageName'] = curPageName
         if curPageName not in wi:
-            wi[curPageName] = {'s1': None, 's2': None}
+            wi[curPageName] = {'s1': None, 's2': None, 's3': None}
         cp = wi[curPageName]
         simpleWindow.setWindowState(cp['s1'])
+        simpleWindow2.setWindowState(cp['s3'])
         simpleHotZHWindow.setWindowState(cp['s2'])
         if curPageName == '技术分析':
             ths_win.ThsSmallF10Window.adjustPos()
@@ -63,6 +66,7 @@ def updateWindowInfo(thsWin):
         cp = wi[curPageName]
         cp['s1'] = simpleWindow.getWindowState()
         cp['s2'] = simpleHotZHWindow.getWindowState()
+        cp['s3'] = simpleWindow2.getWindowState()
 
 def _workThread(thsWin):
     global curCode, windowsInfo
@@ -85,26 +89,8 @@ def _workThread(thsWin):
         if selDay:
             hotWindow.updateSelectDay(selDay)
             simpleWindow.changeSelectDay(selDay)
+            simpleWindow2.changeSelectDay(selDay)
             thsShareMem.writeSelDay(selDay)
-
-# show-hide sort wnd, liang dian wnd
-def showSortAndLiangDianWindow(show, move):
-    liangDianWnd = None # win32gui.FindWindow('smallF10_dlg', '小F10')
-    left, _, right, _ = win32gui.GetWindowRect(thsWindow.topHwnd)
-    width = right - left
-    if show:
-        simpleWindow.show()
-        if liangDianWnd:
-            win32gui.ShowWindow(liangDianWnd, win32con.SW_SHOW)
-    else:
-        simpleWindow.hide()
-        if liangDianWnd:
-            win32gui.ShowWindow(liangDianWnd, win32con.SW_HIDE)
-    if move:
-        if liangDianWnd:
-            win32gui.SetWindowPos(liangDianWnd, None, 560, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
-        if width > 1500:
-            win32gui.SetWindowPos(simpleWindow.hwnd, None, 1087, 800, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOREDRAW | win32con.SWP_NOZORDER)
 
 def onListen(evtName, evtInfo, args):
     if args == 'ListenHotWindow' and evtName == 'mode.change':
@@ -119,6 +105,7 @@ def subprocess_main():
     thsShareMem.open()
     hotWindow.createWindow(thsWindow.topHwnd)
     simpleWindow.createWindow(thsWindow.topHwnd)
+    simpleWindow2.createWindow(thsWindow.topHwnd)
     simpleHotZHWindow.createWindow(thsWindow.topHwnd)
     hotWindow.addListener(onListen, 'ListenHotWindow')
     threading.Thread(target = _workThread, args=(thsWindow, )).start()
@@ -133,6 +120,7 @@ def subprocess_main_fp():
     thsShareMem.open()
     hotWindow.createWindow(thsFPWindow.topHwnd)
     simpleWindow.createWindow(thsFPWindow.topHwnd)
+    simpleWindow2.createWindow(thsFPWindow.topHwnd)
     simpleHotZHWindow.createWindow(thsFPWindow.topHwnd)
     threading.Thread(target = _workThread, args=(thsFPWindow, )).start()
     win32gui.PumpMessages()
@@ -153,9 +141,9 @@ if __name__ == '__main__':
     # listen ths fu ping
     #p = Process(target = listen_ThsFuPing_Process, daemon = False, name='hot_win32.py')
     #p.start()
-    th = threading.Thread(target=listen_ThsFuPing_Process, daemon=True, name='hot_win32.py')
-    th.start()
-    time.sleep(1)
+    #th = threading.Thread(target=listen_ThsFuPing_Process, daemon=True, name='hot_win32.py')
+    #th.start()
+    #time.sleep(1)
     while True:
         p = Process(target = subprocess_main, daemon = True)
         p.start()

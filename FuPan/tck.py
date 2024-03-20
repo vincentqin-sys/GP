@@ -173,7 +173,7 @@ class TCK_Window(base_win.BaseWindow):
         for d in kplQr:
             k = d['day'] + ':' + d['code']
             kpl[k] = d
-            d['kpl_ztReason'] = d['ztReason']
+            d['kpl_ztReason'] = d['ztReason'].upper()
             ztNum = d.get('ztNum', 0)
             if type(ztNum) == str:
                 print(d)
@@ -188,13 +188,13 @@ class TCK_Window(base_win.BaseWindow):
             obj = kpl.get(k, None)
             if obj:
                 obj['ths_status'] = d['status']
-                obj['ths_ztReason'] = d['ztReason']
+                obj['ths_ztReason'] = d['ztReason'].upper()
                 d['zhHotOrder'] = hots.get(k, None)
             else:
                 #ths.append(d)
                 if kplLastDay < d['day']:
                     d['ths_status'] = d['status']
-                    d['ths_ztReason'] = d['ztReason']
+                    d['ths_ztReason'] = d['ztReason'].upper()
                     d['zhHotOrder'] = hots.get(k, None)
                     del d['status']
                     del d['ztReason']
@@ -205,8 +205,8 @@ class TCK_Window(base_win.BaseWindow):
             k = d['day'] + ':' + d['code']
             obj = kpl.get(k, None)
             if obj:
-                obj['cls_detail'] = d['detail']
-                obj['cls_ztReason'] = d['ztReason']
+                obj['cls_detail'] = d['detail'].upper()
+                obj['cls_ztReason'] = d['ztReason'].upper()
             else:
                 cls.append(d)
         
@@ -219,25 +219,40 @@ class TCK_Window(base_win.BaseWindow):
         if not search or not search.strip():
             self.tckSearchData = self.tckData
             return
-        search = search.strip()
-        ls = search.split(' ')
-        st = []
-        for k in ls:
-            if k: st.append(k)
-        keys = ('day', 'code', 'name', 'kpl_ztReason', 'ths_ztReason', 'cls_ztReason', 'cls_detail')
-        def contains(v):
-            for m in st:
-                if m in v: return True
-                return False
+        search = search.strip().upper()
+        if '|' in search:
+            qs = search.split('|')
+            cond = 'OR'
+        else:
+            qs = search.split(' ')
+            cond = 'AND'
+        qrs = []
+        for q in qs:
+            q = q.strip()
+            if q and (q not in qrs):
+                qrs.append(q)
+
+        def match(data, qrs, cond):
+            for q in qrs:
+                fd = False
+                for k in data:
+                    if k != 'id' and isinstance(data[k], str) and (q in data[k]):
+                        fd = True
+                        break
+                if cond == 'AND' and not fd:
+                    return False
+                if cond == 'OR' and fd:
+                    return True
+            if cond == 'AND':
+                return True
+            return False
+
+        #keys = ('day', 'code', 'name', 'kpl_ztReason', 'ths_ztReason', 'cls_ztReason', 'cls_detail')
         rs = []
         for d in self.tckData:
-            for k in keys:
-                x = d.get(k, None)
-                if x and type(x) == str and contains(x):
-                    rs.append(d)
-                    break
+            if match(d, qrs, cond):
+                rs.append(d)
         self.tckSearchData = rs
-
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:

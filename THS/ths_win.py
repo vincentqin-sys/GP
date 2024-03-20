@@ -199,11 +199,11 @@ class ThsSmallF10Window:
         return cls.hwnd
 
     @classmethod
-    def adjustPos(cls):
+    def adjustPos(cls, x = 25, y = 540):
         hwnd = cls.findWindow()
         if not hwnd:
             return
-        win32gui.SetWindowPos(hwnd, 0, 25, 540, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+        win32gui.SetWindowPos(hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
 
 class ThsShareMemory:
     POS_CODE = 0

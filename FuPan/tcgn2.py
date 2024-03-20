@@ -366,17 +366,44 @@ class TCGN_Window(base_win.BaseWindow):
         if not queryText:
             self.reload(self.curTcgn, 0)
             return
+        queryText = queryText.upper()
         llt = getattr(self, 'last_load_time', 0)
         if time.time() - llt > 10 * 60: # 10 minutes
             qr = orm.TCK_TCGN.select().dicts()
             self.allDatas = [d for d in qr]
             setattr(self, 'last_load_time', time.time())
+
+        if '|' in queryText:
+            qs = queryText.split('|')
+            cond = 'OR'
+        else:
+            qs = queryText.split(' ')
+            cond = 'AND'
+        qrs = []
+        for q in qs:
+            q = q.strip()
+            if q and q not in qrs:
+                qrs.append(q)
+
+        def match(data, qrs, cond):
+            for q in qrs:
+                fd = False
+                for k in data:
+                    if k != 'id' and isinstance(data[k], str) and (q in data[k]):
+                        fd = True
+                        break
+                if cond == 'AND' and not fd:
+                    return False
+                if cond == 'OR' and fd:
+                    return True
+            if cond == 'AND':
+                return True
+            return False
+        
         searchDatas = []
         for d in self.allDatas:
-            for k in d:
-                if k != 'id' and isinstance(d[k], str) and (queryText in d[k]):
-                    searchDatas.append(d)
-                    break
+            if match(d, qrs, cond):
+                searchDatas.append(d)
         self.tableCntWin.setData(searchDatas)
         self.tableCntWin.invalidWindow()
     
