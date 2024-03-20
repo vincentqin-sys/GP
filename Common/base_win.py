@@ -2137,7 +2137,23 @@ class Editor(BaseEditor):
                 self.setSelRange(0, len(self.text))
                 self.invalidWindow()
             return True
-        if msg == win32con.WM_CHAR or msg == win32con.WM_IME_CHAR:
+        if  msg == win32con.WM_IME_CHAR: # msg == win32con.WM_CHAR or
+            import ctypes
+            imm = ctypes.windll.imm32.ImmContext(hwnd)
+            class CANDIDATEFORM(ctypes.Structure):
+                _fields_ = [
+                    ('dwIndex', ctypes.c_int32),
+                    ('dwStyle', ctypes.c_int32),
+                    ('ptCurrentPos_x', ctypes.c_int32),
+                    ('ptCurrentPos_y', ctypes.c_int32),
+                    ('rcArea_sx', ctypes.c_int32),
+                    ('rcArea_sy', ctypes.c_int32),
+                    ('rcArea_ex', ctypes.c_int32),
+                    ('rcArea_ey', ctypes.c_int32)
+                ]
+            form = CANDIDATEFORM(0, 0, 300, 300, 300, 300, 500, 350)
+            ctypes.windll.imm32.ImmSetCandidateWindow(imm, form)
+            ctypes.windll.imm32.ImmReleaseContext (hwnd, imm)
             self.onChar(wParam)
             return True
         if msg == win32con.WM_KEYDOWN:

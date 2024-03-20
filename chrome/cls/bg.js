@@ -90,6 +90,8 @@ function openZTPage() {
         // callback
         proc_info.clsZTWindowId = window.id;
         proc_info.lastOpenZSPageTime = Date.now();
+        let today = formatDate(new Date());
+        proc_info.savedDays[today] = true;
     });
 }
 
@@ -107,56 +109,6 @@ function updateHeaders(hds, name, value) {
 	hds.push({'name': name, 'value': value});
 }
 
-
-function sendDegreeToServer(day, degree) {
-    let curDay = formatDate(new Date());
-    if (proc_info.savedDaysDegree[day]) {
-        return;
-    }
-
-    degree = parseInt(parseFloat(degree) * 100);
-    let data = {degree: degree, day: day};
-    $.ajax({
-        url: 'http://localhost:8071/save-CLS-Degree',
-        method: 'POST',
-        dataType: 'json',
-        contentType : 'application/json',
-        data: JSON.stringify(data),
-        success: function (res) {
-            console.log('Success: Send Degree to server success ', res);
-            proc_info.savedDaysDegree[day] = true;
-        },
-        error: function (res) {
-            console.log('Fail: Send Degree info to server fail ', data);
-        }
-    });
-}
-
-function loadDegree(url) {
-    if (formatTime(new Date()) <= '15:00') {
-        return;
-    }
-    let tag = '&_s=1';
-    if (url.indexOf(tag) > 0) {
-        return;
-    }
-    $.get(url + tag, function(rdata, status) {
-        console.log('degree', rdata);
-        try {
-            let date = rdata.data.date;
-            let degree = rdata.data.market_degree;
-            console.log(date, degree);
-            let curTime = formatTime(new Date());
-            let curDay = formatDate(new Date())
-            if (curTime > '15:00') {
-                sendDegreeToServer(date, degree);
-            }
-        } catch (e) {
-            console.log(e);
-        }
-    });
-}
-
 chrome.webRequest.onHeadersReceived.addListener(function(details) {
 		let hds = details.responseHeaders;
         // console.log(details);
@@ -164,9 +116,6 @@ chrome.webRequest.onHeadersReceived.addListener(function(details) {
 		updateHeaders(hds, 'Access-Control-Allow-Credentials', 'true');
 		updateHeaders(hds, 'Access-Control-Allow-Methods', '*');
         let url = details.url;
-        if (url && url.indexOf('https://x-quote.cls.cn/quote/stock/emotion_options') >= 0) {
-            loadDegree(url);
-        }
 		return {responseHeaders : hds};
 	},
 	{urls: ['https://www.cls.cn/*', '*://*/*']},
