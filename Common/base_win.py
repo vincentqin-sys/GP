@@ -70,6 +70,10 @@ class BaseWindow:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
             self.notifyListener('R_DbClick', {'src': self, 'x': x, 'y': y})
             return True
+        if msg == win32con.WM_SIZE:
+            if getattr(self, 'layout', None):
+                self.layout.resize(0, 0, *self.getClientSize())
+            return True
         return False
 
     def _draw(self, hdc):

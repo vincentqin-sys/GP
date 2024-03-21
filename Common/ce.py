@@ -416,15 +416,15 @@ def runCode(evtName, evt, console):
 if __name__ == '__main__':
     MODE_SIMPLE = True
 
-    label = base_win.Label()
-    label.css['bgColor'] = 0xd0d0d0
-    label.createWindow(None, (150, 0, 600, 600), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE, title='高绾卿')
+    mainWin = base_win.BaseWindow()
+    mainWin.css['bgColor'] = 0xd0d0d0
+    mainWin.createWindow(None, (150, 0, 600, 600), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE, title='高绾卿')
     editor = CodeEditor()
-    editor.createWindow(label.hwnd, (0, 0, 1, 1))
+    editor.createWindow(mainWin.hwnd, (0, 0, 1, 1))
 
     if MODE_SIMPLE:
-        layout = base_win.GridLayout(('1fr', 30), ('100%', ), (5, 5))
-        layout.setContent(0, 0, editor)
+        layout = base_win.GridLayout((5, '1fr', 30), (5, '1fr', 5), (5, 5))
+        layout.setContent(1, 1, editor)
         editor.addListener(runCode, None)
         btn = base_win.Button({'title': '执行(运行)'})
         def rr(en, evt, args):
@@ -432,17 +432,18 @@ if __name__ == '__main__':
                 base_win.ThreadPool.addTask('run', runCode_2, editor.getText(), editor, None)
                 base_win.ThreadPool.start()
         btn.addListener(rr)
-        btn.createWindow(label.hwnd, (10, 5, 100, 25))
-        layout.setContent(1, 0, btn, {'autoFit': False})
+        btn.createWindow(mainWin.hwnd, (10, 5, 100, 25))
+        layout.setContent(2, 1, btn, {'autoFit': False})
     else:
         console = Console()
         console.css['bgColor'] = 0xdddddd
-        console.createWindow(label.hwnd, (0, 0, 1, 1))
+        console.createWindow(mainWin.hwnd, (0, 0, 1, 1))
         layout = base_win.GridLayout(('3fr', '1fr'), ('100%', ), (5, 5))
         editor.addListener(runCode, console)
         layout.setContent(0, 0, editor)
         layout.setContent(1, 0, console)
-    W, H = label.getClientSize()
-    layout.resize(10, 3, W - 13, H - 6)
+    W, H = mainWin.getClientSize()
+    layout.resize(0, 0, W, H)
     editor.setText(loadFromFile())
+    mainWin.layout = layout
     win32gui.PumpMessages()
