@@ -17,7 +17,7 @@ class CellEditor(base_win.Editor):
 # headers = [ {..., editable: True | False(default)}, ... ]
 # listeners = 'CellChanged' = {src, row, col, data(is row data), header, model}
 #             'ClickCell' = {src, row, col, data(is row data), header, model}
-class ExTableWindow(base_win.TableWindow):
+class EditTableWindow(base_win.TableWindow):
     def __init__(self) -> None:
         super().__init__()
         self.editor = CellEditor()
@@ -108,7 +108,7 @@ class ExTableWindow(base_win.TableWindow):
 
 
 if __name__ == '__main__':
-    win = ExTableWindow()
+    win = EditTableWindow()
     win.createWindow(None, (100, 100, 1000, 400), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
     win32gui.PumpMessages()
     

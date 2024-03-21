@@ -37,17 +37,19 @@ class TCK_Window(base_win.BaseWindow):
         super().createWindow(parentWnd, rect, style, className, title)
         def formateMoney(colName, val, rowData):
             return f'{int(val)}'
-        def sortPM(colName, val, rowData, allDatas, asc):
+        def sortHot(colName, val, rowData, allDatas, asc):
+            if val == None:
+                return 1000
             return val
         headers = [ {'title': '', 'width': 30, 'name': '#idx' },
-                   {'title': '日期', 'width': 80, 'name': 'day', 'sortable':True },
-                   {'title': '名称', 'width': 70, 'name': 'name', 'sortable':True },
-                   {'title': '代码', 'width': 60, 'name': 'code', 'sortable':True },
-                   {'title': '热度', 'width': 70, 'name': 'zhHotOrder', 'sortable':True },
-                   {'title': '开盘啦', 'width': 120, 'name': 'kpl_ztReason', 'sortable':True },
-                   {'title': '同花顺', 'width': 80, 'name': 'ths_status', 'sortable':True },
-                   {'title': '同花顺', 'width': 200, 'name': 'ths_ztReason',  'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True},
-                   {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
+                   {'title': '日期', 'width': 70, 'name': 'day', 'sortable':True , 'fontSize' : 12},
+                   {'title': '名称', 'width': 55, 'name': 'name', 'sortable':True , 'fontSize' : 12},
+                   {'title': '代码', 'width': 50, 'name': 'code', 'sortable':True , 'fontSize' : 12},
+                   {'title': '热度', 'width': 40, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 12, 'sorter': sortHot},
+                   {'title': '开盘啦', 'width': 100, 'name': 'kpl_ztReason', 'sortable':True , 'fontSize' : 12},
+                   {'title': '同花顺', 'width': 60, 'name': 'ths_status', 'sortable':True , 'fontSize' : 12},
+                   {'title': '同花顺', 'width': 150, 'name': 'ths_ztReason', 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True},
+                   {'title': '财联社', 'width': 120, 'name': 'cls_ztReason', 'fontSize' : 12 ,'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
                    {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -205,7 +207,10 @@ class TCK_Window(base_win.BaseWindow):
             k = d['day'] + ':' + d['code']
             obj = kpl.get(k, None)
             if obj:
-                obj['cls_detail'] = d['detail'].upper()
+                detail = d['detail'].upper()
+                detail = detail.replace('\r\n', ' | ')
+                detail = detail.replace('\n', ' | ')
+                obj['cls_detail'] = detail
                 obj['cls_ztReason'] = d['ztReason'].upper()
             else:
                 cls.append(d)

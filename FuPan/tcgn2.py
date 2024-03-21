@@ -19,7 +19,7 @@ class TCGN_Window(base_win.BaseWindow):
         self.cols = (250, 150, 60, 200, 100, 60, 60, 60, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
-        self.tableCntWin = table.ExTableWindow()
+        self.tableCntWin = table.EditTableWindow()
         self.editorWin = base_win.Editor()
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.autoSyncCheckBox = base_win.CheckBox({'title': '自动同步显示'})

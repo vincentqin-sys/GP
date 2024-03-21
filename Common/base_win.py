@@ -792,7 +792,7 @@ class TableWindow(BaseWindow):
 
         # headers : need set a list , items of
         #    { name:xxx,   '#idx' is index row column 
-        #      title:xx,  
+        #      title:xx,
         #      sortable:True | False (default is False),
         #      width : int, fix width
         #      stretch: int, how stretch less width, is part of all stretchs
@@ -982,19 +982,19 @@ class TableWindow(BaseWindow):
         
     def drawCell(self, hdc, row, col, colName, value, rect):
         hd = self.headers[col]
-        cellRender = hd.get('cellRender', None)
-        if cellRender:
-            cellRender(self, hdc, row, col, colName, value, rect)
-            return
+        fs = hd.get('fontSize', self.css['fontSize'])
+        self.drawer.use(hdc, self.drawer.getFont(fontSize = fs))
         formater = hd.get('formater', None)
         if formater:
             value = formater(colName, value, self.data[row])
-        if value == None or value == '':
+        if value == None:
             return
-        fs = hd.get('fontSize', self.css['fontSize'])
-        self.drawer.use(hdc, self.drawer.getFont(fontSize = fs))
-        align = hd.get('textAlign', win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
-        self.drawer.drawText(hdc, str(value), rect, self.css['textColor'], align = align)
+        cellRender = hd.get('cellRender', None)
+        if cellRender:
+            cellRender(self, hdc, row, col, colName, value, rect)
+        else:
+            align = hd.get('textAlign', win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+            self.drawer.drawText(hdc, str(value), rect, self.css['textColor'], align = align)
 
     def drawRow(self, hdc, showIdx, row, rect):
         rc = [0, rect[1], 0, rect[3]]
@@ -1955,6 +1955,22 @@ class BaseEditor(BaseWindow):
             self._caretVisible = False
             self.onKillFocus()
             return True
+        if msg == win32con.WM_IME_STARTCOMPOSITION:
+            return True
+        if msg == win32con. WM_IME_COMPOSITION:
+            GCS_COMPSTR = 8
+            if lParam & GCS_COMPSTR:
+                import ctypes
+                himc = ctypes.windll.imm32.ImmGetContext(hwnd)
+                buf = ctypes.create_string_buffer(100)
+                ctypes.windll.imm32.ImmGetCompositionStringA(himc, GCS_COMPSTR, buf, 100)
+                ctypes.windll.imm32.ImmReleaseContext(hwnd)
+                sval = b''
+                for i in range(100):
+                    if buf[i] != b'\x00': sval += buf[i]
+                    else:break
+                #print('sval =', sval.decode('utf-8'))
+            return False # can't return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
 # listeners : PressEnter = {src, text}
@@ -2137,23 +2153,7 @@ class Editor(BaseEditor):
                 self.setSelRange(0, len(self.text))
                 self.invalidWindow()
             return True
-        if  msg == win32con.WM_IME_CHAR: # msg == win32con.WM_CHAR or
-            import ctypes
-            imm = ctypes.windll.imm32.ImmContext(hwnd)
-            class CANDIDATEFORM(ctypes.Structure):
-                _fields_ = [
-                    ('dwIndex', ctypes.c_int32),
-                    ('dwStyle', ctypes.c_int32),
-                    ('ptCurrentPos_x', ctypes.c_int32),
-                    ('ptCurrentPos_y', ctypes.c_int32),
-                    ('rcArea_sx', ctypes.c_int32),
-                    ('rcArea_sy', ctypes.c_int32),
-                    ('rcArea_ex', ctypes.c_int32),
-                    ('rcArea_ey', ctypes.c_int32)
-                ]
-            form = CANDIDATEFORM(0, 0, 300, 300, 300, 300, 500, 350)
-            ctypes.windll.imm32.ImmSetCandidateWindow(imm, form)
-            ctypes.windll.imm32.ImmReleaseContext (hwnd, imm)
+        if  msg == win32con.WM_IME_CHAR or msg == win32con.WM_CHAR:
             self.onChar(wParam)
             return True
         if msg == win32con.WM_KEYDOWN:
@@ -2817,7 +2817,7 @@ def testPopMenu():
 
 if __name__ == '__main__':
     rgb = Drawer.hsv2rgb(59, 0.265, 0.785)
-    print(f'{rgb: X}')
+    #print(f'{rgb: X}')
     h, s, v = Drawer.rgb2hsv(0xf3da56)
     #testGridLayout()
     #testPopMenu()
@@ -2827,8 +2827,8 @@ if __name__ == '__main__':
     btn = Button({'title': "Ni hao ma"})
     btn.createWindow(label.hwnd, (20, 20, 120, 30))
     
-    #editor1 = Editor()
-    #editor1.createWindow(label.hwnd, (20, 20, 200, 30))
+    editor1 = Editor()
+    editor1.createWindow(label.hwnd, (20, 20, 200, 30))
 
     editor2 = Editor()
     editor2.createWindow(label.hwnd, (20, 80, 200, 30))

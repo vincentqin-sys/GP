@@ -75,7 +75,7 @@ function run_loop() {
         return;
     }
     let ft = formatTime(new Date());
-    if (ft <= '15:00') {
+    if (ft <= '15:30') {
         return;
     }
     let today = formatDate(new Date());
@@ -95,7 +95,7 @@ function openZTPage() {
     });
 }
 
-setInterval(run_loop, 1000 * 20); // 20 seconds
+setInterval(run_loop, 1000 * 30); // 20 seconds
 
 // CORS
 function updateHeaders(hds, name, value) {
