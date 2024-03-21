@@ -39,7 +39,7 @@ function loadDegree(response) {
 	let day = json.data.date;
 	let degree = json.data.market_degree;
 	degree = parseInt(parseFloat(degree) * 100);
-	console.log(day, degree);
+	console.log(formatTime(new Date()), '==>', day, degree);
 	let data = {day, degree};
 	sendToServer('http://localhost:8071/save-CLS-Degree', data);
 }
@@ -54,11 +54,16 @@ function loadZTInfo(response) {
 		if (item.is_st != 0)
 			continue
 		let obj = {code : item.secu_code, name: item.secu_name, lbs: item.limit_up_days};
-		// obj.ztTime = item.time.substring(11, 16);
-		obj.day = item.time.substring(0, 10);
-		obj.ztReason = item.up_reason;
 		if (obj.code && obj.code.length == 8) {
 			obj.code = obj.code.substring(2);
+		}
+		// obj.ztTime = item.time.substring(11, 16);
+		obj.day = item.time.substring(0, 10);
+		obj.ztReason = '';
+		if (item.up_reason.indexOf('|') > 0) {
+			let idx = item.up_reason.indexOf('|');
+			obj.ztReason = item.up_reason.substring(0 , idx).trim();
+			obj.detail = item.up_reason.substring(idx + 1).trim();
 		}
 		if (obj.ztReason && obj.ztReason.trim() != '--') {
 			rs.push(obj);
