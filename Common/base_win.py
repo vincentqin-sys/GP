@@ -1056,7 +1056,7 @@ class TableWindow(BaseWindow):
                     return header['sorter'](hdn, rowData[hdn], rowData, self.data, st == 'ASC')
                 self.sortData = sorted(self.data, key = keyn, reverse = reverse)
             else:
-                self.sortData = sorted(self.data, key = lambda d: d[header['name']], reverse = reverse)
+                self.sortData = sorted(self.data, key = lambda d: d.get(header['name'], ''), reverse = reverse)
         else:
             self.sortData = None
 
