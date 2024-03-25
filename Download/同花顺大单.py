@@ -144,6 +144,7 @@ def getCodes():
     return datas
 
 def main():
+    os.system('') # fix win10 下console 颜色不生效
     lastDay = None
     while True:
         today = datetime.datetime.now()

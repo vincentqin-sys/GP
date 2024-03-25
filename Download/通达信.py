@@ -446,6 +446,7 @@ def renameDirs():
             pass
 
 def autoMain():
+    os.system('') # fix win10 下console 颜色不生效
     lastDay = 0
     while True:
         today = datetime.datetime.now()
