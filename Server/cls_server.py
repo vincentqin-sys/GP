@@ -37,11 +37,13 @@ def saveCLS_Degree():
     zhqd = js['degree']
     obj = orm.CLS_SCQX.get_or_none(day = day)
     if obj:
-        obj.zhqd = zhqd
-        obj.save()
+        if obj.zhqd != zhqd:
+            obj.zhqd = zhqd
+            obj.save()
+            print(f'[cls-server] {now()} update degree ok, {day} = {zhqd}')
     else:
         orm.CLS_SCQX.create(day = day, zhqd = zhqd)
-    print(f'[cls-server] {now()} save degree ok, {day} = {zhqd}')
+        print(f'[cls-server] {now()} save degree ok, {day} = {zhqd}')
     return {'status': 'OK'}
 
 def startup(app : Flask):

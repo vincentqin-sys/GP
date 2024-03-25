@@ -40,11 +40,11 @@ class TCGN_Window(base_win.BaseWindow):
                    #{'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
         headers2 = [
-            {'title': '', 'width': 30, 'name': '#idx' },
-            {'title': '二级题材概念', 'width': 200, 'name': 'tcgn_sub', 'editable': True},
-            {'title': '股票名称', 'width': 150, 'name': 'name', 'editable': True},
-            {'title': '股票代码', 'width': 100, 'name': 'code', 'editable': True},
-            {'title': '详情', 'stretch': 1, 'name': 'info', 'editable': True},
+            {'title': '', 'width': 30, 'name': '#idx' , 'fontSize' : 14},
+            {'title': '二级题材概念', 'width': 150, 'name': 'tcgn_sub', 'editable': True, 'fontSize' : 14, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
+            {'title': '股票名称', 'width': 70, 'name': 'name', 'editable': True, 'fontSize' : 14},
+            {'title': '股票代码', 'width': 70, 'name': 'code', 'editable': True, 'fontSize' : 14},
+            {'title': '详情', 'stretch': 1, 'name': 'info', 'editable': True, 'fontSize' : 14, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
         ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
         self.autoSyncCheckBox.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -53,9 +53,9 @@ class TCGN_Window(base_win.BaseWindow):
         self.tableCntWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableCntWin.enableListeners['ContextMenu'] = True
         self.tableWin.enableListeners['ContextMenu'] = True
-        self.tableWin.rowHeight = 30
+        self.tableWin.rowHeight = 32
         self.tableWin.headers = headers
-        self.tableCntWin.rowHeight = 30
+        self.tableCntWin.rowHeight = 40
         self.tableCntWin.headers = headers2
         addBtn = base_win.Button({'title': 'Add'})
         addBtn.createWindow(self.hwnd, (0, 0, 1, 1))

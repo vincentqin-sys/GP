@@ -1,5 +1,6 @@
 import win32gui, win32con , win32api, win32ui, win32gui_struct, win32clipboard # pip install pywin32
 import threading, time, datetime, sys, os, copy, calendar, functools
+import pyperclip # pip install pyperclip
 
 # listeners : ContextMenu = {src, x, y} , default is diable
 #             DbClick = {src, x, y} , default is diable
@@ -804,7 +805,7 @@ class TableWindow(BaseWindow):
         #      sorter: function(colName, val, rowData, allDatas, asc:True|False)  -> return sorted value
         #      textAlign: int, win32con.DT_LEFT(is default) | .....
         #      fontSize: 14 (default)
-        #      cellRender: function(win, hdc, row, col, colName, value, rect)  cell-render
+        #      render: function(win, hdc, row, col, colName, value, rect)  cell-render
         self.headers = None # must be set TODO
 
     def getData(self):
@@ -993,7 +994,7 @@ class TableWindow(BaseWindow):
             value = formater(colName, value, self.data[row])
         if value == None:
             return
-        cellRender = hd.get('cellRender', None)
+        cellRender = hd.get('render', None)
         if cellRender:
             cellRender(self, hdc, row, col, colName, value, rect)
         else:
@@ -1926,19 +1927,22 @@ class BaseEditor(BaseWindow):
         return (win32api.GetKeyState(vk) & 0x80000000) != 0
 
     def copyToClipboard(self, text):
-        # copy digit text fail, fix by : pip install pywin32 == 301 把pywin32版本降到301
         if not text:
             return False
-        win32clipboard.OpenClipboard(None)
-        win32clipboard.EmptyClipboard() # 写入清必须清空，得到剪贴板占有权
-        win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, text)
-        win32clipboard.CloseClipboard()
+        pyperclip.copy(text)
+
+        # copy digit text fail, fix by : pip install pywin32 == 301 把pywin32版本降到301
+        #win32clipboard.OpenClipboard(None)
+        #win32clipboard.EmptyClipboard() # 写入清必须清空，得到剪贴板占有权
+        #win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, text)
+        #win32clipboard.CloseClipboard()
         return True
 
     def copyFromClipboard(self):
-        win32clipboard.OpenClipboard(None)
-        val = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
-        win32clipboard.CloseClipboard()
+        val = pyperclip.paste()
+        #win32clipboard.OpenClipboard(None)
+        #val = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
+        #win32clipboard.CloseClipboard()
         return val
 
     def winProc(self, hwnd, msg, wParam, lParam):

@@ -199,6 +199,8 @@ class THS_ZT(pw.Model):
     status = pw.CharField(null = True, column_name='状态')
     ztReason = pw.CharField(null = True, column_name='涨停原因')
     #ztNum = pw.IntegerField(null=True, column_name='涨停数量')
+    mark_1 = pw.CharField() # 简单的备注
+    mark_2 = pw.CharField() # 详细备注
 
     class Meta:
         database = db_tck

@@ -41,10 +41,10 @@ class TCK_Window(base_win.BaseWindow):
             if val == None:
                 return 1000
             return val
-        headers = [ {'title': '', 'width': 30, 'name': '#idx' },
+        headers = [ {'title': '', 'width': 30, 'name': '#idx','textAlign': win32con.DT_SINGLELINE | win32con.DT_CENTER | win32con.DT_VCENTER },
                    {'title': '日期', 'width': 70, 'name': 'day', 'sortable':True , 'fontSize' : 12},
                    {'title': '名称', 'width': 55, 'name': 'name', 'sortable':True , 'fontSize' : 12},
-                   {'title': '代码', 'width': 50, 'name': 'code', 'sortable':True , 'fontSize' : 12},
+                   #{'title': '代码', 'width': 50, 'name': 'code', 'sortable':True , 'fontSize' : 12},
                    {'title': '热度', 'width': 40, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 12, 'sorter': sortHot},
                    {'title': '开盘啦', 'width': 100, 'name': 'kpl_ztReason', 'sortable':True , 'fontSize' : 12},
                    {'title': '同花顺', 'width': 60, 'name': 'ths_status', 'sortable':True , 'fontSize' : 12},

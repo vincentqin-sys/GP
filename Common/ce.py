@@ -392,6 +392,7 @@ def runCode_1(code, editor : CodeEditor, console : Console):
     console.restore()
 
 def runCode_2(code, editor : CodeEditor, args):
+    saveToFile(code)
     os.system('cls')
     editor.excInfo = None
     editor.invalidWindow()
@@ -408,7 +409,6 @@ def runCode_2(code, editor : CodeEditor, args):
 def runCode(evtName, evt, console):
     if evtName != 'Run':
         return
-    saveToFile(evt['code'])
     tskFunc = runCode_1 if console else runCode_2
     base_win.ThreadPool.addTask('run', tskFunc, evt['code'], evt['src'], console)
     base_win.ThreadPool.start()
