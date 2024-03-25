@@ -366,6 +366,12 @@ class TdxDownloader:
         self.killProcess()
 
 def work():
+    tm = datetime.datetime.now()
+    ss = tm.strftime('%Y-%m-%d %H:%M')
+    print('\033[32m' + ss + '\033[0m')
+    tm = datetime.datetime.now()
+    ss = tm.strftime('%Y-%m-%d %H:%M')
+    print('\033[32m' + ss + '\033[0m')
     # 下载
     tdx = TdxDownloader()
     tdx.run()

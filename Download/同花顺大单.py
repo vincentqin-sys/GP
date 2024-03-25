@@ -35,8 +35,9 @@ def autoLoadOne(code, ddWin : ths_dd_win.THS_DDWindow):
 
 # 自动下载同花顺热点Top200个股的大单数据
 def autoLoadTop200Data():
-    d = datetime.datetime.today()
-    print(d.strftime('%Y-%m-%d:%H:%M:%S'), '->')
+    tm = datetime.datetime.now()
+    ss = tm.strftime('%Y-%m-%d %H:%M')
+    print('\033[32m' + ss + '\033[0m')
     print('自动下载Top 200大单买卖数据(同花顺Level-2)')
     fd = fiddler.Fiddler()
     thsWin = ths_dd_win.THS_Window()
@@ -130,11 +131,14 @@ def checkUserNoInputTime():
 _codes = {}
 def getCodes():
     global _codes
+    def isCode(code):
+        code = f'{code :06d}'
+        return code[0] == '0' or code[0] == '3' or code[0] == '6'
     curDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
     if curDay in _codes:
         return _codes[curDay]
     ds = hot_utils.calcHotZHOnDay(curDay)
-    datas = [{'code': f"{d['code'] :06d}", 'times': 0} for d in ds if d['code'] // 100000 != 8]
+    datas = [{'code': f"{d['code'] :06d}", 'times': 0} for d in ds if isCode(d['code']) ]
     datas.reverse()
     _codes[curDay] = datas
     return datas
