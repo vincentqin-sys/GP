@@ -1,26 +1,34 @@
 from flask import Flask, url_for, views, abort, make_response, request
 import flask, peewee
 from flask_cors import CORS 
-import json, os, sys
+import json, os, sys, datetime
 import traceback
 import requests, json, logging
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import orm
 
+def now():
+    return datetime.datetime.now().strftime('%H:%M')
+
 def saveCLS_ZT():
-    saveNum = 0
+    insertNum, updateNum = 0, 0
     num = len(request.json)
     day = None
     for it in request.json:
         day = it['day']
         obj = orm.CLS_ZT.get_or_none(code = it['code'], day = it['day'])
         if obj:
-            continue
-        saveNum += 1
-        orm.CLS_ZT.create(**it)
-    if saveNum > 0:
-        print(f'[cls-server] save cls zt {day} {saveNum} / {num}')
+            if obj.ztReason != it['ztReason'] or obj.detail != it['detail']:
+                obj.ztReason = it['ztReason']
+                obj.detail = it['detail']
+                updateNum += 1
+                obj.save()
+        else:
+            insertNum += 1
+            orm.CLS_ZT.create(**it)
+    if insertNum > 0:
+        print(f'[cls-server] {now()} save cls zt {day} insert({insertNum}) update({updateNum})')
     return {'status': 'OK'}
 
 def saveCLS_Degree():
@@ -33,7 +41,7 @@ def saveCLS_Degree():
         obj.save()
     else:
         orm.CLS_SCQX.create(day = day, zhqd = zhqd)
-    print(f'[cls-server] save degree ok, {day} = {zhqd}')
+    print(f'[cls-server] {now()} save degree ok, {day} = {zhqd}')
     return {'status': 'OK'}
 
 def startup(app : Flask):
