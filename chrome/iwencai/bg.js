@@ -172,9 +172,9 @@ function hot_run() {
         return;
     }
     if (jtTime) {
-        if ((Date.now() - proc_info.lastOpenHotPageTimeForSave) / 1000 / 60 >= 10) { // 10 minutes
+        if ((Date.now() - proc_info.lastOpenHotPageTimeForSave) / 1000 / 60 >= 5) { // 10 minutes
             let mm = new Date().getMinutes();
-            if (mm % 15 == 0) {
+            if (mm % 10 == 0) { // 10 minutes
                 openHotPage('FOR-SAVE');
             }
             return;

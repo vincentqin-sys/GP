@@ -10,8 +10,8 @@ curCode = None
 thsWindow = ths_win.ThsWindow()
 thsFPWindow = ths_win.ThsFuPingWindow()
 hotWindow = hot_win.HotWindow()
-simpleWindow = hot_win_small.SimpleWindow()
-simpleWindow2 = hot_win_small.SimpleWindow()
+simpleWindow = hot_win_small.SimpleWindow('HOT')
+simpleWindow2 = hot_win_small.SimpleWindow('ZT_GN')
 thsShareMem = ths_win.ThsShareMemory()
 simpleHotZHWindow = hot_win_small.SimpleHotZHWindow()
 

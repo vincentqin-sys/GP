@@ -16,7 +16,7 @@ class TCGN_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (250, 150, 60, 200, 100, 60, 60, 60, '1fr')
+        self.cols = (200, 150, 60, 200, 100, 60, 60, 60, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
         self.tableCntWin = table.EditTableWindow()
@@ -41,6 +41,7 @@ class TCGN_Window(base_win.BaseWindow):
                    ]
         headers2 = [
             {'title': '', 'width': 30, 'name': '#idx' , 'fontSize' : 14},
+            {'title': '一级题材概念', 'width': 120, 'name': 'tcgn', 'editable': False, 'fontSize' : 14, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
             {'title': '二级题材概念', 'width': 150, 'name': 'tcgn_sub', 'editable': True, 'fontSize' : 14, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
             {'title': '股票名称', 'width': 70, 'name': 'name', 'editable': True, 'fontSize' : 14},
             {'title': '股票代码', 'width': 70, 'name': 'code', 'editable': True, 'fontSize' : 14},

@@ -2,7 +2,8 @@ proc_info = {
     clsZTWindowId: 0,
     lastOpenZSPageTime : 0,
     savedDays : {}, // day : True
-    savedDaysDegree : {} // day : True
+    savedDaysDegree : {}, // day : True
+    timelines : {}, // {code: { loadTime: xxx, data: xxx }, .... }
 };
 
 // YYYY-MM-DD
@@ -39,12 +40,16 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             let today = formatDate(new Date());
             proc_info.savedDays[today] = true;
         }
-    } else if (cmd == 'LOG') {
-        mlog('Log', request);
+    } else if (cmd == 'LOAD_TIMELINE') {
+        let code = data;
+        loadTimeLine(code);
+    } else if (cmd == 'GET_TIMELINE') {
+        let code = data;
+        let rs = getTimeLine(code);
+        if (sendResponse) {
+            sendResponse(rs);
+        }
     }
-	if (sendResponse) {
-		sendResponse('OK');
-	}
 });
 
 
@@ -94,6 +99,38 @@ function openZTPage() {
         proc_info.savedDays[today] = true;
     });
 }
+
+function loadTimeLine(code) {
+    if (! code || code.length != 6) {
+        return;
+    }
+    proc_info.timelines[code] = null;
+    let url = 'http://localhost:8071/ths/load-timeline?code=' + code;
+    $.ajax({
+        type: 'GET',
+        url : url,
+        success: function(res) {
+            //console.log(res);
+            if (res.status == 'OK') {
+                proc_info.timelines[code] = {loadTime: new Date().getTime(), data: res.data};
+            }
+        }
+    });
+}
+
+function getTimeLine(code) {
+    let ts = new Date().getTime();
+    let obj = proc_info.timelines[code];
+    if (! obj) {
+        return null;
+    }
+    let diff = ts - obj.loadTime;
+    if (diff >= 10 * 60 * 1000) { // 超过10分钟
+        return null;
+    }
+    return obj.data;
+}
+
 
 setInterval(run_loop, 1000 * 30); // 20 seconds
 

@@ -2,6 +2,11 @@ import peewee as pw
 import threading
 import requests, json, flask, traceback
 import datetime, time, sys, os, re
+from flask import Flask, url_for, views, abort, make_response, request
+import flask, peewee
+from flask_cors import CORS 
+import functools
+
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import orm
@@ -150,6 +155,31 @@ def run():
 def autoLoadThsZT():
     th = threading.Thread(target = run)
     th.start()
+
+def load_ths_code(type_):
+    code = request.args.get('code')
+    if len(code) != 6:
+        return {'status': 'Fail', 'msg': 'error code : ' + code, 'data': ''}
+    hx = henxin.HexinUrl()
+    if type_ == 'timeline':
+        url = hx.getFenShiUrl(code)
+    elif type_ == 'history':
+        url = hx.getKLineUrl(code)
+    elif type_ == 'today':
+        url = hx.getTodayKLineUrl(code)
+    data = hx.loadUrlData(url)
+    return {'status': 'OK', 'msg': '', 'data': data}
+
+def startup(app):
+    load_ths_timeline = functools.partial(load_ths_code, 'timeline')
+    load_ths_timeline.__name__ = 'load_ths_timeline'
+    load_ths_today = functools.partial(load_ths_code, 'today')
+    load_ths_today.__name__ = 'load_ths_today'
+    load_ths_history = functools.partial(load_ths_code, 'history')
+    load_ths_history.__name__ = 'load_ths_history'
+    app.add_url_rule('/ths/load-timeline', view_func = load_ths_timeline, methods = ['GET'])
+    app.add_url_rule('/ths/load-today-kline', view_func = load_ths_today, methods = ['GET'])
+    app.add_url_rule('/ths/load-history-kline', view_func = load_ths_history, methods = ['GET'])
 
 if __name__ == '__main__':
     #autoLoadHistory()

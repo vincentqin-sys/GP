@@ -34,7 +34,7 @@ if __name__ == '__main__':
     lhb_server.startup(app)
     lhb_downloader.autoLoadTdxLHB()
     ths_server.autoLoadThsZT()
-
+    ths_server.startup(app)
     cls_server.startup(app)
 
     app.run(host = '0.0.0.0', port=8071, debug=False) #, debug=True  port=8071

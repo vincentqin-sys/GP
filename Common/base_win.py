@@ -1988,6 +1988,7 @@ class Editor(BaseEditor):
         super().__init__()
         self.css['bgColor'] = 0xf0f0f0
         self.css['textColor'] = 0x202020
+        self.css['placeHolderColor'] = 0xb0b0b0
         self.css['borderColor'] = 0xdddddd
         self.css['selBgColor'] = 0xf0c0c0
         self.css['enableBorder'] = True
@@ -1996,6 +1997,7 @@ class Editor(BaseEditor):
         self.text = ''
         self.insertPos = 0
         self.selRange = None # (beginPos, endPos)
+        self.placeHolder = None # str text
 
     def setText(self, text):
         self.scrollX = 0
@@ -2128,6 +2130,9 @@ class Editor(BaseEditor):
 
     def onDraw(self, hdc):
         if not self.text:
+            if self.placeHolder:
+                rc = (0, 0, *self.getClientSize())
+                self.drawer.drawText(hdc, self.placeHolder, rc, color=self.css['placeHolderColor'], align=win32con.DT_LEFT|win32con.DT_SINGLELINE|win32con.DT_VCENTER)
             return
         W, H = self.getClientSize()
         lh = self.css['fontSize']

@@ -6,7 +6,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import orm, ths_win
-from Common import base_win, timeline, kline
+from Common import base_win, timeline, kline, table
 import ddlr_detail
 
 thsWin = ths_win.ThsWindow()
@@ -18,8 +18,9 @@ class TCK_Window(base_win.BaseWindow):
         rows = (30, '1fr')
         self.cols = (60, 300, 150, 120, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
-        self.tableWin = base_win.TableWindow()
+        self.tableWin = table.EditTableWindow()
         self.editorWin = base_win.Editor()
+        self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.autoSyncCheckBox = base_win.CheckBox({'title': '自动同步显示'})
         self.tckData = None
@@ -49,6 +50,7 @@ class TCK_Window(base_win.BaseWindow):
                    {'title': '开盘啦', 'width': 100, 'name': 'kpl_ztReason', 'sortable':True , 'fontSize' : 12},
                    {'title': '同花顺', 'width': 60, 'name': 'ths_status', 'sortable':True , 'fontSize' : 12},
                    {'title': '同花顺', 'width': 150, 'name': 'ths_ztReason', 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True},
+                   {'title': '同花顺备注', 'width': 120, 'name': 'mark_1', 'fontSize' : 12 , 'editable':True, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
                    {'title': '财联社', 'width': 120, 'name': 'cls_ztReason', 'fontSize' : 12 ,'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
                    {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
@@ -68,9 +70,19 @@ class TCK_Window(base_win.BaseWindow):
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
         self.editorWin.addListener(self.onEditEnd, None)
         self.tableWin.addListener(self.onDbClick, None)
+        self.tableWin.addListener(self.onEditCell, None)
         sm = ths_win.ThsShareMemory.instance()
         sm.open()
         sm.addListener('ListenSync_TCK', self.onAutoSync)
+
+    def onEditCell(self, evtName, evt, args):
+        if evtName != 'CellChanged':
+            return
+        colName = evt['header']['name']
+        val = evt['data'].get(colName, '')
+        _id = evt['data']['id']
+        qr = orm.THS_ZT.update({colName : val}).where(orm.THS_ZT.id == _id)
+        qr.execute()
 
     def onAutoSync(self, code, day):
         checked = self.autoSyncCheckBox.isChecked()

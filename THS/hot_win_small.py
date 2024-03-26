@@ -567,11 +567,13 @@ class THS_ZTCardView(KPLCardView):
         win32gui.DrawText(hdc, day, len(day), rect, win32con.DT_LEFT)
 
 class SimpleWindow(CardWindow):
-    def __init__(self) -> None:
+    # type_ is 'HOT' | 'ZT_GN'
+    def __init__(self, type_) -> None:
         super().__init__((380, 230), (380, 30))
         self.curCode = None
         self.selectDay = 0
         self.zsCardView = None
+        self.type_ = type_
 
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
@@ -581,9 +583,11 @@ class SimpleWindow(CardWindow):
         #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
         #self.addCardView(SortCardView(self.hwnd))
-        self.addCardView(HotCardView(self.hwnd))
-        self.addCardView(KPLCardView(self.hwnd))
-        self.addCardView(THS_ZTCardView(self.hwnd))
+        if self.type_ == 'HOT':
+            self.addCardView(HotCardView(self.hwnd))
+        elif self.type_ == 'ZT_GN':
+            self.addCardView(KPLCardView(self.hwnd))
+            self.addCardView(THS_ZTCardView(self.hwnd))
         self.zsCardView = ZSCardView(self.hwnd)
 
     def changeCardView(self):
