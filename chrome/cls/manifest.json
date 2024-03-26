@@ -38,7 +38,7 @@
 		{
 			"matches": ["https://www.cls.cn/*"],
             "run_at": "document_idle",
-            "js": ["jquery-3.6.min.js", "kline.js", "cnt-inject.js"],
+            "js": ["jquery-3.6.min.js", "kline.js", "thread.js", "cnt-inject.js"],
 			"all_frames" : true
 		}
     ],

@@ -387,6 +387,19 @@ class HexinUrl(Henxin):
         for k in js:
             js = js[k]
             break
+        js['pre'] = float(js['pre'])
+        js['dataArr'] = []
+        iv = js['data'].split(';')
+        for item in iv:
+            # 时间，价格，成交额（元），分时均价，成交量（手）
+            its = item.split(',')
+            row = {}
+            row['time'] = int(its[0])
+            row['price'] = float(its[1])
+            row['money'] = float(its[2])
+            row['avgPrice'] = float(its[3])
+            row['vol'] = float(its[4] if its[4] else '0')
+            js['dataArr'].append(row)
         return js
 
 class ThsDataFile(datafile.DataFile):

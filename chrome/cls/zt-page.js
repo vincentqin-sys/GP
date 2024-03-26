@@ -31,3 +31,9 @@ if (formatTime() >= '09:25' && formatTime() <= '15:15') {
     }, 3 * 60 * 1000);
 }
 
+if (window.location.href.indexOf('autoClose') > 0) {
+    setTimeout(function() {
+        window.close();
+    }, 3000);
+}
+

@@ -203,7 +203,8 @@ class TCK_Window(base_win.BaseWindow):
             if obj:
                 obj['ths_status'] = d['status']
                 obj['ths_ztReason'] = d['ztReason'].upper()
-                d['zhHotOrder'] = hots.get(k, None)
+                obj['mark_1'] = d['mark_1']
+                obj['mark_2'] = d['mark_2']
             else:
                 #ths.append(d)
                 if kplLastDay < d['day']:

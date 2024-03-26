@@ -90,7 +90,7 @@ function run_loop() {
 }
 
 function openZTPage() {
-    let url = 'https://www.cls.cn/finance';
+    let url = 'https://www.cls.cn/finance?autoClose=1';
     chrome.windows.create({ url: url, type: 'panel' }, function (window) {
         // callback
         proc_info.clsZTWindowId = window.id;
@@ -104,7 +104,12 @@ function loadTimeLine(code) {
     if (! code || code.length != 6) {
         return;
     }
-    proc_info.timelines[code] = null;
+    let obj = proc_info.timelines[code];
+    let diff = new Date().getTime() - (obj ? obj.loadTime : 0);
+    if (diff <= 3 * 60 * 1000) {
+        return;
+    }
+
     let url = 'http://localhost:8071/ths/load-timeline?code=' + code;
     $.ajax({
         type: 'GET',
@@ -126,7 +131,7 @@ function getTimeLine(code) {
     }
     let diff = ts - obj.loadTime;
     if (diff >= 10 * 60 * 1000) { // 超过10分钟
-        return null;
+        // return null;
     }
     return obj.data;
 }

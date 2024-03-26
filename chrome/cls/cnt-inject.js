@@ -1,7 +1,10 @@
 let timelines = {}; // key : {model, ui }
+let pageInfo = { tableColNum : 0 };
+window['pageInfo'] = pageInfo;
+let thread = new Thread();
 const ADD_WIDTH = 300;
 
-function updateFinacePageUI(code) {
+function updateFinacePageUI(code, needDraw) {
     let item = timelines[code];
     if (! item) {
         return;
@@ -10,13 +13,15 @@ function updateFinacePageUI(code) {
     if (item.ui) {
         item.ui.remove();
     } else {
-        item.view = new TimeLineView(ADD_WIDTH, 50);
-        item.ui = $(item.canvas);
+        item.view = new TimeLineView(ADD_WIDTH, 40);
+        item.ui = $(item.view.canvas);
     }
     item.view.setData(item.model);
-    item.view.draw();
+    if (needDraw) {
+        item.view.draw();
+    }
 
-    let table = $('.watch-table-box > table.watch-table');
+    let table = $('table.watch-table');
     let trs = table.find('tr');
     for (let i = 1; i < trs.length; i++) {
         let tr = trs.eq(i);
@@ -25,7 +30,7 @@ function updateFinacePageUI(code) {
         if (rowCode == code) {
             let tds = tr.find('td');
             let td = null;
-            if (tds.length == 5) {
+            if (tds.length < pageInfo.tableColNum) {
                 td = $('<td> </td>');
                 tr.append(td);
             } else {
@@ -33,20 +38,23 @@ function updateFinacePageUI(code) {
                 td.empty();
             }
             td.append(item.ui);
-            console.log('find ', td, item.ui);
             break;
         }
     }
 }
 
-function loadTimeLine(code, updateUI) {
-    chrome.runtime.sendMessage({cmd: 'GET_TIMELINE', data: code}, null, function(resp) {
+function loadTimeLine(task, resolve) {
+    //console.log('[loadTimeLine]', task);
+    let code = task.code;
+    function cb(resp) {
         if (! resp) {
+            //console.log('clear ui');
             // clear ui
             if (timelines[code] && timelines[code].ui) {
                 timelines[code].ui.remove();
             }
             timelines[code] = null;
+            resolve();
             return;
         }
         let obj = timelines[code];
@@ -54,28 +62,17 @@ function loadTimeLine(code, updateUI) {
             timelines[code] = obj = {model: null, ui: null, view: null};
         }
         // check is same
-        if (obj.model && (resp.dotsCount == obj.model.dotsCount || resp['dataArr'])) {
-            // console.log('same value for ', code, resp);
-            return;
+        let changed = false;
+        if (! obj.model  || resp.dotsCount != obj.model.dotsCount) {  // changed
+            obj.model = resp;
+            changed = true;
         }
-        resp.pre = parseFloat(resp.pre);
-        resp.dataArr = [];
-        let iv = resp.data.split(/;|,/g);
-        const FEN_SHI_DATA_ITEM_SIZE = 5;
-        // 时间，价格，成交额（元），分时均价，成交量（手）
-        for (let i = 0; i < iv.length; i += FEN_SHI_DATA_ITEM_SIZE) {
-            let item = {};
-            item['time'] = parseInt(iv[i]);
-            item['price'] = parseFloat(iv[i + 1]);
-            item['money'] = parseInt(iv[i + 2]);
-            item['avgPrice'] = parseFloat(iv[i + 3]);
-            item['vol'] = parseInt(iv[i + 4]);
-            resp.dataArr.push(item);
-        }
-        obj.model = resp; // changed
         // update ui
-        updateUI(code);
-    });
+        task.updateUI(code, changed);
+        resolve();
+    }
+
+    chrome.runtime.sendMessage({cmd: 'GET_TIMELINE', data: code}, cb);
 }
 
 function extendWidth(obj, aw) {
@@ -88,31 +85,58 @@ function initFinacePage() {
     extendWidth($('div.w-1200'), ADD_WIDTH);
     extendWidth($('div.content-main-box div.watch-content-left'), ADD_WIDTH);
 
-    let table = $('.watch-table-box > table.watch-table');
+    let table = $('table.watch-table');
     let trs = table.find('tr');
-    trs.eq(0).append('<th style="width:' + ADD_WIDTH + 'px">分时<th>');
+    trs.eq(0).append('<th style="width:' + ADD_WIDTH + 'px">分时</th>');
+    pageInfo.tableColNum = trs.eq(0).find('th').length;
+
     let codes = [];
     for (let i = 1; i < trs.length; i++) {
+        trs.eq(i).css('border-top', 'solid 1px #ccc');
         let code = trs.eq(i).find('td:eq(0) > a > div:eq(1)').text();
         code = code.trim().substring(2);
         if (code && code.length == 6) {
             codes.push(code);
-            chrome.runtime.sendMessage({cmd: 'LOAD_TIMELINE', data: code})
+            chrome.runtime.sendMessage({cmd: 'LOAD_TIMELINE', data: code});
         } else {
             console.log('Load Code Fail: ', trs[i]);
         }
     }
 
-    setInterval(function() {
-        for (let i = 0; i < codes.length; i++) {
-            loadTimeLine(codes[i], updateFinacePageUI);
+    function loadAllCodes(tk, resolve) {
+        let table = $('table.watch-table');
+        let trs = table.find('tr');
+        for (let i = 1; i < trs.length; i++) {
+            let code = trs.eq(i).find('td:eq(0) > a > div:eq(1)').text();
+            code = code.trim().substring(2);
+            //console.log(i, code);
+            if (code.length != 6) {
+                continue;
+            }
+            // loadTimeLine(code, updateFinacePageUI);
+            let task = new Task(i, 300, loadTimeLine);
+            task.code = code;
+            task.updateUI = updateFinacePageUI;
+            thread.addTask(task);
         }
-    }, 5000);
+        let task = new Task('LAC', 5000, loadAllCodes);
+        thread.addTask(task);
+        resolve();
+    }
+
+    let task = new Task('LAC', 5000, loadAllCodes);
+    thread.addTask(task);
+    thread.start();
 }
+
 
 let url = window.location.href;
 if (url == 'https://www.cls.cn/finance') {
     setTimeout(() => {
         initFinacePage();
-    }, 2000);
+    }, 3000);
+} else if (url.indexOf('https://www.cls.cn/plate?code=') >= 0) {
+    setTimeout(() => {
+        initFinacePage();
+    }, 3000);
 }

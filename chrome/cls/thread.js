@@ -74,3 +74,18 @@ Thread.prototype.insertTask = function (idx, task) {
 	this.tasks.splice(idx, 0, task);
 }
 
+Thread.prototype.addUniqueTask = function(uniqueId, task) {
+	for (let i = 0; i < this.tasks.length; i++) {
+		let tk = this.tasks[i];
+		if (tk['__unique_id__'] && tk['__unique_id__'] == uniqueId) {
+			return;
+		}
+	}
+	if (uniqueId != null) {
+		task['__unique_id__'] = uniqueId;
+	}
+	
+	this.tasks.push(task);
+}
+
+
