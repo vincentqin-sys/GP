@@ -62,7 +62,7 @@ function deepCopy(obj) {
 }
 
 function checkWindowAlive() {
-    let bt = (Date.now() - proc_info.lastOpenZSPageTime) / 1000 >= 60;
+    let bt = (Date.now() - proc_info.lastOpenZSPageTime) / 1000 >= 8;
     if (! bt) {
         return;
     }
@@ -137,7 +137,7 @@ function getTimeLine(code) {
 }
 
 
-setInterval(run_loop, 1000 * 30); // 20 seconds
+setInterval(run_loop, 1000 * 10); // 20 seconds
 
 // CORS
 function updateHeaders(hds, name, value) {

@@ -396,13 +396,13 @@ class TimeLineView extends Listener {
         super();
         this.data = null;
         let thiz = this;
-        let canvas = $('<canvas style="float-x: left; width: ' + width + 'px; height: ' + height + 'px; border-right: solid 1px #ccc;" />');
+        let canvas = $('<canvas style="width: ' + width + 'px; height: ' + height + 'px; border-right: solid 1px #ccc;" />');
         canvas = canvas.get(0);
         canvas.addEventListener('mousemove', function(e) {
-            thiz.mouseMove(e.offsetX, e.offsetY, true);
+            //thiz.mouseMove(e.offsetX, e.offsetY, true);
         });
         canvas.addEventListener('mouseleave', function(e) {
-            thiz.mouseLeave(true);
+            //thiz.mouseLeave(true);
         });
         this.canvas = canvas;
         canvas.width = this.width  = width;
@@ -448,7 +448,7 @@ class TimeLineView extends Listener {
             this.minPrice = this.data.pre;
         if (this.maxPrice < this.data.pre)
             this.maxPrice = this.data.pre;
-        
+
         let pointsCount = parseInt(4 * 60 / POINT_NN); // 画的点数
         let pointsDistance = (this.width - PADDING_X) / (pointsCount - 1); // 点之间的距离
         
@@ -521,8 +521,8 @@ class TimeLineView extends Listener {
     }
 
     mouseMove(x, y, notify) {
-        this.draw();
-        this.drawMouse(x);
+        //this.draw();
+        //this.drawMouse(x);
         if (notify) {
             this.notify({name : 'MouseMove', x : x, y : y, source : this});
         }

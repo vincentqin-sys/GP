@@ -4,29 +4,25 @@ window['pageInfo'] = pageInfo;
 let thread = new Thread();
 const ADD_WIDTH = 300;
 
-function updateFinacePageUI(code, needDraw) {
+function updateFinacePageUI(code) {
     let item = timelines[code];
     if (! item) {
         return;
     }
-    
     if (item.ui) {
         item.ui.remove();
     } else {
         item.view = new TimeLineView(ADD_WIDTH, 40);
         item.ui = $(item.view.canvas);
     }
+    // check is same
+    let changed = !item.model  || !item.view.data || item.view.data.dataArr.length != item.model.dataArr.length;
     item.view.setData(item.model);
-    if (needDraw) {
-        item.view.draw();
-    }
-
     let table = $('table.watch-table');
     let trs = table.find('tr');
     for (let i = 1; i < trs.length; i++) {
         let tr = trs.eq(i);
-        let rowCode = tr.find('td:eq(0) > a > div:eq(1)').text();
-        rowCode = rowCode.trim().substring(2);
+        let rowCode = getCodeInTd(tr);
         if (rowCode == code) {
             let tds = tr.find('td');
             let td = null;
@@ -41,6 +37,9 @@ function updateFinacePageUI(code, needDraw) {
             break;
         }
     }
+    if (changed) {
+        item.view.draw();
+    }
 }
 
 function loadTimeLine(task, resolve) {
@@ -48,7 +47,7 @@ function loadTimeLine(task, resolve) {
     let code = task.code;
     function cb(resp) {
         if (! resp) {
-            //console.log('clear ui');
+            // console.log('clear ui: ', task.code);
             // clear ui
             if (timelines[code] && timelines[code].ui) {
                 timelines[code].ui.remove();
@@ -61,14 +60,9 @@ function loadTimeLine(task, resolve) {
         if (! obj) {
             timelines[code] = obj = {model: null, ui: null, view: null};
         }
-        // check is same
-        let changed = false;
-        if (! obj.model  || resp.dotsCount != obj.model.dotsCount) {  // changed
-            obj.model = resp;
-            changed = true;
-        }
+        obj.model = resp;
         // update ui
-        task.updateUI(code, changed);
+        task.updateUI(code);
         resolve();
     }
 
@@ -79,6 +73,15 @@ function extendWidth(obj, aw) {
     let w = obj.width();
     w += aw;
     obj.css('width', '' + w + 'px');
+}
+
+function getCodeInTd(tr) {
+    let txt = tr.find('td:eq(0)').text().trim();
+    let code = txt.substring(txt.length - 6)
+    if (code && code.length == 6) {
+        return code;
+    }
+    return '';
 }
 
 function initFinacePage() {
@@ -93,8 +96,7 @@ function initFinacePage() {
     let codes = [];
     for (let i = 1; i < trs.length; i++) {
         trs.eq(i).css('border-top', 'solid 1px #ccc');
-        let code = trs.eq(i).find('td:eq(0) > a > div:eq(1)').text();
-        code = code.trim().substring(2);
+        let code = getCodeInTd(trs.eq(i));
         if (code && code.length == 6) {
             codes.push(code);
             chrome.runtime.sendMessage({cmd: 'LOAD_TIMELINE', data: code});
@@ -107,13 +109,11 @@ function initFinacePage() {
         let table = $('table.watch-table');
         let trs = table.find('tr');
         for (let i = 1; i < trs.length; i++) {
-            let code = trs.eq(i).find('td:eq(0) > a > div:eq(1)').text();
-            code = code.trim().substring(2);
+            let code = getCodeInTd(trs.eq(i));
             //console.log(i, code);
             if (code.length != 6) {
                 continue;
             }
-            // loadTimeLine(code, updateFinacePageUI);
             let task = new Task(i, 300, loadTimeLine);
             task.code = code;
             task.updateUI = updateFinacePageUI;
