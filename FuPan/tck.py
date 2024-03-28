@@ -21,10 +21,13 @@ class TCK_Window(base_win.BaseWindow):
         self.tableWin = table.EditTableWindow()
         self.editorWin = base_win.Editor()
         self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
+        self.editorWin.enableListeners['DbClick'] = True
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.autoSyncCheckBox = base_win.CheckBox({'title': '自动同步显示'})
         self.tckData = None
         self.tckSearchData = None
+        
+        self.inputTips = []
         
         base_win.ThreadPool.addTask('TCK', self.runTask)
 
@@ -32,7 +35,7 @@ class TCK_Window(base_win.BaseWindow):
         self.loadAllData()
         if not self.tableWin.hwnd:
             return
-        self.onEditEnd('PressEnter', {'text': self.editorWin.text}, None)
+        self.onQuery(self.editorWin.text)
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -68,12 +71,32 @@ class TCK_Window(base_win.BaseWindow):
         self.layout.setContent(0, 2, self.checkBox)
         self.layout.setContent(0, 3, self.autoSyncCheckBox)
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
-        self.editorWin.addListener(self.onEditEnd, None)
+        def onPressEnter(evtName, evt, args):
+            q = evt['text'].strip()
+            self.onQuery(q)
+            if q and (q not in self.inputTips):
+                self.inputTips.append(q)
+        self.editorWin.addNamedListener('PressEnter', onPressEnter, None)
+        self.editorWin.addNamedListener('DbClick', self.onDbClickEditor, None)
         self.tableWin.addListener(self.onDbClick, None)
         self.tableWin.addListener(self.onEditCell, None)
         sm = ths_win.ThsShareMemory.instance()
         sm.open()
         sm.addListener('ListenSync_TCK', self.onAutoSync)
+
+    def onDbClickEditor(self, evtName, evt, args):
+        if not self.inputTips:
+            return
+        model = []
+        for s in self.inputTips:
+            model.append({'title': s})
+        def onSelMenu(name, evt, args):
+            self.editorWin.setText(evt['item']['title'])
+            self.editorWin.invalidWindow()
+            self.onQuery(self.editorWin.getText())
+        menu = base_win.PopupMenuHelper.create(self.editorWin.hwnd, model)
+        menu.addNamedListener('Select', onSelMenu)
+        menu.show()
 
     def onEditCell(self, evtName, evt, args):
         if evtName != 'CellChanged':
@@ -94,21 +117,19 @@ class TCK_Window(base_win.BaseWindow):
             return
         self.editorWin.setText(code)
         self.editorWin.invalidWindow()
-        self.onEditEnd('PressEnter', {'text': self.editorWin.text}, None)
+        self.onQuery(self.editorWin.text)
 
 
     def onRefresh(self, evtName, evtInfo, args):
         if evtName == 'Click':
             self.tckData = None
-            self.onEditEnd('PressEnter', {'text': self.editorWin.text}, None)
+            self.onQuery(self.editorWin.text)
 
-    def onEditEnd(self, evtName, evtInfo, args):
-        if evtName != 'PressEnter':
-            return
+    def onQuery(self, queryText):
         self.tableWin.setData(None)
         self.tableWin.invalidWindow()
         self.loadAllData()
-        self.doSearch(evtInfo['text'])
+        self.doSearch(queryText)
         self.tableWin.setData(self.tckSearchData)
         self.tableWin.invalidWindow()
     

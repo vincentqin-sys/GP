@@ -2,7 +2,7 @@ import win32gui, win32con, sys, os, win32api
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
-import ddlr_detail, kpl, multi_kline, ddlr_struct, zs, tck, vol_pm, tcgn2
+import ddlr_detail, kpl_2, multi_kline, ddlr_struct, zs, tck, vol_pm, tcgn2
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -13,7 +13,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
-        gpInfos = [{'name': 'KPL', 'title': '开盘啦'},
+        gpInfos = [{'name': 'KPL', 'title': '市场情绪'},
             {'name': 'DDLR_STRUCT', 'title': '大单流入'},
             {'name': 'THS_ZS', 'title': '指数'}, 
             {'name': 'VOL_PM', 'title': '成交额排名'},
@@ -28,7 +28,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         gpLy.setContent(0, 0, gp)
         self.layout.setContent(0, 0, gpLy)
 
-        kplWin = kpl.KPL_MgrWindow()
+        kplWin = kpl_2.KPL_MgrWindow()
         kplWin.createWindow(self.hwnd, (0, 0, 1, 1))
         kplWin.init()
         self.cardLayout.addContent(kplWin)
@@ -73,9 +73,10 @@ class FuPanMgrWindow(base_win.BaseWindow):
 if __name__ == '__main__':
     base_win.ThreadPool.start()
     fp = FuPanMgrWindow()
-    w = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+    SW = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+    SH = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
     h = 500
-    fp.createWindow(None, (0, 520, w, h), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
-    fp.layout.resize(0, 0, w, h)
+    fp.createWindow(None, (0, SH - h - 35, SW, h), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
+    fp.layout.resize(0, 0, SW, h)
     #win32gui.ShowWindow(fp.hwnd, win32con.SW_MAXIMIZE)
     win32gui.PumpMessages()

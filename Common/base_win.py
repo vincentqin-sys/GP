@@ -23,12 +23,18 @@ class BaseWindow:
     
     # func = function(evtName, evtInfo, args)
     def addListener(self, func, args = None):
-        self.listeners.append((func, args))
+        self.listeners.append((func, args, '*'))
+
+    def addNamedListener(self, evtName, func, args = None):
+        if evtName == None or evtName == '':
+            evtName = '*'
+        self.listeners.append((func, args, evtName))
 
     def notifyListener(self, evtName, evtInfo):
         for ls in self.listeners:
-            func, args = ls
-            func(evtName, evtInfo, args)
+            func, args, name = ls
+            if name == '*' or name == evtName: 
+                func(evtName, evtInfo, args)
 
     # @param rect = (x, y, width, height)
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''): #  0x00800000 | 
@@ -548,7 +554,7 @@ class GridLayout(Layout):
             if type(tp) == str:
                 tp = tp.strip()
             if tp == 'auto':
-                vals[i] = max(less, 0)
+                vals[i] = int(max(less, 0))
                 break
         return vals
 
@@ -636,8 +642,8 @@ class GridLayout(Layout):
         return rect
 
     def getLeftTop(self, row, col):
-        y = row * self.gaps[0]
-        x = col * self.gaps[1]
+        y = int(row * self.gaps[0])
+        x = int(col * self.gaps[1])
         for r in range(0, row):
             y += self.rows[r]
         for c in range(0, col):
@@ -667,12 +673,14 @@ class GridLayout(Layout):
                 win32gui.SetWindowPos(win.hwnd, None, x, y, w, h, win32con.SWP_NOZORDER)
             else:
                 win32gui.SetWindowPos(win.hwnd, None, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+            win.invalidWindow()
         elif type(win) == int:
             # is HWND object
             if style['autoFit']:
                 win32gui.SetWindowPos(win, None, x, y, w, h, win32con.SWP_NOZORDER)
             else:
                 win32gui.SetWindowPos(win, None, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+            win32gui.InvalidateRect(win, None, True)
         elif isinstance(win, Layout):
             if style['autoFit']:
                 win.resize(x, y, w, h)
@@ -1550,6 +1558,7 @@ class PopupMenu(PopupWindow):
         self.css['selBgColor'] = 0xdfd0d0
         self.css['textColor'] = 0x222222
         self.css['disableTextColor'] = 0x909090
+        self.destroyOnHide = True
         self.LEFT_RIGHT_PADDING = 20
         self.SEPRATOR_HEIGHT = 2
         self.ARROW_HEIGHT = 10
@@ -2165,7 +2174,8 @@ class Editor(BaseEditor):
             if self.text:
                 self.setSelRange(0, len(self.text))
                 self.invalidWindow()
-            return True
+                return True
+            # else : NO return 
         if  msg == win32con.WM_IME_CHAR or msg == win32con.WM_CHAR:
             self.onChar(wParam)
             return True

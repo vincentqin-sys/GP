@@ -7,7 +7,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
 from Tdx import datafile, orm as tdx_orm
 from Download import henxin, ths_ddlr
-from THS import orm as ths_orm
+from THS import orm as ths_orm, hot_utils
 from FuPan import ddlr_detail, multi_kline
 from Common import base_win, kline
 
@@ -16,21 +16,27 @@ class KPL_Window(base_win.BaseWindow):
         super().__init__()
         self.day = None
         self.data = None
-        self.paddings = (10, 5, 10, 0) # left, top, right, bottom
+        self.paddings = (10, 5, 10, 2) # left, top, right, bottom
         self.itemWidth = 16 # 每项宽度
         self.itemFontSize = 12
 
     def onDraw(self, hdc):
-        #self.drawer.drawRect2(hdc, (0, 0, *self.getClientSize()), 0xff0000)
-        if not self.data:
-            return
         w, h = self.getClientSize()
+        # draw border
+        self.drawer.drawRect(hdc, (0, 0, w, h), 0x505050)
+        # draw day
+        ds = f"{self.day // 10000}-{self.day // 100 % 100 :02d}-{self.day % 100 :02d}"
+        rc = (10, 30 , 120, 50)
+        self.drawer.drawText(hdc, ds, rc, 0xb0b0b0, align=win32con.DT_LEFT)
         # draw scqx
         SCQX_CYCLE_H, SCQX_H = 20, 8
         scqdRect = [self.paddings[1] + 15, self.paddings[1] + (SCQX_CYCLE_H - SCQX_H) // 2, w - self.paddings[2] - 60, self.paddings[1] + (SCQX_CYCLE_H - SCQX_H) // 2 + SCQX_H]
         scqdCycle = [self.paddings[1] + 10, self.paddings[1], self.paddings[1] + 10 + SCQX_CYCLE_H, self.paddings[1] + SCQX_CYCLE_H]
         self.drawer.fillRect(hdc, scqdRect, 0xaaaaaa)
         self.drawer.fillCycle(hdc, scqdCycle, 0x00cc00)
+
+        if not self.data:
+            return
         zhqd = self.data.get('zhqd', 0)
         sgx = int((scqdRect[2] - scqdRect[0]) / 100 * min(zhqd, 40))
         rc = [scqdRect[0], scqdRect[1], scqdRect[0] + sgx, scqdRect[3]]
@@ -61,7 +67,7 @@ class KPL_Window(base_win.BaseWindow):
             n = self.data.get(v, 0)
             maxNum = max(n, maxNum)
         for i, k in enumerate(keys):
-            sx = int(space * (i + 1)) + self.itemWidth * i
+            sx = int(space * i) + self.itemWidth * i + self.paddings[0]
             color = 0xaaaaaa
             if i < 5:
                 color = 0x0000ff
@@ -72,7 +78,7 @@ class KPL_Window(base_win.BaseWindow):
             sy = endY - int(ih)
             rc = (sx, sy, sx + self.itemWidth, endY)
             self.drawer.fillRect(hdc, rc, color)
-            rc = [sx - 3, sy - 15, sx + self.itemWidth + 3, sy]
+            rc = [sx - 5, sy - 15, sx + self.itemWidth + 5, sy]
             fnt = self.drawer.getFont(fontSize = self.itemFontSize)
             self.drawer.use(hdc, fnt)
             self.drawer.drawText(hdc, f'{self.data.get(k, 0)}', rc, color)
@@ -161,113 +167,94 @@ class KPL_Window(base_win.BaseWindow):
             return True
         return False
 
-class KPL_ZT_TableWindow(base_win.TableWindow):
-    def __init__(self) -> None:
-        super().__init__()
-        self.headers = [{'name':'#idx', 'title':'', 'width': 30}, 
-                        {'name':'name', 'title':'股票名称', 'width': 70}, 
-                        {'name':'ztTime', 'title':'涨停时间', 'width': 60}, 
-                        {'name':'status', 'title':'状态', 'width': 60}, 
-                        {'name':'ztReason', 'title':'涨停原因', 'width': 0, 'stretch': 1}] # {'name':'#idx', 'title':''}, 
-
-    def updateDay(self, day):
-        if not day:
-            self.setData(None)
-            return
-        if type(day) == int:
-            day = f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
-        elif type(day) == str and len(day) == 8:
-            day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
-        qr = ths_orm.KPL_ZT.select().where(ths_orm.KPL_ZT.day == day)
-        if self.data:
-            self.data.clear()
-        self.setData([d.__data__ for d in qr])
-        self.invalidWindow()
-
 class KPL_MgrWindow(base_win.BaseWindow):
+    KPL_WIDTH, KPL_HEIGHT = 310, 180
+
     def __init__(self) -> None:
         super().__init__()
-        self.layout = base_win.GridLayout((170, 30, '1fr'), (400, '1fr'), (10, 10))
-        self.kplWin = KPL_Window()
-        self.kplTableWin = KPL_ZT_TableWindow()
-        self.multiKLineWin = multi_kline.MultiKLineWindow()
+        self.layout = None
+        self.kplWins = []
         self.datePickerWin = base_win.DatePicker()
+        self.css['bgColor'] = 0x202020
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
-        self.layout.setContent(0, 0, self.kplWin)
-        self.layout.setContent(2, 0, self.kplTableWin)
-        self.layout.setContent(0, 1, self.multiKLineWin, {'verExpand' : -1})
-        gl = base_win.GridLayout(('100%', ), (40, '1fr', 150, '1fr', 40), (0, 5))
-        preDayBtn = base_win.Button({'name': 'pre-day-btn', 'title': '<<'})
-        nextDayBtn = base_win.Button({'name': 'next-day-btn', 'title': '>>'})
-        preDayBtn.addListener(self.onLisetenSelectDay, 'pre')
-        nextDayBtn.addListener(self.onLisetenSelectDay, 'next')
-        preDayBtn.createWindow(self.hwnd, (0, 0, 40, 30))
-        nextDayBtn.createWindow(self.hwnd, (0, 0, 40, 30))
-        gl.setContent(0, 0, preDayBtn)
-        gl.setContent(0, 2, self.datePickerWin)
-        gl.setContent(0, 4, nextDayBtn)
-        self.layout.setContent(1, 0, gl)
-        self.kplWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.kplTableWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.multiKLineWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.datePickerWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.datePickerWin.addListener(self.onLisetenDatePickerChanged, 'DatePicker')
-        self.kplTableWin.addListener(self.onListenTable, 'TableWindow')
-        self.layout.resize(0, 0, *self.getClientSize())
 
-    def onLisetenSelectDay(self, evtName, evtInfo, args):
-        if evtName != 'Click':
-            return
-        #print('onLisetenSelectDay: ', target, evtName, evtInfo)
-        if args == 'next':
-            self.kplWin.nextDay()
-            self.datePickerWin.setSelDay(self.kplWin.day)
-            self.kplTableWin.updateDay(self.kplWin.day)
-        elif args == 'pre': 
-            self.kplWin.preDay()
-            self.datePickerWin.setSelDay(self.kplWin.day)
-            self.kplTableWin.updateDay(self.kplWin.day)
-
-    def onLisetenDatePickerChanged(self, evtName, evtInfo, args):
-        if evtName != 'Select':
-            return
-        day = evtInfo['day']
-        #day = f'{day.year}-{day.month :02d}-{day.day :02d}'
-        self.kplWin.updateDay(day)
-        self.kplTableWin.updateDay(day)
-
-    def onLisetenEvent(self, evtName, evtInfo, args):
-        print('onLisetenEvent: ', args, evtName, evtInfo)
-        pass
-
-    def onListenTable(self, evtName, evtInfo, args):
-        if evtName == 'DbClick' or evtName == 'RowEnter':
-            data = evtInfo['data']
-            if not data:
+        def onDateChanged(evtName, evtInfo, args):
+            if evtName != 'Select':
                 return
-            self.multiKLineWin.updateCode(data['code'])
-            self.multiKLineWin.setMarkDay(data['day'])
-            self.multiKLineWin.makeVisible(data['day'])
+            day = evtInfo['day']
+            self.changeDate(day)
+        self.datePickerWin.addListener(onDateChanged, 'DatePicker')
+
+    def findIdx(self, days, date):
+        for i in range(-1, -len(days), -1):
+            if days[i] <= date:
+                return i + len(days)
+        return -1
+
+    def changeDate(self, date):
+        days = hot_utils.getTradeDaysByHot()
+        if not date:
+            date = days[-1]
+        idx = self.findIdx(days, date)
+        if idx < 0:
+            return
+        idx = idx - len(self.kplWins) + 1
+        for i, k in enumerate(self.kplWins):
+            k.updateDay(days[idx + i])
+
+    def clear(self):
+        for k in self.kplWins:
+            win32gui.DestroyWindow(k.hwnd)
+        self.kplWins.clear()
+        if self.layout:
+            del self.layout
+            self.layout = None
+
+    def buildWins(self, rowNum, colNum, rowGap, colGap):
+        w, h = self.getClientSize()
+        rowTmp = ('1fr', ) * rowNum
+        colTmp = ('1fr', ) * colNum
+        self.clear()
+        self.layout = base_win.GridLayout((30, *rowTmp), colTmp, (rowGap, colGap))
+        self.layout.setContent(0, 0, self.datePickerWin, {'autoFit': False})
+        for r in range(rowNum):
+            for c in range(colNum):
+                win = KPL_Window()
+                win.createWindow(self.hwnd, (0, 0, 1, 1))
+                self.kplWins.append(win)
+                self.layout.setContent(r + 1, c, win)
+
+    def onCreateLayout(self):
+        if not self.datePickerWin.hwnd:
+            self.datePickerWin.createWindow(self.hwnd, (0, 0, 200, 30))
+        w, h = self.getClientSize()
+        rowNum = max((h - 30) // self.KPL_HEIGHT, 1)
+        colNum = max(w // self.KPL_WIDTH, 1)
+        rowGap = (h - rowNum * self.KPL_HEIGHT - 30) / rowNum
+        colGap = (w - colNum * self.KPL_WIDTH) / colNum
+        if len(self.kplWins) != rowNum * colNum:
+            self.clear()
+            self.buildWins(rowNum, colNum, rowGap, colGap)
+        else:
+            self.layout.gaps = (rowGap, colGap)
+        self.layout.resize(0, 0, w, h - 5)
+        self.changeDate(0)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:
             w, h = lParam & 0xffff, (lParam >> 16) & 0xffff
-            self.layout.resize(0, 0, w, h)
+            self.onCreateLayout()
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
     def init(self):
-        #self.multiKLineWin.updateCode('603259')
-        day = self.kplWin.getLastTradeDay()
-        self.kplWin.updateDay(day)
-        self.datePickerWin.setSelDay(day)
-        self.kplTableWin.updateDay(day)
+        self.changeDate(0)
 
 if __name__ == '__main__':
     kpl = KPL_MgrWindow()
-    kpl.createWindow(None, (0, 0, 1000, 400), win32con.WS_OVERLAPPEDWINDOW)
-    win32gui.ShowWindow(kpl.hwnd, win32con.SW_MAXIMIZE)
+    kpl.createWindow(None, (0, 0, 1500, 550), win32con.WS_OVERLAPPEDWINDOW)
+    win32gui.ShowWindow(kpl.hwnd, win32con.SW_SHOW)
     kpl.init()
     win32gui.PumpMessages()
