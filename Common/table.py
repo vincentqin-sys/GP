@@ -65,12 +65,12 @@ class EditTableWindow(base_win.TableWindow):
         #    return
         txt = self.editor.text.strip() if self.trimText else self.editor.text
         rowData[hd['name']] = txt
-        self.notifyListener('CellChanged', {'src': self, 'row': row, 'col': col, 'data': rowData, 'header': hd, 'model': self.data})
+        self.notifyListener(self.Event('CellChanged', self, row = row, col = col, data = rowData, header = hd, model = self.data))
 
-    def onPressEnter(self, evtName, evtInfo, args):
-        if evtName == 'PressEnter':
+    def onPressEnter(self, evt, args):
+        if evt.name == 'PressEnter':
             self.endEdit()
-        elif evtName == 'PressTab':
+        elif evt.name == 'PressTab':
             col = self.editor.col + 1
             self.endEdit()
             if col < len(self.headers):
@@ -89,7 +89,7 @@ class EditTableWindow(base_win.TableWindow):
             if row < 0 or col < 0:
                 return True
             dx = self.sortData if self.sortData else self.data
-            self.notifyListener('ClickCell', {'src' : self, 'row': row, 'col': col, 'data' : dx[row], 'model': dx})
+            self.notifyListener(self.Event('ClickCell', self, row = row, col = col, data =  dx[row], model = dx))
             return True
         if msg == win32con.WM_LBUTTONDBLCLK:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
@@ -102,7 +102,7 @@ class EditTableWindow(base_win.TableWindow):
                 return True
             if self.enableListeners['DbClick']:
                 dx = self.sortData if self.sortData else self.data
-                self.notifyListener('DbClick', {'src': self, 'x': x, 'y': y, 'row': row, 'data': dx[row], 'model': dx})
+                self.notifyListener(self.Event('DbClick', self, x = x, y = y, row = row, data = dx[row], model = dx))
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 

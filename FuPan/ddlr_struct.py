@@ -59,8 +59,8 @@ class DddlrStructWindow(base_win.BaseWindow):
         day = today.strftime('%Y%m%d')
         self.updateDay(day)
 
-    def onContextMenu(self, evtName, evtInfo, tabIdx):
-        if evtName != 'ContextMenu':
+    def onContextMenu(self, evt, tabIdx):
+        if evt.name != 'ContextMenu':
             return
         win : base_win.TableWindow = self.listWins[tabIdx]
         if win.selRow < 0:
@@ -80,8 +80,8 @@ class DddlrStructWindow(base_win.BaseWindow):
                 return i
         return -1
     
-    def onMenuItemSelect(self, evtName, evtInfo, args):
-        if evtName != 'Select':
+    def onMenuItemSelect(self, evt, args):
+        if evt.name != 'Select':
             return
         tabIdx, code = args
         for i, win in enumerate(self.listWins):
@@ -92,10 +92,10 @@ class DddlrStructWindow(base_win.BaseWindow):
             win.showRow(idx)
             win.invalidWindow()
 
-    def onDbClick(self, evtName, evtInfo, idx):
-        if evtName != 'DbClick' and evtName != 'RowEnter':
+    def onDbClick(self, evt, idx):
+        if evt.name != 'DbClick' and evt.name != 'RowEnter':
             return
-        data = evtInfo['data']
+        data = evt.data
         if not data:
             return
         if self.checkBox.isChecked():
@@ -136,19 +136,19 @@ class DddlrStructWindow(base_win.BaseWindow):
         win.makeVisible(-1)
         win.addListener(self.openKlineMinutes, win)
 
-    def openKlineMinutes(self, evtName, evt, parent):
-        if evtName != 'DbClick':
+    def openKlineMinutes(self, evt, parent):
+        if evt.name != 'DbClick':
             return
         win = ddlr_detail.DDLR_MinuteMgrWindow()
         rc = win32gui.GetWindowRect(parent.hwnd)
         win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
-        day = evt['data'].day
-        win.updateCodeDay(evt['code'], day)
+        day = evt.data.day
+        win.updateCodeDay(evt.code, day)
 
-    def onSelDayChanged(self, evtName, evtInfo, args):
-        if evtName != 'Select':
+    def onSelDayChanged(self, evt, args):
+        if evt.name != 'Select':
             return
-        self.updateDay(evtInfo['day'])
+        self.updateDay(evt.day)
 
     def updateDay(self, day):
         if type(day) == int:

@@ -217,8 +217,8 @@ class KPL_MgrWindow(base_win.BaseWindow):
         self.kplTableWin.addListener(self.onListenTable, 'TableWindow')
         self.layout.resize(0, 0, *self.getClientSize())
 
-    def onLisetenSelectDay(self, evtName, evtInfo, args):
-        if evtName != 'Click':
+    def onLisetenSelectDay(self, evt, args):
+        if evt.name != 'Click':
             return
         #print('onLisetenSelectDay: ', target, evtName, evtInfo)
         if args == 'next':
@@ -230,10 +230,10 @@ class KPL_MgrWindow(base_win.BaseWindow):
             self.datePickerWin.setSelDay(self.kplWin.day)
             self.kplTableWin.updateDay(self.kplWin.day)
 
-    def onLisetenDatePickerChanged(self, evtName, evtInfo, args):
-        if evtName != 'Select':
+    def onLisetenDatePickerChanged(self, evt, args):
+        if evt.name != 'Select':
             return
-        day = evtInfo['day']
+        day = evt.day
         #day = f'{day.year}-{day.month :02d}-{day.day :02d}'
         self.kplWin.updateDay(day)
         self.kplTableWin.updateDay(day)
@@ -242,9 +242,9 @@ class KPL_MgrWindow(base_win.BaseWindow):
         print('onLisetenEvent: ', args, evtName, evtInfo)
         pass
 
-    def onListenTable(self, evtName, evtInfo, args):
-        if evtName == 'DbClick' or evtName == 'RowEnter':
-            data = evtInfo['data']
+    def onListenTable(self, evt, args):
+        if evt.name == 'DbClick' or evt.name == 'RowEnter':
+            data = evt.data
             if not data:
                 return
             self.multiKLineWin.updateCode(data['code'])

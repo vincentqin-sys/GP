@@ -483,10 +483,10 @@ class CustomIndicator(Indicator):
         self.customData = None
         klineWin.addListener(self.onSelIdxChanged, None)
 
-    def onSelIdxChanged(self, evtName, evtInfo, args):
-        if evtName != 'selIdx.changed':
+    def onSelIdxChanged(self, evt, args):
+        if evt.name != 'selIdx.changed':
             return
-        idx = evtInfo['selIdx']
+        idx = evt.selIdx
         self.calcVisibleRange(idx)
         if self.visibleRange:
             self.calcValueRange(*self.visibleRange)
@@ -902,14 +902,12 @@ class KLineWindow(base_win.BaseWindow):
             return True
         if msg == win32con.WM_MOUSEMOVE:
             self.onMouseMove(lParam & 0xffff, (lParam >> 16) & 0xffff)
-            self.notifyListener('MouseMove', {'src': self, 'x': lParam & 0xffff, 'y' : (lParam >> 16) & 0xffff})
-            #self.notifyListener('WM_MOUSEMOVE', {'src': self, 'lParam': lParam, 'wParam' : wParam})
+            self.notifyListener(self.Event('MouseMove', self, x = lParam & 0xffff, y = (lParam >> 16) & 0xffff))
             return True
         if msg == win32con.WM_KEYDOWN:
             keyCode = lParam >> 16 & 0xff
             self.onKeyDown(keyCode)
-            self.notifyListener('KeyDown', {'src': self, 'keyCode': keyCode})
-            #self.notifyListener('WM_KEYDOWN', {'src': self, 'lParam': lParam, 'wParam' : wParam})
+            self.notifyListener(self.Event('KeyDown', self, keyCode = keyCode))
             return True
         if msg == win32con.WM_LBUTTONDOWN:
             win32gui.SetFocus(self.hwnd)
@@ -919,7 +917,7 @@ class KLineWindow(base_win.BaseWindow):
             if y >= self.klineIndicator.y and y < self.klineIndicator.y + self.klineIndicator.height: # in kline dbclick
                 si = self.klineIndicator.getIdxAtX(x)
                 if si >= 0:
-                    self.notifyListener('DbClick', {'src': self, 'idx': si, 'data': self.model.data[si], 'code': self.model.code})
+                    self.notifyListener(self.Event('DbClick', self, idx = si, data = self.model.data[si], code = self.model.code))
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
@@ -929,7 +927,7 @@ class KLineWindow(base_win.BaseWindow):
         if attrName == 'selIdx' and self.selIdx != attrVal:
             self.selIdx = attrVal
             data = self.model.data[attrVal] if attrVal >= 0 else None
-            self.notifyListener('selIdx.changed', {'selIdx': attrVal, 'data': data})
+            self.notifyListener(self.Event('selIdx.changed', self, selIdx = attrVal, data = data))
             win32gui.InvalidateRect(self.hwnd, None, True)
         
     def onMouseMove(self, x, y):

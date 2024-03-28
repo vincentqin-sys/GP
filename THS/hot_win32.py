@@ -92,8 +92,8 @@ def _workThread(thsWin):
             simpleWindow2.changeSelectDay(selDay)
             thsShareMem.writeSelDay(selDay)
 
-def onListen(evtName, evtInfo, args):
-    if args == 'ListenHotWindow' and evtName == 'mode.change':
+def onListen(evt, args):
+    if args == 'ListenHotWindow' and evt.name == 'mode.change':
         #showSortAndLiangDianWindow(not evtInfo['maxMode'], True)
         pass
 

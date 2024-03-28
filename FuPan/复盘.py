@@ -30,7 +30,6 @@ class FuPanMgrWindow(base_win.BaseWindow):
 
         kplWin = kpl_2.KPL_MgrWindow()
         kplWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        kplWin.init()
         self.cardLayout.addContent(kplWin)
 
         ddlrWin = ddlr_struct.DddlrStructWindow()
@@ -56,19 +55,11 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.cardLayout.showCardByIdx(0)
         self.layout.setContent(1, 0, self.cardLayout)
 
-    def changeGroup(self, evtName, evtInfo, args):
-        if evtName != 'ClickSelect':
+    def changeGroup(self, evt, args):
+        if evt.name != 'ClickSelect':
             return
-        idx = evtInfo['groupIdx']
+        idx = evt.groupIdx
         self.cardLayout.showCardByIdx(idx)
-
-    def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_SIZE and wParam != win32con.SIZE_MINIMIZED:
-            w = lParam & 0xffff
-            h = (lParam >> 16) & 0xffff
-            self.layout.resize(0, 0, w, h)
-            return True
-        return super().winProc(hwnd, msg, wParam, lParam)
 
 if __name__ == '__main__':
     base_win.ThreadPool.start()
@@ -77,6 +68,7 @@ if __name__ == '__main__':
     SH = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
     h = 500
     fp.createWindow(None, (0, SH - h - 35, SW, h), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
-    fp.layout.resize(0, 0, SW, h)
+    w, h = fp.getClientSize()
+    fp.layout.resize(0, 0, w, h)
     #win32gui.ShowWindow(fp.hwnd, win32con.SW_MAXIMIZE)
     win32gui.PumpMessages()

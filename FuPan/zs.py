@@ -70,8 +70,8 @@ class ZSWindow(base_win.BaseWindow):
         day = today.strftime('%Y%m%d')
         self.updateDay(day)
     
-    def onContextMenu(self, evtName, evtInfo, tabIdx):
-        if evtName != 'ContextMenu':
+    def onContextMenu(self, evt, tabIdx):
+        if evt.name != 'ContextMenu':
             return
         win : base_win.TableWindow = self.listWins[tabIdx]
         if win.selRow < 0:
@@ -91,8 +91,8 @@ class ZSWindow(base_win.BaseWindow):
                 return i
         return -1
     
-    def onMenuItemSelect(self, evtName, evtInfo, args):
-        if evtName != 'Select':
+    def onMenuItemSelect(self, evt, args):
+        if evt.name != 'Select':
             return
         tabIdx, code = args
         for i, win in enumerate(self.listWins):
@@ -103,16 +103,16 @@ class ZSWindow(base_win.BaseWindow):
             win.showRow(idx)
             win.invalidWindow()
 
-    def onSelDayChanged(self, evtName, evtInfo, args):
-        if evtName != 'Select':
+    def onSelDayChanged(self, evt, args):
+        if evt.name != 'Select':
             return
         # TODO: change models
-        self.updateDay(evtInfo['day'])
+        self.updateDay(evt.day)
     
-    def onDbClick(self, evtName, evtInfo, idx):
-        if evtName != 'DbClick' and evtName != 'RowEnter':
+    def onDbClick(self, evt, idx):
+        if evt.name != 'DbClick' and evt.name != 'RowEnter':
             return
-        data = evtInfo['data']
+        data = evt.data
         if not data:
             return
         if self.checkBox.isChecked():

@@ -538,7 +538,7 @@ class HotWindow(base_win.BaseWindow):
             return True
         elif msg == win32con.WM_LBUTTONDBLCLK:
             self.changeMode()
-            self.notifyListener('mode.change', {'maxMode' : self.maxMode})
+            self.notifyListener(self.Event('mode.change', self, maxMode = self.maxMode))
             return True
         elif msg == win32con.WM_RBUTTONUP:
             self.changeDataType()

@@ -8,6 +8,13 @@ import pyperclip # pip install pyperclip
 class BaseWindow:
     bindHwnds = {}
 
+    class Event:
+        def __init__(self, name, src, **kargs) -> None:
+            self.name = name
+            self.src = src
+            for k in kargs:
+                setattr(self, k, kargs[k])
+
     def __init__(self) -> None:
         self.hwnd = None
         self.oldProc = None
@@ -21,7 +28,7 @@ class BaseWindow:
                     'enableBorder': False, 'borderColor': 0x0} # config css style
         self.enableListeners = {'ContextMenu': False, 'DbClick': False, 'R_DbClick': False}
     
-    # func = function(evtName, evtInfo, args)
+    # func = function(event : Event, args)
     def addListener(self, func, args = None):
         self.listeners.append((func, args, '*'))
 
@@ -30,11 +37,11 @@ class BaseWindow:
             evtName = '*'
         self.listeners.append((func, args, evtName))
 
-    def notifyListener(self, evtName, evtInfo):
+    def notifyListener(self, event : Event):
         for ls in self.listeners:
             func, args, name = ls
-            if name == '*' or name == evtName: 
-                func(evtName, evtInfo, args)
+            if name == '*' or name == event.name:
+                func(event, args)
 
     # @param rect = (x, y, width, height)
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''): #  0x00800000 | 
@@ -67,17 +74,19 @@ class BaseWindow:
             del BaseWindow.bindHwnds[hwnd]
         if msg == win32con.WM_RBUTTONUP and self.enableListeners['ContextMenu']:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            self.notifyListener('ContextMenu', {'src': self, 'x': x, 'y': y})
+            self.notifyListener(self.Event('ContextMenu', self, x = x, y = y))
             return True
         if msg == win32con.WM_LBUTTONDBLCLK and self.enableListeners['DbClick']:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
-            self.notifyListener('DbClick', {'src': self, 'x': x, 'y': y})
+            self.notifyListener(self.Event('DbClick', self, x = x, y = y))
             return True
         if msg == win32con.WM_RBUTTONDBLCLK and self.enableListeners['R_DbClick']:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
-            self.notifyListener('R_DbClick', {'src': self, 'x': x, 'y': y})
+            self.notifyListener(self.Event('R_DbClick', self, x = x,  y = y))
             return True
-        if msg == win32con.WM_SIZE:
+        if msg == win32con.WM_SIZE and wParam != win32con.SIZE_MINIMIZED:
+            #style = win32gui.GetWindowLong(self.hwnd, win32con.GWL_STYLE)
+            #if (style & win32con.WS_OVERLAPPED) and
             if getattr(self, 'layout', None):
                 self.layout.resize(0, 0, *self.getClientSize())
             return True
@@ -783,7 +792,7 @@ class Cardayout(Layout):
 
 # listeners : DbClick = {src, x, y, row, data(row data), model(all data)}
 #             RowEnter = {src, row, data, model}
-#             SelectRow = {src, row, oldRow, data, model}
+#             SelectRow = {src, row(-1: 没有选中行), oldRow, data, model}
 class TableWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -1093,11 +1102,11 @@ class TableWindow(BaseWindow):
         if not self.data or row < 0 or row >= len(self.data):
             if self.selRow != row:
                 self.selRow = -1
-                self.notifyListener('SelectRow', {'src': self, 'row': self.selRow, 'oldRow': oldRow, 'data': None, 'model': data})
+                self.notifyListener(self.Event('SelectRow',self, row = -1, oldRow = oldRow, data = None, mode = data))
             return
         if self.selRow != row:
             self.selRow = row
-            self.notifyListener('SelectRow', {'src': self, 'row': row, 'oldRow': oldRow, 'data': data[row], 'model': data})
+            self.notifyListener(self.Event('SelectRow', self, row = row, oldRow = oldRow, data = data[row], model = data))
 
     def onClick(self, x, y):
         win32gui.SetFocus(self.hwnd)
@@ -1137,8 +1146,8 @@ class TableWindow(BaseWindow):
             return True
         elif key == win32con.VK_RETURN:
             if self.selRow >= 0 and self.data:
-                dx = self.sortData if self.sortData else self.data
-                self.notifyListener('RowEnter', {'src': self, 'row' : self.selRow, 'data': dx[self.selRow], 'model': dx})
+                dx = self.getData()
+                self.notifyListener(self.Event('RowEnter', self, row = self.selRow, data = dx[self.selRow], model = dx))
             return True
         return False
 
@@ -1157,8 +1166,8 @@ class TableWindow(BaseWindow):
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
             row = self.getRowAtY(y)
             if row >= 0:
-                dx = self.sortData if self.sortData else self.data
-                self.notifyListener('DbClick', {'src': self, 'x': x, 'y': y, 'row': row, 'data': dx[row], 'model': dx})
+                dx = self.getData()
+                self.notifyListener(self.Event('DbClick', self, x = x, y = y, row = row, data = dx[row], model = dx))
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
@@ -1301,7 +1310,7 @@ class ListWindow(BaseWindow):
             if self.selIdx != idx:
                 self.selIdx = idx
                 win32gui.InvalidateRect(self.hwnd, None, True)
-                self.notifyListener('Select', {'src': self, 'idx': idx})
+                self.notifyListener(self.Event('Select', self, idx = idx))
             return True
         if msg == win32con.WM_KEYDOWN:
             if wParam == win32con.VK_DOWN:
@@ -1351,7 +1360,7 @@ class GroupButton(BaseWindow):
         if self.selGroupIdx == idx:
             return
         self.selGroupIdx = idx
-        self.notifyListener('ClickSelect', {'src': self, 'group': self.groups[idx], 'groupIdx': idx})
+        self.notifyListener(self.Event('ClickSelect', self, group = self.groups[idx], groupIdx = idx))
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -1380,7 +1389,7 @@ class Button(BaseWindow):
         self.drawer.drawText(hdc, self.info['title'], rc, self.css['textColor'])
 
     def onClick(self, x, y):
-        self.notifyListener('Click', {'src': self, 'info': self.info})
+        self.notifyListener(self.Event('Click', self, info = self.info))
 
     def lightness(self, color):
         h, s, v = Drawer.rgb2hsv(color)
@@ -1475,7 +1484,7 @@ class CheckBox(BaseWindow):
             self.uncheckedGroup(name)
         self.info['checked'] = checked
         self.invalidWindow()
-        self.notifyListener('Checked', {'src': self, 'info': self.info})
+        self.notifyListener(self.Event('Checked', self, info = self.info))
 
     def uncheckedGroup(self, name):
         if not name:
@@ -1687,7 +1696,7 @@ class PopupMenu(PopupWindow):
             idx = self.getItemIdxAt(y)
             self.hide()
             if idx >= 0 and self.model[idx].get('title', '') != 'LINE' and self.model[idx].get('enable', True):
-                self.notifyListener('Select', {'src': self, 'item' : self.model[idx], 'model': self.model})
+                self.notifyListener(self.Event('Select', self, item = self.model[idx], model = self.model))
             return True
         if msg == win32con.WM_MOUSEWHEEL:
             delta = (wParam >> 16) & 0xffff
@@ -1851,7 +1860,7 @@ class DatePopupWindow(PopupWindow):
                     self.setSelDay(day)
                     self.hide()
                     sdd = self.curSelDay.year * 10000 + self.curSelDay.month * 100 + self.curSelDay.day
-                    self.notifyListener('Select', {'src': self, 'day': sdd})
+                    self.notifyListener(self.Event('Select', self, day = sdd))
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
@@ -1873,12 +1882,12 @@ class DatePicker(BaseWindow):
             return None
         return f'{day.year}-{day.month :02d}-{day.day :02d}'
 
-    def onSelDayChanged(self, evtName, evtInfo, args):
-        if args != 'DatePopupWindow' and evtName != 'Select':
+    def onSelDayChanged(self, event, args):
+        if args != 'DatePopupWindow' and event.name != 'Select':
             return
         self.invalidWindow()
-        evtInfo['src'] = self
-        self.notifyListener(evtName, evtInfo)
+        event.src = self
+        self.notifyListener(event)
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -2212,9 +2221,9 @@ class Editor(BaseEditor):
                     self.setInsertPos(pos)
                     self.invalidWindow()
             elif wParam == win32con.VK_RETURN:
-                self.notifyListener('PressEnter', {'src': self, 'text': self.text})
+                self.notifyListener(self.Event('PressEnter', self, text = self.text))
             elif wParam == win32con.VK_TAB:
-                self.notifyListener('PressTab', {'src': self, 'text': self.text})
+                self.notifyListener(self.Event('PressTab', self, text = self.text))
             elif wParam == win32con.VK_HOME:
                 self.selRange = None
                 self.makePosVisible(0)
@@ -2825,7 +2834,7 @@ def testGridLayout():
     win32gui.PumpMessages()
 
 def testPopMenu():
-    def back(menu, e, ei):
+    def back(e, ei):
         PopupMenuHelper.show(300, 100, model, menuSel)
 
     def menuSel(en, ei):

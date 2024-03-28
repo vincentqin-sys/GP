@@ -346,7 +346,7 @@ class TimelineWindow(base_win.BaseWindow):
         if not data:
             return
         _time = data.time
-        self.notifyListener('click.ddlr.time', {'time': _time})
+        self.notifyListener(self.Event('click.ddlr.time', self, time = _time))
 
     def update(self, code, day):
         self.model.update(code, day)

@@ -161,7 +161,7 @@ class CodeEditor(MutiEditor):
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_KEYDOWN and wParam == win32con.VK_F5:
-            self.notifyListener('Run', {'src': self, 'code': self.getText()})
+            self.notifyListener(self.Event('Run', self, code = self.getText()))
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
@@ -406,8 +406,8 @@ def runCode_2(code, editor : CodeEditor, args):
         editor.invalidWindow()
         print(ex)
 
-def runCode(evtName, evt, console):
-    if evtName != 'Run':
+def runCode(evt, console):
+    if evt.name != 'Run':
         return
     tskFunc = runCode_1 if console else runCode_2
     base_win.ThreadPool.addTask('run', tskFunc, evt['code'], evt['src'], console)
@@ -427,8 +427,8 @@ if __name__ == '__main__':
         layout.setContent(1, 1, editor)
         editor.addListener(runCode, None)
         btn = base_win.Button({'title': '执行(运行)'})
-        def rr(en, evt, args):
-            if en == 'Click':
+        def rr(evt, args):
+            if evt.name == 'Click':
                 base_win.ThreadPool.addTask('run', runCode_2, editor.getText(), editor, None)
                 base_win.ThreadPool.start()
         btn.addListener(rr)

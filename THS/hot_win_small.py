@@ -917,10 +917,10 @@ class HotZHCardView(ListView):
     def getWindowTitle(self):
         return self.windowTitle
 
-    def onDayChanged(self, target, evtName, evtInfo):
-        if evtName != 'Select':
+    def onDayChanged(self, target, evt):
+        if evt.name != 'Select':
             return
-        selDay = evtInfo['day']
+        selDay = evt.day
         if selDay > self.maxHotDay:
             return
         if self.curSelDay == selDay:
@@ -1029,8 +1029,8 @@ class KPL_AllCardView(ListView):
         for i in range(*vr):
             self.drawItem(hdc, self.data[i], i)
 
-    def onDayChanged(self, target, evtName, evtInfo):
-        selDay = evtInfo['day']
+    def onDayChanged(self, target, evt):
+        selDay = evt.day
         if selDay == self.curSelDay:
             return
         self.updateData(selDay)
@@ -1064,14 +1064,14 @@ class SimpleHotZHWindow(CardWindow):
         win32gui.DeleteObject(ps)
         #win32gui.DeleteObject(bk)
 
-    def onDayChanged(self, evtName, evtInfo, args):
-        if evtName != 'Select':
+    def onDayChanged(self, evt, args):
+        if evt.name != 'Select':
             return
         cv = self.getCurCardView()
         dc = getattr(cv, 'onDayChanged', None)
         if not dc:
             return
-        dc(args, evtName, evtInfo)
+        dc(args, evt)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_CONTEXTMENU:

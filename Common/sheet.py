@@ -751,8 +751,8 @@ class SheetWindow(base_win.BaseWindow):
             self.model.setCellText(self.editer.row, self.editer.col, txt)
         win32gui.SetFocus(self.hwnd)
 
-    def onPressEnter(self, evtName, evtInfo, args):
-        if evtName == 'PressEnter':
+    def onPressEnter(self, evt, args):
+        if evt.name == 'PressEnter':
             self.endEdit()
 
     def onContextMenu(self, row, col):
@@ -776,11 +776,11 @@ class SheetWindow(base_win.BaseWindow):
         menu.addListener(self.onContextMenuItemSelect, None)
         menu.show(x, y)
 
-    def onContextMenuItemSelect(self, evtName, evtInfo, args):
-        #print('menu select: ', evtName, evtInfo)
+    def onContextMenuItemSelect(self, evt, args):
+        evtName = evt.name
         if evtName != "Select":
             return
-        item = evtInfo['item']
+        item = evt.item
         pos = int(item.get('pos', 0))
         if item['name'] == 'InsertRow':
             self.model.insertRow(pos)
@@ -795,8 +795,8 @@ class SheetWindow(base_win.BaseWindow):
             dlg.createWindow(self.hwnd, (0, 0, 200, 70))
             win32gui.SetWindowText(dlg.hwnd, f'设置行高（第{pos + 1}行）')
             dlg.setText(self.getRowHeight(pos))
-            def callback_1(evtName, evtInfo, row):
-                if evtName != 'InputEnd':
+            def callback_1(evt, row):
+                if evt.name != 'InputEnd':
                     return
                 txt = dlg.getText().strip()
                 if re.match(r'^\d+$', txt):
@@ -810,8 +810,8 @@ class SheetWindow(base_win.BaseWindow):
             dlg.createWindow(self.hwnd, (0, 0, 200, 70))
             win32gui.SetWindowText(dlg.hwnd, f'设置列宽（第{self.colIdxToChar(pos)}列）')
             dlg.setText(self.getColWidth(pos))
-            def callback_2(evtName, evtInfo, col):
-                if evtName != 'InputEnd':
+            def callback_2(evt, col):
+                if evt.name != 'InputEnd':
                     return
                 txt = dlg.getText().strip()
                 if re.match(r'^\d+$', txt):
@@ -823,30 +823,29 @@ class SheetWindow(base_win.BaseWindow):
         elif item['name'] == 'SetColor':
             dlg = dialog.PopupColorWindow()
             dlg.createWindow(self.hwnd)
-            def callback_3(evtName, evtInfo, args):
-                if evtName != 'SelectColor':
+            def callback_3(evt, args):
+                if evt.name != 'SelectColor':
                     return
                 _range = args
-                self.setRangeCellAttr(_range, 'color', evtInfo)
+                self.setRangeCellAttr(_range, 'color', evt.color)
                 self.invalidWindow()
             dlg.addListener(callback_3, item['range'])
             dlg.show(item['x'], item['y'])
         elif item['name'] == 'SetBgColor':
             dlg = dialog.PopupColorWindow()
             dlg.createWindow(self.hwnd)
-            def callback_4(evtName, evtInfo, args):
-                if evtName != 'SelectColor':
+            def callback_4(evt, args):
+                if evt.name != 'SelectColor':
                     return
                 _range = args
-                self.setRangeCellAttr(_range, 'bgColor', evtInfo)
+                self.setRangeCellAttr(_range, 'bgColor', evt.color)
                 self.invalidWindow()
             dlg.addListener(callback_4, item['range'])
             dlg.show(item['x'], item['y'])
         elif item['name'] == 'ClearFormat':
             self.clearRangeCellFormat(item['range'])
         elif item['name'] == 'Save':
-            #print(self.model.serialize())
-            self.notifyListener('Save', self.model)
+            self.notifyListener(self.Event('Save', self, model = self.model))
         self.invalidWindow()
 
     def copy(self):

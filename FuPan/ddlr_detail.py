@@ -101,9 +101,9 @@ class TableWindow(base_win.BaseWindow):
                 return i
         return -1
 
-    def onListen(self, evtName, evtInfo, args):
-        if evtName == 'click.ddlr.time':
-            _time = evtInfo['time']
+    def onListen(self, evt, args):
+        if evt.name== 'click.ddlr.time':
+            _time = evt.time
             idx = self.findNearestTime(_time)
             self.startIdx = idx
             self.selIdx = idx
@@ -462,17 +462,17 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
         # TODO: remove 
         #self.updateCodeDay('601096', 20240119)
 
-    def onListenMoney(self, evtName, evtInfo, args):
-        if evtName != 'ClickSelect':
+    def onListenMoney(self, evt, args):
+        if evt.name != 'ClickSelect':
             return
-        group = evtInfo['group']
+        group = evt.group
         ds = self.fsWin.model.filterDDLR(group['val'])
         self.tableWin.setData(ds, group['desc'])
         self.moneyWin.setData(ds)
         win32gui.InvalidateRect(self.fsWin.hwnd, None, True)
 
-    def onListenRefresh(self, evtName, evtInfo, args):
-        if evtName != 'ClickSelect':
+    def onListenRefresh(self, evt, args):
+        if evt.name != 'ClickSelect':
             return
         self.shareMem.open()
         code = self.shareMem.readCode()

@@ -99,8 +99,8 @@ class TCGN_Window(base_win.BaseWindow):
         sm.open()
         sm.addListener('ListenSync_TCGN', self.onAutoSync)
 
-    def onContextMenu_1(self, evtName, evt, args):
-        if evtName != 'ContextMenu':
+    def onContextMenu_1(self, evt, args):
+        if evt.name != 'ContextMenu':
             return
         selRow = self.tableWin.selRow
         rd = None
@@ -114,17 +114,17 @@ class TCGN_Window(base_win.BaseWindow):
         pos = win32gui.GetCursorPos()
         menu.show(*pos)
 
-    def onContextMenuItemSelect_1(self, evtName, evt, args):
-        if evtName != 'Select':
+    def onContextMenuItemSelect_1(self, evt, args):
+        if evt.name != 'Select':
             return
-        item = evt['item']
+        item = evt.item
         if item['name'] == 'Insert':
             self.onNewOrUpdate('Click', None, None)
         elif item['name'] == 'Update':
             self.onNewOrUpdate('Click', None, args)
 
-    def onContextMenu(self, evtName, evt, args):
-        if evtName != 'ContextMenu':
+    def onContextMenu(self, evt, args):
+        if evt.name != 'ContextMenu':
             return
         data = self.tableCntWin.getData() or []
         selRow = self.tableCntWin.selRow
@@ -144,17 +144,17 @@ class TCGN_Window(base_win.BaseWindow):
         pos = win32gui.GetCursorPos()
         menu.show(*pos)
     
-    def onContextMenuItemSelect(self, evtName, evt, args):
-        if evtName != 'Select':
+    def onContextMenuItemSelect(self, evt, args):
+        if evt.name != 'Select':
             return
-        item = evt['item']
+        item = evt.item
         if item['name'] == 'Insert' or item['name'] == 'Add':
             self.onAddInsert('Click', None, item['name'])
             return
         if item['name'] == 'Del':
             dlg = dialog.ConfirmDialog('确定要删除吗?')
-            def _ds(en, evt, args):
-                if en == 'OK':
+            def _ds(evt, args):
+                if evt.name == 'OK':
                     self.onDel('Click', None, 'Del')
             dlg.createWindow(self.hwnd, title='Confirm')
             dlg.showCenter()
@@ -207,24 +207,24 @@ class TCGN_Window(base_win.BaseWindow):
             qr.execute()
             self.reload(tcgn, 0)
 
-    def onCellChanged(self, evtName, evt, args):
-        if evtName != 'CellChanged':
+    def onCellChanged(self, evt, args):
+        if evt.name != 'CellChanged':
             return
-        name = evt['header']['name']
-        cellVal = evt['data'][name].strip()
-        qr = orm.TCK_TCGN.update({name : cellVal}).where(orm.TCK_TCGN.id == evt['data']['id'])
+        name = evt.header['name']
+        cellVal = evt.data[name].strip()
+        qr = orm.TCK_TCGN.update({name : cellVal}).where(orm.TCK_TCGN.id == evt.data['id'])
         qr.execute()
         if name != 'name':
             return
         code = self.getCodeByName(cellVal)
-        if not code or evt['data']['code'] == code:
+        if not code or evt.data['code'] == code:
             return
-        qr = orm.TCK_TCGN.update({'code' : code}).where(orm.TCK_TCGN.id == evt['data']['id'])
+        qr = orm.TCK_TCGN.update({'code' : code}).where(orm.TCK_TCGN.id == evt.data['id'])
         qr.execute()
-        evt['data']['code'] = code
+        evt.data['code'] = code
 
-    def onDel(self, evtName, evt, args):
-        if evtName != 'Click':
+    def onDel(self, evt, args):
+        if evt.name != 'Click':
             return
         row = self.tableCntWin.selRow
         if row < 0:
@@ -235,8 +235,8 @@ class TCGN_Window(base_win.BaseWindow):
         model.pop(row)
         self.tableCntWin.invalidWindow()
 
-    def onOpen(self, evtName, evt, args):
-        if evtName != 'Click':
+    def onOpen(self, evt, args):
+        if evt.name != 'Click':
             return
         row = self.tableCntWin.selRow
         if row < 0:
@@ -251,8 +251,8 @@ class TCGN_Window(base_win.BaseWindow):
         else:
             self.openInCurWindow(data)
 
-    def onNewOrUpdate(self, evtName, evt, args):
-        if evtName != 'Click':
+    def onNewOrUpdate(self, evt, args):
+        if evt.name != 'Click':
             return
         dlg = dialog.InputDialog()
         dlg.createWindow(self.hwnd, (0, 0, 300, 70), title='一级题材概念')
@@ -261,10 +261,10 @@ class TCGN_Window(base_win.BaseWindow):
         dlg.showCenter()
         dlg.addListener(self.onDialogInputEnd, args)
 
-    def onDialogInputEnd(self, evtName, evt, args):
-        if evtName != 'InputEnd':
+    def onDialogInputEnd(self, evt, args):
+        if evt.name != 'InputEnd':
             return
-        txt = evt['text'] or ''
+        txt = evt.text or ''
         if not txt:
             return
         if txt and txt.strip():
@@ -285,8 +285,8 @@ class TCGN_Window(base_win.BaseWindow):
         self.tableCntWin.invalidWindow()
         self.tableWin.invalidWindow()
         
-    def onAddInsert(self, evtName, evt, args):
-        if evtName != 'Click':
+    def onAddInsert(self, evt, args):
+        if evt.name != 'Click':
             return
         if not self.curTcgn:
             return
@@ -360,10 +360,10 @@ class TCGN_Window(base_win.BaseWindow):
         self.editorWin.invalidWindow()
         self.onQuery('PressEnter', {'text': self.editorWin.text}, None)
 
-    def onQuery(self, evtName, evtInfo, args):
-        if evtName != 'PressEnter':
+    def onQuery(self, evt, args):
+        if evt.name != 'PressEnter':
             return
-        queryText = evtInfo['text']
+        queryText = evt.text
         if not queryText:
             self.reload(self.curTcgn, 0)
             return
@@ -420,10 +420,10 @@ class TCGN_Window(base_win.BaseWindow):
         time.sleep(0.2)
         pyautogui.press('enter')
         
-    def onSelect(self, evtName, evtInfo, args):
-        if evtName != 'SelectRow':
+    def onSelect(self, evt, args):
+        if evt.name != 'SelectRow':
             return
-        data = evtInfo['data']
+        data = evt.data
         if not data:
             return
         self.curTcgn = data['tcgn']
@@ -452,14 +452,14 @@ class TCGN_Window(base_win.BaseWindow):
         win.makeVisible(-1)
         win.addListener(self.openKlineMinutes, win)
 
-    def openKlineMinutes(self, evtName, evt, parent):
-        if evtName != 'DbClick':
+    def openKlineMinutes(self, evt, parent):
+        if evt.name != 'DbClick':
             return
         win = ddlr_detail.DDLR_MinuteMgrWindow()
         rc = win32gui.GetWindowRect(parent.hwnd)
         win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
-        day = evt['data'].day
-        win.updateCodeDay(evt['code'], day)
+        day = evt.data.day
+        win.updateCodeDay(evt.code, day)
 
     def loadAllTcgnDatas(self):
         qr = orm.TCK_TCGN.select(orm.TCK_TCGN.tcgn).distinct().dicts()

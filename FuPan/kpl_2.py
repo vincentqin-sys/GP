@@ -86,6 +86,8 @@ class KPL_Window(base_win.BaseWindow):
             rc[3] = endY + 20
             self.drawer.drawText(hdc, titles[i], rc, color)
         # draw upNum
+        if 'upNum' not in self.data:
+            return
         UD_HEIGHT = 10
         zY = endY + 25
         ARROW = 10
@@ -180,10 +182,10 @@ class KPL_MgrWindow(base_win.BaseWindow):
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
 
-        def onDateChanged(evtName, evtInfo, args):
-            if evtName != 'Select':
+        def onDateChanged(evt, args):
+            if evt.name != 'Select':
                 return
-            day = evtInfo['day']
+            day = evt.day
             self.changeDate(day)
         self.datePickerWin.addListener(onDateChanged, 'DatePicker')
 
@@ -230,6 +232,8 @@ class KPL_MgrWindow(base_win.BaseWindow):
         if not self.datePickerWin.hwnd:
             self.datePickerWin.createWindow(self.hwnd, (0, 0, 200, 30))
         w, h = self.getClientSize()
+        PADDING_BOTTOM = 5
+        h -= PADDING_BOTTOM
         rowNum = max((h - 30) // self.KPL_HEIGHT, 1)
         colNum = max(w // self.KPL_WIDTH, 1)
         rowGap = (h - rowNum * self.KPL_HEIGHT - 30) / rowNum
@@ -239,7 +243,7 @@ class KPL_MgrWindow(base_win.BaseWindow):
             self.buildWins(rowNum, colNum, rowGap, colGap)
         else:
             self.layout.gaps = (rowGap, colGap)
-        self.layout.resize(0, 0, w, h - 5)
+        self.layout.resize(0, 0, w, h)
         self.changeDate(0)
 
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -249,12 +253,8 @@ class KPL_MgrWindow(base_win.BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-    def init(self):
-        self.changeDate(0)
-
 if __name__ == '__main__':
     kpl = KPL_MgrWindow()
-    kpl.createWindow(None, (0, 0, 1500, 550), win32con.WS_OVERLAPPEDWINDOW)
+    kpl.createWindow(None, (0, 0, 1500, 450), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(kpl.hwnd, win32con.SW_SHOW)
-    kpl.init()
     win32gui.PumpMessages()

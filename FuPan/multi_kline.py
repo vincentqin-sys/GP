@@ -157,15 +157,15 @@ class MultiKLineWindow(base_win.BaseWindow):
         self.klines[klineIdx].setModel(md)
         self.klines[klineIdx].makeVisible(target.selIdx)
 
-    def onListen(self, evtName, evtInfo, args):
+    def onListen(self, evt, args):
         curWinIdx = args
         for i, kl in enumerate(self.klines):
             if i == curWinIdx:
                 continue
-            if evtName == 'MouseMove':
-                kl.onMouseMove(evtInfo['x'], evtInfo['y'])
-            elif evtName == 'KeyDown':
-                kl.onKeyDown(evtInfo['oem'])
+            if evt.name== 'MouseMove':
+                kl.onMouseMove(evt.x, evt.y)
+            elif evt.name== 'KeyDown':
+                kl.onKeyDown(evt.oem)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:

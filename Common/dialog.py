@@ -61,10 +61,10 @@ class InputDialog(Dialog):
         super().showCenter()
         win32gui.SetFocus(self.editor.hwnd)
 
-    def onPressEnter(self, evtName, evtInfo, args):
-        if evtName == 'PressEnter':
+    def onPressEnter(self, event, args):
+        if event.name == 'PressEnter':
             self.close()
-            self.notifyListener('InputEnd', {'src': self, 'text': self.getText()})
+            self.notifyListener(self.Event('InputEnd', self, text = self.getText()))
 
 # listeners: OK = {src(is dialog)}
 #            Cancel = {src(is dialog)}
@@ -92,11 +92,11 @@ class ConfirmDialog(Dialog):
         okBtn.addListener(self.onListen, 'OK')
         calncelBtn.addListener(self.onListen, 'Cancel')
 
-    def onListen(self, evtName, evt, args):
-        if evtName != 'Click':
+    def onListen(self, evt, evtName):
+        if evt.name != 'Click':
             return
         self.close()
-        self.notifyListener(args, {'src': self})
+        self.notifyListener(self.Event(evtName, self))
 
 # listeners : SelectColor = color
 class PopupColorWindow(base_win.PopupWindow):
@@ -146,7 +146,7 @@ class PopupColorWindow(base_win.PopupWindow):
             color = self.getColorAtXY(x, y)
             self.hide()
             if color >= 0:
-                self.notifyListener('SelectColor', color)
+                self.notifyListener(self.Event('SelectColor', self, color = color))
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 

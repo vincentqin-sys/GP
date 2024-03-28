@@ -71,8 +71,8 @@ class TCK_Window(base_win.BaseWindow):
         self.layout.setContent(0, 2, self.checkBox)
         self.layout.setContent(0, 3, self.autoSyncCheckBox)
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
-        def onPressEnter(evtName, evt, args):
-            q = evt['text'].strip()
+        def onPressEnter(evt, args):
+            q = evt.text.strip()
             self.onQuery(q)
             if q and (q not in self.inputTips):
                 self.inputTips.append(q)
@@ -84,26 +84,26 @@ class TCK_Window(base_win.BaseWindow):
         sm.open()
         sm.addListener('ListenSync_TCK', self.onAutoSync)
 
-    def onDbClickEditor(self, evtName, evt, args):
+    def onDbClickEditor(self, evt, args):
         if not self.inputTips:
             return
         model = []
         for s in self.inputTips:
             model.append({'title': s})
-        def onSelMenu(name, evt, args):
-            self.editorWin.setText(evt['item']['title'])
+        def onSelMenu(evt, args):
+            self.editorWin.setText(evt.item['title'])
             self.editorWin.invalidWindow()
             self.onQuery(self.editorWin.getText())
         menu = base_win.PopupMenuHelper.create(self.editorWin.hwnd, model)
         menu.addNamedListener('Select', onSelMenu)
         menu.show()
 
-    def onEditCell(self, evtName, evt, args):
-        if evtName != 'CellChanged':
+    def onEditCell(self, evt, args):
+        if evt.name != 'CellChanged':
             return
-        colName = evt['header']['name']
-        val = evt['data'].get(colName, '')
-        _id = evt['data']['id']
+        colName = evt.header['name']
+        val = evt.data.get(colName, '')
+        _id = evt.data['id']
         qr = orm.THS_ZT.update({colName : val}).where(orm.THS_ZT.id == _id)
         qr.execute()
 
@@ -120,8 +120,8 @@ class TCK_Window(base_win.BaseWindow):
         self.onQuery(self.editorWin.text)
 
 
-    def onRefresh(self, evtName, evtInfo, args):
-        if evtName == 'Click':
+    def onRefresh(self, evt, args):
+        if evt.name == 'Click':
             self.tckData = None
             self.onQuery(self.editorWin.text)
 
@@ -146,10 +146,10 @@ class TCK_Window(base_win.BaseWindow):
         pyautogui.press('enter')
         
 
-    def onDbClick(self, evtName, evtInfo, args):
-        if evtName != 'RowEnter' and evtName != 'DbClick':
+    def onDbClick(self, evt, args):
+        if evt.name != 'RowEnter' and evt.name != 'DbClick':
             return
-        data = evtInfo['data']
+        data = evt.data
         if not data:
             return
         if self.checkBox.isChecked():
@@ -178,14 +178,14 @@ class TCK_Window(base_win.BaseWindow):
         win.makeVisible(-1)
         win.addListener(self.openKlineMinutes, win)
 
-    def openKlineMinutes(self, evtName, evt, parent):
-        if evtName != 'DbClick':
+    def openKlineMinutes(self, evt, parent):
+        if evt.name != 'DbClick':
             return
         win = ddlr_detail.DDLR_MinuteMgrWindow()
         rc = win32gui.GetWindowRect(parent.hwnd)
         win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
-        day = evt['data'].day
-        win.updateCodeDay(evt['code'], day)
+        day = evt.data.day
+        win.updateCodeDay(evt.code, day)
 
     def loadAllData(self):
         if self.tckData != None:
