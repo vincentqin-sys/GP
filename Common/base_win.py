@@ -802,11 +802,13 @@ class TableWindow(BaseWindow):
         self.css['cellBorder'] = 0xc0c0c0
         self.css['selBgColor'] = 0xf0a0a0
         self.enableListeners['DbClick'] = True
+        self.enableCellSelect = False
         self.rowHeight = 24
         self.headHeight = 24
         self.tailHeight = 0
         self.startRow = 0
         self.selRow = -1
+        self.selCol = -1
         self.sortHeader = {'header': None, 'state': None} # state: 'ASC' | 'DSC' |  None
         self.sortData = None
 
@@ -858,15 +860,16 @@ class TableWindow(BaseWindow):
         for hd in self.headers:
             st = int(hd.get('stretch', 0))
             if st <= 0:
-                cw = int(hd.get('width', BASE_WIDTH))
+                rw = int(hd.get('width', BASE_WIDTH))
             else:
-                cw = int(hd.get('width', 0))
-            fixWidth += cw
+                rw = int(hd.get('width', 0))
+            fixWidth += rw
             frs += st
         lessWidth = w - fixWidth
         if lessWidth <= 0 or frs <= 0:
             return cw
-        return int(lessWidth * stretch / frs)
+        stretchWidth = int(lessWidth * stretch / frs)
+        return cw + stretchWidth
     
     def getColumnCount(self):
         if not self.headers:
@@ -917,6 +920,7 @@ class TableWindow(BaseWindow):
             self.sortHeader[k] = None
         self.startRow = 0
         self.selRow = -1
+        self.selCol = -1
 
     # delta > 0 : up scroll
     # delta < 0 : down scroll
@@ -1028,6 +1032,13 @@ class TableWindow(BaseWindow):
             colName = hds[i]['name']
             rc[2] += self.getColumnWidth(i, colName)
             val = self.getValueAt(row, i, colName)
+            if self.enableCellSelect and row == self.selRow and self.selCol == i:
+                # draw cell border
+                h, s, v = Drawer.rgb2hsv(self.css['selBgColor'])
+                if v <= 0.8: v += 0.2
+                else: v -= 0.2
+                color = Drawer.hsv2rgb(h, s, v)
+                self.drawer.drawRect(hdc, rc, color, 2)
             self.drawCell(hdc, row, i, colName, val, rc)
             rc[0] = rc[2]
 
@@ -1118,6 +1129,7 @@ class TableWindow(BaseWindow):
                self.invalidWindow()
         elif row >= 0:
             self.setSelRow(row)
+            self.selCol = self.getColAtX(x)
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def onMouseWheel(self, delta):

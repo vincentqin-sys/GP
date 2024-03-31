@@ -149,19 +149,19 @@ class TCGN_Window(base_win.BaseWindow):
             return
         item = evt.item
         if item['name'] == 'Insert' or item['name'] == 'Add':
-            self.onAddInsert('Click', None, item['name'])
+            self.onAddInsert(self.Event('Click', None), item['name'])
             return
         if item['name'] == 'Del':
             dlg = dialog.ConfirmDialog('确定要删除吗?')
             def _ds(evt, args):
                 if evt.name == 'OK':
-                    self.onDel('Click', None, 'Del')
+                    self.onDel(self.Event('Click', None), 'Del')
             dlg.createWindow(self.hwnd, title='Confirm')
             dlg.showCenter()
             dlg.addListener(_ds)
             return
         if item['name'] == 'Open':
-            self.onOpen('Click', None, 'Open')
+            self.onOpen(self.Event('Click', None), 'Open')
             return
         if item['name'].startswith('Move'):
             self.onMove(item['name'])
@@ -358,7 +358,7 @@ class TCGN_Window(base_win.BaseWindow):
             return
         self.editorWin.setText(code)
         self.editorWin.invalidWindow()
-        self.onQuery('PressEnter', {'text': self.editorWin.text}, None)
+        self.onQuery(self.Event('PressEnter', self, text = self.editorWin.text), None)
 
     def onQuery(self, evt, args):
         if evt.name != 'PressEnter':
