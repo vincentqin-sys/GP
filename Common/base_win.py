@@ -1072,26 +1072,25 @@ class TableWindow(BaseWindow):
             x -= iw
         return -1
 
-    def setSortHeader(self, header):
+    # state = 'ASC | 'DSC' | None | 'Suggest'
+    def setSortHeader(self, header, state):
         hd = self.sortHeader['header']
         st = self.sortHeader['state']
-        if not header:
+        if state == 'Suggest':
+            if hd == header:
+                a = ('ASC', 'DSC', None)
+                idx = (a.index(st) + 1) % len(a)
+                state = a[idx]
+            else:
+                state = 'ASC'
+        if not header or not state:
             self.sortHeader['header'] = None
             self.sortHeader['state'] = None
             self.sortData = None
             return
-        if hd == header:
-            a = ('ASC', 'DSC', None)
-            idx = (a.index(st) + 1) % len(a)
-            self.sortHeader['state'] = a[idx]
-        else:
-            self.sortHeader['header'] = header
-            self.sortHeader['state'] = 'ASC'
-        st = self.sortHeader['state']
-        if st == None:
-            self.sortData = None
-            return
-        reverse = st == 'DSC'
+        self.sortHeader['header'] = header
+        self.sortHeader['state'] = state
+        reverse = state == 'DSC'
         if self.data:
             if 'sorter' in header:
                 def keyn(rowData):
@@ -1135,7 +1134,7 @@ class TableWindow(BaseWindow):
         if row == -2: # click headers
             hd = self.getHeaderAtX(x)
             if hd and hd.get('sortable', False) == True:
-               self.setSortHeader(hd)
+               self.setSortHeader(hd, 'Suggest')
                self.invalidWindow()
         elif row >= 0:
             self.setSelRow(row)
