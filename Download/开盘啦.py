@@ -6,7 +6,8 @@ import requests, json, hashlib, random, easyocr
 import pyautogui
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import orm
+from THS import orm as ths_orm
+from Tck import orm as tck_orm
 from Download import henxin
 
 hx = henxin.HexinUrl()
@@ -563,12 +564,12 @@ class OCRUtil:
 
     def checkModel(self, model):
         mc = model['code']
-        obj = orm.THS_Newest.get_or_none(orm.THS_Newest.code == mc)
+        obj = ths_orm.THS_Newest.get_or_none(ths_orm.THS_Newest.code == mc)
         if obj and obj.name == model['name']:
             return True
         if '-' in model['name']:
             model['name'] = model['name'].replace('-', '一')
-        obj = orm.THS_Newest.get_or_none(orm.THS_Newest.name == model['name'])
+        obj = ths_orm.THS_Newest.get_or_none(ths_orm.THS_Newest.name == model['name'])
         if obj:
             model['code'] = obj.code
             #model['_exception'] = f' Find code {mc}  -> {obj.code} ? '
@@ -705,11 +706,11 @@ class MainTools:
             self.save_KPL_ZT(day, code, name, ztTime, status, ztReason, ztNum)
 
     def save_KPL_ZT(self, day, code, name, ztTime, status, ztReason, ztNum):
-        count = orm.KPL_ZT.select(pw.fn.count(orm.KPL_ZT.code)).where(orm.KPL_ZT.code == code, orm.KPL_ZT.day == day)
+        count = tck_orm.KPL_ZT.select(pw.fn.count(tck_orm.KPL_ZT.code)).where(tck_orm.KPL_ZT.code == code, tck_orm.KPL_ZT.day == day)
         #print(count.sql())
         count = count.scalar()
         if not count:
-            orm.KPL_ZT.create(name=name, code=code, ztNum=ztNum, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
+            tck_orm.KPL_ZT.create(name=name, code=code, ztNum=ztNum, ztTime=ztTime, status=status, ztReason=ztReason, day=day)
             print('Save success: ', day, name, code)
         else:
             print('重复项：', day, code, name, ztTime, status, ztReason, ztNum)
@@ -823,12 +824,12 @@ class MainTools:
             time.sleep(3)
 
     def save_KPL_SCQX(self, day, zhqd):
-        obj = orm.KPL_SCQX.get_or_none(orm.KPL_SCQX.day == day)
+        obj = tck_orm.KPL_SCQX.get_or_none(tck_orm.KPL_SCQX.day == day)
         if obj:
             obj.zhqd = int(zhqd)
             obj.save()
         else:
-            orm.KPL_SCQX.create(day = day, zhqd = zhqd)
+            tck_orm.KPL_SCQX.create(day = day, zhqd = zhqd)
 
 if __name__ == '__main__':
     ocr = easyocr.Reader(['ch_sim','en'])
