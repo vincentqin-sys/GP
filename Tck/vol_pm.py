@@ -17,7 +17,7 @@ class VolPMWindow(base_win.BaseWindow):
         super().__init__()
         rows = (30, 20, '1fr')
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
-        self.colsNum = 5
+        self.colsNum = 8
         cols = ('1fr ' * self.colsNum).strip().split(' ')
         self.layout = base_win.GridLayout(rows, cols, (5, 10))
         self.listWins = []
@@ -39,7 +39,7 @@ class VolPMWindow(base_win.BaseWindow):
         headers = [#{'title': '', 'width': 40, 'name': '#idx' },
                    {'title': '股票名称', 'width': 0, 'stretch': 1, 'name': 'name' },
                    {'title': '成交额', 'width': 70, 'name': 'amount', 'sortable':True, 'formater': formateFloat},
-                   {'title': '排名', 'width': 70, 'name': 'pm', 'sortable':True },
+                   {'title': '排名', 'width': 50, 'name': 'pm', 'sortable':True },
                    ]
         for i in range(len(self.layout.templateColumns)):
             win = base_win.TableWindow()

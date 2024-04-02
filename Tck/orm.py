@@ -36,6 +36,7 @@ class THS_ZT(pw.Model):
     #ztNum = pw.IntegerField(null=True, column_name='涨停数量')
     mark_1 = pw.CharField() # 简单的备注
     mark_2 = pw.CharField() # 详细备注
+    mark_3 = pw.IntegerField(null = True) # 重点标记
 
     class Meta:
         database = db_tck

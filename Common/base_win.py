@@ -27,6 +27,7 @@ class BaseWindow:
                     'bgColor': 0x000000, 'textColor': 0xffffff,
                     'enableBorder': False, 'borderColor': 0x0} # config css style
         self.enableListeners = {'ContextMenu': False, 'DbClick': False, 'R_DbClick': False}
+        self.paddings = (0, 0, 0, 0) # (left, top, right, bottom)
     
     # func = function(event : Event, args)
     def addListener(self, func, args = None):
@@ -802,6 +803,8 @@ class TableWindow(BaseWindow):
         self.css['cellBorder'] = 0xc0c0c0
         self.css['selBgColor'] = 0xf0a0a0
         self.enableListeners['DbClick'] = True
+        self.paddings = (2, 0, 2, 0) # cell default paddings
+
         self.enableCellSelect = False
         self.rowHeight = 24
         self.headHeight = 24
@@ -825,6 +828,7 @@ class TableWindow(BaseWindow):
         #      textAlign: int, win32con.DT_LEFT(is default) | .....
         #      fontSize: 14 (default)
         #      render: function(win, hdc, row, col, colName, value, rect)  cell-render
+        #      paddings : (left, top, right, bottom), cell paddings
         self.headers = None # must be set TODO
 
     def getData(self):
@@ -1016,6 +1020,12 @@ class TableWindow(BaseWindow):
         if value == None:
             return
         cellRender = hd.get('render', None)
+        paddings = hd.get('paddings', self.paddings)
+        if paddings:
+            rect = list(rect)
+            for i, p in enumerate(paddings):
+                if i < 2: rect[i] += paddings[i]
+                else: rect[i] -= paddings[i]
         if cellRender:
             cellRender(self, hdc, row, col, colName, value, rect)
         else:

@@ -129,6 +129,11 @@ function initFinacePage() {
     thread.start();
 }
 
+function bindMouseOver() {
+    let table = $('table.watch-table');
+    
+}
+
 
 let url = window.location.href;
 if (url == 'https://www.cls.cn/finance') {

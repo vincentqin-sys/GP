@@ -19,6 +19,7 @@ class TCK_Window(base_win.BaseWindow):
         self.cols = (60, 300, 80, 40, 150, 120, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = table.EditTableWindow()
+        self.tableWin.enableListeners['ContextMenu'] = True
         self.editorWin = base_win.Editor()
         self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
         self.editorWin.enableListeners['DbClick'] = True
@@ -45,15 +46,22 @@ class TCK_Window(base_win.BaseWindow):
             if val == None:
                 return 1000
             return val
+        def render(win, hdc, row, col, colName, value, rect):
+            model = self.tableWin.getData()
+            rowData = model[row]
+            color = self.tableWin.css['textColor']
+            if rowData.get('ths_mark_3', 0) == 1:
+                color = 0x0000dd
+            self.drawer.drawText(hdc, value, rect, color, align = win32con.DT_VCENTER | win32con.DT_SINGLELINE | win32con.DT_LEFT)
         headers = [ {'title': '', 'width': 30, 'name': '#idx','textAlign': win32con.DT_SINGLELINE | win32con.DT_CENTER | win32con.DT_VCENTER },
                    {'title': '日期', 'width': 70, 'name': 'day', 'sortable':True , 'fontSize' : 12},
-                   {'title': '名称', 'width': 55, 'name': 'name', 'sortable':True , 'fontSize' : 12},
+                   {'title': '名称', 'width': 55, 'name': 'name', 'sortable':True , 'fontSize' : 12, 'render': render},
                    #{'title': '代码', 'width': 50, 'name': 'code', 'sortable':True , 'fontSize' : 12},
                    {'title': '热度', 'width': 40, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 12, 'sorter': sortHot},
                    {'title': '开盘啦', 'width': 100, 'name': 'kpl_ztReason', 'sortable':True , 'fontSize' : 12},
                    {'title': '同花顺', 'width': 60, 'name': 'ths_status', 'sortable':True , 'fontSize' : 12},
                    {'title': '同花顺', 'width': 150, 'name': 'ths_ztReason', 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True},
-                   {'title': '同花顺备注', 'width': 120, 'name': 'mark_1', 'fontSize' : 12 , 'editable':True, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
+                   {'title': '同花顺备注', 'width': 120, 'name': 'ths_mark_1', 'fontSize' : 12 , 'editable':True, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
                    {'title': '财联社', 'width': 120, 'name': 'cls_ztReason', 'fontSize' : 12 ,'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
                    {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
@@ -84,6 +92,21 @@ class TCK_Window(base_win.BaseWindow):
         self.editorWin.addNamedListener('DbClick', self.onDbClickEditor, None)
         self.tableWin.addListener(self.onDbClick, None)
         self.tableWin.addListener(self.onEditCell, None)
+        def onTabMenu(evt, args):
+            hasSel = self.tableWin.selRow >= 0
+            model = [{'title': '标记重点', 'enable': hasSel}]
+            menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+            menu.addNamedListener('Select', onTabMenuSelect, self.tableWin.selRow)
+            menu.show(*win32gui.GetCursorPos())
+        def onTabMenuSelect(evt, selRow):
+            datas = self.tableWin.getData()
+            data = datas[selRow]
+            data['ths_mark_3'] = 1
+            qr = orm.THS_ZT.update({orm.THS_ZT.mark_3 : 1}).where(orm.THS_ZT.id == data['ths_id'])
+            qr.execute()
+            self.tableWin.invalidWindow()
+
+        self.tableWin.addNamedListener('ContextMenu', onTabMenu)
         sm = ths_win.ThsShareMemory.instance()
         sm.open()
         sm.addListener('ListenSync_TCK', self.onAutoSync)
@@ -118,9 +141,11 @@ class TCK_Window(base_win.BaseWindow):
         if evt.name != 'CellChanged':
             return
         colName = evt.header['name']
+        if colName != 'ths_mark_1':
+            return
         val = evt.data.get(colName, '')
-        _id = evt.data['id']
-        qr = orm.THS_ZT.update({colName : val}).where(orm.THS_ZT.id == _id)
+        _id = evt.data['ths_id']
+        qr = orm.THS_ZT.update({orm.THS_ZT.mark_1 : val}).where(orm.THS_ZT.id == _id)
         qr.execute()
 
     def onAutoSync(self, code, day):
@@ -134,7 +159,6 @@ class TCK_Window(base_win.BaseWindow):
         self.editorWin.setText(code)
         self.editorWin.invalidWindow()
         self.onQuery(self.editorWin.text)
-
 
     def onRefresh(self, evt, args):
         if evt.name == 'Click':
@@ -161,7 +185,6 @@ class TCK_Window(base_win.BaseWindow):
         time.sleep(0.2)
         pyautogui.press('enter')
         
-
     def onDbClick(self, evt, args):
         if evt.name != 'RowEnter' and evt.name != 'DbClick':
             return
@@ -211,7 +234,7 @@ class TCK_Window(base_win.BaseWindow):
         clsQr = orm.CLS_ZT.select().dicts()
         hotZH = ths_orm.THS_HotZH.select().dicts()
         
-        kpl = {}
+        allDicts = {}
         ths = []
         cls = []
         hots = {}
@@ -223,39 +246,37 @@ class TCK_Window(base_win.BaseWindow):
             hots[k] = d['zhHotOrder']
         for d in kplQr:
             k = d['day'] + ':' + d['code']
-            kpl[k] = d
-            d['kpl_ztReason'] = d['ztReason'].upper()
+            allDicts[k] = item = {'code': d['code'], 'name': d['name'], 'day': d['day'], 'kpl_id': d['id']}
+            item['kpl_ztReason'] = d['ztReason'].upper()
             ztNum = d.get('ztNum', 0)
             if type(ztNum) == str:
                 print(d)
                 ztNum = 0
-            d['kpl_ztReason'] += f"({d['ztNum']})"
-            d['zhHotOrder'] = hots.get(k, None)
-            rs.append(d)
+            item['kpl_ztReason'] += f"({d['ztNum']})"
+            item['zhHotOrder'] = hots.get(k, None)
+            rs.append(item)
 
         kplLastDay = rs[0]['day']
         for d in thsQr:
             k = d['day'] + ':' + d['code']
-            obj = kpl.get(k, None)
-            if obj:
-                obj['ths_status'] = d['status']
-                obj['ths_ztReason'] = d['ztReason'].upper()
-                obj['mark_1'] = d['mark_1']
-                obj['mark_2'] = d['mark_2']
-            else:
-                #ths.append(d)
-                if kplLastDay < d['day']:
-                    d['ths_status'] = d['status']
-                    d['ths_ztReason'] = d['ztReason'].upper()
-                    d['zhHotOrder'] = hots.get(k, None)
-                    del d['status']
-                    del d['ztReason']
-                    rs.insert(0, d)
-                    kpl[k] = d
+            obj = allDicts.get(k, None)
+            insert = False if obj else True
+            if not obj:
+                allDicts[k] = obj = {}
+            obj['ths_status'] = d['status']
+            obj['ths_ztReason'] = d['ztReason'].upper()
+            obj['ths_mark_1'] = d['mark_1']
+            obj['ths_mark_2'] = d['mark_2']
+            obj['ths_mark_3'] = d['mark_3']
+            obj['ths_id'] = d['id']
+            if insert and kplLastDay < d['day']:
+                d['zhHotOrder'] = hots.get(k, None)
+                rs.insert(0, d)
+                allDicts[k] = d
 
         for d in clsQr:
             k = d['day'] + ':' + d['code']
-            obj = kpl.get(k, None)
+            obj = allDicts.get(k, None)
             if obj:
                 detail = d['detail'].upper()
                 detail = detail.replace('\r\n', ' | ')
@@ -291,7 +312,7 @@ class TCK_Window(base_win.BaseWindow):
             for q in qrs:
                 fd = False
                 for k in data:
-                    if k != 'id' and isinstance(data[k], str) and (q in data[k]):
+                    if ('_id' not in k) and isinstance(data[k], str) and (q in data[k]):
                         fd = True
                         break
                 if cond == 'AND' and not fd:
