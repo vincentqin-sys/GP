@@ -6,7 +6,7 @@ import traceback
 import requests, json, logging
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import orm
+from Tck import orm
 
 def now():
     return datetime.datetime.now().strftime('%H:%M')
