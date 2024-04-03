@@ -8,7 +8,7 @@ from Tdx import orm as tdx_orm
 from THS import orm
 from Common import base_win
 from LHB import orm as lhb_orm
-
+from Tck import orm as tck_orm
 
 class HotWindow(base_win.BaseWindow):
     #  HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息) DDLR（大单流入） ZT_FUPAN(涨停复盘)
@@ -510,13 +510,13 @@ class HotWindow(base_win.BaseWindow):
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def updateZtFuPanData(self, code):
-        ds = orm.KPL_ZT.select().where(orm.KPL_ZT.code == code).order_by(orm.KPL_ZT.day.asc())
+        ds = tck_orm.KPL_ZT.select().where(tck_orm.KPL_ZT.code == code).order_by(tck_orm.KPL_ZT.day.asc())
         self.ztFuPanData = [d.__data__ for d in ds]
         self.selectDay = None
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def updateKPL_SCQX(self, code):
-        qr = orm.KPL_SCQX.select().order_by(orm.KPL_SCQX.day.asc())
+        qr = tck_orm.KPL_SCQX.select().order_by(tck_orm.KPL_SCQX.day.asc())
         if not self.kplSCQX:
             self.kplSCQX = {}
         for d in qr:

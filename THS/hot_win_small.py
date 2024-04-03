@@ -8,6 +8,7 @@ from Tdx import datafile
 from THS import orm, hot_utils
 from Download import henxin
 from Common import base_win
+from Tck import orm as tck_orm
 
 #-----------------------------------------------------------
 class ThsSortQuery:
@@ -488,7 +489,7 @@ class KPLCardView(CardView):
         self.kplZTData = None
         self.ROW_HEIGHT = 18
         self.selectDay = 0
-        self.ormClazz = orm.KPL_ZT
+        self.ormClazz = tck_orm.KPL_ZT
         self.emptyLine = '\n\n无开盘啦涨停信息'
         self.fontSize = 14
         self.code = None
@@ -553,7 +554,7 @@ class KPLCardView(CardView):
 class THS_ZTCardView(KPLCardView):
     def __init__(self, hwnd):
         super().__init__(hwnd)
-        self.ormClazz = orm.THS_ZT
+        self.ormClazz = tck_orm.THS_ZT
         self.emptyLine = '\n\n无同花顺涨停信息'
         self.fontSize = 12
         self.ROW_HEIGHT = 32
@@ -953,7 +954,7 @@ class KPL_AllCardView(ListView):
         super().__init__(hwnd)
         self.windowTitle = 'KPL-ZT'
         self.curSelDay = 0
-        day = orm.KPL_ZT.select(pw.fn.max(orm.KPL_ZT.day)).scalar()
+        day = tck_orm.KPL_ZT.select(pw.fn.max(tck_orm.KPL_ZT.day)).scalar()
         self.updateData(day)
 
     def getFont(self):
@@ -982,7 +983,7 @@ class KPL_AllCardView(ListView):
         if day == self.curSelDay:
             return
         if not day:
-            day = orm.KPL_ZT.select(pw.fn.max(orm.KPL_ZT.day)).scalar()
+            day = tck_orm.KPL_ZT.select(pw.fn.max(tck_orm.KPL_ZT.day)).scalar()
         if not day:
             day = '0000-00-00'
         if type(day) == int:
@@ -990,7 +991,7 @@ class KPL_AllCardView(ListView):
         if len(day) == 8:
             day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
         self.curSelDay = int(day.replace('-', ''))
-        qr = orm.KPL_ZT.select().where(orm.KPL_ZT.day == day)
+        qr = tck_orm.KPL_ZT.select().where(tck_orm.KPL_ZT.day == day)
         self.data = [d.__data__ for d in qr]
         self.pageIdx = 0
         self.selIdx = -1
