@@ -123,6 +123,7 @@ class DddlrStructWindow(base_win.BaseWindow):
         win.addIndicator(kline.DdlrIndicator(win, {'height': 100}))
         win.addIndicator(kline.DdlrIndicator(win, {'height': 40}, False))
         win.addIndicator(kline.HotIndicator(win, {}))
+        win.addIndicator(kline.TckIndicator(win, {}))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
         dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
         W, H = 1100, 650

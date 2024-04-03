@@ -4,6 +4,7 @@ import requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import orm as ths_orm
+from Tck import orm as tck_orm
 from Tdx import datafile
 from Download import henxin
 from Common import base_win
@@ -455,7 +456,8 @@ class RateIndicator(Indicator):
         title = self.config.get('title', None)
         if not title:
             return
-        rc = (0, 2, 100, 20)
+        wc, *_ = win32gui.GetTextExtentPoint32(hdc, title)
+        rc = (0, 2, wc + 5, 20)
         win32gui.SetTextColor(hdc, 0xab34de)
         win32gui.FillRect(hdc, rc, hbrs['black'])
         win32gui.DrawText(hdc, title, -1, rc, win32con.DT_LEFT)
@@ -553,22 +555,26 @@ class CustomIndicator(Indicator):
     def draw(self, hdc, pens, hbrs):
         if not self.visibleRange:
             return
-        self.drawBackground(hdc, pens, hbrs)
         itemWidth = self.config['itemWidth']
         for idx in range(*self.visibleRange):
             i = (idx - self.visibleRange[0])
+            self.drawItemBackground(idx, hdc, pens, hbrs, i * itemWidth)
             self.drawItem(idx, hdc, pens, hbrs, i * itemWidth)
         # draw title
         title = self.config.get('title', None)
         if not title:
             return
-        rc = (0, 2, 100, 20)
+        wc, *_ = win32gui.GetTextExtentPoint32(hdc, title)
+        rc = (0, 2, wc + 5, 20)
         win32gui.FillRect(hdc, rc, hbrs['black'])
         win32gui.SetTextColor(hdc, 0xab34de)
         win32gui.DrawText(hdc, title, -1, rc, win32con.DT_LEFT)
 
-    def drawBackground(self, hdc, pens, hbrs):
-        pass
+    def drawItemBackground(self, idx, hdc, pens, hbrs, x):
+        WW = self.config['itemWidth']
+        win32gui.SelectObject(hdc, pens['light_drak_dash_dot'])
+        win32gui.MoveToEx(hdc, x + WW, 0)
+        win32gui.LineTo(hdc, x + WW, self.height)
 
 class DdlrIndicator(CustomIndicator):
     PADDING_TOP = 25
@@ -611,16 +617,13 @@ class DdlrIndicator(CustomIndicator):
         selIdx = self.klineWin.selIdx
         selData = self.data[selIdx] if selIdx >= 0 else None
         selDay = int(selData.day) if selData else 0
-        rc = (x, 1, x + WW, self.height)
+        rc = (x + 1, 1, x + WW, self.height)
         if selDay == int(data['__day']):
             win32gui.FillRect(hdc, rc, hbrs['light_dark'])
         if self.isDetail:
             self.drawItem_Detail(idx, hdc, pens, hbrs, x)
         else:
             self.drawItem_Sum(idx, hdc, pens, hbrs, x)
-        win32gui.SelectObject(hdc, pens['light_drak_dash_dot'])
-        win32gui.MoveToEx(hdc, x + WW, 0)
-        win32gui.LineTo(hdc, x + WW, self.height)
     
     def drawItem_Sum(self, idx, hdc, pens, hbrs, x):
         WW = self.config['itemWidth']
@@ -675,14 +678,6 @@ class DdlrIndicator(CustomIndicator):
             self.valueRange = None
         else:
             self.valueRange = (0, max(vrIn[1], vrOut[1]))
-    
-    def drawBackground(self, hdc, pens, hbrs):
-        #rc = (0, 1, self.width, 20)
-        #win32gui.FillRect(hdc, rc, hbrs['light_dark'])
-        pass
-        #win32gui.SelectObject(hdc, pens['blue_dash_dot'])
-        #win32gui.MoveToEx(hdc, 0, 20)
-        #win32gui.LineTo(hdc, self.width, 20)
 
 class HotIndicator(CustomIndicator):
     def __init__(self, klineWin, config) -> None:
@@ -715,13 +710,10 @@ class HotIndicator(CustomIndicator):
         selIdx = self.klineWin.selIdx
         selData = self.data[selIdx] if selIdx >= 0 else None
         selDay = int(selData.day) if selData else 0
-        rc = (x, 1, x + WW, self.height)
+        rc = (x + 1, 1, x + WW, self.height)
         if selDay == int(data['__day']):
             win32gui.FillRect(hdc, rc, hbrs['light_dark'])
         win32gui.DrawText(hdc, str(data['zhHotOrder']), -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
-        win32gui.SelectObject(hdc, pens['light_drak_dash_dot'])
-        win32gui.MoveToEx(hdc, x + WW, 0)
-        win32gui.LineTo(hdc, x + WW, self.height)
 
 class DayIndicator(CustomIndicator):
     def __init__(self, klineWin, config) -> None:
@@ -741,7 +733,7 @@ class DayIndicator(CustomIndicator):
         selIdx = self.klineWin.selIdx
         selData = self.data[selIdx] if selIdx >= 0 else None
         selDay = int(selData.day) if selData else 0
-        rc = (x, 1, x + iw, self.height)
+        rc = (x + 1, 1, x + iw, self.height)
         if selDay == int(data['__day']):
             win32gui.FillRect(hdc, rc, hbrs['light_dark'])
         day = self.customData[idx]['day']
@@ -782,7 +774,7 @@ class ThsZsPMIndicator(CustomIndicator):
         selIdx = self.klineWin.selIdx
         selData = self.data[selIdx] if selIdx >= 0 else None
         selDay = int(selData.day) if selData else 0
-        rc = (x, 1, x + iw, self.height)
+        rc = (x + 1, 1, x + iw, self.height)
         if selDay == int(data['__day']):
             win32gui.FillRect(hdc, rc, hbrs['light_dark'])
         cdata = self.customData[idx]
@@ -797,6 +789,48 @@ class ThsZsPMIndicator(CustomIndicator):
             sy = 25
             rc = (x, sy, x + iw, sy + 16)
             win32gui.DrawText(hdc, f"{cdata['zdf_PM'] :<3d}", -1, rc, win32con.DT_CENTER) 
+
+class TckIndicator(CustomIndicator):
+    def __init__(self, klineWin, config) -> None:
+        config = config or {}
+        if 'height' not in config:
+            config['height'] = 50
+        if 'itemWidth' not in config:
+            config['itemWidth'] = 160
+        super().__init__(klineWin, config)
+        if 'title' not in self.config:
+            self.config['title'] = '[题材]'
+
+    def setData(self, data):
+        super().setData(data)
+        if not self.klineWin.model:
+            self.setCustomData(None)
+            return
+        hots = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.code == self.klineWin.model.code).order_by(tck_orm.THS_ZT.day.asc()).dicts()
+        maps = {}
+        for d in hots:
+            day = d['day'].replace('-', '')
+            maps[int(day)] = d
+        rs = []
+        for d in data:
+            fd = maps.get(d.day, None)
+            if not fd:
+                fd = {'day': d.day, 'ztReason': ''}
+            rs.append(fd)
+        self.setCustomData(rs)
+
+    def drawItem(self, idx, hdc, pens, hbrs, x):
+        iw = self.config['itemWidth']
+        cdata = self.customData[idx]
+        selIdx = self.klineWin.selIdx
+        selData = self.data[selIdx] if selIdx >= 0 else None
+        selDay = int(selData.day) if selData else 0
+        rc = (x + 1, 1, x + iw, self.height)
+        if selDay == int(cdata['__day']):
+            win32gui.FillRect(hdc, rc, hbrs['light_dark'])
+        win32gui.SetTextColor(hdc, 0xcccccc)
+        rc = (x + 3, 3, x + iw - 3, self.height)
+        win32gui.DrawText(hdc, cdata['ztReason'], -1, rc, win32con.DT_CENTER | win32con.DT_WORDBREAK) #  | win32con.DT_VCENTER | win32con.DT_SINGLELINE
 
 class KLineWindow(base_win.BaseWindow):
     LEFT_MARGIN, RIGHT_MARGIN = 0, 70
@@ -1169,9 +1203,10 @@ if __name__ == '__main__':
     win.addIndicator(DayIndicator(win, {'height': 20}))
     win.addIndicator(DdlrIndicator(win, {'height' : 100}))
     win.addIndicator(HotIndicator(win, None)) # {'height' : 50}
+    win.addIndicator(TckIndicator(win, None)) # {'height' : 50}
     rect = (0, 0, 1000, 700)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    model = KLineModel_Ths('603259')
+    model = KLineModel_Ths('600281')
     model.loadDataFile()
     win.setModel(model)
     win.makeVisible(-1)

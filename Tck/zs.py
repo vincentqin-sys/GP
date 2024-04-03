@@ -135,11 +135,9 @@ class ZSWindow(base_win.BaseWindow):
     def openInCurWindow(self, data):
         win = kline.KLineWindow()
         win.showSelTip = True
-        win.addDefaultIndicator('rate | amount')
+        win.addDefaultIndicator('amount')
         win.addIndicator(kline.DayIndicator(win, {}))
-        win.addIndicator(kline.DdlrIndicator(win, {'height': 100}))
-        win.addIndicator(kline.DdlrIndicator(win, {'height': 30}, False))
-        win.addIndicator(kline.HotIndicator(win, {}))
+        win.addIndicator(kline.ThsZsPMIndicator(win, {}))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
         dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
         W, H = 1100, 650
