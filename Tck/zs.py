@@ -45,8 +45,16 @@ class ZSWindow(base_win.BaseWindow):
             if asc:
                 return 10000
             return -10000
+        def render(win, hdc, row, col, colName, value, rect):
+            datas = win.getData()
+            color = win.css['textColor']
+            if datas[row]['mark_1'] == 1:
+                color = 0x0000dd
+            align = win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE
+            win.drawer.drawText(hdc, value, rect, color, align = align)
+
         headers = [ #{'title': '', 'width': 60, 'name': '#idx' },
-                   {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True  },
+                   {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True, 'render': render },
                    {'title': '成交额', 'width': 60, 'name': 'money', 'formater': formateMoney , 'sortable':True },
                    {'title': '涨幅', 'width': 60, 'name': 'zdf', 'formater': formateRate, 'sortable':True },
                    {'title': '50亿排名', 'width': 70, 'name': 'zdf_50PM', 'sorter': sortPM, 'sortable':True },
@@ -77,10 +85,11 @@ class ZSWindow(base_win.BaseWindow):
         if win.selRow < 0:
             return
         wdata = win.sortData or win.data
-        code = wdata[win.selRow]['code']
-        model = [{'title': '关联选中'}]
+        rowData = wdata[win.selRow]
+        code = rowData['code']
+        model = [{'title': '关联选中', 'name': 'GL'}, {'title': '标记红色', 'name': 'MARK'}]
         menu = base_win.PopupMenuHelper.create(self.hwnd, model)
-        menu.addListener(self.onMenuItemSelect, (tabIdx, code))
+        menu.addListener(self.onMenuItemSelect, (tabIdx, code, rowData))
         x, y = win32gui.GetCursorPos()
         menu.show(x, y)
 
@@ -94,14 +103,21 @@ class ZSWindow(base_win.BaseWindow):
     def onMenuItemSelect(self, evt, args):
         if evt.name != 'Select':
             return
-        tabIdx, code = args
-        for i, win in enumerate(self.listWins):
-            if i == tabIdx:
-                continue
-            idx = self.findIdx(win, code)
-            win.selRow = idx
-            win.showRow(idx)
-            win.invalidWindow()
+        tabIdx, code, rowData = args
+        if evt.item['name'] == "GL":
+            for i, win in enumerate(self.listWins):
+                if i == tabIdx:
+                    continue
+                idx = self.findIdx(win, code)
+                win.selRow = idx
+                win.showRow(idx)
+                win.invalidWindow()
+        elif evt.item['name'] == 'MARK':
+            qr = orm.THS_ZS_ZD.update({orm.THS_ZS_ZD.mark_1 : 1}).where(orm.THS_ZS_ZD.id == rowData['id'])
+            qr.execute()
+            rowData['mark_1'] = 1
+            self.listWins[tabIdx].invalidWindow()
+
 
     def onSelDayChanged(self, evt, args):
         if evt.name != 'Select':

@@ -429,8 +429,8 @@ class Drawer:
         if type(rect) == list:
             rect = tuple(rect)
         if (align & win32con.DT_VCENTER) and (align & win32con.DT_WORDBREAK):
-            rect = self.calcTextRect(hdc, text, rect, align)
-            win32gui.DrawText(hdc, text, len(text), rect, win32con.DT_WORDBREAK | win32con.DT_LEFT)
+            rect2 = self.calcTextRect(hdc, text, rect, align)
+            win32gui.DrawText(hdc, text, len(text), rect2, win32con.DT_WORDBREAK | win32con.DT_LEFT)
         else:
             win32gui.DrawText(hdc, text, len(text), rect, align)
 
@@ -449,7 +449,16 @@ class Drawer:
             topn = ((srcRect[3] - srcRect[1]) - (bottom - top)) // 2
             top = topn + top
             bottom = topn + bottom
-        return (left, top, right, bottom)
+        resRect = [left, top, right, bottom]
+        if align & win32con.DT_CENTER:
+            mx = ((srcRect[2] - srcRect[0]) - (resRect[2] - resRect[0])) // 2
+            resRect[0] += mx
+            resRect[2] += mx
+        elif align & win32con.DT_RIGHT:
+            mx = ((srcRect[2] - srcRect[0]) - (resRect[2] - resRect[0]))
+            resRect[0] += mx
+            resRect[2] += mx
+        return tuple(resRect)
 
     # rect = list or tuple (left, top, right, bottom)
     def fillCycle(self, hdc, rect, color):

@@ -680,7 +680,7 @@ class DdlrIndicator(CustomIndicator):
             self.valueRange = (0, max(vrIn[1], vrOut[1]))
 
 class HotIndicator(CustomIndicator):
-    def __init__(self, klineWin, config) -> None:
+    def __init__(self, klineWin, config = None) -> None:
         config = config or {}
         if 'height' not in config:
             config['height'] = 30
@@ -716,7 +716,7 @@ class HotIndicator(CustomIndicator):
         win32gui.DrawText(hdc, str(data['zhHotOrder']), -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
 class DayIndicator(CustomIndicator):
-    def __init__(self, klineWin, config) -> None:
+    def __init__(self, klineWin, config = None) -> None:
         config = config or {}
         if 'height' not in config:
             config['height'] = 20
@@ -742,7 +742,7 @@ class DayIndicator(CustomIndicator):
         win32gui.DrawText(hdc, day, -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
 class ThsZsPMIndicator(CustomIndicator):
-    def __init__(self, klineWin, config) -> None:
+    def __init__(self, klineWin, config = None) -> None:
         config = config or {}
         if 'height' not in config:
             config['height'] = 50
@@ -791,7 +791,7 @@ class ThsZsPMIndicator(CustomIndicator):
             win32gui.DrawText(hdc, f"{cdata['zdf_PM'] :<3d}", -1, rc, win32con.DT_CENTER) 
 
 class TckIndicator(CustomIndicator):
-    def __init__(self, klineWin, config) -> None:
+    def __init__(self, klineWin, config = None) -> None:
         config = config or {}
         if 'height' not in config:
             config['height'] = 50
@@ -831,6 +831,40 @@ class TckIndicator(CustomIndicator):
         win32gui.SetTextColor(hdc, 0xcccccc)
         rc = (x + 3, 3, x + iw - 3, self.height)
         win32gui.DrawText(hdc, cdata['ztReason'], -1, rc, win32con.DT_CENTER | win32con.DT_WORDBREAK) #  | win32con.DT_VCENTER | win32con.DT_SINGLELINE
+
+class KLineSelTipWindow(base_win.BaseWindow):
+    def __init__(self, klineWin) -> None:
+        super().__init__()
+        self.klineWin = klineWin
+        klineWin.addNamedListener('selIdx.changed', self.onSelIdxChanged)
+
+    def onSelIdxChanged(self, evt, args):
+        self.invalidWindow()
+
+    def onDraw(self, hdc):
+        selIdx = self.klineWin.selIdx
+        model = self.klineWin.model
+        if selIdx < 0 or (not model) or (not model.data) or selIdx >= len(model.data):
+            return
+        d = model.data[selIdx]
+        amx = d.amount / 100000000
+        if amx >= 1000:
+            am = f'{int(amx)}'
+        elif amx > 100:
+            am = f'{amx :.1f}'
+        else:
+            am =  f'{amx :.2f}'
+        txt = f'涨幅\n{getattr(d, "zhangFu", 0):.2f}%\n\n成交额\n{am}亿' # 时间\n{d.day//10000}\n{d.day%10000:04d}\n\n
+        if hasattr(d, 'rate'):
+            txt += f'\n\n换手率\n{d.rate :.1f}%'
+        rc = (0, 0, *self.getClientSize())
+        self.drawer.drawRect(hdc, rc, 0x0000dd)
+        self.drawer.drawText(hdc, txt, rc, 0xd0d0d0, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_WORDBREAK)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_NCHITTEST:
+            return win32con.HTCAPTION
+        return super().winProc(hwnd, msg, wParam, lParam)
 
 class KLineWindow(base_win.BaseWindow):
     LEFT_MARGIN, RIGHT_MARGIN = 0, 70
@@ -928,6 +962,10 @@ class KLineWindow(base_win.BaseWindow):
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''):
         super().createWindow(parentWnd, rect, style, className, title)
         self.calcIndicatorsRect()
+        if self.showSelTip:
+            selTipWin = KLineSelTipWindow(self)
+            prc = win32gui.GetWindowRect(self.hwnd)
+            selTipWin.createWindow(self.hwnd, (prc[0] + 10, prc[1] + 80, 80, 140), win32con.WS_POPUP | win32con.WS_VISIBLE) # win32con.WS_CAPTION |
     
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -1050,33 +1088,6 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.SetTextColor(hdc, 0xdddddd)
         win32gui.DrawText(hdc, day, len(day), rc, win32con.DT_CENTER)
 
-    def drawSelTip(self, hdc, pens, hbrs):
-        if not self.showSelTip:
-            return
-        if self.selIdx < 0 or (not self.model) or (not self.model.data) or self.selIdx >= len(self.model.data):
-            return
-        sdc = win32gui.SaveDC(hdc)
-        d = self.model.data[self.selIdx]
-        amx = d.amount / 100000000
-        if amx >= 1000:
-            am = f'{int(amx)}'
-        elif amx > 100:
-            am = f'{amx :.1f}'
-        else:
-            am =  f'{amx :.2f}'
-        txt = f'涨幅\n{getattr(d, "zhangFu", 0):.2f}%\n\n成交额\n{am}亿' # 时间\n{d.day//10000}\n{d.day%10000:04d}\n\n
-        if hasattr(d, 'rate'):
-            txt += f'\n\n换手率\n{d.rate :.1f}%'
-        TIP_HEIGHT = 110
-        y = self.klineIndicator.y + (self.klineIndicator.height - TIP_HEIGHT)
-        rc = (0, y, 60, y + TIP_HEIGHT)
-        win32gui.SelectObject(hdc, hbrs['black'])
-        win32gui.SelectObject(hdc, pens['red'])
-        win32gui.Rectangle(hdc, *rc)
-        win32gui.SetTextColor(hdc, 0xffffff)
-        win32gui.DrawText(hdc, txt, len(txt), rc, win32con.DT_CENTER)
-        win32gui.RestoreDC(hdc, sdc)
-    
     def drawCodeInfo(self, hdc, pens, hbrs):
         if not self.model:
             return
@@ -1148,7 +1159,7 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.MoveToEx(hdc, 0, h - 2)
         win32gui.LineTo(hdc, w, h - 2)
         self.drawMouse(hdc, pens)
-        self.drawSelTip(hdc, pens, hbrs)
+        #self.drawSelTip(hdc, pens, hbrs)
         self.drawCodeInfo(hdc, pens, hbrs)
         self.drawSelDayTip(hdc, pens, hbrs)
 

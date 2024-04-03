@@ -163,6 +163,7 @@ class THS_ZS_ZD(pw.Model):
     zdf = pw.FloatField() #涨跌幅
     zdf_50PM = pw.IntegerField(default = 0) # 50亿以上排名
     zdf_PM = pw.IntegerField(default = 0) # 全部排名
+    mark_1 = pw.IntegerField(null = True) # 标记 1
 
     class Meta:
         database = db_thszs
