@@ -12,6 +12,76 @@ import ddlr_detail, orm
 thsWin = ths_win.ThsWindow()
 thsWin.init()
 
+class PageInfo:
+    pages = []
+    pagesIdx = -1
+    FALGS = ('selRow', 'startRow', 'sortHeader', 'searchText')
+
+    def __init__(self, tckWin, flag):
+        tabWin = tckWin.tableWin
+        self.tckWin = tckWin
+        if flag == 'all':
+            self.flag = PageInfo.FALGS
+        else:
+            self.flag = flag.replace(' ', '').split('|')
+        for f in self.flag:
+            if f == 'selRow':
+                self.selRow = tabWin.selRow
+            elif f == 'startRow':
+                self.startRow = tabWin.startRow
+            elif f == 'sortHeader':
+                self.sortHeader = tabWin.sortHeader
+            elif f == 'searchText':
+                self.searchText = tckWin.searchText
+
+    @classmethod
+    def save(clazz, tckWin, flag = 'all'):
+        for i in range(len(PageInfo.pages) - 1, PageInfo.pagesIdx, -1):
+            PageInfo.pages.pop(i)
+        pageInfo = PageInfo(tckWin, flag)
+        PageInfo.pages.append(pageInfo)
+        PageInfo.pagesIdx += 1
+
+    @classmethod
+    def back(clazz):
+        if PageInfo.pagesIdx < 0:
+            return
+        PageInfo.pagesIdx -= 1
+        info = PageInfo.pages[PageInfo.pagesIdx]
+        info.__restore()
+
+    @classmethod
+    def prev(clazz):
+        if PageInfo.pagesIdx + 1 >= len(PageInfo.pages):
+            return
+        PageInfo.pagesIdx += 1
+        info = PageInfo.pages[PageInfo.pagesIdx]
+        info.__restore()
+
+    @classmethod
+    def canPrev(clazz):
+        return PageInfo.pagesIdx + 1 < len(PageInfo.pages)
+
+    @classmethod
+    def canBack(clazz):
+        return PageInfo.pagesIdx  >= 0
+
+    def __restore(self):
+        if'searchText' in self.flag:
+            editWin = self.tckWin.editorWin
+            editWin.setText(self.searchText)
+            editWin.invalidWindow()
+            self.tckWin.onQuery(self.searchText)
+        tabWin : table.EditTableWindow = self.tckWin.tableWin
+        for f in self.flag:
+            if f == 'selRow':
+                tabWin.setSelRow(self.selRow)
+            elif f == 'startRow':
+                tabWin.startRow = self.startRow
+            elif f == 'sortHeader':
+                tabWin.setSortHeader(self.sortHeader['header'], self.sortHeader['state'])
+        tabWin.invalidWindow()
+
 class TCK_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -27,6 +97,7 @@ class TCK_Window(base_win.BaseWindow):
         self.autoSyncCheckBox = base_win.CheckBox({'title': '自动同步显示'})
         self.tckData = None
         self.tckSearchData = None
+        self.searchText = ''
         
         self.inputTips = []
         
@@ -94,18 +165,46 @@ class TCK_Window(base_win.BaseWindow):
         self.tableWin.addListener(self.onEditCell, None)
         def onTabMenu(evt, args):
             hasSel = self.tableWin.selRow >= 0
-            model = [{'title': '标记重点', 'enable': hasSel}]
+            model = [ {'title': '标记重点', 'name':'BJZD', 'enable': hasSel},
+                      {'title': '仅搜索当前选中的个股', 'name':'CUR_CODE', 'enable': hasSel},
+                      {'title': '转到当前选中的日期', 'name':'CUR_DAY', 'enable': hasSel},
+                      {'title': 'LINE'},
+                      {'title': '前进', 'name':'PREV', 'enable': PageInfo.canPrev()},
+                      {'title': '后退', 'name':'BACK', 'enable': PageInfo.canBack()},
+                    ]
             menu = base_win.PopupMenuHelper.create(self.hwnd, model)
             menu.addNamedListener('Select', onTabMenuSelect, self.tableWin.selRow)
             menu.show(*win32gui.GetCursorPos())
         def onTabMenuSelect(evt, selRow):
-            datas = self.tableWin.getData()
-            data = datas[selRow]
-            data['ths_mark_3'] = 1
-            qr = orm.THS_ZT.update({orm.THS_ZT.mark_3 : 1}).where(orm.THS_ZT.id == data['ths_id'])
-            qr.execute()
-            self.tableWin.invalidWindow()
-
+            item = evt.item
+            if item['name'] == 'BJZD':
+                datas = self.tableWin.getData()
+                data = datas[selRow]
+                data['ths_mark_3'] = 1
+                qr = orm.THS_ZT.update({orm.THS_ZT.mark_3 : 1}).where(orm.THS_ZT.id == data['ths_id'])
+                qr.execute()
+                self.tableWin.invalidWindow()
+            elif item['name'] == 'PREV':
+                PageInfo.prev()
+            elif item['name'] == 'BACK':
+                PageInfo.back()
+            elif item['name'] == 'CUR_CODE':
+                PageInfo.save(self)
+                datas = self.tableWin.getData()
+                code = datas[selRow]['code']
+                self.editorWin.setText(code)
+                self.editorWin.invalidWindow()
+                self.onQuery(code)
+                PageInfo.save(self)
+            elif item['name'] == 'CUR_DAY':
+                PageInfo.save(self)
+                datas = self.tableWin.getData()
+                day = datas[selRow]['day']
+                self.editorWin.setText(day)
+                self.editorWin.invalidWindow()
+                self.onQuery(day)
+                PageInfo.save(self)
+                
         self.tableWin.addNamedListener('ContextMenu', onTabMenu)
         sm = ths_win.ThsShareMemory.instance()
         sm.open()
@@ -289,6 +388,7 @@ class TCK_Window(base_win.BaseWindow):
         self.tckData = rs
 
     def doSearch(self, search : str):
+        self.searchText = search
         if not self.tckData:
             self.tckSearchData = None
             return
