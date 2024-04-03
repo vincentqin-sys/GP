@@ -2,9 +2,9 @@ import win32gui, win32con , win32api, win32ui, win32gui_struct, win32clipboard #
 import threading, time, datetime, sys, os, copy, calendar, functools
 import pyperclip # pip install pyperclip
 
-# listeners : ContextMenu = {src, x, y} , default is diable
-#             DbClick = {src, x, y} , default is diable
-#             R_DbClick = {src, x, y} , default is diable
+# listeners : ContextMenu = {src, x, y} , default is disable
+#             DbClick = {src, x, y} , default is disable
+#             R_DbClick = {src, x, y} , default is disable
 class BaseWindow:
     bindHwnds = {}
 
@@ -89,7 +89,11 @@ class BaseWindow:
             #style = win32gui.GetWindowLong(self.hwnd, win32con.GWL_STYLE)
             #if (style & win32con.WS_OVERLAPPED) and
             if getattr(self, 'layout', None):
-                self.layout.resize(0, 0, *self.getClientSize())
+                pds = self.paddings
+                w, h = self.getClientSize()
+                w -= pds[0] + pds[2]
+                h -= pds[1] + pds[3]
+                self.layout.resize(pds[0], pds[1], w, h)
             return True
         return False
 
@@ -1193,63 +1197,7 @@ class TableWindow(BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-class ColumnWindow(BaseWindow):
-    def __init__(self):
-        super().__init__()
-        self.columnHeadHeight = 0
-        self.rowHeight = 18
-        self.columnCount = 1
-        self.data = None
-        self.columnHead = None # title
 
-    def getColumnHead(self, columnIdx):
-        return self.columnHead
-    
-    def setData(self, data):
-        self.data = data
-
-    def getRowNum(self):
-        w, h = self.getClientSize()
-        h -= self.columnHeadHeight
-        return h // self.rowHeight
-    
-    def getColumnWidth(self):
-        w, h = self.getClientSize()
-        return w // self.columnCount
-
-    def drawColumnHead(self, hdc, columnIdx):
-        if not self.data:
-            return
-        title = self.getColumnHead(columnIdx)
-        cw = self.getColumnWidth()
-        rc = (columnIdx * cw, 0, (columnIdx + 1) * cw, self.columnHeadHeight)
-        self.drawer.drawText(hdc, title, rc, 0xdddddd)
-        self.drawer.drawLine(hdc, rc[0], rc[3] - 1, rc[2], rc[3] - 1, 0xcccccc)
-
-    def drawItemData(self, hdc, columnIdx, rowIdx, idx, data):
-        rc = self.getItemRect(columnIdx, rowIdx)
-        pass
-
-    def getItemRect(self, col, row):
-        sx = col * self.rowHeight
-        ex = sx + self.getColumnWidth()
-        sy = self.rowHeight * row + self.columnHeadHeight
-        ey = sy + self.rowHeight
-        return (sx, sy, ex, ey)
-
-    def getVisibleRange(self):
-        if not self.data:
-            return (0, 0)
-        rowNum = self.getRowNum()
-        colNum = self.columnCount
-        maxNum = rowNum * colNum
-        # only show last maxNum items
-        dlen = len(self.data)
-        if dlen <= maxNum:
-            return (0, maxNum)
-        return (dlen - maxNum, dlen)
-
-    def onDraw(self, hdc):
         if not self.data:
             return
         rowNum = self.getRowNum()
@@ -1265,90 +1213,6 @@ class ColumnWindow(BaseWindow):
             self.drawItemData(hdc, colIdx, rowIdx, i, itemData)
         for i in range(0, colNum):
             self.drawColumnHead(hdc, i)
-
-# listeners : Select = {src, idx}
-class ListWindow(BaseWindow):
-    def __init__(self):
-        super().__init__()
-        self.css['bgColor'] = 0xf0f0f0
-        self.css['textColor'] = 0x333333
-        self.ROW_HEIGHT = 18
-        self.selIdx = -1
-        self.pageIdx = 0
-        self.data = None
-
-    def setData(self, data):
-        self.data = data
-        self.selIdx = -1
-        self.pageIdx = 0
-
-    def getPageSize(self):
-        rect = win32gui.GetClientRect(self.hwnd)
-        h = rect[3] - rect[1]
-        return h // self.ROW_HEIGHT
-
-    def getPageNum(self):
-        if not self.data:
-            return 0
-        return (len(self.data) + self.getPageSize() - 1) // self.getPageSize()
-
-    def getItemRect(self, idx):
-        pz = self.getPageSize()
-        idx -= self.pageIdx * pz
-        if idx < 0 or idx >= pz:
-            return None
-        sy = idx * self.ROW_HEIGHT
-        ey = sy + self.ROW_HEIGHT
-        return (0, sy, self.getClientSize()[0], ey)
-
-    def getItemIdx(self, y):
-        idx = y // self.ROW_HEIGHT
-        idx += self.getPageSize() * self.pageIdx
-        return idx
-
-    def getVisibleRange(self):
-        pz = self.getPageSize()
-        start = pz * self.pageIdx
-        end = (self.pageIdx + 1) * pz
-        start = min(start, len(self.data) - 1)
-        end = min(end, len(self.data) - 1)
-        return start, end
-    
-    def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_MOUSEWHEEL:
-            wParam = (wParam >> 16) & 0xffff
-            if wParam & 0x8000:
-                wParam = wParam - 0xffff + 1
-            wParam = wParam // 120
-            if wParam > 0: # up
-                self.pageIdx = max(self.pageIdx - wParam, 0)
-            else:
-                self.pageIdx = min(self.pageIdx + wParam, self.getPageNum() - 1)
-            win32gui.InvalidateRect(self.hwnd, None, True)
-            return True
-        if msg == win32con.WM_LBUTTONUP:
-            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            idx = self.getItemIdx(y)
-            if self.selIdx != idx:
-                self.selIdx = idx
-                win32gui.InvalidateRect(self.hwnd, None, True)
-                self.notifyListener(self.Event('Select', self, idx = idx))
-            return True
-        if msg == win32con.WM_KEYDOWN:
-            if wParam == win32con.VK_DOWN:
-                if self.data and self.selIdx < len(self.data):
-                    self.selIdx += 1
-                    if self.selIdx > 0 and self.selIdx % self.getPageSize() == 0:
-                        self.pageIdx += 1
-                    win32gui.InvalidateRect(hwnd, None, True)
-            elif wParam == win32con.VK_UP:
-                if self.data and self.selIdx > 0:
-                    self.selIdx -= 1
-                    if self.selIdx > 0 and (self.selIdx + 1) % self.getPageSize() == 0:
-                        self.pageIdx -= 1
-                    win32gui.InvalidateRect(hwnd, None, True)
-            return True
-        return super().winProc(hwnd, msg, wParam, lParam)
 
 # listeners : ClickSelect = {src, group, groupIdx}
 class GroupButton(BaseWindow):
