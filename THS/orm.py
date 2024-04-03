@@ -115,13 +115,13 @@ class THS_HotZH(pw.Model):
         table_name = '个股热度综合排名'
 
 
-db3 = pw.SqliteDatabase(f'{path}GP/db/TaoGuBa.db')
+#db3 = pw.SqliteDatabase(f'{path}GP/db/TaoGuBa.db')
 
 # 淘股吧 remark表 收藏表
-class TaoGuBa_Remark(pw.Model):
-    info = pw.TextField() # 收藏信息
-    class Meta:
-        database = db3
+#class TaoGuBa_Remark(pw.Model):
+#    info = pw.TextField() # 收藏信息
+#    class Meta:
+#        database = db3
 
 # 大单流入流出情况
 db5 = pw.SqliteDatabase(f'{path}/GP/db/THS_DDLR.db')
@@ -170,7 +170,7 @@ class THS_ZS_ZD(pw.Model):
 
 db.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_GNTC, THS_Newest])
 db2.create_tables([THS_Hot, THS_HotZH])
-db3.create_tables([TaoGuBa_Remark])
+#db3.create_tables([TaoGuBa_Remark])
 db5.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS, THS_ZS_ZD])
 

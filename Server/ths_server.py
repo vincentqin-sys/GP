@@ -9,7 +9,7 @@ import functools
 
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import orm
+from Tck import orm as tck_orm
 from Download import henxin
 
 def formatZtTime(ds):
@@ -93,10 +93,10 @@ def downloadOneDay(day):
         it = datas[k]
         if not it['ztReason'] or it['ztReason'] == '其它':
             continue
-        obj = orm.THS_ZT.get_or_none(day = it['day'], code=it['code'])
+        obj = tck_orm.THS_ZT.get_or_none(day = it['day'], code=it['code'])
         if not obj:
             it['name'] = it['name'].replace(' ', '')
-            orm.THS_ZT.create(**it)
+            tck_orm.THS_ZT.create(**it)
             insertNum += 1
             continue
         if obj.ztTime != it['ztTime'] or obj.status != it['status'] or obj.ztReason != it['ztReason']:
@@ -183,4 +183,4 @@ def startup(app):
 
 if __name__ == '__main__':
     #autoLoadHistory()
-    downloadOneDay(20240305)
+    downloadOneDay(20240403)
