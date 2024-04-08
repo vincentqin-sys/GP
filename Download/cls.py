@@ -56,7 +56,7 @@ class ClsUrl:
             return sparams + '&sign=' + sign
         return None # error params
 
-    # 分时
+    # 当日分时
     def loadFenShi(self, code):
         url = 'https://x-quote.cls.cn/quote/stock/tline?'
         scode = self._getTagCode(code)
@@ -65,8 +65,8 @@ class ClsUrl:
         resp = requests.get(url)
         txt = resp.content.decode('utf-8')
         js = json.loads(txt)
-        print(js)
-        return js
+        #print(js['data'])
+        return js['data']
         
     # 基本信息
     def loadBasic(self, code):
@@ -103,8 +103,43 @@ class ClsUrl:
         rt['市盈率_TTM'] = data['ttm_pe']
         print(rt)
         return rt
+    
+    # 近5日分时
+    def loadHistory5FenShi(self, code):
+        params = {
+            'secu_code': self._getTagCode(code),
+            'app': 'CailianpressWeb',
+            'os': 'web',
+            'sv': '7.7.5'
+        }
+        url = f'https://x-quote.cls.cn/quote/stock/tline_history?' + self._signParams(params)
+        resp = requests.get(url)
+        txt = resp.content.decode('utf-8')
+        js = json.loads(txt)
+        data = js['data']
+        print(data)
+        return data
+    
+    # K线数据
+    def loadKline(self, code, limit = 100):
+        params = {
+            'secu_code': self._getTagCode(code),
+            'app': 'CailianpressWeb',
+            'os': 'web',
+            'sv': '7.7.5',
+            'offset': 0,
+            'limit': limit,
+            'type': 'fd1'
+        }
+        url = f'https://x-quote.cls.cn/quote/stock/kline?' + self._signParams(params)
+        resp = requests.get(url)
+        txt = resp.content.decode('utf-8')
+        js = json.loads(txt)
+        data = js['data']
+        print(data)
+        pass
 
 
 #signByStr('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012')
 #signByStr('app=CailianpressWeb&fields=date,minute,last_px,business_balance,business_amount,open_px,preclose_px,av_px&os=web&secu_code=sz301488&sv=7.7.5')
-ClsUrl().loadBasic('000506')
+ClsUrl().loadKline('000506')
