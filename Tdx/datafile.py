@@ -240,7 +240,10 @@ class DataFile:
         for i in range(1, len(self.data)):
             pc = self.data[i - 1].close
             cc = self.data[i].close
-            zhangFu = (cc - pc) / pc * 100
+            if pc == 0:
+                zhangFu = 0
+            else:
+                zhangFu = (cc - pc) / pc * 100
             setattr(self.data[i], 'zhangFu', zhangFu)
 
     # 获得涨停板
