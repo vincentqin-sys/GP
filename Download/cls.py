@@ -83,7 +83,7 @@ class ClsUrl:
         js = json.loads(txt)
         data = js['data']
         rt = {}
-        rt['preclose'] = data['preclose_px'] # 昨日收盘价
+        rt['pre'] = data['preclose_px'] # 昨日收盘价
         rt['code'] = data['secu_code'][2 : ]
         rt['name'] = data['secu_name']
         rt['vol'] = int(data['business_amount']) // 100 # int 手
@@ -92,6 +92,8 @@ class ClsUrl:
         rt['high'] = data['high_px']
         rt['close'] = data['last_px']
         rt['low'] = data['low_px']
+        pre = rt['pre'] or rt['open']
+        rt['涨幅'] = (rt['close'] - pre) / pre * 100
         rt['委比'] = data['entrust_rate'] * 100 # 0 ~ 100%
         rt['总市值'] = int(data['mc']) # int 元
         rt['流通市值'] = int(data['cmc']) # int 元
@@ -101,7 +103,7 @@ class ClsUrl:
         rt['市净率'] = data['pb']
         rt['市盈率_静'] = data['pe']
         rt['市盈率_TTM'] = data['ttm_pe']
-        print(rt)
+        #print(rt)
         return rt
     
     # 近5日分时

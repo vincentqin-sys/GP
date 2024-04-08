@@ -1207,6 +1207,18 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, val['fmtVal'], len(val['fmtVal']), rc, win32con.DT_CENTER)
         win32gui.DeleteObject(hb)
 
+class CodeWindow(base_win.BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.model = None
+        self.lineHeight = 24
+
+    def onDraw(self, hdc):
+        if not self.model:
+            return
+        y = 20
+        keys = ('code', 'name', '涨幅', '委比', '流通市值', '总市值', '市盈率_静', '市盈率_TTM')
+
 if __name__ == '__main__':
     win = KLineWindow()
     win.showSelTip = True
