@@ -183,4 +183,4 @@ def startup(app):
 
 if __name__ == '__main__':
     #autoLoadHistory()
-    downloadOneDay(20240403)
+    downloadOneDay(20240409)

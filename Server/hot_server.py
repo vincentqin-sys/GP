@@ -49,7 +49,7 @@ def check_chrome_open():
                 return True
     except Exception as e:
         print('[hot_server.check_chrome_open] exception: ', e)
-    return False
+    return True
 
 def sub_process():
     print('in sub_process')
