@@ -30,12 +30,6 @@
 			"all_frames" : true
 		},
 		{
-			"matches": ["https://www.cls.cn/finance"],
-            "run_at": "document_start",
-            "js": ["jquery-3.6.min.js", "my-hook-json.js"],
-			"all_frames" : true
-		},
-		{
 			"matches": ["https://www.cls.cn/*"],
             "run_at": "document_idle",
             "js": ["jquery-3.6.min.js", "kline.js", "thread.js", "cnt-inject.js"],

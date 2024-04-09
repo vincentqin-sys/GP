@@ -60,10 +60,12 @@ function loadZTInfo(response) {
 		// obj.ztTime = item.time.substring(11, 16);
 		obj.day = item.time.substring(0, 10);
 		obj.ztReason = '';
-		if (item.up_reason.indexOf('|') > 0) {
+		if (item.up_reason.indexOf(' | ') > 0) {
 			let idx = item.up_reason.indexOf('|');
 			obj.ztReason = item.up_reason.substring(0 , idx).trim();
 			obj.detail = item.up_reason.substring(idx + 1).trim();
+		} else {
+			obj.detail = item.up_reason;
 		}
 		if (obj.ztReason && obj.ztReason.trim() != '--') {
 			rs.push(obj);

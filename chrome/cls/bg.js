@@ -137,7 +137,7 @@ function getTimeLine(code) {
 }
 
 
-setInterval(run_loop, 1000 * 10); // 20 seconds
+// setInterval(run_loop, 1000 * 10); // 20 seconds
 
 // CORS
 function updateHeaders(hds, name, value) {

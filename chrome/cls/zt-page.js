@@ -26,9 +26,9 @@ setTimeout(() => {
 
 
 if (formatTime() >= '09:25' && formatTime() <= '15:15') {
-    setTimeout(() => {
-        window.location.reload();
-    }, 3 * 60 * 1000);
+    //setTimeout(() => {
+    //    window.location.reload();
+    //}, 3 * 60 * 1000);
 }
 
 if (window.location.href.indexOf('autoClose') > 0) {
