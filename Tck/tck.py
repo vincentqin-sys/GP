@@ -369,9 +369,12 @@ class TCK_Window(base_win.BaseWindow):
             obj['ths_mark_3'] = d['mark_3']
             obj['ths_id'] = d['id']
             if insert and kplLastDay < d['day']:
-                d['zhHotOrder'] = hots.get(k, None)
-                rs.insert(0, d)
-                allDicts[k] = d
+                obj['zhHotOrder'] = hots.get(k, None)
+                obj['day'] = d['day']
+                obj['code'] = d['code']
+                obj['name'] = d['name']
+                rs.insert(0, obj)
+                allDicts[k] = obj
 
         for d in clsQr:
             k = d['day'] + ':' + d['code']
