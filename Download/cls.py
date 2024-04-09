@@ -25,7 +25,7 @@ def _c_digest(s : str):
     bs = s.encode('utf-8')
     rs : bytes = digest(bs) # ctypes.c_char_p(bs)
     r = rs.decode('utf-8')
-    print('[_c_digest]', r)
+    #print('[_c_digest]', r)
     return r
 
 class ClsUrl:
@@ -119,10 +119,11 @@ class ClsUrl:
         txt = resp.content.decode('utf-8')
         js = json.loads(txt)
         data = js['data']
-        print(data)
+        #print(data)
         return data
     
     # K线数据
+    # limit : K线数量
     def loadKline(self, code, limit = 100):
         params = {
             'secu_code': self._getTagCode(code),
@@ -138,10 +139,10 @@ class ClsUrl:
         txt = resp.content.decode('utf-8')
         js = json.loads(txt)
         data = js['data']
-        print(data)
-        pass
+        #print(data)
+        return data
 
 
 #signByStr('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012')
 #signByStr('app=CailianpressWeb&fields=date,minute,last_px,business_balance,business_amount,open_px,preclose_px,av_px&os=web&secu_code=sz301488&sv=7.7.5')
-ClsUrl().loadKline('000506')
+#ClsUrl().loadKline('000506')

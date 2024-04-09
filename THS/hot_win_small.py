@@ -6,7 +6,7 @@ import peewee as pw
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from THS import orm, hot_utils
-from Download import henxin
+from Download import henxin, cls
 from Common import base_win
 from Tck import orm as tck_orm
 
@@ -1084,4 +1084,112 @@ class SimpleHotZHWindow(CardWindow):
             rc = win32gui.GetWindowRect(hwnd)
             self.DP.show(x = rc[0] + 8, y = rc[1] + 30)
             return False
+        return super().winProc(hwnd, msg, wParam, lParam)
+    
+
+class CodeBasicWindow(base_win.BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.curCode = None
+        self.data = None
+        self.cacheData = {}
+        self.css['bgColor'] = 0x050505
+        self.css['borderColor'] = 0x22dddd
+        self.css['enableBorder'] = True
+        base_win.ThreadPool.start()
+
+    def createWindow(self, parentWnd):
+        style = (0x00800000 | 0x10000000 | win32con.WS_POPUP)
+        w = win32api.GetSystemMetrics(0) # desktop width
+        SIZE = (260, 65)
+        rect = (w - SIZE[0] - 100, 200, *SIZE)
+        super().createWindow(parentWnd, rect, style, title='CodeBasic')
+        #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
+
+    def onDraw(self, hdc):
+        W, H = self.getClientSize()
+        PD = 10
+        LR = 3
+        rc = (LR, 2, W - LR, 18)
+        if self.data:
+            cs = f'{self.data["name"]}  {self.data["code"]}'
+        else:
+            cs = self.curCode
+        self.drawer.use(hdc, self.drawer.getFont(fontSize = 14, weight=1000))
+        self.drawer.fillRect(hdc, rc, 0x101010)
+        self.drawer.drawText(hdc, cs, rc, 0x00D7FF)
+        
+        if not self.data:
+            return
+        self.drawer.use(hdc, self.drawer.getFont(fontSize = 14, weight=1000))
+        y1 = 22
+        rc = (LR, y1, W // 2 - PD, y1 + 20)
+        v = self.data["流通市值"] // 100000000 #亿
+        cs1 =  f'{v :d} 亿'
+        self.drawer.drawText(hdc, '流通值', rc, 0xcccccc, align=win32con.DT_LEFT)
+        self.drawer.drawText(hdc, cs1, rc, 0xF4E202, align=win32con.DT_RIGHT)
+        rc = (W // 2 + PD, y1, W - LR, y1 + 20)
+        v = self.data["总市值"] // 100000000 #亿
+        cs1 =  f'{v :d} 亿'
+        self.drawer.drawText(hdc, '总市值', rc, 0xcccccc, align=win32con.DT_LEFT)
+        self.drawer.drawText(hdc, cs1, rc, 0xF4E202, align=win32con.DT_RIGHT)
+
+        y2 = 45
+        rc = (LR, y2, W // 2 - PD, y2 + 20)
+        self.drawer.drawText(hdc, '市盈_静', rc, 0xcccccc, align=win32con.DT_LEFT)
+        v = self.data['市盈率_静']
+        cs1 = '亏损' if v < 0 else f'{v:.1f}'
+        self.drawer.drawText(hdc, cs1, rc, 0xF4E202, align=win32con.DT_RIGHT)
+        rc = (W // 2 + PD, y2, W - LR, y2 + 20)
+        self.drawer.drawText(hdc, '市盈_TTM', rc, 0xcccccc, align=win32con.DT_LEFT)
+        v = self.data["市盈率_TTM"]
+        cs1 = '亏损' if v < 0 else f'{v:.1f}'
+        if v == None:
+            cs1 = '--'
+        self.drawer.drawText(hdc, cs1, rc, 0xF4E202, align=win32con.DT_RIGHT)
+
+    def onDayChanged(self, evt, args):
+        if evt.name != 'Select':
+            return
+        
+    def loadCodeBasic(self, code):
+        url = cls.ClsUrl()
+        data = url.loadBasic(code)
+        self.cacheData[code] = data
+        self._useCacheData(code)
+
+    def _useCacheData(self, code):
+        if code != self.curCode or code not in self.cacheData:
+            return
+        self.data = self.cacheData[code]
+        self.invalidWindow()
+        
+    def changeCode(self, code):
+        if (self.curCode == code) or (not code):
+            return
+        scode = f'{code :06d}' if type(code) == int else code
+        self.curCode = scode
+        self.data = None
+        if len(scode) != 6 or (code[0] not in ('0', '3', '6')):
+            self.invalidWindow()
+            return
+        if scode in self.cacheData:
+            self._useCacheData(scode)
+        else:
+            base_win.ThreadPool.addTask(scode, self.loadCodeBasic, scode)
+
+    def getWindowState(self):
+        rc = win32gui.GetWindowRect(self.hwnd)
+        return {'pos': (rc[0], rc[1])}
+    
+    def setWindowState(self, state):
+        if not state:
+            return
+        x, y = state['pos']
+        win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_NCHITTEST:
+            return win32con.HTCAPTION
         return super().winProc(hwnd, msg, wParam, lParam)

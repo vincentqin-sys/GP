@@ -14,6 +14,7 @@ simpleWindow = hot_win_small.SimpleWindow('HOT')
 simpleWindow2 = hot_win_small.SimpleWindow('ZT_GN')
 thsShareMem = ths_win.ThsShareMemory()
 simpleHotZHWindow = hot_win_small.SimpleHotZHWindow()
+codeBasicWindow = hot_win_small.CodeBasicWindow()
 
 def updateCode(nowCode):
     global curCode, thsShareMem
@@ -27,6 +28,7 @@ def updateCode(nowCode):
     hotWindow.updateCode(nowCode)
     simpleWindow.changeCode(nowCode)
     simpleWindow2.changeCode(nowCode)
+    codeBasicWindow.changeCode(nowCode)
     thsShareMem.writeCode(nowCode)
 
 def showHotWindow():
@@ -72,11 +74,12 @@ def updateWindowInfo(thsWin, stateMgr : WinStateMgr):
     if stateMgr.curPageName!= curPageName: # changed page
         stateMgr.curPageName = curPageName
         if curPageName not in winsInfo:
-            winsInfo[curPageName] = {'s1': None, 's2': None, 's3': None}
+            winsInfo[curPageName] = {'s1': None, 's2': None, 's3': None, 's4': None}
         cp = winsInfo[curPageName]
-        simpleWindow.setWindowState(cp['s1'])
-        simpleWindow2.setWindowState(cp['s3'])
-        simpleHotZHWindow.setWindowState(cp['s2'])
+        simpleWindow.setWindowState(cp.get('s1', None))
+        simpleWindow2.setWindowState(cp.get('s3', None))
+        simpleHotZHWindow.setWindowState(cp.get('s2', None))
+        codeBasicWindow.setWindowState(cp.get('s4', None))
         if curPageName == '技术分析':
             ths_win.ThsSmallF10Window.adjustPos()
     else:
@@ -87,6 +90,7 @@ def updateWindowInfo(thsWin, stateMgr : WinStateMgr):
         cp2['s1'] = simpleWindow.getWindowState()
         cp2['s2'] = simpleHotZHWindow.getWindowState()
         cp2['s3'] = simpleWindow2.getWindowState()
+        cp2['s4'] = codeBasicWindow.getWindowState()
         if cp != cp2:
             cp.update(cp2)
             stateMgr.save()
@@ -132,6 +136,7 @@ def subprocess_main():
     simpleWindow.createWindow(thsWindow.topHwnd)
     simpleWindow2.createWindow(thsWindow.topHwnd)
     simpleHotZHWindow.createWindow(thsWindow.topHwnd)
+    codeBasicWindow.createWindow(thsWindow.topHwnd)
     hotWindow.addListener(onListen, 'ListenHotWindow')
     threading.Thread(target = _workThread, args=(thsWindow, 'hot-win32.json')).start()
     win32gui.PumpMessages()
