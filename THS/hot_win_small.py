@@ -1139,14 +1139,18 @@ class CodeBasicWindow(base_win.BaseWindow):
         rc = (LR, y2, W // 2 - PD, y2 + 20)
         self.drawer.drawText(hdc, '市盈_静', rc, 0xcccccc, align=win32con.DT_LEFT)
         v = self.data['市盈率_静']
-        cs1 = '亏损' if v < 0 else f'{v:.1f}'
+        if v == None:
+            cs1 = '--'
+        else:
+            cs1 = '亏损' if v < 0 else f'{int(v)}'
         self.drawer.drawText(hdc, cs1, rc, 0xF4E202, align=win32con.DT_RIGHT)
         rc = (W // 2 + PD, y2, W - LR, y2 + 20)
         self.drawer.drawText(hdc, '市盈_TTM', rc, 0xcccccc, align=win32con.DT_LEFT)
         v = self.data["市盈率_TTM"]
-        cs1 = '亏损' if v < 0 else f'{v:.1f}'
         if v == None:
             cs1 = '--'
+        else:
+            cs1 = '亏损' if v < 0 else f'{int(v)}'
         self.drawer.drawText(hdc, cs1, rc, 0xF4E202, align=win32con.DT_RIGHT)
 
     def onDayChanged(self, evt, args):
