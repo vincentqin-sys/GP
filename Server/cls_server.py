@@ -75,7 +75,6 @@ def downloadClsZT():
         rs = __downloadClsZT()
         saveCls_ZT_List(rs)
     except Exception as e:
-        print('[cls_server] Exception: ', e)
         traceback.print_exc()
 
 def acceptDay(day):
@@ -88,6 +87,27 @@ def acceptDay(day):
         return False
     return True
 
+def tryDownloadDegree():
+    try:
+        now = datetime.datetime.now()
+        today = now.strftime('%Y-%m-%d')
+        obj = orm.CLS_SCQX.get_or_none(day = today)
+        if obj:
+            return
+        url = ''
+        resp = requests.get(url)
+        txt = resp.content.decode('utf-8')
+        js = json.loads(txt)
+        day = js['data']['date']
+        degree = js['data']['market_degree']
+        degree = int(float(degree) * 100)
+        obj = orm.CLS_SCQX.get_or_none(day = day)
+        if not obj:
+            orm.CLS_SCQX.create(day = day, zhqd = degree)
+            print('[cls-server] load degree: ', day, ' -> ', degree)
+    except Exception as e:
+        traceback.print_exc()
+
 def run():
     while True:
         now = datetime.datetime.now()
@@ -99,6 +119,8 @@ def run():
         else:
             time.sleep(10 * 60)
         downloadClsZT()
+        if curTime > '15:00':
+            tryDownloadDegree()
 
 def autoLoadClsZT():
     th = threading.Thread(target = run)
