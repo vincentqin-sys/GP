@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, functools
 import win32gui, win32con
 import requests
 
@@ -6,8 +6,8 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import orm as ths_orm
 from Tck import orm as tck_orm
 from Tdx import datafile
-from Download import henxin
-from Common import base_win
+from Download import henxin, cls
+from Common import base_win, ext
 
 class KLineModel_Tdx(datafile.DataFile):
     def __init__(self, code):
@@ -1207,17 +1207,63 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, val['fmtVal'], len(val['fmtVal']), rc, win32con.DT_CENTER)
         win32gui.DeleteObject(hb)
 
-class CodeWindow(base_win.BaseWindow):
+class CodeWindow(ext.CellRenderWindow):
     def __init__(self) -> None:
-        super().__init__()
-        self.model = None
-        self.lineHeight = 24
+        super().__init__(('1fr', '1fr'), 5)
+        self.curCode = None
+        self.data = None
+        self.cacheData = {}
+        base_win.ThreadPool.start()
+        self.init()
+    
+    def geValue(self, name, cell):
+        if not self.data:
+            return None
+        v = self.data.get(name, None)
+        if v == None:
+            return '--'
+        if name == '委比':
+            return str(v) + '%'
+        if '市值' in name:
+            return v + ' 亿'
+        if '市盈率' in name:
+            if v < 0: return '亏损'
+            return (int)
+        return v
 
-    def onDraw(self, hdc):
-        if not self.model:
+    def init(self):
+        RH = 25
+        self.addRow({'height': 25, 'margin': 20}, {'text': functools.partial(self.geValue, 'code'), 'color': 0xcccccc}, {'text': functools.partial(self.geValue, 'name'), 'color': 0xcccccc})
+        KEYS = ('涨幅', '委比', '流通市值', '总市值', '市盈率_静', '市盈率_TTM')
+        rowInfo = {'height': RH, 'margin': 5}
+        self.addRow(rowInfo, {'text': k, 'color': 0xcccccc}, {'text': functools.partial(self.geValue, k), 'color': 0xcccccc})
+
+    def loadCodeBasic(self, code):
+        url = cls.ClsUrl()
+        data = url.loadBasic(code)
+        self.cacheData[code] = data
+        self._useCacheData(code)
+
+    def _useCacheData(self, code):
+        if code != self.curCode or code not in self.cacheData:
             return
-        y = 20
-        keys = ('code', 'name', '涨幅', '委比', '流通市值', '总市值', '市盈率_静', '市盈率_TTM')
+        self.data = self.cacheData[code]
+        self.invalidWindow()
+        
+    def changeCode(self, code):
+        if (self.curCode == code) or (not code):
+            return
+        scode = f'{code :06d}' if type(code) == int else code
+        self.curCode = scode
+        self.data = None
+        if len(scode) != 6 or (code[0] not in ('0', '3', '6')):
+            self.invalidWindow()
+            return
+        if scode in self.cacheData:
+            self._useCacheData(scode)
+        else:
+            base_win.ThreadPool.addTask(scode, self.loadCodeBasic, scode)
+
 
 if __name__ == '__main__':
     win = KLineWindow()
