@@ -125,7 +125,7 @@ class DddlrStructWindow(base_win.BaseWindow):
         win.addIndicator(kline.TckIndicator(win.klineWin))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
         dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
-        W, H = 1100, 650
+        W, H = 1250, 750
         x = (dw - W) // 2
         y = (dh - H) // 2
         win.createWindow(self.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)

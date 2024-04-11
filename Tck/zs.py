@@ -50,6 +50,8 @@ class ZSWindow(base_win.BaseWindow):
             color = win.css['textColor']
             if datas[row]['mark_1'] == 1:
                 color = 0x0000dd
+            elif datas[row]['mark_1'] == 2:
+                color = 0xdd0000
             align = win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE
             win.drawer.drawText(hdc, value, rect, color, align = align)
 
@@ -87,7 +89,7 @@ class ZSWindow(base_win.BaseWindow):
         wdata = win.sortData or win.data
         rowData = wdata[win.selRow]
         code = rowData['code']
-        model = [{'title': '关联选中', 'name': 'GL'}, {'title': '标记红色', 'name': 'MARK'}]
+        model = [{'title': '关联选中', 'name': 'GL'}, {'title': '标记红色', 'name': 'MARK'}, {'title': '标记蓝色观察', 'name': 'MARK_BLUE'}]
         menu = base_win.PopupMenuHelper.create(self.hwnd, model)
         menu.addListener(self.onMenuItemSelect, (tabIdx, code, rowData))
         x, y = win32gui.GetCursorPos()
@@ -113,9 +115,16 @@ class ZSWindow(base_win.BaseWindow):
                 win.showRow(idx)
                 win.invalidWindow()
         elif evt.item['name'] == 'MARK':
-            qr = orm.THS_ZS_ZD.update({orm.THS_ZS_ZD.mark_1 : 1}).where(orm.THS_ZS_ZD.id == rowData['id'])
+            MARK_VAL = 1
+            qr = orm.THS_ZS_ZD.update({orm.THS_ZS_ZD.mark_1 : MARK_VAL}).where(orm.THS_ZS_ZD.id == rowData['id'])
             qr.execute()
-            rowData['mark_1'] = 1
+            rowData['mark_1'] = MARK_VAL
+            self.listWins[tabIdx].invalidWindow()
+        elif evt.item['name'] == 'MARK_BLUE':
+            MARK_VAL = 2
+            qr = orm.THS_ZS_ZD.update({orm.THS_ZS_ZD.mark_1 : MARK_VAL}).where(orm.THS_ZS_ZD.id == rowData['id'])
+            qr.execute()
+            rowData['mark_1'] = MARK_VAL
             self.listWins[tabIdx].invalidWindow()
 
 

@@ -86,23 +86,35 @@ class ClsUrl:
         rt['pre'] = data['preclose_px'] # 昨日收盘价
         rt['code'] = data['secu_code'][2 : ]
         rt['name'] = data['secu_name']
-        rt['vol'] = int(data['business_amount']) // 100 # int 手
-        rt['amount'] = int(data['business_balance']) # int 元
+        if 'business_amount' in data:
+            rt['vol'] = int(data['business_amount']) // 100 # int 手
+        if 'business_balance' in data:
+            rt['amount'] = int(data['business_balance']) # int 元
         rt['open'] = data['open_px']
         rt['high'] = data['high_px']
         rt['close'] = data['last_px']
         rt['low'] = data['low_px']
         pre = rt['pre'] or rt['open']
-        rt['涨幅'] = (rt['close'] - pre) / pre * 100
-        rt['委比'] = data['entrust_rate'] * 100 # 0 ~ 100%
-        rt['总市值'] = int(data['mc']) # int 元
-        rt['流通市值'] = int(data['cmc']) # int 元
-        rt['每股净资产'] = data['NetAssetPS']
-        rt['流通股本'] = int(data['NonRestrictedShares'])
-        rt['总股本'] = int(data['TotalShares'])
-        rt['市净率'] = data['pb']
-        rt['市盈率_静'] = data['pe']
-        rt['市盈率_TTM'] = data['ttm_pe']
+        if pre != 0:
+            rt['涨幅'] = (rt['close'] - pre) / pre * 100
+        if 'entrust_rate' in data:
+            rt['委比'] = data['entrust_rate'] * 100 # 0 ~ 100%
+        if 'mc' in data:
+            rt['总市值'] = int(data['mc']) # int 元
+        if 'cmc' in data:
+            rt['流通市值'] = int(data['cmc']) # int 元
+        if 'NetAssetPS' in data:
+            rt['每股净资产'] = data['NetAssetPS']
+        if 'NonRestrictedShares' in data:
+            rt['流通股本'] = int(data['NonRestrictedShares'])
+        if 'TotalShares' in data:
+            rt['总股本'] = int(data['TotalShares'])
+        if 'pb' in data:
+            rt['市净率'] = data['pb']
+        if 'pe' in data:
+            rt['市盈率_静'] = data['pe']
+        if 'ttm_pe' in data:
+            rt['市盈率_TTM'] = data['ttm_pe']
         #print(rt)
         return rt
     
