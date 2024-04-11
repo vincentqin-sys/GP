@@ -141,10 +141,10 @@ class VolPMWindow(base_win.BaseWindow):
         day = evt.data.day
         win.updateCodeDay(evt.code, day)
 
-    def onSelDayChanged(self, evtName, evtInfo, args):
-        if evtName != 'Select':
+    def onSelDayChanged(self, evt, args):
+        if evt.name != 'Select':
             return
-        self.updateDay(evtInfo['day'])
+        self.updateDay(evt.day)
 
     def updateDay(self, day):
         if type(day) == str:
