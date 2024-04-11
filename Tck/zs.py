@@ -15,7 +15,11 @@ class ZSWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, 20, '1fr')
-        self.cols = ('1fr', '1fr', '1fr', '1fr')
+        SW = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+        if SW > 1600:
+            self.cols = ('1fr', '1fr', '1fr', '1fr', '1fr')
+        else:
+            self.cols = ('1fr', '1fr', '1fr', '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.listWins = []
         self.daysLabels =[]
@@ -57,10 +61,10 @@ class ZSWindow(base_win.BaseWindow):
 
         headers = [ #{'title': '', 'width': 60, 'name': '#idx' },
                    {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True, 'render': render },
-                   {'title': '成交额', 'width': 60, 'name': 'money', 'formater': formateMoney , 'sortable':True },
-                   {'title': '涨幅', 'width': 60, 'name': 'zdf', 'formater': formateRate, 'sortable':True },
-                   {'title': '50亿排名', 'width': 70, 'name': 'zdf_50PM', 'sorter': sortPM, 'sortable':True },
-                   {'title': '全市排名', 'width': 70, 'name': 'zdf_PM', 'sorter': sortPM, 'sortable':True }]
+                   {'title': '成交额', 'width': 55, 'name': 'money', 'formater': formateMoney , 'sortable':True },
+                   {'title': '涨幅', 'width': 55, 'name': 'zdf', 'formater': formateRate, 'sortable':True },
+                   {'title': '50亿排名', 'width': 65, 'name': 'zdf_50PM', 'sorter': sortPM, 'sortable':True },
+                   {'title': '全市排名', 'width': 65, 'name': 'zdf_PM', 'sorter': sortPM, 'sortable':True }]
         for i in range(len(self.layout.templateColumns)):
             win = base_win.TableWindow()
             win.createWindow(self.hwnd, (0, 0, 1, 1))
