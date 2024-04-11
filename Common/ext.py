@@ -15,16 +15,18 @@ class CellRenderWindow(base_win.BaseWindow):
         self.paddings = (2, 2, 2, 2)
         self.rows = []
 
-    # rowInfo = { height: int,
-    #             bgColor: None | int,
+    # rowInfo = { height: int | function(cell object), 
+    #             bgColor: None | int | function(cell object), 
     #             margin: 0 | int, top margin
     #           }
     # cell = { text: str | function(cell object),
     #          paddings:(l, t, r, b) 可选,
     #          span: int (default is 1) 跨列数
-    #          bgColor: None | int, color: None | int,
+    #          bgColor: None | int | function(cell object), 
+    #          color: None | int | function(cell object),
     #          textAlign: int | None,
     #          fontSize: int | None, fontWeight: int | None }
+    # cell = function(rowInfo, cellIdx)
     def addRow(self, rowInfo, *cells):
         self.rows.append({'rowInfo': rowInfo, 'cells': cells})
 
@@ -49,6 +51,10 @@ class CellRenderWindow(base_win.BaseWindow):
         colIdx = 0
         for i in range(len(cells)):
             cell = cells[i]
+            if callable(cell):
+                cell = cell(rowInfo, i)
+            if cell == None:
+                cell = {}
             span = cell.get('span', 1)
             cw = self.getColWidth(colIdx, span, colsWidth)
             rc2 = [sx, sy, sx + cw, sy + rowInfo['height']]

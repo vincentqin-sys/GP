@@ -296,25 +296,20 @@ class TCK_Window(base_win.BaseWindow):
             self.openInCurWindow(data)
         
     def openInCurWindow(self, data):
-        win = kline.KLineWindow()
-        win.showSelTip = True
-        win.addDefaultIndicator('rate | amount')
-        win.addIndicator(kline.DayIndicator(win, {}))
-        win.addIndicator(kline.DdlrIndicator(win, {'height': 100}))
-        win.addIndicator(kline.DdlrIndicator(win, {'height': 30}, False))
-        win.addIndicator(kline.HotIndicator(win, None))
+        win = kline.KLineCodeWindow()
+        win.addIndicator('rate | amount')
+        win.addIndicator(kline.DayIndicator(win.klineWin, {}))
+        win.addIndicator(kline.DdlrIndicator(win.klineWin, {'height': 100}))
+        win.addIndicator(kline.DdlrIndicator(win.klineWin, {'height': 30}, False))
+        win.addIndicator(kline.HotIndicator(win.klineWin, None))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
         dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
-        W, H = 1000, 650
+        W, H = 1250, 750
         x = (dw - W) // 2
         y = (dh - H) // 2
         win.createWindow(self.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
-        model = kline.KLineModel_Ths(data['code'])
-        model.loadDataFile()
-        win.setModel(model)
-        win.setMarkDay(data['day'])
-        win.makeVisible(-1)
-        win.addListener(self.openKlineMinutes, win)
+        win.klineWin.addListener(self.openKlineMinutes, win)
+        win.changeCode(data['code'])
 
     def openKlineMinutes(self, evt, parent):
         if evt.name != 'DbClick':

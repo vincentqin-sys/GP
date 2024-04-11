@@ -94,7 +94,7 @@ def tryDownloadDegree():
         obj = orm.CLS_SCQX.get_or_none(day = today)
         if obj:
             return
-        url = ''
+        url = 'https://x-quote.cls.cn/quote/stock/emotion_options?app=CailianpressWeb&fields=up_performance&os=web&sv=7.7.5&sign=5f473c4d9440e4722f5dc29950aa3597'
         resp = requests.get(url)
         txt = resp.content.decode('utf-8')
         js = json.loads(txt)
@@ -113,18 +113,19 @@ def run():
         now = datetime.datetime.now()
         if not acceptDay(now):
             continue
+        downloadClsZT()
         curTime = now.strftime('%H:%M')
+        if curTime > '15:00':
+            tryDownloadDegree()
         if curTime < '09:30' or curTime > '16:00':
             time.sleep(60 * 3600) # 1 hour
         else:
             time.sleep(10 * 60)
-        downloadClsZT()
-        if curTime > '15:00':
-            tryDownloadDegree()
+
 
 def autoLoadClsZT():
     th = threading.Thread(target = run)
-    th.start()        
+    th.start()
 
 def saveCLS_Degree():
     js = request.json

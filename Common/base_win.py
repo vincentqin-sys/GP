@@ -310,7 +310,7 @@ class Drawer:
         return None
 
     def getFont(self, name = '宋体', fontSize = 14, weight = 0):
-        key = f'{name}:{fontSize}'
+        key = f'{name}:{fontSize}:{weight}'
         font = self.fonts.get(key, None)
         if not font:
             a = win32gui.LOGFONT()
@@ -1087,6 +1087,8 @@ class TableWindow(BaseWindow):
 
     # state = 'ASC | 'DSC' | None | 'Suggest'
     def setSortHeader(self, header, state):
+        self.startRow = 0
+        self.selRow = self.selCol = -1
         hd = self.sortHeader['header']
         st = self.sortHeader['state']
         if state == 'Suggest':

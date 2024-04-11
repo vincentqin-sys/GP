@@ -1,4 +1,5 @@
 import os, sys, functools
+from win32.lib.win32con import WS_CHILD, WS_VISIBLE
 import win32gui, win32con
 import requests
 
@@ -873,6 +874,7 @@ class KLineWindow(base_win.BaseWindow):
         super().__init__()
         self.model = None
         self.showSelTip = True # 是否显示选中K线时的竖向提示框
+        self.showCodeName = True # 显示代码，名称的提示
         self.klineWidth = 8 # K线宽度
         self.klineSpace = 2 # K线之间的间距离
         self.selIdx = -1
@@ -1100,15 +1102,16 @@ class KLineWindow(base_win.BaseWindow):
         self.drawer.use(hdc, font)
         self.drawer.drawText(hdc, gnhy, rc, 0x00cc00, win32con.DT_LEFT | win32con.DT_EDITCONTROL | win32con.DT_WORDBREAK)
         
-        sdc = win32gui.SaveDC(hdc)
-        font = self.drawer.getFont('黑体', 16, 900)
-        tip = f'{code}  {name}'
-        w = self.getClientSize()[0]
-        sx = int(w* 0.65)
-        rc = (sx, 0, sx + 250, 30)
-        self.drawer.use(hdc, font)
-        self.drawer.drawText(hdc, tip, rc, 0x0000ff)
-        win32gui.RestoreDC(hdc, sdc)
+        if self.showCodeName:
+            sdc = win32gui.SaveDC(hdc)
+            font = self.drawer.getFont('黑体', 16, 900)
+            tip = f'{code}  {name}'
+            w = self.getClientSize()[0]
+            sx = int(w* 0.65)
+            rc = (sx, 0, sx + 250, 30)
+            self.drawer.use(hdc, font)
+            self.drawer.drawText(hdc, tip, rc, 0x0000ff)
+            win32gui.RestoreDC(hdc, sdc)
 
     def onDraw(self, hdc):
         pens = {}
@@ -1209,34 +1212,49 @@ class KLineWindow(base_win.BaseWindow):
 
 class CodeWindow(ext.CellRenderWindow):
     def __init__(self) -> None:
-        super().__init__(('1fr', '1fr'), 5)
+        super().__init__((80, '1fr'), 5)
         self.curCode = None
         self.data = None
         self.cacheData = {}
         base_win.ThreadPool.start()
         self.init()
     
-    def geValue(self, name, cell):
+    def getCell(self, rowInfo, idx):
+        cell = {'text': '', 'color': 0xcccccc, 'textAlign': win32con.DT_LEFT, 'fontSize': 15}
         if not self.data:
-            return None
-        v = self.data.get(name, None)
-        if v == None:
-            return '--'
-        if name == '委比':
-            return str(v) + '%'
-        if '市值' in name:
-            return v + ' 亿'
-        if '市盈率' in name:
-            if v < 0: return '亏损'
-            return (int)
-        return v
+            return cell
+        name = rowInfo['name']
+        val = self.data.get(name, None)
+        if val == None:
+            cell['text'] = '--'
+            return cell
+        if name == '委比': cell['text'] = f'{int(val)} %'
+        elif '市值' in name: cell['text'] = f'{val // 100000000}' + ' 亿'
+        elif '市盈率' in name:
+            if val < 0: cell['text'] = '亏损'
+            else: cell['text'] = f'{int(val)}'
+        elif '涨幅' == name: cell['text'] = f'{val :.2f} %'
+        else: cell['text'] = str(val)
+
+        if name == '涨幅' or name == '委比' or '市盈率' in name:
+            cell['color'] = 0x0000ff if int(val) >= 0 else 0x00ff00
+        return cell
+    
+    def getCodeCell(self, rowInfo, idx):
+        cell = {'text': '', 'color': 0x5050ff, 'textAlign': win32con.DT_CENTER, 'fontSize': 15, 'fontWeight': 1000, 'span': 2}
+        if not self.data:
+            return cell
+        code = self.data.get('code', None)
+        name = self.data.get('name', None)
+        cell['text'] = f'{code}  {name}'
+        return cell
 
     def init(self):
         RH = 25
-        self.addRow({'height': 25, 'margin': 20}, {'text': functools.partial(self.geValue, 'code'), 'color': 0xcccccc}, {'text': functools.partial(self.geValue, 'name'), 'color': 0xcccccc})
+        self.addRow({'height': 25, 'margin': 20, 'name': 'code'}, self.getCodeCell)
         KEYS = ('涨幅', '委比', '流通市值', '总市值', '市盈率_静', '市盈率_TTM')
-        rowInfo = {'height': RH, 'margin': 5}
-        self.addRow(rowInfo, {'text': k, 'color': 0xcccccc}, {'text': functools.partial(self.geValue, k), 'color': 0xcccccc})
+        for k in KEYS:
+            self.addRow({'height': RH, 'margin': 5, 'name': k}, {'text': k, 'color': 0xcccccc}, self.getCell)
 
     def loadCodeBasic(self, code):
         url = cls.ClsUrl()
@@ -1251,12 +1269,12 @@ class CodeWindow(ext.CellRenderWindow):
         self.invalidWindow()
         
     def changeCode(self, code):
-        if (self.curCode == code) or (not code):
-            return
         scode = f'{code :06d}' if type(code) == int else code
+        if (self.curCode == scode) or (not scode):
+            return
         self.curCode = scode
         self.data = None
-        if len(scode) != 6 or (code[0] not in ('0', '3', '6')):
+        if len(scode) != 6 or (scode[0] not in ('0', '3', '6')):
             self.invalidWindow()
             return
         if scode in self.cacheData:
@@ -1264,19 +1282,49 @@ class CodeWindow(ext.CellRenderWindow):
         else:
             base_win.ThreadPool.addTask(scode, self.loadCodeBasic, scode)
 
+class KLineCodeWindow(base_win.BaseEditor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.css['bgColor'] = 0x101010
+        self.layout = None
+        self.klineWin = KLineWindow()
+        self.klineWin.showSelTip = True
+        self.klineWin.showCodeName = False
+        self.codeWin = CodeWindow()
+
+    def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title = ''):
+        super().createWindow(parentWnd, rect, style, className, title)
+        self.layout = base_win.GridLayout(('100%', ), ('1fr', 150), (5, 5))
+        self.klineWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.layout.setContent(0, 0, self.klineWin)
+        self.codeWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.layout.setContent(0, 1, self.codeWin)
+        self.layout.resize(0, 0, *self.getClientSize())
+
+    # nameOrObj : str = 'rate amount'
+    # nameOrObj : Indicator
+    def addIndicator(self, nameOrObj):
+        if isinstance(nameOrObj, str):
+            self.klineWin.addDefaultIndicator(nameOrObj)
+        if isinstance(nameOrObj, Indicator):
+            self.klineWin.addIndicator(nameOrObj)
+
+    def changeCode(self, code):
+        self.codeWin.changeCode(code)
+        model = KLineModel_Ths(code)
+        model.loadDataFile()
+        self.klineWin.setModel(model)
+        self.klineWin.makeVisible(-1)
+        self.klineWin.invalidWindow()
 
 if __name__ == '__main__':
-    win = KLineWindow()
-    win.showSelTip = True
-    win.addDefaultIndicator('rate amount')
-    win.addIndicator(DayIndicator(win, {'height': 20}))
-    win.addIndicator(DdlrIndicator(win, {'height' : 100}))
-    win.addIndicator(HotIndicator(win, None)) # {'height' : 50}
-    win.addIndicator(TckIndicator(win, None)) # {'height' : 50}
-    rect = (0, 0, 1000, 700)
+    win = KLineCodeWindow()
+    win.addIndicator('rate amount')
+    win.addIndicator(DayIndicator(win.klineWin, {'height': 20}))
+    win.addIndicator(DdlrIndicator(win.klineWin, {'height' : 100}))
+    win.addIndicator(HotIndicator(win.klineWin, None)) # {'height' : 50}
+    win.addIndicator(TckIndicator(win.klineWin, None)) # {'height' : 50}
+    rect = (0, 0, 1250, 800)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    model = KLineModel_Ths('600281')
-    model.loadDataFile()
-    win.setModel(model)
-    win.makeVisible(-1)
+    win.changeCode(600281)
     win32gui.PumpMessages()
