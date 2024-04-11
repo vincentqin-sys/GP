@@ -7,7 +7,7 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import orm, ths_win
 from Common import base_win, timeline, kline
-import ddlr_detail
+import ddlr_detail, kline_utils
 
 thsWin = ths_win.ThsWindow()
 thsWin.init()
@@ -67,7 +67,7 @@ class DddlrStructWindow(base_win.BaseWindow):
             return
         wdata = win.sortData or win.data
         code = wdata[win.selRow]['code']
-        model = [{'title': '关联选中'}]
+        model = [{'title': '关联选中', 'name': 'GLXZ'}]
         menu = base_win.PopupMenuHelper.create(self.hwnd, model)
         menu.addListener(self.onMenuItemSelect, (tabIdx, code))
         x, y = win32gui.GetCursorPos()
@@ -79,18 +79,33 @@ class DddlrStructWindow(base_win.BaseWindow):
             if d['code'] == code:
                 return i
         return -1
-    
-    def onMenuItemSelect(self, evt, args):
-        if evt.name != 'Select':
-            return
-        tabIdx, code = args
+
+    def glxz(self, tabIdx, code):
+        curTabWin = self.listWins[tabIdx]
+        sortHeader, sortSate = curTabWin.sortHeader['header'], curTabWin.sortHeader['state']
+        shIdx = -1
+        for i, hd in enumerate(curTabWin.headers):
+            if sortHeader == hd:
+                shIdx = i
+                break
         for i, win in enumerate(self.listWins):
             if i == tabIdx:
                 continue
+            if shIdx < 0:
+                win.setSortHeader(None, None)
+            else:
+                win.setSortHeader(win.headers[shIdx], sortSate)
             idx = self.findIdx(win, code)
             win.selRow = idx
             win.showRow(idx)
             win.invalidWindow()
+    
+    def onMenuItemSelect(self, evt, args):
+        if evt.name != 'Select':
+            return
+        if evt.item['name'] == 'GLXZ':
+            tabIdx, code = args
+            self.glxz(tabIdx, code)
 
     def onDbClick(self, evt, idx):
         if evt.name != 'DbClick' and evt.name != 'RowEnter':
@@ -116,31 +131,7 @@ class DddlrStructWindow(base_win.BaseWindow):
         pyautogui.press('enter')
         
     def openInCurWindow(self, data):
-        win = kline.KLineCodeWindow()
-        win.addIndicator('rate | amount')
-        win.addIndicator(kline.DayIndicator(win.klineWin))
-        win.addIndicator(kline.DdlrIndicator(win.klineWin, {'height': 100}))
-        win.addIndicator(kline.DdlrIndicator(win.klineWin, {'height': 40}, False))
-        win.addIndicator(kline.HotIndicator(win.klineWin))
-        win.addIndicator(kline.TckIndicator(win.klineWin))
-        dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
-        dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
-        W, H = 1250, 750
-        x = (dw - W) // 2
-        y = (dh - H) // 2
-        win.createWindow(self.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
-        win.changeCode(data['code'])
-        win.klineWin.setMarkDay(data['day'])
-        win.klineWin.addListener(self.openKlineMinutes, win)
-
-    def openKlineMinutes(self, evt, parent):
-        if evt.name != 'DbClick':
-            return
-        win = ddlr_detail.DDLR_MinuteMgrWindow()
-        rc = win32gui.GetWindowRect(parent.hwnd)
-        win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
-        day = evt.data.day
-        win.updateCodeDay(evt.code, day)
+        kline_utils.openInCurWindow_Code(self, data)
 
     def onSelDayChanged(self, evt, args):
         if evt.name != 'Select':

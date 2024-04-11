@@ -45,9 +45,9 @@ class MultiKLineWindow(base_win.BaseWindow):
         self.klines.clear()
         for i in range(childKlineNum):
             win = kline.KLineWindow()
-            #idt = kline.KLineIndicator(win, {'height': -1, 'margins': (10, 10)})
+            #idt = kline.KLineIndicator({'height': -1, 'margins': (10, 10)})
             #win.addIndicator(idt)
-            idt = kline.AmountIndicator(win, {'height': 50, 'margins': (10, 3)})
+            idt = kline.AmountIndicator({'height': 50, 'margins': (10, 3)})
             win.addIndicator(idt)
             self.klines.append(win)
             win.createWindow(self.hwnd, (0, 0, 10, 10))

@@ -1,12 +1,11 @@
 import os, sys, functools
-from win32.lib.win32con import WS_CHILD, WS_VISIBLE
 import win32gui, win32con
-import requests
+import requests, peewee as pw
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import orm as ths_orm
 from Tck import orm as tck_orm
-from Tdx import datafile
+from Tdx import datafile, orm as tdx_orm
 from Download import henxin, cls
 from Common import base_win, ext
 
@@ -28,14 +27,17 @@ class Indicator:
     #            name: ''
     #            title: 'xx'
     #        }
-    def __init__(self, klineWin, config) -> None:
-        self.klineWin = klineWin
+    def __init__(self, config = None) -> None:
+        self.klineWin = None
         self.config = config or {}
         self.data = None
         self.valueRange = None
         self.visibleRange = None
         self.width = 0
         self.height = 0
+
+    def init(self, klineWin):
+        self.klineWin = klineWin
 
     def setData(self, data):
         self.data = data
@@ -129,8 +131,8 @@ class Indicator:
         return (fromIdx, endIdx)
 
 class KLineIndicator(Indicator):
-    def __init__(self, klineWin, config) -> None:
-        super().__init__(klineWin, config)
+    def __init__(self, config) -> None:
+        super().__init__(config)
         self.markDay = None
 
     def setMarkDay(self, day):
@@ -280,8 +282,8 @@ class KLineIndicator(Indicator):
         win32gui.DeleteObject(pen)
     
 class AmountIndicator(Indicator):
-    def __init__(self, klineWin, config) -> None:
-        super().__init__(klineWin, config)
+    def __init__(self, config) -> None:
+        super().__init__(config)
         self.config['title'] = '[成交额]'
 
     def calcValueRange(self, fromIdx, endIdx):
@@ -385,8 +387,8 @@ class AmountIndicator(Indicator):
         win32gui.RestoreDC(hdc, sdc)
 
 class RateIndicator(Indicator):
-    def __init__(self, klineWin, config) -> None:
-        super().__init__(klineWin, config)
+    def __init__(self, config = None) -> None:
+        super().__init__(config)
         self.config['title'] = '[换手率]'
 
     def calcValueRange(self, fromIdx, endIdx):
@@ -477,14 +479,15 @@ class RateIndicator(Indicator):
 
 # config = {itemWidth: int}
 class CustomIndicator(Indicator):
-    def __init__(self, klineWin, config) -> None:
-        super().__init__(klineWin, config)
+    def __init__(self, config = None) -> None:
+        super().__init__(config)
         if 'itemWidth' not in self.config:
             self.config['itemWidth'] = 80
-        if 'height' not in self.config:
-            self.config['height'] = 50
         self.customData = None
-        klineWin.addListener(self.onSelIdxChanged, None)
+
+    def init(self, klineWin):
+        super().init(klineWin)
+        self.klineWin.addListener(self.onSelIdxChanged, None)
 
     def onSelIdxChanged(self, evt, args):
         if evt.name != 'selIdx.changed':
@@ -579,14 +582,18 @@ class CustomIndicator(Indicator):
 
 class DdlrIndicator(CustomIndicator):
     PADDING_TOP = 25
-    def __init__(self, klineWin, config, isDetail = True) -> None:
-        super().__init__(klineWin, config)
+    def __init__(self, config = None, isDetail = True) -> None:
+        super().__init__(config)
         if isDetail:
             self.config['title'] = '[大单流入]'
+            if 'height' not in self.config:
+                self.config['height'] = 100
         else:
             self.config['title'] = '[大单净流入]'
             if 'show-rate' not in self.config:
                 self.config['show-rate'] = False
+            if 'height' not in self.config:
+                self.config['height'] = 30
         self.isDetail = isDetail
 
     def setData(self, data):
@@ -680,13 +687,49 @@ class DdlrIndicator(CustomIndicator):
         else:
             self.valueRange = (0, max(vrIn[1], vrOut[1]))
 
+class DdlrPmIndicator(CustomIndicator):
+    def __init__(self, config = None) -> None:
+        super().__init__(config)
+        self.config['title'] = '[成交额排名]'
+        if 'height' not in self.config:
+            self.config['height'] = 30
+
+    def setData(self, data):
+        super().setData(data)
+        if not data:
+            self.setCustomData(None)
+            return
+        rs = []
+        maps = {}
+        qr = tdx_orm.TdxVolPMModel.select().where(tdx_orm.TdxVolPMModel.code == self.klineWin.model.code).order_by(tdx_orm.TdxVolPMModel.day.asc()).dicts()
+        maps = {}
+        for d in qr:
+            maps[int(d['day'])] = d
+        for d in data:
+            fd = maps.get(d.day, None)
+            if not fd:
+                fd = {'day': str(d.day), 'isNone': True, 'pm': ''}
+            rs.append(fd)
+        self.setCustomData(rs)
+
+    def drawItem(self, idx, hdc, pens, hbrs, x):
+        WW = self.config['itemWidth']
+        data = self.customData[idx]
+        selIdx = self.klineWin.selIdx
+        selData = self.data[selIdx] if selIdx >= 0 else None
+        selDay = int(selData.day) if selData else 0
+        rc = (x + 1, 1, x + WW, self.height)
+        if selDay == int(data['__day']):
+            win32gui.FillRect(hdc, rc, hbrs['light_dark'])
+        win32gui.DrawText(hdc, str(data['pm']), -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+
 class HotIndicator(CustomIndicator):
-    def __init__(self, klineWin, config = None) -> None:
+    def __init__(self, config = None) -> None:
         config = config or {}
         if 'height' not in config:
             config['height'] = 30
-        super().__init__(klineWin, config)
-        self.config['title'] = '[综合排名]'
+        super().__init__(config)
+        self.config['title'] = '[热度排名]'
 
     def setData(self, data):
         super().setData(data)
@@ -717,11 +760,11 @@ class HotIndicator(CustomIndicator):
         win32gui.DrawText(hdc, str(data['zhHotOrder']), -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
 class DayIndicator(CustomIndicator):
-    def __init__(self, klineWin, config = None) -> None:
+    def __init__(self, config = None) -> None:
         config = config or {}
         if 'height' not in config:
             config['height'] = 20
-        super().__init__(klineWin, config)
+        super().__init__(config)
     
     def setData(self, data):
         super().setData(data)
@@ -743,11 +786,11 @@ class DayIndicator(CustomIndicator):
         win32gui.DrawText(hdc, day, -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
 class ThsZsPMIndicator(CustomIndicator):
-    def __init__(self, klineWin, config = None) -> None:
+    def __init__(self, config = None) -> None:
         config = config or {}
         if 'height' not in config:
             config['height'] = 50
-        super().__init__(klineWin, config)
+        super().__init__(config)
         if 'title' not in self.config:
             self.config['title'] = '[指数排名]'
 
@@ -792,13 +835,13 @@ class ThsZsPMIndicator(CustomIndicator):
             win32gui.DrawText(hdc, f"{cdata['zdf_PM'] :<3d}", -1, rc, win32con.DT_CENTER) 
 
 class TckIndicator(CustomIndicator):
-    def __init__(self, klineWin, config = None) -> None:
+    def __init__(self, config = None) -> None:
         config = config or {}
         if 'height' not in config:
             config['height'] = 50
         if 'itemWidth' not in config:
             config['itemWidth'] = 160
-        super().__init__(klineWin, config)
+        super().__init__(config)
         if 'title' not in self.config:
             self.config['title'] = '[题材]'
 
@@ -880,22 +923,26 @@ class KLineWindow(base_win.BaseWindow):
         self.selIdx = -1
         self.mouseXY = None
         self.indicators = []
-        idt = KLineIndicator(self, {'height': -1, 'margins': (30, 20)})
+        idt = KLineIndicator({'height': -1, 'margins': (30, 20)})
+        idt.init(self)
         self.indicators.append(idt)
         self.klineIndicator = idt
 
-    def addIndicator(self, indicator):
+    def addIndicator(self, indicator : Indicator):
+        indicator.init(self)
         self.indicators.append(indicator)
         self.calcIndicatorsRect()
 
     # indicator = 'rate' | 'amount'
     def addDefaultIndicator(self, name):
         if 'rate' in name:
-            idt = RateIndicator(self, {'height': 60, 'margins': (15, 2)})
+            idt = RateIndicator({'height': 60, 'margins': (15, 2)})
             self.indicators.append(idt)
+            idt.init(self)
         if 'amount' in name:
-            idt = AmountIndicator(self, {'height': 60, 'margins': (15, 2)})
+            idt = AmountIndicator({'height': 60, 'margins': (15, 2)})
             self.indicators.append(idt)
+            idt.init(self)
         self.calcIndicatorsRect()
 
     def setMarkDay(self, day):
@@ -1320,10 +1367,10 @@ class KLineCodeWindow(base_win.BaseEditor):
 if __name__ == '__main__':
     win = KLineCodeWindow()
     win.addIndicator('rate amount')
-    win.addIndicator(DayIndicator(win.klineWin, {'height': 20}))
-    win.addIndicator(DdlrIndicator(win.klineWin, {'height' : 100}))
-    win.addIndicator(HotIndicator(win.klineWin, None)) # {'height' : 50}
-    win.addIndicator(TckIndicator(win.klineWin, None)) # {'height' : 50}
+    win.addIndicator(DayIndicator({'height': 20}))
+    win.addIndicator(DdlrIndicator({'height' : 100}))
+    win.addIndicator(HotIndicator()) # {'height' : 50}
+    win.addIndicator(TckIndicator()) # {'height' : 50}
     rect = (0, 0, 1250, 800)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     win.changeCode(600281)

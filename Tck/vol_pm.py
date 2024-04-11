@@ -116,30 +116,8 @@ class VolPMWindow(base_win.BaseWindow):
         pyautogui.press('enter')
         
     def openInCurWindow(self, data):
-        win = kline.KLineCodeWindow()
-        win.addIndicator('rate | amount')
-        win.addIndicator(kline.DayIndicator(win.klineWin, {}))
-        win.addIndicator(kline.DdlrIndicator(win.klineWin, {'height': 100}))
-        win.addIndicator(kline.DdlrIndicator(win.klineWin, {'height': 30}, False))
-        win.addIndicator(kline.HotIndicator(win.klineWin, {}))
-        dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
-        dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
-        W, H = 1250, 750
-        x = (dw - W) // 2
-        y = (dh - H) // 2
-        win.createWindow(self.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
-        win.changeCode(data['code'])
-        win.klineWin.setMarkDay(data['day'])
-        win.klineWin.addListener(self.openKlineMinutes, win)
-
-    def openKlineMinutes(self, evt, parent):
-        if evt.name != 'DbClick':
-            return
-        win = ddlr_detail.DDLR_MinuteMgrWindow()
-        rc = win32gui.GetWindowRect(parent.hwnd)
-        win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
-        day = evt.data.day
-        win.updateCodeDay(evt.code, day)
+        import kline_utils
+        kline_utils.openInCurWindow_Code(self, data)
 
     def onSelDayChanged(self, evt, args):
         if evt.name != 'Select':

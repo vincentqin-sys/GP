@@ -130,10 +130,10 @@ class TCGN_Window(base_win.BaseWindow):
         win = kline.KLineWindow()
         win.showSelTip = True
         win.addDefaultIndicator('rate | amount')
-        win.addIndicator(kline.DayIndicator(win, {}))
-        win.addIndicator(kline.DdlrIndicator(win, {'height': 100}))
-        win.addIndicator(kline.DdlrIndicator(win, {'height': 30}, False))
-        win.addIndicator(kline.HotIndicator(win, None))
+        win.addIndicator(kline.DayIndicator({}))
+        win.addIndicator(kline.DdlrIndicator({'height': 100}))
+        win.addIndicator(kline.DdlrIndicator({'height': 30}, False))
+        win.addIndicator(kline.HotIndicator(None))
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
         dh = win32api.GetSystemMetrics (win32con.SM_CYFULLSCREEN)
         W, H = 1000, 650
