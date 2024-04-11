@@ -129,6 +129,7 @@ class VolPMWindow(base_win.BaseWindow):
         y = (dh - H) // 2
         win.createWindow(self.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
         win.changeCode(data['code'])
+        win.klineWin.setMarkDay(data['day'])
         win.klineWin.addListener(self.openKlineMinutes, win)
 
     def openKlineMinutes(self, evt, parent):
