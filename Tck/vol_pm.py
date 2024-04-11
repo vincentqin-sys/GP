@@ -17,7 +17,7 @@ class VolPMWindow(base_win.BaseWindow):
         super().__init__()
         rows = (30, 20, '1fr')
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
-        self.colsNum = 8
+        self.colsNum = 7
         cols = ('1fr ' * self.colsNum).strip().split(' ')
         self.layout = base_win.GridLayout(rows, cols, (5, 10))
         self.listWins = []
