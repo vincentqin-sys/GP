@@ -845,7 +845,7 @@ class TableWindow(BaseWindow):
         self.headers = None # must be set TODO
 
     def getData(self):
-        if self.sortData:
+        if self.sortData != None:
             return self.sortData
         return self.data
 
@@ -853,14 +853,13 @@ class TableWindow(BaseWindow):
         return self.headers
 
     def getValueAt(self, row, col, colName):
-        if not self.data:
+        datas = self.getData()
+        if not datas:
             return None
         if colName == '#idx':
             return row + 1
-        if row >= 0 and row < len(self.data):
-            if self.sortData:
-                return self.sortData[row].get(colName, None)
-            return self.data[row].get(colName, None)
+        if row >= 0 and row < len(datas):
+            return datas[row].get(colName, None)
         return None
 
     def getColumnWidth(self, colIdx, colName):
@@ -902,9 +901,10 @@ class TableWindow(BaseWindow):
     
     # [startIdx, end)
     def getVisibleRange(self):
-        if not self.data:
+        datas = self.getData()
+        if not datas:
             return (0, 0)
-        num = len(self.data)
+        num = len(datas)
         maxRowCount = self.getPageSize()
         end = self.startRow + maxRowCount
         end = min(end, num)
@@ -933,6 +933,17 @@ class TableWindow(BaseWindow):
             return
         self.data = data
         self.sortData = None
+        for k in self.sortHeader:
+            self.sortHeader[k] = None
+        self.startRow = 0
+        self.selRow = -1
+        self.selCol = -1
+
+    def setFilterData(self, data):
+        if self.sortData == data:
+            return
+        #self.data = data # no need set
+        self.sortData = data
         for k in self.sortHeader:
             self.sortHeader[k] = None
         self.startRow = 0
@@ -1119,7 +1130,8 @@ class TableWindow(BaseWindow):
 
     # get row idx, -2: in header, -3: in tail, -1: in empty rows
     def getRowAtY(self, y):
-        if not self.data:
+        datas = self.getData()
+        if not datas:
             return -1
         if y <= self.headHeight:
             return -2
@@ -1127,21 +1139,21 @@ class TableWindow(BaseWindow):
             return -3
         y -= self.headHeight
         row = y // self.rowHeight + self.startRow
-        if row >= 0 and row < len(self.data):
+        if row >= 0 and row < len(datas):
             return row
         return -1
 
     def setSelRow(self, row):
         oldRow = self.selRow
-        data = self.getData()
-        if not self.data or row < 0 or row >= len(self.data):
+        datas = self.getData()
+        if not datas or row < 0 or row >= len(datas):
             if self.selRow != row:
                 self.selRow = -1
-                self.notifyListener(self.Event('SelectRow',self, row = -1, oldRow = oldRow, data = None, mode = data))
+                self.notifyListener(self.Event('SelectRow',self, row = -1, oldRow = oldRow, data = None, mode = datas))
             return
         if self.selRow != row:
             self.selRow = row
-            self.notifyListener(self.Event('SelectRow', self, row = row, oldRow = oldRow, data = data[row], model = data))
+            self.notifyListener(self.Event('SelectRow', self, row = row, oldRow = oldRow, data = datas[row], model = datas))
 
     def onClick(self, x, y):
         win32gui.SetFocus(self.hwnd)
@@ -1157,7 +1169,7 @@ class TableWindow(BaseWindow):
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def onMouseWheel(self, delta):
-        if not self.data:
+        if not self.getData():
             return
         if delta & 0x8000:
             delta = delta - 0xffff - 1
@@ -1166,10 +1178,11 @@ class TableWindow(BaseWindow):
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def onKeyDown(self, key):
-        if not self.data:
+        datas = self.getData()
+        if not datas:
             return False
         if key == win32con.VK_DOWN:
-            if self.selRow < len(self.data) - 1:
+            if self.selRow < len(datas) - 1:
                 self.setSelRow(self.selRow + 1)
                 self.showRow(self.selRow)
                 self.invalidWindow()
@@ -1181,9 +1194,8 @@ class TableWindow(BaseWindow):
                 self.invalidWindow()
             return True
         elif key == win32con.VK_RETURN:
-            if self.selRow >= 0 and self.data:
-                dx = self.getData()
-                self.notifyListener(self.Event('RowEnter', self, row = self.selRow, data = dx[self.selRow], model = dx))
+            if self.selRow >= 0 and datas:
+                self.notifyListener(self.Event('RowEnter', self, row = self.selRow, data = datas[self.selRow], model = datas))
             return True
         return False
 

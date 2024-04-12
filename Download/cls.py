@@ -68,7 +68,7 @@ class ClsUrl:
         #print(js['data'])
         return js['data']
     
-    def _getVal(self, data, name, _type, default):
+    def getVal(self, data, name, _type, default):
         if name not in data:
             return default
         val = data[name]
@@ -91,28 +91,28 @@ class ClsUrl:
         js = json.loads(txt)
         data = js['data']
         rt = {}
-        rt['pre'] = self._getVal(data, 'preclose_px', float, 0) # 昨日收盘价
+        rt['pre'] = self.getVal(data, 'preclose_px', float, 0) # 昨日收盘价
         rt['code'] = data['secu_code'][2 : ]
         rt['name'] = data['secu_name']
-        rt['vol'] = self._getVal(data, 'business_amount', int, 0) # int 股
-        rt['amount'] = self._getVal(data, 'business_balance', int, 0) # int 元
-        rt['open'] = self._getVal(data, 'open_px', float, 0)
-        rt['high'] = self._getVal(data, 'high_px', float, 0)
-        rt['close'] = self._getVal(data, 'last_px', float, 0)
-        rt['low'] = self._getVal(data, 'low_px', float, 0)
+        rt['vol'] = self.getVal(data, 'business_amount', int, 0) # int 股
+        rt['amount'] = self.getVal(data, 'business_balance', int, 0) # int 元
+        rt['open'] = self.getVal(data, 'open_px', float, 0)
+        rt['high'] = self.getVal(data, 'high_px', float, 0)
+        rt['close'] = self.getVal(data, 'last_px', float, 0)
+        rt['low'] = self.getVal(data, 'low_px', float, 0)
         #pre = rt['pre'] or rt['open']
         #if pre != 0:
         #    rt['涨幅'] = (rt['close'] - pre) / pre * 100
-        rt['涨幅'] = self._getVal(data, 'change', float, 0) * 100
-        rt['委比'] = self._getVal(data, 'entrust_rate', float, 0) * 100 # 0 ~ 100%
-        rt['总市值'] = self._getVal(data, 'mc', int, 0) # int 元
-        rt['流通市值'] = self._getVal(data, 'cmc', int, 0) # int 元
-        rt['每股净资产'] = self._getVal(data, 'NetAssetPS', float, 0)
-        rt['流通股本'] = self._getVal(data, 'NonRestrictedShares', int, 0)
-        rt['总股本'] = self._getVal(data, 'TotalShares', int, 0)
-        rt['市净率'] = self._getVal(data, 'pb', float, 0)
-        rt['市盈率_静'] = self._getVal(data, 'pe', float, 0)
-        rt['市盈率_TTM'] = self._getVal(data, 'ttm_pe', float, 0)
+        rt['涨幅'] = self.getVal(data, 'change', float, 0) * 100
+        rt['委比'] = self.getVal(data, 'entrust_rate', float, 0) * 100 # 0 ~ 100%
+        rt['总市值'] = self.getVal(data, 'mc', int, 0) # int 元
+        rt['流通市值'] = self.getVal(data, 'cmc', int, 0) # int 元
+        rt['每股净资产'] = self.getVal(data, 'NetAssetPS', float, 0)
+        rt['流通股本'] = self.getVal(data, 'NonRestrictedShares', int, 0)
+        rt['总股本'] = self.getVal(data, 'TotalShares', int, 0)
+        rt['市净率'] = self.getVal(data, 'pb', float, 0)
+        rt['市盈率_静'] = self.getVal(data, 'pe', float, 0)
+        rt['市盈率_TTM'] = self.getVal(data, 'ttm_pe', float, 0)
         #print(rt)
         return rt
     

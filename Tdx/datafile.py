@@ -9,6 +9,8 @@ class ItemData:
     # MA5
 
     def __init__(self, *args):
+        if not args:
+            return
         a = self.DS if len(args) == len(self.DS) else self.MLS
         for i, k in enumerate(a):
             setattr(self, k, args[i])

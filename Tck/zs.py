@@ -84,19 +84,19 @@ class ZSWindow(base_win.BaseWindow):
         if evt.name != 'ContextMenu':
             return
         win : base_win.TableWindow = self.listWins[tabIdx]
-        if win.selRow < 0:
-            return
-        wdata = win.sortData or win.data
-        rowData = wdata[win.selRow]
-        code = rowData['code']
-        model = [{'title': '关联选中', 'name': 'GL'}, {'title': '标记红色', 'name': 'MARK'}, {'title': '标记蓝色观察', 'name': 'MARK_BLUE'}]
+        wdata = win.getData()
+        rowData = wdata[win.selRow] if win.selRow >= 0 else None
+        code = rowData['code'] if rowData else None
+        model = [{'title': '关联选中', 'name': 'GL', 'enable': win.selRow >= 0}, {'title': '标记红色', 'name': 'MARK', 'enable': win.selRow >= 0}, 
+                 {'title': '标记蓝色观察', 'name': 'MARK_BLUE', 'enable': win.selRow >= 0}, {'title': 'LINE'},
+                 {'title': '筛选标记', 'name': 'MARK_FILTER'}]
         menu = base_win.PopupMenuHelper.create(self.hwnd, model)
         menu.addListener(self.onMenuItemSelect, (tabIdx, code, rowData))
         x, y = win32gui.GetCursorPos()
         menu.show(x, y)
 
     def findIdx(self, win, code):
-        datas = win.sortData or win.data
+        datas = win.getData() or []
         for i, d in enumerate(datas):
             if d['code'] == code:
                 return i
@@ -126,7 +126,19 @@ class ZSWindow(base_win.BaseWindow):
             qr.execute()
             rowData['mark_1'] = MARK_VAL
             self.listWins[tabIdx].invalidWindow()
-
+        elif evt.item['name'] == 'MARK_FILTER':
+            tabWin : base_win.TableWindow = self.listWins[tabIdx]
+            day = tabWin._day
+            fm = getattr(tabWin, '_filter_mark_', False)
+            if not fm:
+                qr = orm.THS_ZS_ZD.select().where(orm.THS_ZS_ZD.mark_1 > 0, orm.THS_ZS_ZD.day == day).dicts()
+                rs = [d for d in qr]
+            else:
+                qr = orm.THS_ZS_ZD.select().where(orm.THS_ZS_ZD.day == day).dicts()
+                rs = [d for d in qr]
+            setattr(tabWin, '_filter_mark_', not fm)
+            tabWin.setData(rs)
+            tabWin.invalidWindow()
 
     def onSelDayChanged(self, evt, args):
         if evt.name != 'Select':
@@ -170,7 +182,9 @@ class ZSWindow(base_win.BaseWindow):
             cday = d[0]
             ds = orm.THS_ZS_ZD.select().where(orm.THS_ZS_ZD.day == cday)
             datas = [d.__data__ for d in ds]
+            self.listWins[i]._filter_mark_ = False
             self.listWins[i].setData(datas)
+            self.listWins[i]._day = cday
             self.listWins[i].invalidWindow()
             sday = cday[0 : 4] + '-' + cday[4 : 6] + '-' + cday[6 : ]
             self.daysLabels[i].setText(cday)

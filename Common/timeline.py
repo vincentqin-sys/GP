@@ -1,17 +1,16 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
-import threading, time, datetime, sys, os, copy
+import threading, time, datetime, sys, os, copy, traceback
 import os, sys, requests
 import win32gui, win32con
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
-from Download import henxin, ths_ddlr
+from Download import henxin, ths_ddlr, cls
 from THS import orm, ths_win
 from Common import base_win
 
 class TimelineModel:
     def __init__(self):
-        self.henxi = henxin.HexinUrl()
         self.dataFile = None
         self.ddlrFile = None
         self.fsData = None # 当日分时线数据
@@ -37,14 +36,28 @@ class TimelineModel:
         self.dataFile = datafile.DataFile(code, datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL)
         self.ddlrFile = ths_ddlr.ThsDdlrDetailData(code)
         try:
-            #url = self.henxi.getFenShiUrl(code)
-            #todayData = self.henxi.loadUrlData(url)
-            #if not self.dataFile.data or self.dataFile.data[-1].day != int(todayData['date']):
-                # append data
-            #    pass
-            #print(todayData)
-            pass
+            url = cls.ClsUrl()
+            his5datas = url.loadHistory5FenShi(code)
+            lastDay = 0
+            if self.dataFile.data == None:
+                self.dataFile.data = []
+            else:
+                lastDay = self.dataFile.data[-1].day
+            for d in his5datas['line']:
+                if d['date'] <= lastDay:
+                    continue
+                ts = datafile.ItemData()
+                ts.day = url.getVal(d, 'date', int, 0)
+                ts.time = url.getVal(d, 'minute', int, 0)
+                ts.open = int(url.getVal(d, 'open_px', float, 0) * 100)
+                ts.close = int(url.getVal(d, 'last_px', float, 0) * 100)
+                ts.low = min(ts.open, ts.close)
+                ts.high = max(ts.open, ts.close)
+                ts.vol = url.getVal(d, 'business_amount', int, 0)
+                ts.amount = url.getVal(d, 'business_balance', int, 0)
+                self.dataFile.data.append(ts)
         except Exception as e:
+            traceback.print_exc()
             print('[FenShiModel.update] fail', code, day)
         #if day and self.day != day:
         self.day = day
@@ -64,11 +77,12 @@ class TimelineModel:
             self.dataFile.calcAvgPriceOfDay(int(day))
             self.fsData = self.dataFile.data[fromIdx : endIdx]
             # insert 9:30 data 通达信合并了9:30和9:31的数据
-            c930 = copy.copy(self.fsData[0])
-            c930.time = 930
-            c930.amount = c930.vol = 0
-            c930.avgPrice = c930.close = c930.open
-            self.fsData.insert(0, c930)
+            if self.fsData[0].time == 931:
+                c930 = copy.copy(self.fsData[0])
+                c930.time = 930
+                c930.amount = c930.vol = 0
+                c930.avgPrice = c930.close = c930.open
+                self.fsData.insert(0, c930)
 
         self.ddlrData = self.ddlrFile.getDataAtDay(day)
         self.groupDDLRByTime()
