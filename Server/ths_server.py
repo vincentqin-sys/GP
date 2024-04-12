@@ -10,7 +10,7 @@ import functools
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tck import orm as tck_orm
-from Download import henxin
+from Download import henxin, console
 
 def formatZtTime(ds):
     if not ds:
@@ -108,7 +108,8 @@ def downloadOneDay(day):
             obj.save()
             updateNum += 1
     if insertNum or updateNum:
-        print(f'[ths_zt_downloader] {day} insert {insertNum}, update {updateNum}')
+        console.write_1(console.YELLOW, f'[ths_zt_downloader] ')
+        print(f'{day} insert {insertNum}, update {updateNum}')
 
 def downloadOneDayTry(day):
     try:
@@ -147,7 +148,6 @@ def run():
         try:
             downloadOneDay(now)
         except Exception as e:
-            print(e)
             traceback.print_exc()
         time.sleep(30 * 60)
 

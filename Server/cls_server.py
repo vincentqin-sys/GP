@@ -7,6 +7,7 @@ import requests, json, logging
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tck import orm
+from Download import console
 
 def now():
     return datetime.datetime.now().strftime('%H:%M')
@@ -34,7 +35,8 @@ def saveCls_ZT_List(its):
         insertNum += ins
         updateNum += upd
     if insertNum > 0 or updateNum > 0:
-        print(f'[cls-server] {now()} save cls zt {day} insert({insertNum}) update({updateNum})')
+        console.write_1(console.CYAN, '[cls-server] ')
+        print(f' {now()} save cls zt {day} insert({insertNum}) update({updateNum})')
 
 def saveCLS_ZT():
     saveCls_ZT_List(request.json)
@@ -104,7 +106,8 @@ def tryDownloadDegree():
         obj = orm.CLS_SCQX.get_or_none(day = day)
         if not obj:
             orm.CLS_SCQX.create(day = day, zhqd = degree)
-            print('[cls-server] load degree: ', day, ' -> ', degree)
+            console.write_1(console.CYAN, '[cls-server] ')
+            print(' load degree: ', day, ' -> ', degree)
     except Exception as e:
         traceback.print_exc()
 
@@ -139,7 +142,8 @@ def saveCLS_Degree():
             print(f'[cls-server] {now()} update degree ok, {day} = {zhqd}')
     else:
         orm.CLS_SCQX.create(day = day, zhqd = zhqd)
-        print(f'[cls-server] {now()} save degree ok, {day} = {zhqd}')
+        console.write_1(console.CYAN, '[cls-server] ')
+        print(f'{now()} save degree ok, {day} = {zhqd}')
     return {'status': 'OK'}
 
 def startup(app : Flask):

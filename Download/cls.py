@@ -67,7 +67,15 @@ class ClsUrl:
         js = json.loads(txt)
         #print(js['data'])
         return js['data']
-        
+    
+    def _getVal(self, data, name, _type, default):
+        if name not in data:
+            return default
+        val = data[name]
+        if val == None:
+            return default
+        return _type(val)
+
     # 基本信息
     def loadBasic(self, code):
         params = {
@@ -83,38 +91,28 @@ class ClsUrl:
         js = json.loads(txt)
         data = js['data']
         rt = {}
-        rt['pre'] = data['preclose_px'] # 昨日收盘价
+        rt['pre'] = self._getVal(data, 'preclose_px', float, 0) # 昨日收盘价
         rt['code'] = data['secu_code'][2 : ]
         rt['name'] = data['secu_name']
-        if 'business_amount' in data:
-            rt['vol'] = int(data['business_amount']) // 100 # int 手
-        if 'business_balance' in data:
-            rt['amount'] = int(data['business_balance']) # int 元
-        rt['open'] = data['open_px']
-        rt['high'] = data['high_px']
-        rt['close'] = data['last_px']
-        rt['low'] = data['low_px']
-        pre = rt['pre'] or rt['open']
-        if pre != 0:
-            rt['涨幅'] = (rt['close'] - pre) / pre * 100
-        if 'entrust_rate' in data:
-            rt['委比'] = data['entrust_rate'] * 100 # 0 ~ 100%
-        if 'mc' in data:
-            rt['总市值'] = int(data['mc']) # int 元
-        if 'cmc' in data:
-            rt['流通市值'] = int(data['cmc']) # int 元
-        if 'NetAssetPS' in data:
-            rt['每股净资产'] = data['NetAssetPS']
-        if 'NonRestrictedShares' in data:
-            rt['流通股本'] = int(data['NonRestrictedShares'])
-        if 'TotalShares' in data:
-            rt['总股本'] = int(data['TotalShares'])
-        if 'pb' in data:
-            rt['市净率'] = data['pb']
-        if 'pe' in data:
-            rt['市盈率_静'] = data['pe']
-        if 'ttm_pe' in data:
-            rt['市盈率_TTM'] = data['ttm_pe']
+        rt['vol'] = self._getVal(data, 'business_amount', int, 0) # int 股
+        rt['amount'] = self._getVal(data, 'business_balance', int, 0) # int 元
+        rt['open'] = self._getVal(data, 'open_px', float, 0)
+        rt['high'] = self._getVal(data, 'high_px', float, 0)
+        rt['close'] = self._getVal(data, 'last_px', float, 0)
+        rt['low'] = self._getVal(data, 'low_px', float, 0)
+        #pre = rt['pre'] or rt['open']
+        #if pre != 0:
+        #    rt['涨幅'] = (rt['close'] - pre) / pre * 100
+        rt['涨幅'] = self._getVal(data, 'change', float, 0) * 100
+        rt['委比'] = self._getVal(data, 'entrust_rate', float, 0) * 100 # 0 ~ 100%
+        rt['总市值'] = self._getVal(data, 'mc', int, 0) # int 元
+        rt['流通市值'] = self._getVal(data, 'cmc', int, 0) # int 元
+        rt['每股净资产'] = self._getVal(data, 'NetAssetPS', float, 0)
+        rt['流通股本'] = self._getVal(data, 'NonRestrictedShares', int, 0)
+        rt['总股本'] = self._getVal(data, 'TotalShares', int, 0)
+        rt['市净率'] = self._getVal(data, 'pb', float, 0)
+        rt['市盈率_静'] = self._getVal(data, 'pe', float, 0)
+        rt['市盈率_TTM'] = self._getVal(data, 'ttm_pe', float, 0)
         #print(rt)
         return rt
     

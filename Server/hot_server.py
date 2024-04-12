@@ -11,7 +11,7 @@ from multiprocessing import Process
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import hot_utils, orm
 from Common import holiday
-
+from Download import console
 
 # 热点股票信息
 def saveHot():
@@ -32,7 +32,8 @@ def saveHot():
         for i in range(0, len(hotInfos), 20):
             orm.THS_Hot.insert_many(hotInfos[i : i + 20]).execute()
     lt = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-    print(f'[{lt}] saveHot success, insert {hotDay} {hotTime} num:{len(hotInfos)}')
+    console.write_1(console.RED, f'[hot-server] ')
+    print(f'{lt} saveHot success, insert {hotDay} {hotTime} num:{len(hotInfos)}')
     return {"status": "OK"}
 
 # 热点股票信息
@@ -115,7 +116,8 @@ def saveZS():
                 orm.THS_ZS_ZD.create(**d)
                 num += 1
         #orm.THS_ZS_ZD.bulk_create(datas, 100)
-        print(f"[THS-ZS] Save ZS success, insert {data[0]['day']} {num} num")
+        console.write_1(console.GREEN, f'[THS-ZS] ')
+        print(f"Save ZS success, insert {data[0]['day']} {num} num")
     else:
         print(f"Save ZS, no data ")
     return {"status": "OK"}

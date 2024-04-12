@@ -7,6 +7,7 @@ import requests, json, logging
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from LHB import orm
+from Download import console
 
 def toJE(s):
     if '万' in s:
