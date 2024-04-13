@@ -21,6 +21,7 @@ class CodeEditor(MutiEditor):
             'KEY': 0x0077ff, 'DEF_FUNC': 0x900090, 'STR': 0x808080
         }
         self.excInfo = None # {lineno, exc, }
+        self.leadings = []
 
     def insertText(self, text):
         if text:
@@ -33,12 +34,7 @@ class CodeEditor(MutiEditor):
             self.excInfo = None
 
     def drawLeadings(self, hdc, row, rc):
-        line = self.lines[row]['text']
-        numSpace = 0
-        for ch in line:
-            if ch == ' ': numSpace += 1
-            else: break
-        numLD = numSpace // 4
+        numLD = self.leadings[row]
         scw, *_ = win32gui.GetTextExtentPoint32(hdc, ' ')
         scw *= 4
         for i in range(numLD):
@@ -153,7 +149,23 @@ class CodeEditor(MutiEditor):
             sy = self.getYAtPos(MutiEditor.Pos(i, 0))
             self.drawer.drawText(hdc, hd, (0, sy, w - 10, sy + self.lineHeight), color = 0x908070, align = win32con.DT_RIGHT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
+    def _calcLeadings(self):
+        self.leadings.clear()
+        for r in range(len(self.lines)):
+            numSpace = 0
+            for ch in self.lines[r]['text']:
+                if ch == ' ': numSpace += 1
+                else: break
+            numLD = numSpace // 4
+            self.leadings.append(numLD)
+        for i in range(len(self.lines)):
+            ln = self.lines[i]['text'].strip()
+            if not ln and i < len(self.lines) - 1: # is space line
+                numLD = self.leadings[i + 1]
+                self.leadings[i] = numLD
+
     def onDraw(self, hdc):
+        self._calcLeadings()
         for r in range(len(self.lines)):
             self.beautiful(r, hdc)
         super().onDraw(hdc)
@@ -393,7 +405,7 @@ def runCode_1(code, editor : CodeEditor, console : Console):
 
 def runCode_2(code, editor : CodeEditor, args):
     saveToFile(code)
-    os.system('cls')
+    #os.system('cls')
     editor.excInfo = None
     editor.invalidWindow()
     try:
@@ -405,6 +417,7 @@ def runCode_2(code, editor : CodeEditor, args):
         editor.excInfo = exc
         editor.invalidWindow()
         print(ex)
+    print('-----------------------------')
 
 def runCode(evt, console):
     if evt.name != 'Run':
