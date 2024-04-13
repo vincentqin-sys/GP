@@ -84,4 +84,12 @@ class TCK_CiTiao(pw.Model):
         database = db_tck
         table_name = '词条'
 
-db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN, TCK_CiTiao])
+class DailyFuPan(pw.Model):
+    day = pw.CharField() # YYYY-MM-DD
+    info = pw.CharField(null = True) # 复盘信息
+    
+    class Meta:
+        database = db_tck
+        table_name = '复盘日记'
+
+db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN, TCK_CiTiao, DailyFuPan])

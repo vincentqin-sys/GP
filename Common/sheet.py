@@ -10,8 +10,11 @@ tasks = base_win.Thread()
 
 class Cell:
     ATTRS = ('text', 'color', 'bgColor') # 序列化属性
-    def __init__(self, sheetWindow):
-        self.sheetWindow = sheetWindow
+    def __init__(self, sheetModel):
+        self.sheetModel = sheetModel
+        self.reset()
+
+    def reset(self):
         self.text = None
         self.isFormula = False
         self.hasError = False
@@ -25,9 +28,10 @@ class Cell:
         return self.text
 
     def setText(self, txt):
-        self.isFormula = False
+        self.sheetModel.setUpdated(True)
+        self.reset()
         if txt == None:
-            txt = ''
+            self.text = ''
         elif isinstance(txt, str):
             self.text = txt
         else:
@@ -36,6 +40,7 @@ class Cell:
 
     # set or del(attrVal is None) attr
     def setAttr(self, attrName, attrVal):
+        self.sheetModel.setUpdated(True)
         if attrName == 'text':
             self.setText('' if attrVal == None else attrVal)
             return
@@ -73,40 +78,50 @@ class Cell:
                 self.draw = self.draw_loadGP
                 if not tasks.started:
                     tasks.start()
-                tasks.addTask(time.time(), self.load_GP, (params[0], ))
+                tasks.addTask(time.time(), self.load_GP, *params)
             else:
                 self.hasError = True
                 self.error = 'Param error, except 1 param witch code'
 
-    def load_GP(self, code):
+    def load_GP(self, *args):
+        code = args[0]
         try:
             hx = henxin.HexinUrl()
             url = hx.getFenShiUrl(code)
             obj = hx.loadUrlData(url)
-            rd = obj['data'].split(';')
+            rd = obj['dataArr']
             if len(rd) > 0:
-                its = rd[-1].split(',')
-                close = float(its[1])
+                close = rd[-1]['price']
                 pre = float(obj.get('pre', 0))
                 zf = (close - pre) / pre * 100 if pre > 0 else 0
                 obj['zf'] = zf
             self.formulaData = obj
-            self.sheetWindow.invalidWindow()
+            if self.sheetModel and self.sheetModel.sheetWindow:
+                self.sheetModel.sheetWindow.invalidWindow()
         except Exception as e:
             print('Exception [sheet.load_GP] ', e)
             self.hasError = True
             self.error = str(e)
 
     def draw_loadGP(self, hdc, row, col, x, y, cw, ch, mw, mh):
-        drawer : base_win.Drawer = self.sheetWindow.drawer
+        win = self.sheetModel.sheetWindow
+        if not win:
+            return
+        drawer : base_win.Drawer = win.drawer
         if not self.formulaData:
             drawer.drawText(hdc, 'Loading...', (x + 3, y, x + max(cw, mw), y + ch), 0x333333, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
             return
-        zf = self.formulaData.get('zf', 0)
-        if zf > 0: color = 0x2222ff
-        elif zf == 0: color = 0x333333
-        else: color = 0x22ff22
-        drawer.drawText(hdc, f'{zf :+.02f}%', (x + 3, y, x + max(cw, mw), y + ch), color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+        if len(self.formulaParams) <= 1:
+            return
+        attrName = self.formulaParams[1]
+        attrVal = self.formulaData.get(attrName, None)
+        color = 0x0
+        if attrName == 'zf' and isinstance(attrVal, (int, float)):
+            if attrVal > 0: color = 0x2222ff
+            elif attrVal == 0: color = 0x333333
+            else: color = 0x22ff22
+            attrVal = f'{attrVal :+.02f}%'
+        drawer.drawText(hdc, attrVal, (x + 3, y, x + max(cw, mw), y + ch), color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
     def __repr__(self) -> str:
         return self.text
@@ -144,11 +159,19 @@ class CellEditor(base_win.Editor):
         return super().winProc(hwnd, msg, wParam, lParam)
 
 class SheetModel:
-    def __init__(self, sheetWindow) -> None:
-        self.sheetWindow = sheetWindow
+    def __init__(self) -> None:
+        self.sheetWindow = None
         self.data = {} # cell data, an dict object { (row, col) : Cell, ...}
         self.colStyle = {} # column view style { col: {width: xx} }
         self.rowStyle = {} # row view style {row : {height: xx}}
+        self.updated = False
+
+    def setUpdated(self, updated : bool):
+        win : base_win.BaseWindow = self.sheetWindow
+        if self.updated == updated or not win:
+            return
+        self.updated = updated
+        win.notifyListener(win.Event('model.updated', win, updated = updated))
 
     # cell = any python object(to str)
     def setCellText(self, row, col, text):
@@ -157,17 +180,20 @@ class SheetModel:
         key = (row << 8) | col
         cd = self.data.get(key, None)
         if not cd:
-            cd = self.data[key] = Cell(self.sheetWindow)
+            cd = self.data[key] = Cell(self)
         cd.setText(text)
+        self.setUpdated(True)
     
     def addCell(self, row, col):
         key = (row << 8) | col
         if key not in self.data:
-            self.data[key] = Cell(self.sheetWindow)
+            self.data[key] = Cell(self)
+            self.setUpdated(True)
             return self.data[key]
         return None
     
     def delCell(self, row, col):
+        self.setUpdated(True)
         if row < 0 and col < 0:
             self.data.clear()
         elif row < 0: # del column mode
@@ -199,6 +225,7 @@ class SheetModel:
     def insertRow(self, rowIdx, insertNum = 1):
         if rowIdx < 0 or insertNum <= 0:
             return
+        self.setUpdated(True)
         keys = []
         for k in self.data:
             r = (k >> 8) & 0xffffff
@@ -214,6 +241,7 @@ class SheetModel:
     def insertColumn(self, colIdx, insertNum = 1):
         if colIdx < 0 or insertNum <= 0:
             return
+        self.setUpdated(True)
         keys = []
         for k in self.data:
             r, c = (k >> 8) & 0xffffff, k & 0xff
@@ -230,6 +258,7 @@ class SheetModel:
         if rowIdx < 0 or delNum <= 0:
             return
         keys = []
+        self.setUpdated(True)
         for k in self.data:
             r, c = (k >> 8) & 0xffffff, k & 0xff
             if r >= rowIdx:
@@ -247,6 +276,7 @@ class SheetModel:
     def delColumn(self, colIdx, delNum = 1):
         if colIdx < 0 or delNum <= 0:
             return
+        self.setUpdated(True)
         keys = []
         for k in self.data:
             r, c = (k >> 8) & 0xffffff, k & 0xff
@@ -277,6 +307,7 @@ class SheetModel:
                 self.delCell(r, c)
 
     def clearAll(self):
+        self.setUpdated(True)
         self.data.clear()
         self.colStyle.clear()
         self.rowStyle.clear()
@@ -296,27 +327,27 @@ class SheetModel:
     def getRowStyle(self, row):
         return self.rowStyle.get(row, None)
 
-    def unserialize(self, srcData):
-        self.data = {}
-        self.colStyle = {}
-        self.rowStyle = {}
+    @staticmethod
+    def unserialize(srcData):
+        md = SheetModel()
         if not srcData:
-            return
+            return md
         js = json.loads(srcData)
         rcData = js['data']
         for k in rcData:
             cell = rcData[k]
-            sdata = Cell(self.sheetWindow)
-            self.data[int(k)] = sdata
+            sdata = Cell(md)
+            md.data[int(k)] = sdata
             for cc in cell:
                 if cc == 'text': sdata.setText(cell[cc])
                 else: setattr(sdata, cc, cell[cc])
         cs = js['colStyle']
         for k in cs:
-            self.colStyle[int(k)] = cs[k]
+            md.colStyle[int(k)] = cs[k]
         rs = js['rowStyle']
         for k in rs:
-            self.rowStyle[int(k)] = rs[k]
+            md.rowStyle[int(k)] = rs[k]
+        return md
 
     def serialize(self):
         data = {}
@@ -346,7 +377,7 @@ class SheetWindow(base_win.BaseWindow):
         super().__init__()
         self.css['bgColor'] = 0xf3f3f3
         self.css['textColor'] = 0x333333
-        self.model = SheetModel(self)
+        self.model = None
         self.startRow = 0
         self.startCol = 0
         self.selRange = None # (startRow, startCol, endRow?, endCol?)
@@ -354,6 +385,17 @@ class SheetWindow(base_win.BaseWindow):
         self.editer.css['bgColor'] = self.css['bgColor']
         self.editer.css['borderColor'] = 0x2fffff
         self.editer.addListener(self.onPressEnter, None)
+        # init
+        self.setModel(SheetModel())
+
+    def setModel(self, model : SheetModel):
+        model.sheetWindow = self
+        if self.model == model:
+            return
+        self.model = model
+        self.startRow = 0
+        self.startCol = 0
+        self.selRange = None
 
     def colIdxToChar(self, col):
         if col < 0:
@@ -438,6 +480,7 @@ class SheetWindow(base_win.BaseWindow):
 
     # set attr , or delete attr (attrVal is None)
     def setCellAttr(self, row, col, attrName, attrVal):
+        self.model.setUpdated(True)
         cell = self.model.getCell(row, col)
         if attrVal == None:
             if cell and hasattr(cell, attrName):
@@ -773,7 +816,7 @@ class SheetWindow(base_win.BaseWindow):
                  ]
 
         menu = base_win.PopupMenuHelper.create(self.hwnd, model)
-        menu.addListener(self.onContextMenuItemSelect, None)
+        menu.addListener(self.onContextMenuItemSelect, {'x': x, 'y': y})
         menu.show(x, y)
 
     def onContextMenuItemSelect(self, evt, args):
@@ -822,7 +865,7 @@ class SheetWindow(base_win.BaseWindow):
             dlg.showCenter()
         elif item['name'] == 'SetColor':
             dlg = dialog.PopupColorWindow()
-            dlg.createWindow(self.hwnd)
+            dlg.createWindow(self.hwnd, (args['x'], args['y'], 0, 0))
             def callback_3(evt, args):
                 if evt.name != 'SelectColor':
                     return
@@ -833,7 +876,7 @@ class SheetWindow(base_win.BaseWindow):
             dlg.show(item['x'], item['y'])
         elif item['name'] == 'SetBgColor':
             dlg = dialog.PopupColorWindow()
-            dlg.createWindow(self.hwnd)
+            dlg.createWindow(self.hwnd, (args['x'], args['y'], 0, 0))
             def callback_4(evt, args):
                 if evt.name != 'SelectColor':
                     return
@@ -846,6 +889,7 @@ class SheetWindow(base_win.BaseWindow):
             self.clearRangeCellFormat(item['range'])
         elif item['name'] == 'Save':
             self.notifyListener(self.Event('Save', self, model = self.model))
+            #self.model.setUpdated(False)
         self.invalidWindow()
 
     def copy(self):

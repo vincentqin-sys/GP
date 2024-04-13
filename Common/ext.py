@@ -146,7 +146,110 @@ class CellRenderWindow(base_win.BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-if __name__ == '__main__':
+# ClickItem = {src, item: obj}
+class OptionsWindow(base_win.BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.data = None # list of {'title' : xxx, 'value': xxx, ...}
+
+        self.rects = None # data's rect list
+        self.css['paddings'] = (3, 2, 3, 2)
+        self.css['itemHorSpace'] = 10
+        self.css['itemVerSpace'] = 10
+        self.css['itemDelWidth'] = 20
+        self.css['itemBgColor'] = 0x202020
+        self.css['itemBorderColor'] = 0x404040
+        self.css['lineHeight'] = 20
+        
+        self.editable = True # 是否是可编辑的（可删除）
+
+    def setData(self, data):
+        self.data = data
+        self._calcRects()
+        self.invalidWindow()
+    
+    def _calcRects(self):
+        self.rects = []
+        if not self.data:
+            return
+        ws = []
+        hdc = win32gui.GetDC(self.hwnd)
+        self.drawer.use(hdc, self.getDefFont())
+        for d in self.data:
+            title = d.get('title', '')
+            cw, *_ = win32gui.GetTextExtentPoint32(hdc, title)
+            cw += self.css['itemDelWidth'] + 8
+            ws.append(cw)
+        win32gui.ReleaseDC(self.hwnd, hdc)
+        W, H = self.getClientSize()
+        pds = self.css['paddings']
+        W -= pds[2]
+        LH = self.css['lineHeight']
+        sx = pds[0]
+        sy = pds[1]
+        for w in ws:
+            if sx + w > W:
+                sx = pds[0]
+                sy += LH + self.css['itemVerSpace']
+            it = [sx, sy, sx + w, sy + LH]
+            self.rects.append(it)
+            sx += w + self.css['itemHorSpace']
+
+    def onDraw(self, hdc):
+        if not self.data or not self.rects:
+            return
+        for i, d in enumerate(self.data):
+            self.drawItem(hdc, i)
+
+    # return text-rect, del-rect
+    def _getTextDelRect(self, idx):
+        rc = self.rects[idx]
+        if not self.editable:
+            return rc, None
+        rcText = (rc[0], rc[1], rc[2] - self.css['itemDelWidth'], rc[3])
+        rcDel = (rcText[2], rc[1], rc[2], rc[3])
+        return rcText, rcDel
+
+    def drawItem(self, hdc, i):
+        rcText, rcDel = self._getTextDelRect(i)
+        rc = self.rects[i]
+        if isinstance(self.css['itemBgColor'], int):
+            self.drawer.fillRect(hdc, rc, self.css['itemBgColor'])
+        if isinstance(self.css['itemBorderColor'], int):
+            self.drawer.drawRect(hdc, rc, self.css['itemBorderColor'])
+            if rcDel != None:
+                x = rcDel[0]
+                self.drawer.drawLine(hdc, x, rc[1], x, rc[3], self.css['itemBorderColor'])
+        self.drawer.drawText(hdc, self.data[i].get('title', None), rcText, self.css['textColor'], align=win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+        if rcDel != None:
+            self.drawer.drawText(hdc, 'x', rcDel, self.css['textColor'], align=win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+
+    def onClick(self, x, y):
+        if not self.rects:
+            return
+        for i in range(len(self.rects)):
+            rcText, rcDel = self._getTextDelRect(i)
+            if rcDel and x >= rcDel[0] and x < rcDel[2] and y >= rcDel[1] and y < rcDel[3]: # in del rect
+                self.rects.pop(i)
+                self.data.pop(i)
+                self.invalidWindow()
+                break
+            if x >= rcText[0] and x < rcText[2] and y >= rcText[1] and y < rcText[3]: # in text rect:
+                self.notifyListener(self.Event('ClickItem', self, item = self.data[i]))
+                break
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            self.onClick(x, y)
+            return True
+        if msg == win32con.WM_SIZE and  wParam != win32con.SIZE_MINIMIZED:
+            self._calcRects()
+            self.invalidWindow()
+            # no return, go through
+        return super().winProc(hwnd, msg, wParam, lParam)
+
+def testCellRenderWin():
     win = CellRenderWindow((50, 100, '10%', '1fr', '1fr'), 10)
     win.addRow({'height': 40, 'margin': 20}, 
                 {'text': '(0, 0)', 'color': 0xff00ff, 'bgColor':0xaabbcc},
@@ -162,4 +265,17 @@ if __name__ == '__main__':
                 )
     win.createWindow(None, (100, 100, 600, 400), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
+
+def testOptionsWindow():
+    win = OptionsWindow()
+    win.editable = True
+    win.createWindow(None, (100, 100, 300, 250), win32con.WS_OVERLAPPEDWINDOW)
+    data = []
+    for i in range(20):
+        data.append({'title': f'Value {i}'})
+    win.setData(data)
+    win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
+
+if __name__ == '__main__':
+    testOptionsWindow()
     win32gui.PumpMessages()

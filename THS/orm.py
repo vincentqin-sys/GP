@@ -169,15 +169,6 @@ class THS_ZS_ZD(pw.Model):
         database = db_thszs
         table_name = '同花顺指数涨跌信息'
 
-class THS_ZS_RefCore(pw.Model):
-    day = pw.CharField() # YYYY-MM-DD
-    code = pw.CharField() #指数代码
-    name = pw.CharField() #指数名称
-
-    class Meta:
-        database = db_thszs
-        table_name = '同花顺指数核心股'        
-
 db.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_GNTC, THS_Newest])
 db2.create_tables([THS_Hot, THS_HotZH])
 #db3.create_tables([TaoGuBa_Remark])

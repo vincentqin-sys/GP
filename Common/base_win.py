@@ -25,9 +25,10 @@ class BaseWindow:
         self.cacheBitmap = False
         self.css = {'fontSize' : 14, 'fontName' : '新宋体', 'fontWeight' : 0,
                     'bgColor': 0x000000, 'textColor': 0xffffff,
-                    'enableBorder': False, 'borderColor': 0x0} # config css style
+                    'borderColor': None, # None(no border) | int
+                    'paddings': (0, 0, 0, 0) # (left, top, right, bottom)
+                    } # config css style
         self.enableListeners = {'ContextMenu': False, 'DbClick': False, 'R_DbClick': False}
-        self.paddings = (0, 0, 0, 0) # (left, top, right, bottom)
     
     # func = function(event : Event, args)
     def addListener(self, func, args = None):
@@ -89,7 +90,7 @@ class BaseWindow:
             #style = win32gui.GetWindowLong(self.hwnd, win32con.GWL_STYLE)
             #if (style & win32con.WS_OVERLAPPED) and
             if getattr(self, 'layout', None):
-                pds = self.paddings
+                pds = self.css['paddings']
                 w, h = self.getClientSize()
                 w -= pds[0] + pds[2]
                 h -= pds[1] + pds[3]
@@ -109,7 +110,7 @@ class BaseWindow:
             bmp = self._bitmap
         win32gui.SelectObject(mdc, bmp)
         self.drawer.fillRect(mdc, win32gui.GetClientRect(self.hwnd), self.css['bgColor'])
-        if self.css['enableBorder']:
+        if isinstance(self.css['borderColor'], int):
             self.drawer.drawRect(mdc, win32gui.GetClientRect(self.hwnd), self.css['borderColor'])
         win32gui.SetBkMode(mdc, win32con.TRANSPARENT)
         win32gui.SetTextColor(mdc, self.css['textColor'])
@@ -424,6 +425,8 @@ class Drawer:
     def drawText(self, hdc, text, rect, color = None, align = win32con.DT_CENTER):
         if not text or not rect:
             return
+        if not isinstance(text, str):
+            text = str(text)
         if type(color) == int:
             win32gui.SetTextColor(hdc, color)
         if type(rect) == list:
@@ -803,6 +806,68 @@ class Cardayout(Layout):
             if win == winInfo['win']:
                 self.showCardByIdx(i)
                 break
+
+class FlowLayout(Layout):
+    def __init__(self) -> None:
+        super().__init__()
+        self.horItemSpace = 20
+        self.lineHeight = 25
+        self.winsInfo = []
+
+    # win = BaseWindow, HWND
+    # style = {valign: 'top' | 'center', 'bottom' (default is 'center')}
+    def addContent(self, win, style = None):
+        style = {'valign': 'center'}
+        style.update(style)
+        if win:
+            self.winsInfo.append({'win': win, 'style': style})
+
+    def resize(self, x, y, width, height):
+        super().resize(x, y, width, height)
+        sx = sy = 0
+        for it in self.winsInfo:
+            w, h = self._getWinSize(it)
+            if sx + w > width:
+                sy +=  self.lineHeight
+                sx = 0
+            style = it['style']
+            dy = 0
+            if style['valign'].strip() == 'center':
+                dy = (self.lineHeight - h) // 2
+            elif style['valign'].strip() == 'top':
+                dy = 0
+            elif style['valign'].strip() == 'bottom':
+                dy = self.lineHeight - h
+            self.adjustContentPositon(sx, sy + dy, it)
+            sx += w + self.horItemSpace
+
+    def _getWinSize(self, winInfo):
+        win = winInfo['win']
+        if isinstance(win, BaseWindow):
+            hwnd = win.hwnd
+        elif type(win) == int:
+            hwnd = win
+        else:
+            print('[FlowLayout._getWinSize] unsupport win type :', winInfo)
+        rc = win32gui.GetWindowRect(hwnd)
+        return rc[2] - rc[0], rc[3] - rc[1]
+
+    def adjustContentPositon(self, x, y, winInfo):
+        win = winInfo['win']
+        if isinstance(win, BaseWindow):
+            win32gui.SetWindowPos(win.hwnd, None, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
+        elif type(win) == int:
+            win32gui.SetWindowPos(win, None, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
+        elif isinstance(win, Layout):
+            win.resize(x, y, win.rect[2], win.rect[3])
+        else:
+            print('[FlowLayout.adjustContentRect] unsupport win type :', winInfo)
+
+    def setVisible(self, visible):
+        for winInfo in self.winsInfo:
+            win = winInfo['win']
+            self.setWinVisible(win, visible)
+
 
 # listeners : DbClick = {src, x, y, row, data(row data), model(all data)}
 #             RowEnter = {src, row, data, model}
@@ -1284,7 +1349,6 @@ class Button(BaseWindow):
     def __init__(self, btnInfo) -> None:
         super().__init__()
         self.css['bgColor'] = 0x333333
-        self.css['enableBorder'] = True
         self.css['borderColor'] = 0x202020
         self.css['textColor'] = 0x2fffff
         self.info = btnInfo
@@ -1627,7 +1691,7 @@ class PopupMenuHelper:
         menu.setModel(model)
         return menu
 
-# listeners :  Select = {src, day: int}
+# listeners :  Select = {src, day: int, sday: YYYY-MM-DD}
 class DatePopupWindow(PopupWindow):
     TOP_HEADER_HEIGHT = 40
     PADDING = 10
@@ -1767,8 +1831,9 @@ class DatePopupWindow(PopupWindow):
                 if day:
                     self.setSelDay(day)
                     self.hide()
-                    sdd = self.curSelDay.year * 10000 + self.curSelDay.month * 100 + self.curSelDay.day
-                    self.notifyListener(self.Event('Select', self, day = sdd))
+                    iday = self.curSelDay.year * 10000 + self.curSelDay.month * 100 + self.curSelDay.day
+                    sday = self.curSelDay.strftime('%Y-%m-%d')
+                    self.notifyListener(self.Event('Select', self, day = iday, sday = sday))
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
@@ -1917,7 +1982,6 @@ class Editor(BaseEditor):
         self.css['placeHolderColor'] = 0xb0b0b0
         self.css['borderColor'] = 0xdddddd
         self.css['selBgColor'] = 0xf0c0c0
-        self.css['enableBorder'] = True
         self.scrollX = 0 # always <= 0
         self.paddingX = 3 # 左右padding
         self.text = ''
@@ -2191,7 +2255,6 @@ class MutiEditor(BaseEditor):
         self.css['textColor'] = 0x202020
         self.css['borderColor'] = 0xdddddd
         self.css['selBgColor'] = 0xf0c0c0
-        self.css['enableBorder'] = True
         self.startRow = 0
         self.paddingX = 5
         self.lines = [] # items of { text,  }
