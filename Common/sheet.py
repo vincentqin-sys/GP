@@ -129,7 +129,7 @@ class Cell:
 class CellEditor(base_win.Editor):
     def __init__(self) -> None:
         super().__init__()
-        self.css['borderColor'] = 0x2faffff
+        self.css['borderColor'] = 0x2faf2f
         self.maxWidth = 0
         self.row = 0
         self.col = 0
@@ -385,8 +385,6 @@ class SheetWindow(base_win.BaseWindow):
         self.editer.css['bgColor'] = self.css['bgColor']
         self.editer.css['borderColor'] = 0x2fffff
         self.editer.addListener(self.onPressEnter, None)
-        # init
-        self.setModel(SheetModel())
 
     def setModel(self, model : SheetModel):
         model.sheetWindow = self
@@ -435,12 +433,16 @@ class SheetWindow(base_win.BaseWindow):
         win32gui.RestoreDC(hdc, sdc)
     
     def getColumnWidth(self, col):
+        if not self.model:
+            return self.DEFAULT_COL_WIDTH
         st = self.model.getColumnStyle(col)
         if st and 'width' in st:
             return st['width']
         return self.DEFAULT_COL_WIDTH
 
     def getRowHeight(self, row):
+        if not self.model:
+            return self.DEFAULT_ROW_HEIGHT
         st = self.model.getRowStyle(row)
         if st and 'height' in st:
             return st['height']
@@ -449,13 +451,15 @@ class SheetWindow(base_win.BaseWindow):
     def getRowHeight(self, row):
         if row < 0:
             return 0
+        if not self.model:
+            return self.DEFAULT_ROW_HEIGHT
         rs = self.model.rowStyle.get(row, None)
         if rs == None or 'height' not in rs:
             return self.DEFAULT_ROW_HEIGHT
         return rs['height']
 
     def setRowHeight(self, row, height):
-        if row < 0 or height < 0:
+        if row < 0 or height < 0 or not self.model:
             return
         rs = self.model.rowStyle.get(row, None)
         if rs == None:
@@ -465,13 +469,15 @@ class SheetWindow(base_win.BaseWindow):
     def getColWidth(self, col):
         if col < 0:
             return 0
+        if not self.model:
+            return self.DEFAULT_COL_WIDTH
         rs = self.model.colStyle.get(col, None)
         if rs == None or 'width' not in rs:
             return self.DEFAULT_COL_WIDTH
         return rs['width']
     
     def setColWidth(self, col, width):
-        if col < 0 or width < 0:
+        if col < 0 or width < 0 or not self.model:
             return
         rs = self.model.colStyle.get(col, None)
         if rs == None:
@@ -480,6 +486,8 @@ class SheetWindow(base_win.BaseWindow):
 
     # set attr , or delete attr (attrVal is None)
     def setCellAttr(self, row, col, attrName, attrVal):
+        if not self.model:
+            return
         self.model.setUpdated(True)
         cell = self.model.getCell(row, col)
         if attrVal == None:
@@ -497,6 +505,8 @@ class SheetWindow(base_win.BaseWindow):
         self.setCellAttr(row, col, 'bgColor', color)
 
     def clearCellFormat(self, row, col):
+        if not self.model:
+            return
         cell = self.model.getCell(row, col)
         if not cell:
             return
@@ -524,6 +534,8 @@ class SheetWindow(base_win.BaseWindow):
     # param range_ is (left, top) or (left, top, right, bottom)
     # attrVal is None : clear this attr
     def setRangeCellAttr(self, range_, attrName, attrVal):
+        if not self.model:
+            return
         range_ = self.formatRange(range_)
         if not range_:
             return
@@ -678,6 +690,8 @@ class SheetWindow(base_win.BaseWindow):
             sy += rh
 
     def drawCell(self, hdc, row, col, x, y, cw, ch, mw, mh):
+        if not self.model:
+            return
         cell = self.model.getCell(row, col)
         if not cell:
             return
@@ -713,6 +727,13 @@ class SheetWindow(base_win.BaseWindow):
         self.drawSelRange(hdc)
         self.drawGridLines(hdc)
         self.drawGrid(hdc)
+        if not self.model:
+            # fill content cells grey
+            headerBgColor = 0xcccccc
+            W, H = self.getClientSize()
+            color = self.drawer.darkness(headerBgColor)
+            rc = (self.ROW_HEADER_WIDTH, self.COLUMN_HEADER_HEIGHT, W, H)
+            self.drawer.fillRect(hdc, rc, color)
     
     # return True: selRange changed, False un-changed
     def setEndSelRange(self, row, col):
@@ -759,7 +780,7 @@ class SheetWindow(base_win.BaseWindow):
             self.invalidWindow()
 
     def beginEdit(self, row, col):
-        if row < 0 or col < 0:
+        if row < 0 or col < 0 or not self.model:
             return
         self.editer.inEdit = True
         self.editer.row = row
@@ -772,17 +793,17 @@ class SheetWindow(base_win.BaseWindow):
             self.editer.createWindow(self.hwnd, (0, 0, 1, 1))
         win32gui.SetWindowPos(self.editer.hwnd, 0, sx, sy, cw, ch, win32con.SWP_NOZORDER)
         val = self.model.getCell(row, col)
+        win32gui.ShowWindow(self.editer.hwnd, win32con.SW_SHOW)
+        win32gui.SetFocus(self.editer.hwnd)
         txt = ''
         if val: txt = val.getText()
         self.editer.setText(txt)
         W, H = self.getClientSize()
         self.editer.maxWidth = W - sx
         self.editer.adjustSize()
-        win32gui.ShowWindow(self.editer.hwnd, win32con.SW_SHOW)
-        win32gui.SetFocus(self.editer.hwnd)
 
     def endEdit(self):
-        if not self.editer.inEdit:
+        if not self.editer.inEdit or not self.model:
             return
         self.editer.inEdit = False
         win32gui.ShowWindow(self.editer.hwnd, win32con.SW_HIDE)
@@ -822,6 +843,8 @@ class SheetWindow(base_win.BaseWindow):
     def onContextMenuItemSelect(self, evt, args):
         evtName = evt.name
         if evtName != "Select":
+            return
+        if not self.model:
             return
         item = evt.item
         pos = int(item.get('pos', 0))
@@ -940,6 +963,8 @@ class SheetWindow(base_win.BaseWindow):
         self.model.clearRange(self.selRange)
 
     def winProc(self, hwnd, msg, wParam, lParam):
+        if not self.model:
+            return super().winProc(hwnd, msg, wParam, lParam)
         if msg == win32con.WM_LBUTTONDOWN:
             self.endEdit()
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
@@ -1026,7 +1051,8 @@ if __name__ == '__main__':
     #sx = sheet.model.serialize()
     #print(sx)
     ss = r'{"rowStyle": {"3": {"height": 55}}, "colStyle": {"2": {"width": 120}}, "data": {"0": {"text": "0,0"}, "1": {"text": "0,1"}, "2": {"text": "0,2"}, "3": {"text": "0,3"}, "256": {"text": "1,0"}, "257": {"text": "1,1"}, "258": {"text": "1,2"}, "259": {"text": "1,3", "bgColor": 6750105}, "512": {"text": "2,0"}, "513": {"text": "2,1", "bgColor": 16738047}, "514": {"text": "2,2"}, "515": {"text": "2,3", "bgColor": 6750105}, "768": {"text": "3,0"}, "769": {"text": "3,1", "bgColor": 16738047}, "770": {"text": "3,2", "color": 10092288, "bgColor": 16763904}, "771": {"text": "3,3", "color": 10092288, "bgColor": 6750105}, "1024": {"text": "4,0"}, "1025": {"text": "4,1", "bgColor": 16738047}, "1026": {"text": "4,2"}, "1027": {"text": "4,3", "bgColor": 6750105}, "1281": {"text": "", "bgColor": 16738047}, "1537": {"text": "", "bgColor": 16738047}, "1793": {"text": "", "bgColor": 16738047}, "772": {"text": "", "color": 10092288, "bgColor": 16763904}, "773": {"text": "", "bgColor": 16763904}, "1283": {"text": "", "bgColor": 6750105}, "1282": {"text": "20"}, "1538": {"text": "520你好呀"}}}'
-    sheet.model.unserialize(ss)
+    model = SheetModel.unserialize(ss)
+    sheet.setModel(model)
 
     sheet.createWindow(None, (0, 0, 1000, 500), win32con.WS_OVERLAPPEDWINDOW, title='I-Sheet')
     win32gui.ShowWindow(sheet.hwnd, win32con.SW_NORMAL)

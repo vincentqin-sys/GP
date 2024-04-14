@@ -124,7 +124,7 @@ class PopupColorWindow(base_win.PopupWindow):
             s = 1
         if v > 1:
             v = 1
-        color = base_win.Drawer.hsv2rgb(h, s, v)
+        color = self.drawer.hsv2rgb(h, s, v)
         return color
 
     def onDraw(self, hdc):

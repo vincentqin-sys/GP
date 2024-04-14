@@ -327,18 +327,16 @@ class Drawer:
             win32gui.SelectObject(hdc, obj)
 
     # rgb = int 0xrrggbb  -> 0xbbggrr
-    @staticmethod
-    def rgbToColor(rgb):
+    def rgbToColor(self, rgb):
         r = (rgb >> 16) & 0xff
         g = (rgb >> 8) & 0xff
         b = rgb & 0xff
         return (b << 16) | (g << 8) | r
 
-    @staticmethod
     # return 0xbbggrr
     # h : 0 - 359
     # s, v:  0 - 1.1
-    def hsv2rgb(h, s, v):
+    def hsv2rgb(self, h, s, v):
         C = v * s
         hh = h / 60
         ys = int(hh) % 2 + (hh - int(hh))
@@ -367,7 +365,7 @@ class Drawer:
 
     # rgb = 0xbbggrr
     # return h (0 - 359), s(0 - 1.0), v (0 - 1.0)
-    def rgb2hsv(rgb):
+    def rgb2hsv(self, rgb):
         def ys(v, k):
             return int(v) % k + (v - int(v))
         r, g, b = rgb & 0xff, (rgb >> 8) & 0xff, (rgb >> 16) & 0xff
@@ -387,6 +385,18 @@ class Drawer:
         if v == 0: s = 0
         else: s = C / v
         return round(h), s, v
+
+    def lightness(self, color, d = 0.2):
+        h, s, v = self.rgb2hsv(color)
+        v = min(v + d, 1)
+        color = Drawer.hsv2rgb(h, s, v)
+        return color
+    
+    def darkness(self, color, d = 0.2):
+        h, s, v = self.rgb2hsv(color)
+        v = max(v - d, 0)
+        color = self.hsv2rgb(h, s, v)
+        return color
 
     # color = int(0xbbggrr color)
     def drawLine(self, hdc, sx, sy, ex, ey, color, style = win32con.PS_SOLID, width = 1):
@@ -1364,10 +1374,10 @@ class Button(BaseWindow):
         self.notifyListener(self.Event('Click', self, info = self.info))
 
     def lightness(self, color):
-        h, s, v = Drawer.rgb2hsv(color)
+        h, s, v = self.drawer.rgb2hsv(color)
         if v <= 0.8: v += 0.2
         else: v -= 0.2
-        color = Drawer.hsv2rgb(h, s, v)
+        color = self.drawer.hsv2rgb(h, s, v)
         return color
 
     def winProc(self, hwnd, msg, wParam, lParam):
