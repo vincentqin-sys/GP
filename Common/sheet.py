@@ -377,6 +377,9 @@ class SheetWindow(base_win.BaseWindow):
         super().__init__()
         self.css['bgColor'] = 0xf3f3f3
         self.css['textColor'] = 0x333333
+        self.css['enableVerGridLine'] = True
+        self.css['enableHorGridLine'] = True
+        self.css['gridLineColor'] = 0xdcdcdc
         self.model = None
         self.startRow = 0
         self.startCol = 0
@@ -408,16 +411,21 @@ class SheetWindow(base_win.BaseWindow):
         sdc = win32gui.SaveDC(hdc)
         W, H = self.getClientSize()
         headerBgColor = 0xcccccc
-        lineColor = 0xaaaaaa
+        headerGridLineColor = 0xa0a0a0
+        lineColor = self.css['gridLineColor']
         self.drawer.fillRect(hdc, (0, 0, W, self.COLUMN_HEADER_HEIGHT), headerBgColor)
         self.drawer.fillRect(hdc, (0, 0, self.ROW_HEADER_WIDTH, H), headerBgColor)
         # draw column headers
         sx = self.ROW_HEADER_WIDTH
         col = self.startCol
         self.drawer.use(hdc, self.drawer.getFont(fontSize = 16, weight = 800))
+        LH = self.COLUMN_HEADER_HEIGHT
+        LW = self.ROW_HEADER_WIDTH
         while sx < W:
             cw = self.getColumnWidth(col)
-            self.drawer.drawLine(hdc, sx, 0, sx, H, lineColor)
+            if self.css['enableVerGridLine']:
+                self.drawer.drawLine(hdc, sx, 0, sx, H, lineColor)
+            self.drawer.drawLine(hdc, sx, 0, sx, LH, headerGridLineColor)
             self.drawer.drawText(hdc, self.colIdxToChar(col), (sx, 0, sx + cw, self.COLUMN_HEADER_HEIGHT), 0x303030, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
             sx += cw
             col += 1
@@ -426,7 +434,9 @@ class SheetWindow(base_win.BaseWindow):
         row = self.startRow
         while sy < H:
             ch = self.getRowHeight(row)
-            self.drawer.drawLine(hdc, 0, sy, W, sy, lineColor)
+            if self.css['enableHorGridLine']:
+                self.drawer.drawLine(hdc, 0, sy, W, sy, lineColor)
+            self.drawer.drawLine(hdc, 0, sy, LW, sy, headerGridLineColor)
             self.drawer.drawText(hdc, f'{row + 1}', (0, sy, self.ROW_HEADER_WIDTH, sy + ch), 0x303030, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
             sy += ch
             row += 1
@@ -1044,6 +1054,8 @@ GS = {}
 if __name__ == '__main__':
     test()
     sheet = SheetWindow()
+    sheet.css['enableVerGridLine'] = False
+    sheet.css['enableHorGridLine'] = True
     for r in range(5):
         for c in range(4):
             #sheet.model.setCell(r, c, f'{r},{c}')

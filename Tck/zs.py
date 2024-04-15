@@ -7,6 +7,7 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import orm, ths_win
 from Common import base_win, timeline, kline
+from Tck import zs_fupan
 
 thsWin = ths_win.ThsWindow()
 thsWin.init()
@@ -24,13 +25,30 @@ class ZSWindow(base_win.BaseWindow):
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
         datePicker = base_win.DatePicker()
-        datePicker.createWindow(self.hwnd, (10, 10, 200, 30))
+        datePicker.createWindow(self.hwnd, (10, 10, 150, 30))
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
-        self.checkBox.createWindow(self.hwnd, (0, 0, 200, 30))
+        self.checkBox.createWindow(self.hwnd, (0, 0, 150, 30))
+        rjBtn = base_win.Button({'title': '复盘日记'})
+        rjBtn.createWindow(self.hwnd, (0, 0, 80, 30))
         absLayout = base_win.AbsLayout()
         absLayout.setContent(0, 0, datePicker)
         absLayout.setContent(230, 0, self.checkBox)
+        absLayout.setContent(400, 0, rjBtn)
         self.layout.setContent(0, 0, absLayout)
+        def onRjClick(evt, args):
+            fpWin = zs_fupan.DailyFuPanWindow()
+            p = self.hwnd
+            while True:
+                pp = win32gui.GetParent(p)
+                if pp: p = pp
+                else:break
+            rc = win32gui.GetWindowRect(p)
+            pw, ph = rc[2] - rc[0], rc[3] - rc[1]
+            CW = 1400
+            fpWin.createWindow(self.hwnd, (rc[0] + (pw - CW) // 2, rc[1], CW, ph), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION, title='复盘日记') # WS_OVERLAPPEDWINDOW
+            win32gui.ShowWindow(fpWin.hwnd, win32con.SW_SHOW)
+            
+        rjBtn.addNamedListener('Click', onRjClick)
         
         def formateRate(colName, val, rowData):
             return f'{val :.02f}%'
@@ -87,8 +105,11 @@ class ZSWindow(base_win.BaseWindow):
         wdata = win.getData()
         rowData = wdata[win.selRow] if win.selRow >= 0 else None
         code = rowData['code'] if rowData else None
-        model = [{'title': '关联选中', 'name': 'GL', 'enable': win.selRow >= 0}, {'title': '标记红色', 'name': 'MARK', 'enable': win.selRow >= 0}, 
-                 {'title': '标记蓝色观察', 'name': 'MARK_BLUE', 'enable': win.selRow >= 0}, {'title': 'LINE'},
+        model = [{'title': '关联选中', 'name': 'GL', 'enable': win.selRow >= 0}, 
+                 {'title': '标记红色重点', 'name': 'MARK', 'enable': win.selRow >= 0}, 
+                 {'title': '标记蓝色观察', 'name': 'MARK_BLUE', 'enable': win.selRow >= 0}, 
+                 {'title': '标记绿色负面', 'name': 'MARK_GREEN', 'enable': win.selRow >= 0}, 
+                 {'title': 'LINE'},
                  {'title': '筛选标记', 'name': 'MARK_FILTER'}]
         menu = base_win.PopupMenuHelper.create(self.hwnd, model)
         menu.addListener(self.onMenuItemSelect, (tabIdx, code, rowData))
@@ -122,6 +143,12 @@ class ZSWindow(base_win.BaseWindow):
             self.listWins[tabIdx].invalidWindow()
         elif evt.item['name'] == 'MARK_BLUE':
             MARK_VAL = 2
+            qr = orm.THS_ZS_ZD.update({orm.THS_ZS_ZD.mark_1 : MARK_VAL}).where(orm.THS_ZS_ZD.id == rowData['id'])
+            qr.execute()
+            rowData['mark_1'] = MARK_VAL
+            self.listWins[tabIdx].invalidWindow()
+        elif evt.item['name'] == 'MARK_GREEN':
+            MARK_VAL = 3
             qr = orm.THS_ZS_ZD.update({orm.THS_ZS_ZD.mark_1 : MARK_VAL}).where(orm.THS_ZS_ZD.id == rowData['id'])
             qr.execute()
             rowData['mark_1'] = MARK_VAL

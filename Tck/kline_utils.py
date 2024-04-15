@@ -7,6 +7,7 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr
 from Common import base_win, timeline, kline
 from Tck import ddlr_detail
+from THS import ths_win
 
 def openInCurWindow_Code(parent : base_win.BaseWindow, data):
     win = kline.KLineCodeWindow()
@@ -51,3 +52,17 @@ def openKlineMinutes(evt, parent : base_win.BaseWindow):
     win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
     day = evt.data.day
     win.updateCodeDay(evt.code, day)
+
+thsWin = ths_win.ThsWindow()
+thsWin.init()
+def openInThsWindow(data):
+    if not thsWin.topHwnd or not win32gui.IsWindow(thsWin.topHwnd):
+        thsWin.topHwnd = None
+        thsWin.init()
+    if not thsWin.topHwnd:
+        return
+    win32gui.SetForegroundWindow(thsWin.topHwnd)
+    time.sleep(0.5)
+    pyautogui.typewrite(data['code'], 0.1)
+    time.sleep(0.2)
+    pyautogui.press('enter')

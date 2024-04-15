@@ -70,7 +70,8 @@ class BaseWindow:
             return True
         if msg == win32con.WM_DESTROY:
             style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-            if not (style & win32con.WS_POPUP) and not (style & win32con.WS_CHILD) and not win32gui.GetParent(self.hwnd):
+            owner = win32gui.GetWindow(self.hwnd, win32con.GW_OWNER)
+            if (not (style & win32con.WS_POPUP)) and (not (style & win32con.WS_CHILD)) and (not owner):
                 win32gui.PostQuitMessage(0)
                 return True
             del BaseWindow.bindHwnds[hwnd]
@@ -825,22 +826,26 @@ class FlowLayout(Layout):
         self.winsInfo = []
 
     # win = BaseWindow, HWND
-    # style = {valign: 'top' | 'center', 'bottom' (default is 'center')}
+    # style = { valign: 'top' | 'center', 'bottom' (default is 'center')
+    #           margins: None | (l, t, r, b)
+    #         }
     def addContent(self, win, style = None):
-        style = {'valign': 'center'}
-        style.update(style)
+        defStyle = {'valign': 'center', 'margins': None}
+        if style:
+            defStyle.update(style)
         if win:
-            self.winsInfo.append({'win': win, 'style': style})
+            self.winsInfo.append({'win': win, 'style': defStyle})
 
     def resize(self, x, y, width, height):
         super().resize(x, y, width, height)
         sx = sy = 0
         for it in self.winsInfo:
+            style = it['style']
+            margins = style['margins'] or (0, 0, 0, 0)
             w, h = self._getWinSize(it)
-            if sx + w > width:
+            if sx + w + margins[0] > width:
                 sy +=  self.lineHeight
                 sx = 0
-            style = it['style']
             dy = 0
             if style['valign'].strip() == 'center':
                 dy = (self.lineHeight - h) // 2
@@ -848,8 +853,8 @@ class FlowLayout(Layout):
                 dy = 0
             elif style['valign'].strip() == 'bottom':
                 dy = self.lineHeight - h
-            self.adjustContentPositon(sx, sy + dy, it)
-            sx += w + self.horItemSpace
+            self.adjustContentPositon(sx + margins[0], sy + dy, it)
+            sx += w + self.horItemSpace + margins[0] + margins[2]
 
     def _getWinSize(self, winInfo):
         win = winInfo['win']
@@ -857,8 +862,8 @@ class FlowLayout(Layout):
             hwnd = win.hwnd
         elif type(win) == int:
             hwnd = win
-        else:
-            print('[FlowLayout._getWinSize] unsupport win type :', winInfo)
+        if not hwnd:
+            return (0, 0)
         rc = win32gui.GetWindowRect(hwnd)
         return rc[2] - rc[0], rc[3] - rc[1]
 

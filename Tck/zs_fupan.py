@@ -4,18 +4,19 @@ import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win, sheet
-from Tck import orm
+from Tck import orm, kline_utils
 
 class DailyFuPanWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.css['paddings'] = (2, 2, 2, 2)
+        self.css['paddings'] = (0, 0, 0, 0)
         rows = (30, '1fr')
         self.cols = (200, 150, 80, 80, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
         self.tableWin.enableListeners['ContextMenu'] = True
         self.sheetWin = sheet.SheetWindow()
+        self.sheetWin.css['enableVerGridLine'] = False
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         #base_win.ThreadPool.addTask()
         self.curData = None
@@ -50,7 +51,7 @@ class DailyFuPanWindow(base_win.BaseWindow):
         delBtn.addNamedListener('Click', self.onDeleteDay)
         fl = base_win.FlowLayout()
         fl.lineHeight = 30
-        fl.addContent(addBtn)
+        fl.addContent(addBtn, {'margins': (10, 0, 0, 0)})
         fl.addContent(delBtn)
         self.tableWin.rowHeight = 40
         self.tableWin.headers = headers
@@ -66,8 +67,32 @@ class DailyFuPanWindow(base_win.BaseWindow):
         self.tableWin.addNamedListener('SelectRow', self.onSelDay, None)
         self.sheetWin.addNamedListener('Save', self.onSheetSave, None)
         self.sheetWin.addNamedListener('model.updated', self.onModelUpdated)
-        #openBtn.addListener(self.onOpen, None)
+        openBtn.addNamedListener('Click', self.onOpen)
         self.loadDays()
+        W, H = self.getClientSize()
+        pd = self.css['paddings']
+        self.layout.resize(pd[0], pd[1], W - pd[0] - pd[2], H - pd[1] - pd[3])
+
+    def onOpen(self, evt, args):
+        selRange = self.sheetWin.selRange
+        if not selRange or selRange[0] < -1 or selRange[1] < -1:
+            return
+        sr, sc, er, ec = self.sheetWin.formatRange(selRange)
+        cell = self.sheetWin.model.getCell(sr, sc)
+        if not cell or not cell.getText():
+            return
+        txt = cell.getText()
+        rx = re.compile('\d{6}')
+        ls = rx.findall(txt)
+        if not ls:
+            return
+        code = ls[0]
+        inThs = self.checkBox.isChecked()
+        data = {'code': code, 'day': None}
+        if inThs:
+            kline_utils.openInThsWindow(data)
+        else:
+            kline_utils.openInCurWindow_Code(self, data)
 
     def onModelUpdated(self, evt, args):
         if not self.curData:
