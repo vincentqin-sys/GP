@@ -141,15 +141,17 @@ def run():
     while True:
         now = datetime.datetime.now()
         if not acceptDay(now):
+            time.sleep(5 * 60)
             continue
         curTime = now.strftime('%H:%M')
         if curTime < '09:30' or curTime > '16:00':
+            time.sleep(5 * 60)
             continue
         try:
             downloadOneDay(now)
         except Exception as e:
             traceback.print_exc()
-        time.sleep(30 * 60)
+        time.sleep(15 * 60)
 
 
 def autoLoadThsZT():

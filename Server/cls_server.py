@@ -108,23 +108,29 @@ def tryDownloadDegree():
             orm.CLS_SCQX.create(day = day, zhqd = degree)
             console.write_1(console.CYAN, '[cls-server] ')
             print(' load degree: ', day, ' -> ', degree)
+        return True
     except Exception as e:
         traceback.print_exc()
+        return False
 
 def run():
+    runInfo = {}
     while True:
         now = datetime.datetime.now()
         if not acceptDay(now):
+            time.sleep(5 * 60)
+            continue
+        curTime = now.strftime('%H:%M')
+        day = now.strftime('%Y-%m-%d')
+        if curTime > '15:00' and (day not in runInfo):
+            ok = tryDownloadDegree()
+            if ok:
+                runInfo[day] = True
+        if curTime < '09:30' or curTime > '16:00':
+            time.sleep(5 * 60)
             continue
         downloadClsZT()
-        curTime = now.strftime('%H:%M')
-        if curTime > '15:00':
-            tryDownloadDegree()
-        if curTime < '09:30' or curTime > '16:00':
-            time.sleep(60 * 3600) # 1 hour
-        else:
-            time.sleep(10 * 60)
-
+        time.sleep(10 * 60)
 
 def autoLoadClsZT():
     th = threading.Thread(target = run)
@@ -151,3 +157,7 @@ def startup(app : Flask):
     app.add_url_rule('/save-CLS-ZT', view_func=saveCLS_ZT, methods = ['POST'])
     app.add_url_rule('/save-CLS-Degree', view_func=saveCLS_Degree, methods = ['POST'])
     autoLoadClsZT()
+
+if __name__ == '__main__':
+    downloadClsZT()
+    tryDownloadDegree()

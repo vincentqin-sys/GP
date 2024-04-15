@@ -73,6 +73,31 @@ class DailyFuPanWindow(base_win.BaseWindow):
         pd = self.css['paddings']
         self.layout.resize(pd[0], pd[1], W - pd[0] - pd[2], H - pd[1] - pd[3])
 
+    def getRefDay(self, row, col):
+        if col <= 0 or row <= 0:
+            return None
+        p1 = re.compile(r'\d{1,2}[.-/]\d{1,2}')
+        # 仅查找A列
+        day = None
+        while row >= 0:
+            cell = self.sheetWin.model.getCell(row, 0)
+            if not cell:
+                row -= 1
+                continue
+            txt = cell.getText() or ''
+            txt = txt.strip()
+            lv = p1.search(txt)
+            if lv:
+                day = lv.group(0)
+                break
+            row -= 1
+        if not day:
+            return None
+        year = self.curData['day'][0 : 4]
+        days = re.split('[.-/]', day)
+        day = f'{year}-{int(days[0]) :02d}-{int(days[1]) :02d}'
+        return day
+
     def onOpen(self, evt, args):
         selRange = self.sheetWin.selRange
         if not selRange or selRange[0] < -1 or selRange[1] < -1:
@@ -88,7 +113,7 @@ class DailyFuPanWindow(base_win.BaseWindow):
             return
         code = ls[0]
         inThs = self.checkBox.isChecked()
-        data = {'code': code, 'day': None}
+        data = {'code': code, 'day': self.getRefDay(sr, sc)}
         if inThs:
             kline_utils.openInThsWindow(data)
         else:

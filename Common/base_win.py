@@ -70,9 +70,10 @@ class BaseWindow:
             return True
         if msg == win32con.WM_DESTROY:
             style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-            owner = win32gui.GetWindow(self.hwnd, win32con.GW_OWNER)
-            if (not (style & win32con.WS_POPUP)) and (not (style & win32con.WS_CHILD)) and (not owner):
-                win32gui.PostQuitMessage(0)
+            if (not (style & win32con.WS_POPUP)) and (not (style & win32con.WS_CHILD)):
+                owner = win32gui.GetWindow(self.hwnd, win32con.GW_OWNER)
+                if not owner:
+                    win32gui.PostQuitMessage(0)
                 return True
             del BaseWindow.bindHwnds[hwnd]
         if msg == win32con.WM_RBUTTONUP and self.enableListeners['ContextMenu']:
