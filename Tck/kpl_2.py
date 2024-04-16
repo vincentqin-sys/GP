@@ -235,6 +235,7 @@ class KPL_MgrWindow(base_win.BaseWindow):
         PADDING_BOTTOM = 5
         h -= PADDING_BOTTOM
         rowNum = max((h - 30) // self.KPL_HEIGHT, 1)
+        rowNum = min(rowNum, 3)
         colNum = max(w // self.KPL_WIDTH, 1)
         rowGap = (h - rowNum * self.KPL_HEIGHT - 30) / rowNum
         colGap = (w - colNum * self.KPL_WIDTH) / colNum

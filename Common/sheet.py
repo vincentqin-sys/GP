@@ -385,8 +385,6 @@ class SheetWindow(base_win.BaseWindow):
         self.startCol = 0
         self.selRange = None # (startRow, startCol, endRow?, endCol?)
         self.editer = CellEditor()
-        #self.editer.css['bgColor'] = self.css['bgColor']
-        #self.editer.css['borderColor'] = 0x2fffff
         self.editer.addListener(self.onPressEnter, None)
 
     def setModel(self, model : SheetModel):
