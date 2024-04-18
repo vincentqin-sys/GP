@@ -820,10 +820,10 @@ class Cardayout(Layout):
                 break
 
 class FlowLayout(Layout):
-    def __init__(self) -> None:
+    def __init__(self, horItemSpace = 20, lineHeight = 25) -> None:
         super().__init__()
-        self.horItemSpace = 20
-        self.lineHeight = 25
+        self.horItemSpace = horItemSpace
+        self.lineHeight = lineHeight
         self.winsInfo = []
 
     # win = BaseWindow, HWND
@@ -1112,7 +1112,8 @@ class TableWindow(BaseWindow):
                 self.drawSort(hdc, rc)
             rc2 = rc.copy()
             rc2[1] = (self.headHeight - 14) // 2
-            self.drawer.drawText(hdc, hd['title'], rc2)
+            if 'title' in hd:
+                self.drawer.drawText(hdc, hd['title'], rc2)
             rc[0] = rc[2]
         
     def drawCell(self, hdc, row, col, colName, value, rect):

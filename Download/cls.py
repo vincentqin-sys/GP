@@ -41,7 +41,7 @@ class ClsUrl:
             return 'sz' + code
         raise Exception('Not Support code: ', code)
     
-    def _signParams(self, params):
+    def signParams(self, params):
         if isinstance(params, str):
             sign = signByStr(params)
             return params + '&sign=' + sign
@@ -61,7 +61,7 @@ class ClsUrl:
         url = 'https://x-quote.cls.cn/quote/stock/tline?'
         scode = self._getTagCode(code)
         params = f'app=CailianpressWeb&fields=date,minute,last_px,business_balance,business_amount,open_px,preclose_px,av_px&os=web&secu_code={scode}&sv=7.7.5'
-        url += self._signParams(params)
+        url += self.signParams(params)
         resp = requests.get(url)
         txt = resp.content.decode('utf-8')
         js = json.loads(txt)
@@ -85,7 +85,7 @@ class ClsUrl:
             'os': 'web',
             'sv': '7.7.5'
         }
-        url = f'https://x-quote.cls.cn/quote/stock/basic?' + self._signParams(params)
+        url = f'https://x-quote.cls.cn/quote/stock/basic?' + self.signParams(params)
         resp = requests.get(url)
         txt = resp.content.decode('utf-8')
         js = json.loads(txt)
@@ -124,7 +124,7 @@ class ClsUrl:
             'os': 'web',
             'sv': '7.7.5'
         }
-        url = f'https://x-quote.cls.cn/quote/stock/tline_history?' + self._signParams(params)
+        url = f'https://x-quote.cls.cn/quote/stock/tline_history?' + self.signParams(params)
         resp = requests.get(url)
         txt = resp.content.decode('utf-8')
         js = json.loads(txt)
@@ -144,7 +144,7 @@ class ClsUrl:
             'limit': limit,
             'type': 'fd1'
         }
-        url = f'https://x-quote.cls.cn/quote/stock/kline?' + self._signParams(params)
+        url = f'https://x-quote.cls.cn/quote/stock/kline?' + self.signParams(params)
         resp = requests.get(url)
         txt = resp.content.decode('utf-8')
         js = json.loads(txt)

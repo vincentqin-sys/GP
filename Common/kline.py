@@ -7,7 +7,7 @@ from THS import orm as ths_orm
 from Tck import orm as tck_orm
 from Tdx import datafile, orm as tdx_orm
 from Download import henxin, cls
-from Common import base_win, ext
+from Common import base_win, ext_win
 
 class KLineModel_Tdx(datafile.DataFile):
     def __init__(self, code):
@@ -1257,7 +1257,7 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.DrawText(hdc, val['fmtVal'], len(val['fmtVal']), rc, win32con.DT_CENTER)
         win32gui.DeleteObject(hb)
 
-class CodeWindow(ext.CellRenderWindow):
+class CodeWindow(ext_win.CellRenderWindow):
     def __init__(self) -> None:
         super().__init__((80, '1fr'), 5)
         self.curCode = None

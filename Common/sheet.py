@@ -1029,6 +1029,8 @@ class SheetWindow(base_win.BaseWindow):
                 self.paste()
             elif wParam == ord('X') and win32api.GetKeyState(win32con.VK_CONTROL):
                 self.copyDelete()
+            elif wParam == ord('S') and win32api.GetKeyState(win32con.VK_CONTROL):
+                self.notifyListener(self.Event('Save', self, model = self.model))
             return True
         if msg == win32con.WM_RBUTTONUP:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
