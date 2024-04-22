@@ -921,7 +921,7 @@ class TableWindow(BaseWindow):
         #      sorter: function(colName, val, rowData, allDatas, asc:True|False)  -> return sorted value
         #      textAlign: int, win32con.DT_LEFT(is default) | .....
         #      fontSize: 14 (default)
-        #      render: function(win, hdc, row, col, colName, value, rect)  cell-render
+        #      render: function(win, hdc, row, col, colName, value, rowData, rect)  cell-render
         #      paddings : (left, top, right, bottom), cell paddings
         self.headers = None # must be set TODO
 
@@ -1116,7 +1116,7 @@ class TableWindow(BaseWindow):
                 self.drawer.drawText(hdc, hd['title'], rc2)
             rc[0] = rc[2]
         
-    def drawCell(self, hdc, row, col, colName, value, rect):
+    def drawCell(self, hdc, row, col, colName, value, rowData, rect):
         hd = self.headers[col]
         fs = hd.get('fontSize', self.css['fontSize'])
         self.drawer.use(hdc, self.drawer.getFont(fontSize = fs))
@@ -1133,7 +1133,7 @@ class TableWindow(BaseWindow):
                 if i < 2: rect[i] += paddings[i]
                 else: rect[i] -= paddings[i]
         if cellRender:
-            cellRender(self, hdc, row, col, colName, value, rect)
+            cellRender(self, hdc, row, col, colName, value, rowData, rect)
         else:
             align = hd.get('textAlign', win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
             self.drawer.drawText(hdc, str(value), rect, self.css['textColor'], align = align)
@@ -1144,6 +1144,7 @@ class TableWindow(BaseWindow):
         hds = self.headers
         if row == self.selRow:
             self.drawer.fillRect(hdc, rect, self.css['selBgColor'])
+        datas = self.getData()
         for i in range(len(hds)):
             colName = hds[i]['name']
             rc[2] += self.getColumnWidth(i, colName)
@@ -1155,7 +1156,7 @@ class TableWindow(BaseWindow):
                 else: v -= 0.2
                 color = Drawer.hsv2rgb(h, s, v)
                 self.drawer.drawRect(hdc, rc, color, 2)
-            self.drawCell(hdc, row, i, colName, val, rc)
+            self.drawCell(hdc, row, i, colName, val, datas[row], rc)
             rc[0] = rc[2]
 
     def drawTail(self, hdc, rect):

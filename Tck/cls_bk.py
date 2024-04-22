@@ -9,6 +9,8 @@ from THS import orm as ths_orm, ths_win
 from Common import base_win, timeline, kline, table
 import ddlr_detail, orm, kline_utils
 
+base_win.ThreadPool.start()
+
 # code = 'cls00000'
 def loadBkInfo(code : str):
     if not code:
@@ -56,7 +58,49 @@ def loadBkInfo(code : str):
                     cp['_industry_name'] = rds['industry_name']
     return rs
 
-#loadBkInfo('cls82437')
+class CacheManager:
+    def __init__(self) -> None:
+        self.cache = {}
+        self.win = None
+
+    def _needUpdate(self, data):
+        now = datetime.datetime.now()
+        cc : datetime.datetime = data['_load_time']
+        scc = cc.strftime('%H:%M')
+        if scc > '15:00':
+            return False
+        delta : datetime.timedelta = now - cc
+        if delta.seconds >= 180:
+            return True
+        return False
+
+    def getData(self, code):
+        if type(code) == int:
+            code = f'{code :05d}'
+        if code not in self.cache:
+            self.download(code)
+            return None
+        data = self.cache[code]
+        if self._needUpdate(data):
+            self.cache.pop(code)
+            self.download(code)
+            return None
+        return data
+    
+    def download(self, code):
+        base_win.ThreadPool.addTask(code, self._download, code)
+
+    def _download(self, code):
+        hx = henxin.HexinUrl()
+        ds = hx.loadUrlData( hx.getFenShiUrl(code) )
+        ds['code'] = code
+        render = TimelineRender()
+        render.setData(ds)
+        rs = {'_load_time': datetime.datetime.now(), 'render': render}
+        self.cache[code] = rs
+        self.win.invalidWindow()
+
+_cache = CacheManager()
 
 class CodesTableModel:
     GREEN = 0xA3C252
@@ -71,6 +115,7 @@ class CodesTableModel:
                         {'name': 'is_core', 'title': '核心', 'width': 50, 'sortable' :True , 'render': self.renderCore, 'sorter': self.sorter},
                         {'name': 'fundflow', 'title': '资金', 'width': 80, 'sortable' :True , 'render': self.renderZJ, 'sorter': self.sorter},
                         {'name': '_industry_name', 'title': '产业链', 'width': 120},
+                        {'name': 'secu_code', 'title': '分时图', 'width': 250, 'render': self.renderTimeline},
                         {'name': 'assoc_desc', 'title': '简介', 'width': 0, 'stretch' : 1, 'fontSize': 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER}
                         ]
         self.bkInfo = bkInfo or {'basic': None, 'codes': [], 'industry_codes': []}
@@ -101,18 +146,25 @@ class CodesTableModel:
             industry_name['sortable'] = False
         tabWin.setData(data)
         tabWin.invalidWindow()
-        
-    def renderPrice(self, win : base_win.TableWindow, hdc, row, col, colName, value, rect):
+    
+    def renderTimeline(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
+        global _cache
+        code = rowData['secu_code'][2 : ]
+        data = _cache.getData(code)
+        if not data:
+            return
+        data['render'].onDraw(hdc, win.drawer, rect)
+
+    def renderPrice(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
         if value == None:
             return
-        rowData = win.getData()[row]
         zd = rowData['change']
         color = 0x00
         if zd > 0: color = self.RED
         elif zd < 0: color = self.GREEN
         win.drawer.drawText(hdc, f'{value :.2f}', rect, color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
-    def cellChange(self, win : base_win.TableWindow, hdc, row, col, colName, value, rect):
+    def cellChange(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
         if value == None:
             return
         color = 0x00
@@ -121,7 +173,7 @@ class CodesTableModel:
         value *= 100
         win.drawer.drawText(hdc, f'{value :.2f} %', rect, color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
     
-    def renderZJ(self, win : base_win.TableWindow, hdc, row, col, colName, value, rect):
+    def renderZJ(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
         if value == None:
             return
         value /= 100000000
@@ -134,10 +186,10 @@ class CodesTableModel:
             value = f'{int(value)} 亿'
         win.drawer.drawText(hdc, value, rect, color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
-    def renderCore(self, win : base_win.TableWindow, hdc, row, col, colName, value, rect):
+    def renderCore(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
         value = '是' if value == 1 else '否'
         win.drawer.drawText(hdc, value, rect, 0x0, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
-    
+
 class ClsBkWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -154,8 +206,9 @@ class ClsBkWindow(base_win.BaseWindow):
         self.industryCheckBox = base_win.CheckBox({'title': '仅显示产业链'})
         self.clsData = None
         self.searchText = ''
-        self.inputTips = []
         self.model = None
+        global _cache
+        _cache.win = self.tableWin
         
         #base_win.ThreadPool.addTask('CLS_BK', self.runTask)
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
@@ -164,14 +217,14 @@ class ClsBkWindow(base_win.BaseWindow):
         flowLayout = base_win.FlowLayout(lineHeight = 30)
         self.checkBox.createWindow(self.hwnd, (0, 0, 150, 25))
         flowLayout.addContent(self.checkBox)
-        self.editorWin.createWindow(self.hwnd, (0, 0, 150, 25))
+        self.editorWin.createWindow(self.hwnd, (0, 0, 200, 25))
         flowLayout.addContent(self.editorWin)
         self.industryCheckBox.createWindow(self.hwnd, (0, 0, 150, 25))
         flowLayout.addContent(self.industryCheckBox)
         self.industryCheckBox.addNamedListener('Checked', self.industryChecked)
 
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.tableWin.rowHeight = 40
+        self.tableWin.rowHeight = 50
 
         self.layout.setContent(0, 0, flowLayout)
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
@@ -204,16 +257,15 @@ class ClsBkWindow(base_win.BaseWindow):
         self.updateBk(text)
 
     def onDbClickEditor(self, evt, args):
-        model = []
-        for s in self.inputTips:
-            model.append({'title': s})
-        model.append({'title': 'LINE'})
-        if len(model) == 1:
-            return
+        model = [
+            {'title': '低空经济', 'value': 'cls82437'},
+            {'title': '有色金属概念', 'value': 'cls82406'},
+            {'title': '家电', 'value': 'cls80051'},
+        ]
         def onSelMenu(evt, args):
-            self.editorWin.setText(evt.item['title'])
+            self.editorWin.setText(evt.item['title'] + '(' + evt.item['value'] + ')')
             self.editorWin.invalidWindow()
-            self.onQuery(self.editorWin.getText())
+            self.onQuery(evt.item['value'])
         menu = base_win.PopupMenuHelper.create(self.editorWin.hwnd, model)
         menu.addNamedListener('Select', onSelMenu)
         menu.show()
@@ -228,11 +280,110 @@ class ClsBkWindow(base_win.BaseWindow):
 
     def updateBk(self, bkCode):
         bkInfo = loadBkInfo(bkCode)
+        ccs = []
+        for c in bkInfo['codes']:
+            if '000099' in c['secu_code']:
+                ccs.append(c)
+        #bkInfo['codes'] = ccs
         self.model = CodesTableModel(bkInfo)
         if self.industryCheckBox.isChecked():
             self.model.setMode(self.tableWin, 'industry')
         else:
             self.model.setMode(self.tableWin, 'codes')
+
+class TimelineRender:
+    def __init__(self) -> None:
+        self.data = None
+        self.paddings = (0, 5, 35, 5)
+        self.priceRange = None
+        self.maxPrice = None
+        self.minPrice = None
+
+    def calcPriceRange(self):
+        minVal = 100000
+        maxVal = -10000
+        for d in self.data['dataArr']:
+            minVal = min(d['price'], minVal)
+            maxVal = max(d['price'], maxVal)
+        self.maxPrice = maxVal
+        self.minPrice = minVal
+        minVal = min(self.data['pre'], minVal)
+        maxVal = max(self.data['pre'], maxVal)
+        self.priceRange = (minVal, maxVal)
+
+    def setData(self, data):
+        self.priceRange = None
+        self.data = data
+        if not data:
+            return
+        self.calcPriceRange()
+    
+    def getYAtPrice(self, price, height):
+        ph = self.priceRange[1] - self.priceRange[0]
+        if ph == 0:
+            return 0
+        height -= self.paddings[1] + self.paddings[3]
+        y = (self.priceRange[1] - price) / ph * height + self.paddings[1]
+        return int(y)
+    
+    def getPriceColor(self, price):
+        color = 0x0
+        GREEN = 0xA3C252
+        RED = 0x2204de
+        # check is zt
+        code = self.data['code']
+        zf = 0.1
+        if code[0] == '3' or code[0 : 3] == '688':
+            zf = 0.20
+        pre = self.data['pre']
+        ztPrice = int(int(pre * 100 + 0.5) * (1 + zf) + 0.5)
+        if int(price * 100 + 0.5) >= ztPrice:
+            return 0xdd0000
+        dtPrice = int(int(pre * 100 + 0.5) * (1 - zf) + 0.5)
+        if int(price * 100 + 0.5) <= dtPrice:
+            return 0x00dddd
+        if price > self.data['pre']:
+            color = RED
+        elif price < self.data['pre']:
+            color = GREEN
+        return color
+
+    def onDraw(self, hdc, drawer : base_win.Drawer, rect):
+        if not self.priceRange or self.priceRange[1] - self.priceRange[0] <= 0:
+            return
+        cwidth = rect[2] - rect[0] - self.paddings[0] - self.paddings[2]
+        height = rect[3] - rect[1]
+        da = self.data['dataArr']
+        if not da:
+            return
+        dx = cwidth / 240
+        drawer.use(hdc, drawer.getPen(self.getPriceColor(da[-1]['price'])))
+        for i, d in enumerate(da):
+            x = int(i * dx + self.paddings[0])
+            y = self.getYAtPrice(d['price'], height)
+            if i == 0:
+                win32gui.MoveToEx(hdc, x + rect[0], y + rect[1])
+            else:
+                win32gui.LineTo(hdc, x + rect[0], y + rect[1])
+        # draw zero line
+        GREEY = 0x909090
+        drawer.use(hdc, drawer.getPen(GREEY, win32con.PS_DOT))
+        py = self.getYAtPrice(self.data['pre'], height)
+        win32gui.MoveToEx(hdc, rect[0] + self.paddings[0], py + rect[1])
+        win32gui.LineTo(hdc, rect[2] - self.paddings[2], py + rect[1])
+        # draw max price
+        mzf = (self.maxPrice - self.data['pre']) / self.data['pre'] * 100
+        szf = (self.minPrice - self.data['pre']) / self.data['pre'] * 100
+        ZFW = 50
+        rc = [rect[2] - ZFW, rect[1], rect[2], rect[1] + 20]
+        drawer.use(hdc, drawer.getFont(fontSize = 10))
+        drawer.drawText(hdc, f'{mzf :.2f}%', rc, self.getPriceColor(self.maxPrice), win32con.DT_RIGHT | win32con.DT_TOP)
+        rc = [rect[2] - ZFW, rect[3] - 12, rect[2], rect[3]]
+        drawer.drawText(hdc, f'{szf :.2f}%', rc, self.getPriceColor(self.minPrice), win32con.DT_RIGHT | win32con.DT_BOTTOM)
+
+
+#ds = cls.ClsUrl().loadFenShi('000099')
+
 
 if __name__ == '__main__':
     win = ClsBkWindow()
