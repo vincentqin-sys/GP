@@ -63,13 +63,15 @@ class ZSWindow(base_win.BaseWindow):
             if asc:
                 return 10000
             return -10000
-        def render(win, hdc, row, col, colName, value, rect):
+        def render(win, hdc, row, col, colName, value, rowData, rect):
             datas = win.getData()
             color = win.css['textColor']
             if datas[row]['mark_1'] == 1:
                 color = 0x0000dd
             elif datas[row]['mark_1'] == 2:
                 color = 0xdd0000
+            elif datas[row]['mark_1'] == 3:
+                color = 0x00AA00
             align = win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE
             win.drawer.drawText(hdc, value, rect, color, align = align)
 

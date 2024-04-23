@@ -1204,7 +1204,7 @@ class TableWindow(BaseWindow):
             if 'sorter' in header:
                 def keyn(rowData):
                     hdn = header['name']
-                    return header['sorter'](hdn, rowData[hdn], rowData, self.data, st == 'ASC')
+                    return header['sorter'](hdn, rowData[hdn], rowData, self.data, state == 'ASC')
                 self.sortData = sorted(self.data, key = keyn, reverse = reverse)
             else:
                 self.sortData = sorted(self.data, key = lambda d: d.get(header['name'], ''), reverse = reverse)

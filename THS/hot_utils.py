@@ -57,13 +57,22 @@ def getTradeDaysByHot():
     days = [d[0] for d in q]
     return days
 
+def getLastTradeDay():
+    maxDay = THS_Hot.select(pw.fn.max(THS_Hot.day)).scalar()
+    return maxDay
+
+def calcHotZHOnLastDay():
+    day = getLastTradeDay()
+    return calcHotZHOnDay(day)
+
 if __name__ == '__main__':
-    calcAllHotZHAndSave()
+    getLastTradeDay()
+    #calcAllHotZHAndSave()
     
     print(os.getcwd())
     # 计算最热的30个股的综合排名
-    hots = calcHotZHOnDay(20240124)
-    zhDatas = [THS_HotZH(**d) for d in hots]
+    #hots = calcHotZHOnDay(20240124)
+    #zhDatas = [THS_HotZH(**d) for d in hots]
     #THS_HotZH.bulk_create(zhDatas, 50)
 
         

@@ -44,6 +44,13 @@ def openInCurWindow_ZS(parent : base_win.BaseWindow, data):
     win.klineWin.setMarkDay(data['day'])
     win.klineWin.makeVisible(-1)
 
+def openInCurWindow(parent : base_win.BaseWindow, data):
+    code = data['code']
+    if code[0] == '8':
+        openInCurWindow_ZS(parent, data)
+    else:
+        openInCurWindow_Code(parent, data)
+
 def openKlineMinutes(evt, parent : base_win.BaseWindow):
     if evt.name != 'DbClick':
         return

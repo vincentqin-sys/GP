@@ -2,7 +2,7 @@ import win32gui, win32con, sys, os, win32api
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
-import ddlr_detail, kpl_2, multi_kline, ddlr_struct, zs, tck, vol_pm, tcgn2, cls_bk
+import ddlr_detail, kpl_2, multi_kline, ddlr_struct, zs, Tck.tck_zt as tck_zt, vol_pm, tcgn2, cls_bk
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -17,7 +17,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
             {'name': 'DDLR_STRUCT', 'title': '大单流入'},
             {'name': 'THS_ZS', 'title': '指数'},
             {'name': 'VOL_PM', 'title': '成交额排名'},
-            {'name': 'TCK', 'title': '题材库'},
+            {'name': 'TCK', 'title': '涨停'},
             {'name': 'TCGN', 'title': '题材梳理'},
             {'name': 'CLS_BK', 'title': '财联社板块'},
             ] 
@@ -45,7 +45,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         volPmWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(volPmWin)
 
-        tckWin = tck.TCK_Window()
+        tckWin = tck_zt.TCK_Window()
         tckWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(tckWin)
 

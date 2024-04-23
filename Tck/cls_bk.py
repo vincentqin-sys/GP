@@ -5,7 +5,7 @@ import os, sys, requests
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr, cls
-from THS import orm as ths_orm, ths_win
+from THS import orm as ths_orm, ths_win, hot_utils
 from Common import base_win, timeline, kline, table
 import ddlr_detail, orm, kline_utils
 
@@ -52,6 +52,7 @@ def loadBkInfo(code : str):
             for cc in rds['stocks']:
                 cc['_industry_name'] = rds['industry_name']
                 cc['_industry_idx'] = i
+                cc['_industry_num'] = len(industry)
                 ic.append(cc)
                 cp = codesMap.get(cc['secu_code'], None)
                 if cp:
@@ -90,13 +91,24 @@ class CacheManager:
     def download(self, code):
         base_win.ThreadPool.addTask(code, self._download, code)
 
+    def _calcZF(self, data):
+        if (not data.get('pre', 0)) or (not data.get('dataArr', None)) :
+            return None
+        pre = data['pre']
+        last = data['dataArr'][-1]
+        price = last['price']
+        if not price:
+            return
+        return (price - pre) / pre
+
     def _download(self, code):
         hx = henxin.HexinUrl()
         ds = hx.loadUrlData( hx.getFenShiUrl(code) )
         ds['code'] = code
+        zf = self._calcZF(ds)
         render = TimelineRender()
         render.setData(ds)
-        rs = {'_load_time': datetime.datetime.now(), 'render': render}
+        rs = {'_load_time': datetime.datetime.now(), 'render': render, 'zf': zf}
         self.cache[code] = rs
         self.win.invalidWindow()
 
@@ -108,8 +120,8 @@ class CodesTableModel:
     def __init__(self, bkInfo) -> None:
         self.headers = [{'name': '#idx', 'width': 40, 'title': ''},
                         {'name': 'secu_name', 'title': '名称', 'width' : 80},
-                        #{'name': 'last_px', 'title': '最新价',  'width':80, 'sortable' :True, 'render': self.renderPrice},
-                        {'name': 'change', 'title': '涨幅', 'width': 80, 'sortable' :True, 'render': self.cellChange, 'sorter': self.sorter},
+                        {'name': 'zhHotOrder', 'title': '热度',  'width':80, 'sortable' :True, 'sorter': self.sortZhHot},
+                        {'name': 'change', 'title': '涨幅', 'width': 80, 'sortable' :True, 'render': self.renderZF, 'sorter': self.sorter},
                         {'name': 'head_num', 'title': '领涨', 'width': 50, 'sortable' :True, 'sorter': self.sorter },
                         {'name': 'cmc', 'title': '流通市值', 'width': 80, 'sortable' :True , 'render': self.renderZJ, 'sorter': self.sorter},
                         {'name': 'is_core', 'title': '核心', 'width': 50, 'sortable' :True , 'render': self.renderCore, 'sorter': self.sorter},
@@ -120,11 +132,19 @@ class CodesTableModel:
                         ]
         self.bkInfo = bkInfo or {'basic': None, 'codes': [], 'industry_codes': []}
         self.mode = None
+        
+    def sortZhHot(self, colName, val, rowData, allDatas, asc):
+        if val == None:
+            return 10000
+        return val
 
     def sorter(self, colName, val, rowData, allDatas, asc):
         if self.mode == 'codes':
             return val
-        idx = rowData['_industry_idx'] * 100000000000
+        if asc:
+            idx = rowData['_industry_idx'] * 100000000000
+        else:
+            idx = (rowData['_industry_num'] - rowData['_industry_idx']) * 100000000000
         return idx + val
 
     def _getHeader(self, colName):
@@ -132,6 +152,16 @@ class CodesTableModel:
             if c['name'] == colName:
                 return c
         return None
+    
+    def _loadHotZH(self, datas):
+        hots = hot_utils.calcHotZHOnLastDay()
+        mhots = {}
+        for d in hots:
+            code = f'{d["code"] :06d}'
+            mhots[code] = d['zhHotOrder']
+        for d in datas:
+            code = d['secu_code'][2 : ]
+            d['zhHotOrder'] = mhots.get(code, None)
 
     # codes or industry mode
     def setMode(self, tabWin, mode):
@@ -144,6 +174,7 @@ class CodesTableModel:
         else:
             data = self.bkInfo['industry_codes']
             industry_name['sortable'] = False
+        self._loadHotZH(data)
         tabWin.setData(data)
         tabWin.invalidWindow()
     
@@ -155,18 +186,14 @@ class CodesTableModel:
             return
         data['render'].onDraw(hdc, win.drawer, rect)
 
-    def renderPrice(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
+    def renderZF(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
         if value == None:
             return
-        zd = rowData['change']
-        color = 0x00
-        if zd > 0: color = self.RED
-        elif zd < 0: color = self.GREEN
-        win.drawer.drawText(hdc, f'{value :.2f}', rect, color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
-
-    def cellChange(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
-        if value == None:
-            return
+        global _cache
+        code = rowData['secu_code'][2 : ]
+        data = _cache.getData(code)
+        if data and data['zf']:
+            value = data['zf']
         color = 0x00
         if value > 0: color = self.RED
         elif value < 0: color = self.GREEN
@@ -260,7 +287,9 @@ class ClsBkWindow(base_win.BaseWindow):
         model = [
             {'title': '低空经济', 'value': 'cls82437'},
             {'title': '有色金属概念', 'value': 'cls82406'},
+            {'title': '固态电池', 'value': 'cls81936'},
             {'title': '家电', 'value': 'cls80051'},
+            
         ]
         def onSelMenu(evt, args):
             self.editorWin.setText(evt.item['title'] + '(' + evt.item['value'] + ')')

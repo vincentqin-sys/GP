@@ -1,4 +1,4 @@
-import ctypes, os, sys, requests, json
+import ctypes, os, sys, requests, json, traceback
 
 PX = os.path.join(os.path.dirname(__file__), 'cls-sign.dll')
 mydll = ctypes.CDLL(PX)
@@ -78,43 +78,46 @@ class ClsUrl:
 
     # 基本信息
     def loadBasic(self, code):
-        params = {
-            'secu_code': self._getTagCode(code),
-            'fields': 'open_px,av_px,high_px,low_px,change,change_px,down_price,change_3,change_5,qrr,entrust_rate,tr,amp,TotalShares,mc,NetAssetPS,NonRestrictedShares,cmc,business_amount,business_balance,pe,ttm_pe,pb,secu_name,secu_code,trade_status,secu_type,preclose_px,up_price,last_px',
-            'app': 'CailianpressWeb',
-            'os': 'web',
-            'sv': '7.7.5'
-        }
-        url = f'https://x-quote.cls.cn/quote/stock/basic?' + self.signParams(params)
-        resp = requests.get(url)
-        txt = resp.content.decode('utf-8')
-        js = json.loads(txt)
-        data = js['data']
-        rt = {}
-        rt['pre'] = self.getVal(data, 'preclose_px', float, 0) # 昨日收盘价
-        rt['code'] = data['secu_code'][2 : ]
-        rt['name'] = data['secu_name']
-        rt['vol'] = self.getVal(data, 'business_amount', int, 0) # int 股
-        rt['amount'] = self.getVal(data, 'business_balance', int, 0) # int 元
-        rt['open'] = self.getVal(data, 'open_px', float, 0)
-        rt['high'] = self.getVal(data, 'high_px', float, 0)
-        rt['close'] = self.getVal(data, 'last_px', float, 0)
-        rt['low'] = self.getVal(data, 'low_px', float, 0)
-        #pre = rt['pre'] or rt['open']
-        #if pre != 0:
-        #    rt['涨幅'] = (rt['close'] - pre) / pre * 100
-        rt['涨幅'] = self.getVal(data, 'change', float, 0) * 100
-        rt['委比'] = self.getVal(data, 'entrust_rate', float, 0) * 100 # 0 ~ 100%
-        rt['总市值'] = self.getVal(data, 'mc', int, 0) # int 元
-        rt['流通市值'] = self.getVal(data, 'cmc', int, 0) # int 元
-        rt['每股净资产'] = self.getVal(data, 'NetAssetPS', float, 0)
-        rt['流通股本'] = self.getVal(data, 'NonRestrictedShares', int, 0)
-        rt['总股本'] = self.getVal(data, 'TotalShares', int, 0)
-        rt['市净率'] = self.getVal(data, 'pb', float, 0)
-        rt['市盈率_静'] = self.getVal(data, 'pe', float, 0)
-        rt['市盈率_TTM'] = self.getVal(data, 'ttm_pe', float, 0)
-        #print(rt)
-        return rt
+        try:
+            params = {
+                'secu_code': self._getTagCode(code),
+                'fields': 'open_px,av_px,high_px,low_px,change,change_px,down_price,change_3,change_5,qrr,entrust_rate,tr,amp,TotalShares,mc,NetAssetPS,NonRestrictedShares,cmc,business_amount,business_balance,pe,ttm_pe,pb,secu_name,secu_code,trade_status,secu_type,preclose_px,up_price,last_px',
+                'app': 'CailianpressWeb',
+                'os': 'web',
+                'sv': '7.7.5'
+            }
+            url = f'https://x-quote.cls.cn/quote/stock/basic?' + self.signParams(params)
+            resp = requests.get(url)
+            txt = resp.content.decode('utf-8')
+            js = json.loads(txt)
+            data = js['data']
+            rt = {}
+            rt['pre'] = self.getVal(data, 'preclose_px', float, 0) # 昨日收盘价
+            rt['code'] = data['secu_code'][2 : ]
+            rt['name'] = data['secu_name']
+            rt['vol'] = self.getVal(data, 'business_amount', int, 0) # int 股
+            rt['amount'] = self.getVal(data, 'business_balance', int, 0) # int 元
+            rt['open'] = self.getVal(data, 'open_px', float, 0)
+            rt['high'] = self.getVal(data, 'high_px', float, 0)
+            rt['close'] = self.getVal(data, 'last_px', float, 0)
+            rt['low'] = self.getVal(data, 'low_px', float, 0)
+            #pre = rt['pre'] or rt['open']
+            #if pre != 0:
+            #    rt['涨幅'] = (rt['close'] - pre) / pre * 100
+            rt['涨幅'] = self.getVal(data, 'change', float, 0) * 100
+            rt['委比'] = self.getVal(data, 'entrust_rate', float, 0) * 100 # 0 ~ 100%
+            rt['总市值'] = self.getVal(data, 'mc', int, 0) # int 元
+            rt['流通市值'] = self.getVal(data, 'cmc', int, 0) # int 元
+            rt['每股净资产'] = self.getVal(data, 'NetAssetPS', float, 0)
+            rt['流通股本'] = self.getVal(data, 'NonRestrictedShares', int, 0)
+            rt['总股本'] = self.getVal(data, 'TotalShares', int, 0)
+            rt['市净率'] = self.getVal(data, 'pb', float, 0)
+            rt['市盈率_静'] = self.getVal(data, 'pe', float, 0)
+            rt['市盈率_TTM'] = self.getVal(data, 'ttm_pe', float, 0)
+            #print(rt)
+            return rt
+        except Exception as e:
+            traceback.print_exc()
     
     # 近5日分时
     def loadHistory5FenShi(self, code):

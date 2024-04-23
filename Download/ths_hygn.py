@@ -14,11 +14,22 @@ function loadPageData() {
 		let tds = trs.eq(i).find('td');
 		let code = tds.eq(2).text();
 		let name = tds.eq(3).text();
-		let gn = tds.eq(6).text().trim();
-        let hy = tds.eq(10).text().trim();
+		let gn = tds.eq(7).text().trim();
+        let hy = tds.eq(6).text().trim();
 		console.log(code + '\t' + name + '\t' +  hy + '\t' +  gn);
 	}
 }
+
+var lp = 0;
+_lpID = setInterval(function() {
+    loadPageData(); nextPage();
+    lp++;
+    if (lp > 53) {
+        clearInterval(_lpID);
+    }
+}, 3000);
+
+
 """
 import sys
 

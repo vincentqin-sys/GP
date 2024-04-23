@@ -117,7 +117,7 @@ class TCK_Window(base_win.BaseWindow):
             if val == None:
                 return 1000
             return val
-        def render(win, hdc, row, col, colName, value, rect):
+        def render(win, hdc, row, col, colName, value, rowData, rect):
             model = self.tableWin.getData()
             rowData = model[row]
             color = self.tableWin.css['textColor']

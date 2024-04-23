@@ -5,6 +5,7 @@ import os, sys, requests, re
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win, sheet
 from Tck import orm, kline_utils
+from THS import orm as ths_orm
 
 class DailyFuPanWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -108,16 +109,39 @@ class DailyFuPanWindow(base_win.BaseWindow):
             return
         txt = cell.getText()
         rx = re.compile('\d{6}')
-        ls = rx.findall(txt)
-        if not ls:
+        codes = rx.findall(txt)
+        if not codes:
             return
-        code = ls[0]
+        day = self.getRefDay(sr, sc)
+        if len(codes) == 1:
+            self.openOneCode(codes[0], day)
+            return
+        model = []
+        cinfos = {}
+        qr = ths_orm.THS_GNTC.select().where(ths_orm.THS_GNTC.code.in_(codes)).dicts()
+        for d in qr:
+            cinfos[d['code']] = d['name']
+        qr = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.code, ths_orm.THS_ZS_ZD.name).distinct().where(ths_orm.THS_ZS_ZD.code.in_(codes)).dicts()
+        for d in qr:
+            cinfos[d['code']] = d['name']
+        for code in codes:
+            name = cinfos.get(code, '')
+            model.append({'name': name, 'code': code, 'title': f'{name} ({code})', 'day': day})
+        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        def onMenuItem(evt, args):
+            item = evt.item
+            self.openOneCode(item['code'], item['day'])
+        menu.addNamedListener('Select', onMenuItem)
+        pos = win32gui.GetCursorPos()
+        menu.show(*pos)
+        
+    def openOneCode(self, code, day):
         inThs = self.checkBox.isChecked()
-        data = {'code': code, 'day': self.getRefDay(sr, sc)}
+        data = {'code': code, 'day': day}
         if inThs:
             kline_utils.openInThsWindow(data)
         else:
-            kline_utils.openInCurWindow_Code(self, data)
+            kline_utils.openInCurWindow(self, data)
 
     def onModelUpdated(self, evt, args):
         if not self.curData:

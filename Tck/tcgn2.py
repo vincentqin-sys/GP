@@ -39,7 +39,7 @@ class TCGN_Window(base_win.BaseWindow):
                    {'title': '一级题材概念', 'width': 0, 'stretch': 1, 'name': 'tcgn', 'sortable':True },
                    #{'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
-        def render(win, hdc, row, col, colName, value, rect):
+        def render(win, hdc, row, col, colName, value, rowData, rect):
             rowData = win.getData()[row]
             hd = win.headers[col]
             align = hd.get('textAlign', win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
