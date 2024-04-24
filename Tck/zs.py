@@ -44,7 +44,8 @@ class ZSWindow(base_win.BaseWindow):
                 else:break
             rc = win32gui.GetWindowRect(p)
             pw, ph = rc[2] - rc[0], rc[3] - rc[1]
-            CW = 1400
+            wcw = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+            CW = int(wcw * 0.9)
             fpWin.createWindow(self.hwnd, (rc[0] + (pw - CW) // 2, rc[1], CW, ph), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION, title='复盘日记') # WS_OVERLAPPEDWINDOW
             win32gui.ShowWindow(fpWin.hwnd, win32con.SW_SHOW)
             

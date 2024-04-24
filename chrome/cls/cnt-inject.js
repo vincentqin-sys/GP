@@ -138,10 +138,10 @@ function bindMouseOver() {
 let url = window.location.href;
 if (url == 'https://www.cls.cn/finance') {
     setTimeout(() => {
-        initFinacePage();
+        //initFinacePage();
     }, 3000);
 } else if (url.indexOf('https://www.cls.cn/plate?code=') >= 0) {
     setTimeout(() => {
-        initFinacePage();
+        //initFinacePage();
     }, 3000);
 }

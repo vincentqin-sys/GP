@@ -183,6 +183,22 @@ def startup(app):
     app.add_url_rule('/ths/load-today-kline', view_func = load_ths_today, methods = ['GET'])
     app.add_url_rule('/ths/load-history-kline', view_func = load_ths_history, methods = ['GET'])
 
+# 查询个股涨跌信息
+# day = YYYYMMDD
+def queryAllCodeZD(day):
+    hx = henxin.Henxin()
+    hx.init()
+    print(hx.update())
+    url = 'https://www.iwencai.com/customized/chart/get-robot-data'
+    headers = {'Content-Type': 'application/json', 'hexin-v': hx.update(), 'Origin': 'https://www.iwencai.com',
+               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+               'Referer': 'https://www.iwencai.com/unifiedwap/result?w=%E4%B8%AA%E8%82%A1%E6%B6%A8%E8%B7%8C%E6%8E%92%E5%90%8D,%20%E4%BB%B7%E6%A0%BC,%E6%88%90%E4%BA%A4%E9%A2%9D%E6%8E%92%E5%90%8D&querytype=stock'}
+    params = {"source":"Ths_iwencai_Xuangu","version":"2.0","query_area":"","block_list":"","add_info":"{\"urp\":{\"scene\":1,\"company\":1,\"business\":1},\"contentType\":\"json\",\"searchInfo\":true}","question":"个股涨跌排名, 价格,成交额排名","perpage":"100","page":1,"secondary_intent":"stock","log_info":"{\"input_type\":\"click\"}","rsh":"Ths_iwencai_Xuangu_y07l4ove5pgc6l43kepxlr4j0f7uua81"}
+    resp = requests.post(url, json = params , headers = headers) #
+    txt = resp.content.decode('utf-8')
+    print(txt)
+
 if __name__ == '__main__':
     #autoLoadHistory()
-    downloadOneDay(20240409)
+    #downloadOneDay(20240409)
+    queryAllCodeZD(0)

@@ -18,7 +18,7 @@ class TdxVolPMModel(pw.Model):
 
 class TdxLSModel(pw.Model):
     day = pw.IntegerField(column_name='日期')
-    amount = pw.FloatField(column_name='成交额') # （亿元）
+    amount = pw.FloatField(column_name='成交额', default=0) # （亿元）
     upNum = pw.IntegerField(column_name='上涨家数', default=0)
     downNum = pw.IntegerField(column_name = '下跌家数', default=0)
     zeroNum = pw.IntegerField(column_name = '平盘家数', default=0)
