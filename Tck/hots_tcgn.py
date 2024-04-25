@@ -7,7 +7,7 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import orm as ths_orm, ths_win, hot_utils
 from Common import base_win, timeline, kline, table
-import ddlr_detail, orm, kline_utils
+import ddlr_detail, orm, kline_utils, cache
 
 class Hots_Window(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -17,6 +17,7 @@ class Hots_Window(base_win.BaseWindow):
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = table.EditTableWindow()
         self.tableWin.enableListeners['ContextMenu'] = True
+        self.tableWin.css['selBgColor'] = 0xEAD6D6
         self.editorWin = base_win.Editor()
         self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
         self.editorWin.enableListeners['DbClick'] = True
@@ -47,14 +48,14 @@ class Hots_Window(base_win.BaseWindow):
                    {'title': '名称', 'width': 80, 'name': 'name', 'sortable':True , 'fontSize' : 14, 'render__': render},
                    {'title': '代码', 'width': 80, 'name': 'code', 'sortable':True , 'fontSize' : 14},
                    {'title': '热度', 'width': 80, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 14, 'sorter': sortHot},
-                   {'title': '板块', 'width': 200, 'name': 'hy', 'sortable':True , 'fontSize' : 12,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
-                   {'title': '', 'width': 20, 'name': '__mm'},
+                   {'title': '板块', 'width': 250, 'name': 'hy', 'sortable':True , 'fontSize' : 14,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
+                   {'title': '分时图', 'width': 250, 'name': 'code', 'render': cache.renderTimeline},
                    {'title': '题材概念', 'width': 0, 'name': 'gn', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.tableWin.rowHeight = 40
+        self.tableWin.rowHeight = 50
         self.tableWin.headers = headers
         self.datePicker.createWindow(self.hwnd, (0, 0, 1, 1))
         def onPickDay(evt, args):

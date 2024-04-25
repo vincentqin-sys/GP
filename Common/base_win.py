@@ -2,12 +2,7 @@ import win32gui, win32con , win32api, win32ui, win32gui_struct, win32clipboard #
 import threading, time, datetime, sys, os, copy, calendar, functools
 import pyperclip # pip install pyperclip
 
-# listeners : ContextMenu = {src, x, y} , default is disable
-#             DbClick = {src, x, y} , default is disable
-#             R_DbClick = {src, x, y} , default is disable
-class BaseWindow:
-    bindHwnds = {}
-
+class Listener:
     class Event:
         def __init__(self, name, src, **kargs) -> None:
             self.name = name
@@ -16,20 +11,8 @@ class BaseWindow:
                 setattr(self, k, kargs[k])
 
     def __init__(self) -> None:
-        self.hwnd = None
-        self.oldProc = None
         self.listeners = []
-        self.drawer = Drawer.instance()
-        self._bitmap = None
-        self._bitmapSize = None
-        self.cacheBitmap = False
-        self.css = {'fontSize' : 14, 'fontName' : '新宋体', 'fontWeight' : 0,
-                    'bgColor': 0x000000, 'textColor': 0xffffff,
-                    'borderColor': None, # None(no border) | int
-                    'paddings': (0, 0, 0, 0) # (left, top, right, bottom)
-                    } # config css style
-        self.enableListeners = {'ContextMenu': False, 'DbClick': False, 'R_DbClick': False}
-    
+
     # func = function(event : Event, args)
     def addListener(self, func, args = None):
         self.listeners.append((func, args, '*'))
@@ -45,6 +28,26 @@ class BaseWindow:
             if name == '*' or name == event.name:
                 func(event, args)
 
+# listeners : ContextMenu = {src, x, y} , default is disable
+#             DbClick = {src, x, y} , default is disable
+#             R_DbClick = {src, x, y} , default is disable
+class BaseWindow(Listener):
+    bindHwnds = {}
+    def __init__(self) -> None:
+        super().__init__()
+        self.hwnd = None
+        self.oldProc = None
+        self.drawer = Drawer.instance()
+        self._bitmap = None
+        self._bitmapSize = None
+        self.cacheBitmap = False
+        self.css = {'fontSize' : 14, 'fontName' : '新宋体', 'fontWeight' : 0,
+                    'bgColor': 0x000000, 'textColor': 0xffffff,
+                    'borderColor': None, # None(no border) | int
+                    'paddings': (0, 0, 0, 0) # (left, top, right, bottom)
+                    } # config css style
+        self.enableListeners = {'ContextMenu': False, 'DbClick': False, 'R_DbClick': False}
+    
     # @param rect = (x, y, width, height)
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''): #  0x00800000 | 
         self.hwnd = win32gui.CreateWindow(className, title, style, *rect, parentWnd, None, None, None)

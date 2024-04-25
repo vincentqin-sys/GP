@@ -7,9 +7,7 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr, cls
 from THS import orm as ths_orm, ths_win, hot_utils
 from Common import base_win, timeline, kline, table
-import ddlr_detail, orm, kline_utils
-
-base_win.ThreadPool.start()
+import ddlr_detail, orm, kline_utils, cache
 
 # code = 'cls00000'
 def loadBkInfo(code : str):
@@ -59,75 +57,21 @@ def loadBkInfo(code : str):
                     cp['_industry_name'] = rds['industry_name']
     return rs
 
-class CacheManager:
-    def __init__(self) -> None:
-        self.cache = {}
-        self.win = None
-
-    def _needUpdate(self, data):
-        now = datetime.datetime.now()
-        cc : datetime.datetime = data['_load_time']
-        scc = cc.strftime('%H:%M')
-        if scc > '15:00':
-            return False
-        delta : datetime.timedelta = now - cc
-        if delta.seconds >= 180:
-            return True
-        return False
-
-    def getData(self, code):
-        if type(code) == int:
-            code = f'{code :05d}'
-        if code not in self.cache:
-            self.download(code)
-            return None
-        data = self.cache[code]
-        if self._needUpdate(data):
-            self.cache.pop(code)
-            self.download(code)
-            return None
-        return data
-    
-    def download(self, code):
-        base_win.ThreadPool.addTask(code, self._download, code)
-
-    def _calcZF(self, data):
-        if (not data.get('pre', 0)) or (not data.get('dataArr', None)) :
-            return None
-        pre = data['pre']
-        last = data['dataArr'][-1]
-        price = last['price']
-        if not price:
-            return
-        return (price - pre) / pre
-
-    def _download(self, code):
-        hx = henxin.HexinUrl()
-        ds = hx.loadUrlData( hx.getFenShiUrl(code) )
-        ds['code'] = code
-        zf = self._calcZF(ds)
-        render = TimelineRender()
-        render.setData(ds)
-        rs = {'_load_time': datetime.datetime.now(), 'render': render, 'zf': zf}
-        self.cache[code] = rs
-        self.win.invalidWindow()
-
-_cache = CacheManager()
-
 class CodesTableModel:
     GREEN = 0xA3C252
     RED = 0x2204de
+    
     def __init__(self, bkInfo) -> None:
         self.headers = [{'name': '#idx', 'width': 40, 'title': ''},
                         {'name': 'secu_name', 'title': '名称', 'width' : 80},
                         {'name': 'zhHotOrder', 'title': '热度',  'width':80, 'sortable' :True, 'sorter': self.sortZhHot},
-                        {'name': 'change', 'title': '涨幅', 'width': 80, 'sortable' :True, 'render': self.renderZF, 'sorter': self.sorter},
+                        {'name': 'change', 'title': '涨幅', 'width': 80, 'sortable' :True, 'render': cache.renderZF, 'sorter': self.sorter},
                         {'name': 'head_num', 'title': '领涨', 'width': 50, 'sortable' :True, 'sorter': self.sorter },
                         {'name': 'cmc', 'title': '流通市值', 'width': 80, 'sortable' :True , 'render': self.renderZJ, 'sorter': self.sorter},
                         {'name': 'is_core', 'title': '核心', 'width': 50, 'sortable' :True , 'render': self.renderCore, 'sorter': self.sorter},
                         {'name': 'fundflow', 'title': '资金', 'width': 80, 'sortable' :True , 'render': self.renderZJ, 'sorter': self.sorter},
                         {'name': '_industry_name', 'title': '产业链', 'width': 120},
-                        {'name': 'secu_code', 'title': '分时图', 'width': 250, 'render': self.renderTimeline},
+                        {'name': 'secu_code', 'title': '分时图', 'width': 250, 'render': cache.renderTimeline},
                         {'name': 'assoc_desc', 'title': '简介', 'width': 0, 'stretch' : 1, 'fontSize': 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER}
                         ]
         self.bkInfo = bkInfo or {'basic': None, 'codes': [], 'industry_codes': []}
@@ -178,28 +122,6 @@ class CodesTableModel:
         tabWin.setData(data)
         tabWin.invalidWindow()
     
-    def renderTimeline(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
-        global _cache
-        code = rowData['secu_code'][2 : ]
-        data = _cache.getData(code)
-        if not data:
-            return
-        data['render'].onDraw(hdc, win.drawer, rect)
-
-    def renderZF(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
-        if value == None:
-            return
-        global _cache
-        code = rowData['secu_code'][2 : ]
-        data = _cache.getData(code)
-        if data and data['zf']:
-            value = data['zf']
-        color = 0x00
-        if value > 0: color = self.RED
-        elif value < 0: color = self.GREEN
-        value *= 100
-        win.drawer.drawText(hdc, f'{value :.2f} %', rect, color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
-    
     def renderZJ(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
         if value == None:
             return
@@ -234,8 +156,6 @@ class ClsBkWindow(base_win.BaseWindow):
         self.clsData = None
         self.searchText = ''
         self.model = None
-        global _cache
-        _cache.win = self.tableWin
         
         #base_win.ThreadPool.addTask('CLS_BK', self.runTask)
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
@@ -320,95 +240,6 @@ class ClsBkWindow(base_win.BaseWindow):
         else:
             self.model.setMode(self.tableWin, 'codes')
 
-class TimelineRender:
-    def __init__(self) -> None:
-        self.data = None
-        self.paddings = (0, 5, 35, 5)
-        self.priceRange = None
-        self.maxPrice = None
-        self.minPrice = None
-
-    def calcPriceRange(self):
-        minVal = 100000
-        maxVal = -10000
-        for d in self.data['dataArr']:
-            minVal = min(d['price'], minVal)
-            maxVal = max(d['price'], maxVal)
-        self.maxPrice = maxVal
-        self.minPrice = minVal
-        minVal = min(self.data['pre'], minVal)
-        maxVal = max(self.data['pre'], maxVal)
-        self.priceRange = (minVal, maxVal)
-
-    def setData(self, data):
-        self.priceRange = None
-        self.data = data
-        if not data:
-            return
-        self.calcPriceRange()
-    
-    def getYAtPrice(self, price, height):
-        ph = self.priceRange[1] - self.priceRange[0]
-        if ph == 0:
-            return 0
-        height -= self.paddings[1] + self.paddings[3]
-        y = (self.priceRange[1] - price) / ph * height + self.paddings[1]
-        return int(y)
-    
-    def getPriceColor(self, price):
-        color = 0x0
-        GREEN = 0xA3C252
-        RED = 0x2204de
-        # check is zt
-        code = self.data['code']
-        zf = 0.1
-        if code[0] == '3' or code[0 : 3] == '688':
-            zf = 0.20
-        pre = self.data['pre']
-        ztPrice = int(int(pre * 100 + 0.5) * (1 + zf) + 0.5)
-        if int(price * 100 + 0.5) >= ztPrice:
-            return 0xdd0000
-        dtPrice = int(int(pre * 100 + 0.5) * (1 - zf) + 0.5)
-        if int(price * 100 + 0.5) <= dtPrice:
-            return 0x00dddd
-        if price > self.data['pre']:
-            color = RED
-        elif price < self.data['pre']:
-            color = GREEN
-        return color
-
-    def onDraw(self, hdc, drawer : base_win.Drawer, rect):
-        if not self.priceRange or self.priceRange[1] - self.priceRange[0] <= 0:
-            return
-        cwidth = rect[2] - rect[0] - self.paddings[0] - self.paddings[2]
-        height = rect[3] - rect[1]
-        da = self.data['dataArr']
-        if not da:
-            return
-        dx = cwidth / 240
-        drawer.use(hdc, drawer.getPen(self.getPriceColor(da[-1]['price'])))
-        for i, d in enumerate(da):
-            x = int(i * dx + self.paddings[0])
-            y = self.getYAtPrice(d['price'], height)
-            if i == 0:
-                win32gui.MoveToEx(hdc, x + rect[0], y + rect[1])
-            else:
-                win32gui.LineTo(hdc, x + rect[0], y + rect[1])
-        # draw zero line
-        GREEY = 0x909090
-        drawer.use(hdc, drawer.getPen(GREEY, win32con.PS_DOT))
-        py = self.getYAtPrice(self.data['pre'], height)
-        win32gui.MoveToEx(hdc, rect[0] + self.paddings[0], py + rect[1])
-        win32gui.LineTo(hdc, rect[2] - self.paddings[2], py + rect[1])
-        # draw max price
-        mzf = (self.maxPrice - self.data['pre']) / self.data['pre'] * 100
-        szf = (self.minPrice - self.data['pre']) / self.data['pre'] * 100
-        ZFW = 50
-        rc = [rect[2] - ZFW, rect[1], rect[2], rect[1] + 20]
-        drawer.use(hdc, drawer.getFont(fontSize = 10))
-        drawer.drawText(hdc, f'{mzf :.2f}%', rc, self.getPriceColor(self.maxPrice), win32con.DT_RIGHT | win32con.DT_TOP)
-        rc = [rect[2] - ZFW, rect[3] - 12, rect[2], rect[3]]
-        drawer.drawText(hdc, f'{szf :.2f}%', rc, self.getPriceColor(self.minPrice), win32con.DT_RIGHT | win32con.DT_BOTTOM)
 
 
 #ds = cls.ClsUrl().loadFenShi('000099')
