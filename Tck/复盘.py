@@ -15,9 +15,9 @@ class FuPanMgrWindow(base_win.BaseWindow):
         super().createWindow(parentWnd, rect, style, className, title)
         gpInfos = [{'name': 'KPL', 'title': '市场情绪'},
             #{'name': 'DDLR_STRUCT', 'title': '大单流入'},
-            {'name': 'THS_ZS', 'title': '指数'},
             {'name': 'VOL_PM', 'title': '成交额排名'},
             {'name': 'TCK', 'title': '涨停'},
+            {'name': 'THS_ZS', 'title': '指数'},
             {'name': 'HOTS', 'title': '热度'},
             #{'name': 'TCGN', 'title': '题材梳理'},
             {'name': 'CLS_BK', 'title': '财联社板块'},
@@ -38,10 +38,6 @@ class FuPanMgrWindow(base_win.BaseWindow):
         #ddlrWin.createWindow(self.hwnd, (0, 0, 1, 1))
         #self.cardLayout.addContent(ddlrWin)
 
-        zsWin = zs.ZSWindow()
-        zsWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.cardLayout.addContent(zsWin)
-
         volPmWin = vol_pm.VolPMWindow()
         volPmWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(volPmWin)
@@ -53,6 +49,10 @@ class FuPanMgrWindow(base_win.BaseWindow):
         #tcgnWin = tcgn2.TCGN_Window()
         #tcgnWin.createWindow(self.hwnd, (0, 0, 1, 1))
         #self.cardLayout.addContent(tcgnWin)
+
+        zsWin = zs.ZSWindow()
+        zsWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.cardLayout.addContent(zsWin)
 
         hotsWin = hots_tcgn.Hots_Window()
         hotsWin.createWindow(self.hwnd, (0, 0, 1, 1))

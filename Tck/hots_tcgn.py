@@ -13,7 +13,7 @@ class Hots_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (60, 300, 80, 40, 150, 120, 120, '1fr')
+        self.cols = (150, 300, 120, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = table.EditTableWindow()
         self.tableWin.enableListeners['ContextMenu'] = True
@@ -21,21 +21,11 @@ class Hots_Window(base_win.BaseWindow):
         self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
         self.editorWin.enableListeners['DbClick'] = True
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
-        self.autoSyncCheckBox = base_win.CheckBox({'title': '自动同步显示'})
         self.datePicker = base_win.DatePicker()
         self.hotsData = None
         self.searchData = None
         self.searchText = ''
-        
         self.inputTips = []
-        
-        base_win.ThreadPool.addTask('Hots', self.runTask)
-
-    def runTask(self):
-        self.loadAllData()
-        if not self.tableWin.hwnd:
-            return
-        self.onQuery(self.editorWin.text)
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -62,33 +52,28 @@ class Hots_Window(base_win.BaseWindow):
                    {'title': '题材概念', 'width': 0, 'name': 'gn', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.autoSyncCheckBox.createWindow(self.hwnd, (0, 0, 1, 1))
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.rowHeight = 40
         self.tableWin.headers = headers
-        btn = base_win.Button({'title': '刷新'})
-        btn.createWindow(self.hwnd, (0, 0, 1, 1))
         self.datePicker.createWindow(self.hwnd, (0, 0, 1, 1))
-        btn.addListener(self.onRefresh)
-        self.layout.setContent(0, 0, btn)
+        def onPickDay(evt, args):
+            self.loadAllData()
+            self.onQuery()
+        self.datePicker.addNamedListener('Select', onPickDay)
+        self.layout.setContent(0, 0, self.datePicker)
         self.layout.setContent(0, 1, self.editorWin)
-        self.layout.setContent(0, 4, self.checkBox)
-        self.layout.setContent(0, 5, self.autoSyncCheckBox)
-        self.layout.setContent(0, 6, self.datePicker)
+        self.layout.setContent(0, 2, self.checkBox)
 
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
         def onPressEnter(evt, args):
             q = evt.text.strip()
-            self.onQuery(q)
+            self.onQuery()
             if q and (q not in self.inputTips):
                 self.inputTips.append(q)
         self.editorWin.addNamedListener('PressEnter', onPressEnter, None)
         self.editorWin.addNamedListener('DbClick', self.onDbClickEditor, None)
         self.tableWin.addListener(self.onDbClick, None)
-        sm = ths_win.ThsShareMemory.instance()
-        sm.open()
-        sm.addListener('ListenSync_Hots', self.onAutoSync)
 
     def onDbClickEditor(self, evt, args):
         model = []
@@ -103,32 +88,15 @@ class Hots_Window(base_win.BaseWindow):
         def onSelMenu(evt, args):
             self.editorWin.setText(evt.item['title'])
             self.editorWin.invalidWindow()
-            self.onQuery(self.editorWin.getText())
+            self.onQuery()
         menu = base_win.PopupMenuHelper.create(self.editorWin.hwnd, model)
         menu.addNamedListener('Select', onSelMenu)
         menu.show()
 
-    def onAutoSync(self, code, day):
-        checked = self.autoSyncCheckBox.isChecked()
-        if not checked:
-            return
-        code = f'{code :06d}'
-        txt = self.editorWin.text
-        if txt == code:
-            return
-        self.editorWin.setText(code)
-        self.editorWin.invalidWindow()
-        self.onQuery(self.editorWin.text)
-
-    def onRefresh(self, evt, args):
-        if evt.name == 'Click':
-            self.hotsData = None
-            self.onQuery(self.editorWin.text)
-
-    def onQuery(self, queryText):
+    def onQuery(self):
+        queryText = self.editorWin.text
         self.tableWin.setData(None)
         self.tableWin.invalidWindow()
-        self.loadAllData()
         self.doSearch(queryText)
         self.tableWin.setData(self.searchData)
         self.tableWin.invalidWindow()
@@ -142,17 +110,19 @@ class Hots_Window(base_win.BaseWindow):
         if self.checkBox.isChecked():
             kline_utils.openInThsWindow(data)
         else:
-            kline_utils.openInCurWindow(data)
+            kline_utils.openInCurWindow(self, data)
         
     def loadAllData(self):
-        if self.hotsData != None:
-            return
-        selDay = self.datePicker.getSelDay()
+        self.hotsData = None
+        selDay = self.datePicker.getSelDayInt()
         if not selDay:
-            selDay = hot_utils.getLastTradeDay()
-        if type(selDay) == str:
-            selDay = int(selDay.replace('-', ''))
+            return
         hotZH = ths_orm.THS_HotZH.select().where(ths_orm.THS_HotZH.day == selDay).dicts()
+        lastTraday = hot_utils.getLastTradeDay()
+        if not hotZH and lastTraday == selDay:
+            hotZH = hot_utils.calcHotZHOnLastDay()
+        if not hotZH:
+            return
         rs = []
         rsMaps = {}
         for d in hotZH:
@@ -170,6 +140,8 @@ class Hots_Window(base_win.BaseWindow):
             qr = ths_orm.THS_GNTC.select().where(ths_orm.THS_GNTC.code.in_(cs)).dicts()
             for m in qr:
                 item : dict = rsMaps[m['code']]
+                if m['gn']:
+                    m['gn'] = m['gn'].replace('【', '').replace('】', '').replace(';', '  ')
                 item.update(m)
         self.hotsData = rs
 

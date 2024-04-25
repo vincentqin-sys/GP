@@ -1872,6 +1872,12 @@ class DatePicker(BaseWindow):
         if not day:
             return None
         return f'{day.year}-{day.month :02d}-{day.day :02d}'
+    
+    def getSelDayInt(self):
+        day = self.popWin.curSelDay
+        if not day:
+            return None
+        return day.year * 10000 +  day.month * 100 + day.day
 
     def onSelDayChanged(self, event, args):
         if args != 'DatePopupWindow' and event.name != 'Select':

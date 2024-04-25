@@ -262,7 +262,8 @@ class TCK_Window(base_win.BaseWindow):
     def onRefresh(self, evt, args):
         if evt.name == 'Click':
             self.tckData = None
-            self.onQuery(self.editorWin.text)
+            base_win.ThreadPool.addTask('TCK', self.runTask)
+            #self.onQuery(self.editorWin.text)
 
     def onQuery(self, queryText):
         self.tableWin.setData(None)

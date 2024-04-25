@@ -1291,19 +1291,33 @@ class CodeWindow(ext_win.CellRenderWindow):
         cell = {'text': '', 'color': 0x5050ff, 'textAlign': win32con.DT_CENTER, 'fontSize': 15, 'fontWeight': 1000, 'span': 2}
         if not self.data:
             return cell
-        code = self.data.get('code', None)
-        name = self.data.get('name', None)
-        cell['text'] = f'{code}  {name}'
+        if rowInfo['name'] == 'code':
+            code = self.data.get('code', None)
+            cell['text'] = code
+        else:
+            name = self.data.get('name', None)
+            cell['text'] = name
         return cell
 
     def init(self):
         RH = 25
         self.addRow({'height': 25, 'margin': 20, 'name': 'code'}, self.getCodeCell)
+        self.addRow({'height': 25, 'margin': 5, 'name': 'name'}, self.getCodeCell)
         KEYS = ('涨幅', '委比', '流通市值', '总市值', '市盈率_静', '市盈率_TTM')
         for k in KEYS:
             self.addRow({'height': RH, 'margin': 5, 'name': k}, {'text': k, 'color': 0xcccccc}, self.getCell)
 
+    def loadZS(self, code):
+        obj = ths_orm.THS_ZS.get_or_none(code = code)
+        if not obj:
+            self.data = {'code': self.curCode}
+            return
+        self.data = obj.__data__
+
     def loadCodeBasic(self, code):
+        if code[0] == '8':
+            self.loadZS(code)
+            return
         url = cls.ClsUrl()
         data = url.loadBasic(code)
         self.cacheData[code] = data
@@ -1321,9 +1335,9 @@ class CodeWindow(ext_win.CellRenderWindow):
             return
         self.curCode = scode
         self.data = None
-        if len(scode) != 6 or (scode[0] not in ('0', '3', '6')):
-            self.invalidWindow()
-            return
+        #if len(scode) != 6 or (scode[0] not in ('0', '3', '6')):
+        #    self.invalidWindow()
+        #    return
         if scode in self.cacheData:
             self._useCacheData(scode)
         else:

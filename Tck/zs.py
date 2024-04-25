@@ -7,10 +7,7 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import orm, ths_win
 from Common import base_win, timeline, kline
-from Tck import zs_fupan
-
-thsWin = ths_win.ThsWindow()
-thsWin.init()
+from Tck import zs_fupan, kline_utils
 
 class ZSWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -77,6 +74,7 @@ class ZSWindow(base_win.BaseWindow):
             win.drawer.drawText(hdc, value, rect, color, align = align)
 
         headers = [ #{'title': '', 'width': 60, 'name': '#idx' },
+                   {'title': '代码', 'width': 60, 'name': 'code'},
                    {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True, 'render': render },
                    {'title': '成交额', 'width': 60, 'name': 'money', 'formater': formateMoney , 'sortable':True },
                    {'title': '涨幅', 'width': 60, 'name': 'zdf', 'formater': formateRate, 'sortable':True },
@@ -188,19 +186,9 @@ class ZSWindow(base_win.BaseWindow):
             self.openInCurWindow(data)
 
     def openInThsWindow(self, data):
-        if not thsWin.topHwnd or not win32gui.IsWindow(thsWin.topHwnd):
-            thsWin.topHwnd = None
-            thsWin.init()
-        if not thsWin.topHwnd:
-            return
-        win32gui.SetForegroundWindow(thsWin.topHwnd)
-        time.sleep(0.5)
-        pyautogui.typewrite(data['code'], 0.1)
-        time.sleep(0.2)
-        pyautogui.press('enter')
+        kline_utils.openInThsWindow(data)
         
     def openInCurWindow(self, data):
-        import kline_utils
         kline_utils.openInCurWindow_ZS(self, data)
 
     def updateDay(self, day):
