@@ -16,14 +16,10 @@ class ItemData:
             setattr(self, k, args[i])
 
     def __repr__(self) -> str:
-        d = self.__dict__
-        a = self.DS if 'time' not in d else self.MLS
+        ds = self.__dict__
         s = 'ItemData('
-        for k in a:
-            s += f"{k}={str(d[k])}, "
-        ks = d.keys() - set(a)
-        for k in ks:
-            s += f"{k}={str(d[k])}, "
+        for k in ds:
+            s += f"{k}={str(ds[k])}, "
         s = s[0 : -2]
         s += ')'
         return s

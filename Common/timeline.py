@@ -381,3 +381,299 @@ class TimelineWindow(base_win.BaseWindow):
             self.onClick(x, y)
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
+
+
+class SimpleTimelineModel:
+    def __init__(self) -> None:
+        self.code = None
+        self.name = None
+        self.day = None # int value
+        self.pre = None # int value
+        self.priceRange = None
+        self.volRange = None
+        self.amountRange = None
+        self.data = []
+
+    def _calcCodePre(self, idx, lines):
+        if idx == 0:
+            c = lines[idx]['last_px']
+        else:
+            c = lines[idx - 1]['last_px']
+        self.pre = int(c * 100 + 0.5)
+
+    # code : str
+    # day : int | None(is last day)
+    def _loadCode(self, code, day = None):
+        self.code = code
+        try:
+            if type(day) == 'str':
+                day = day.replace('-', '')
+                day = int(day)
+            url = cls.ClsUrl()
+            his5datas = url.loadHistory5FenShi(code)
+            days = his5datas['date']
+            if not day:
+                day = days[-1]
+            self.day = day
+            if day not in days:
+                return
+            lines = his5datas['line']
+            ONE_DAY_LINES = 241
+            idx = days.index(day) * ONE_DAY_LINES
+            self._calcCodePre(idx, lines)
+            for i in range(idx, min(idx + ONE_DAY_LINES, len(lines))):
+                d = lines[i]
+                ts = datafile.ItemData()
+                ts.time = url.getVal(d, 'minute', int, 0)
+                ts.price = int(url.getVal(d, 'last_px', float, 0) * 100 + 0.5)
+                ts.vol = url.getVal(d, 'business_amount', int, 0)
+                ts.amount = url.getVal(d, 'business_balance', int, 0)
+                ts.avgPrice = int(url.getVal(d, 'av_px', float, 0) * 100 + 0.5)
+                self.data.append(ts)
+        except Exception as e:
+            traceback.print_exc()
+            print('[SimpleTimelineModel.loadCode] fail', code)
+
+    # 最新一天的指数分时
+    def _loadCode_ZS(self, code):
+        self.code = code
+        try:
+            hx = henxin.HexinUrl()
+            data = hx.loadUrlData( hx.getFenShiUrl(code))
+            self.day = int(data['date'])
+            self.pre = int(data['pre'] * 100 + 0.5)
+            for d in data['dataArr']:
+                ts = datafile.ItemData()
+                ts.time = d['time']
+                ts.price = int(d['price'] * 100 + 0.5)
+                ts.vol = int(d['vol'])
+                ts.amount = int(d['money'])
+                self.data.append(ts)
+        except Exception as e:
+            traceback.print_exc()
+            print('[SimpleTimelineModel.loadCode_ZS] fail', code)
+
+    def load(self, code, day = None):
+        if type(code) == int:
+            code = f'{code :06d}'
+        if not code or len(code) != 6:
+            return
+        if code[0] != '8':
+            self._loadCode(code, day)
+            obj = orm.THS_GNTC.select(orm.THS_GNTC.name.distinct()).where(orm.THS_GNTC.code == code).scalar()
+            self.name = obj
+        else:
+            self._loadCode_ZS(code)
+            obj = orm.THS_ZS_ZD.select(orm.THS_ZS_ZD.name.distinct()).where(orm.THS_ZS_ZD.code == code).scalar()
+            self.name = obj
+
+    def getPriceRange(self):
+        if not self.data:
+            return None
+        if self.priceRange:
+            return self.priceRange
+        minPrice = maxPrice = 0
+        for dt in self.data:
+            if minPrice == 0:
+                minPrice = dt.price
+                maxPrice = dt.price
+            else:
+                minPrice = min(minPrice, dt.price)
+                maxPrice = max(maxPrice, dt.price)
+        maxPrice = max(self.pre, maxPrice)
+        minPrice = min(self.pre, minPrice)
+        ds = max(abs(maxPrice - self.pre), abs(minPrice - self.pre))
+        maxPrice = self.pre + ds
+        minPrice = self.pre - ds
+        self.priceRange = (minPrice, maxPrice)
+        return self.priceRange
+    
+    def getVolRange(self):
+        if not self.data:
+            return None
+        if self.volRange:
+            return self.volRange
+        minVol = maxVol = 0
+        for dt in self.data:
+            if dt.vol <= 0:
+                continue
+            if minVol == 0:
+                minVol = dt.vol
+                maxVol = dt.vol
+            else:
+                minVol = min(minVol, dt.vol)
+                maxVol = max(maxVol, dt.vol)
+        self.volRange = (0, maxVol)
+        return self.volRange
+    
+    def getAmountRange(self):
+        if not self.data:
+            return None
+        if self.amountRange:
+            return self.amountRange
+        minVol = maxVol = 0
+        for dt in self.data:
+            if dt.amount <= 0:
+                continue
+            if minVol == 0:
+                minVol = dt.amount
+                maxVol = dt.amount
+            else:
+                minVol = min(minVol, dt.amount)
+                maxVol = max(maxVol, dt.amount)
+        self.amountRange = (0, maxVol)
+        return self.amountRange
+
+class SimpleTTimelineWindow(base_win.BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.model = None
+        self.mouseXY = None
+        self.paddings = (45, 10, 60, 10)
+        self.volHeight = 160
+        self.volSpace = 20
+
+    def load(self, code, day = None):
+        self.priceRange = None
+        self.model = SimpleTimelineModel()
+        self.model.load(code, day)
+        self.invalidWindow()
+        title = f'{self.model.code}   {self.model.name}'
+        win32gui.SetWindowText(self.hwnd, title)
+
+    def getYAtPrice(self, price, h):
+        priceRange = self.model.getPriceRange()
+        if not priceRange:
+            return 0
+        h -= self.paddings[1] + self.paddings[3] + self.volHeight + self.volSpace
+        p = (price - priceRange[0]) / (priceRange[1] - priceRange[0])
+        y = h - int(p * h) + self.paddings[1]
+        return y
+    
+    def getYAtVol(self, vol, h):
+        h -= self.paddings[3]
+        volRange = self.model.getVolRange()
+        if not volRange or volRange[0] == volRange[1]:
+            return h
+        p = (vol - volRange[0]) / (volRange[1] - volRange[0])
+        y = h - int(p * self.volHeight)
+        return y
+
+    def getXAtMinuteIdx(self, minuteIdx, w):
+        ow = w
+        w -= self.paddings[0] + self.paddings[2]
+        ONE_DAY_LINES = 240
+        p = w / ONE_DAY_LINES
+        if minuteIdx == ONE_DAY_LINES:
+            return ow - self.paddings[2]
+        return int(minuteIdx * p) + self.paddings[0]
+
+    def formatAmount(self, amount):
+        if amount >= 100000000:
+            amount /= 100000000
+            return f'{amount :.2f}亿'
+        amount //= 10000
+        return f'{amount}万'
+
+    def drawBackground(self, hdc):
+        if not self.model:
+            return
+        # draw horizontal line
+        pr = self.model.getPriceRange()
+        ph = (pr[1] - pr[0]) / 4
+        ps = (pr[1], pr[1] - ph, self.model.pre, self.model.pre - ph, pr[0])
+        W, H = self.getClientSize()
+        for i, price in enumerate(ps):
+            y = self.getYAtPrice(price, H)
+            style = win32con.PS_SOLID if i % 2 == 0 else win32con.PS_DOT
+            psWidth = 2 if i == len(ps) - 1 else 1
+            self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, 0x36332E, style = style, width = psWidth)
+            #p1 = f'{price / 100 :.02f}'
+            color = 0x0000ff if price >= self.model.pre else 0x00ff00
+            #rc = (self.leftPriceRect[0], y - 8, self.leftPriceRect[2]- 5, y + 8)
+            #self.drawer.drawText(hdc, p1, rc, color, align=win32con.DT_RIGHT)
+            zf = (price - self.model.pre) / self.model.pre * 100
+            p2 = f'{zf :.02f}%'
+            rc = (W - self.paddings[2] + 5, y - 8, W, y + 8)
+            self.drawer.drawText(hdc, p2, rc, color, align = win32con.DT_LEFT)
+        y = H - self.paddings[3]
+        self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, 0x36332E, style = style, width = 2)
+        # draw vol lines
+        am = self.model.getAmountRange()
+        y = H - self.paddings[3] - self.volHeight
+        self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, 0x36332E, style = style, width = 2)
+        rc = (W - self.paddings[2] + 5, y - 8, W, y + 8)
+        self.drawer.drawText(hdc, self.formatAmount(am[1]), rc, 0x993322, align = win32con.DT_LEFT)
+        y = H - self.paddings[3] - self.volHeight // 2
+        self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, 0x36332E, style = win32con.PS_DOT)
+        rc = (W - self.paddings[2] + 5, y - 8, W, y + 8)
+        self.drawer.drawText(hdc, self.formatAmount(am[1] / 2), rc, 0x993322, align = win32con.DT_LEFT)
+
+        # draw vertical line
+        for i in range(9):
+            idx = i * 30
+            x = self.getXAtMinuteIdx(idx, W)
+            style = win32con.PS_SOLID if i % 4 == 0 else win32con.PS_DOT
+            ds = 0 if i == 0 or i == 8 else self.volHeight
+            self.drawer.drawLine(hdc, x, self.paddings[1], x, H - self.paddings[3], 0x36332E, style)
+            rc = (x - 20, H - self.paddings[3], x + 20, H - self.paddings[3] + 20)
+
+    def drawMinites(self, hdc):
+        if not self.model.data:
+            return
+        W, H = self.getClientSize()
+        self.drawer.use(hdc, self.drawer.getPen(0xffffff))
+        for i, md in enumerate(self.model.data):
+            x = self.getXAtMinuteIdx(i, W)
+            y = self.getYAtPrice(md.price, H)
+            if i == 0:
+                win32gui.MoveToEx(hdc, x, y)
+            else:
+                win32gui.LineTo(hdc, x, y)
+        first = self.model.data[0]
+        if not hasattr(first, 'avgPrice'):
+            return
+        self.drawer.use(hdc, self.drawer.getPen(0x00ffff))
+        for i, md in enumerate(self.model.data):
+            x = self.getXAtMinuteIdx(i, W)
+            y = self.getYAtPrice(md.avgPrice, H)
+            if i == 0:
+                win32gui.MoveToEx(hdc, x, y)
+            else:
+                win32gui.LineTo(hdc, x, y)
+
+    def _getVolLineColor(self, idx):
+        now = self.model.data[idx].price
+        if idx == 0:
+            pre = self.model.pre
+        else:
+            pre = self.model.data[idx - 1].price
+        if now > pre:
+            return 0x0000dd
+        if now == pre:
+            return 0xdddddd
+        return 0x00dd00
+
+    def drawVol(self, hdc):
+        W, H = self.getClientSize()
+        for i, md in enumerate(self.model.data):
+            x = self.getXAtMinuteIdx(i, W)
+            y = self.getYAtVol(md.vol, H)
+            self.drawer.use(hdc, self.drawer.getPen(self._getVolLineColor(i)))
+            win32gui.MoveToEx(hdc, x, H - self.paddings[3])
+            win32gui.LineTo(hdc, x, y)
+
+    def onDraw(self, hdc):
+        if not self.model:
+            return
+        self.drawBackground(hdc)
+        self.drawMinites(hdc)
+        self.drawVol(hdc)
+    
+if __name__ == '__main__':
+    win = SimpleTTimelineWindow()
+    win.createWindow(None, (100, 100, 1200, 600), win32con.WS_OVERLAPPEDWINDOW)
+    win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
+    win.load('002085', None)
+    #win.load('886033')
+    win32gui.PumpMessages()
