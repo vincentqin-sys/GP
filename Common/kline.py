@@ -1034,11 +1034,10 @@ class KLineWindow(base_win.BaseWindow):
             win32gui.SetFocus(self.hwnd)
             return True
         if msg == win32con.WM_LBUTTONDBLCLK:
-            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            if y >= self.klineIndicator.y and y < self.klineIndicator.y + self.klineIndicator.height: # in kline dbclick
-                si = self.klineIndicator.getIdxAtX(x)
-                if si >= 0:
-                    self.notifyListener(self.Event('DbClick', self, idx = si, data = self.model.data[si], code = self.model.code))
+            #x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            si = self.selIdx
+            if si >= 0:
+                self.notifyListener(self.Event('DbClick', self, idx = si, data = self.model.data[si], code = self.model.code))
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 

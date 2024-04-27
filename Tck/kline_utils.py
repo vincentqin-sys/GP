@@ -26,7 +26,7 @@ def openInCurWindow_Code(parent : base_win.BaseWindow, data):
     win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
     win.changeCode(data['code'])
     win.klineWin.setMarkDay(data['day'])
-    win.klineWin.addListener(openKlineMinutes, win)
+    win.klineWin.addListener(openKlineMinutes_Simple, win)
     win.klineWin.makeVisible(-1)
 
 def openInCurWindow_ZS(parent : base_win.BaseWindow, data):
@@ -42,6 +42,7 @@ def openInCurWindow_ZS(parent : base_win.BaseWindow, data):
     win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
     win.changeCode(data['code'])
     win.klineWin.setMarkDay(data['day'])
+    win.klineWin.addListener(openKlineMinutes_Simple, win)
     win.klineWin.makeVisible(-1)
 
 def openInCurWindow(parent : base_win.BaseWindow, data):
@@ -51,7 +52,7 @@ def openInCurWindow(parent : base_win.BaseWindow, data):
     else:
         openInCurWindow_Code(parent, data)
 
-def openKlineMinutes(evt, parent : base_win.BaseWindow):
+def openKlineMinutes_DDLR(evt, parent : base_win.BaseWindow):
     if evt.name != 'DbClick':
         return
     win = ddlr_detail.DDLR_MinuteMgrWindow()
@@ -59,6 +60,15 @@ def openKlineMinutes(evt, parent : base_win.BaseWindow):
     win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
     day = evt.data.day
     win.updateCodeDay(evt.code, day)
+
+def openKlineMinutes_Simple(evt, parent : base_win.BaseWindow):
+    if evt.name != 'DbClick':
+        return
+    win = timeline.SimpleTTimelineWindow()
+    rc = win32gui.GetWindowRect(parent.hwnd)
+    win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+    day = evt.data.day
+    win.load(evt.code, day)
 
 thsWin = ths_win.ThsWindow()
 thsWin.init()

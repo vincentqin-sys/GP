@@ -205,10 +205,11 @@ class ClsBkWindow(base_win.BaseWindow):
 
     def onDbClickEditor(self, evt, args):
         model = [
+            {'title': '证券', 'value': 'cls81985'},
             {'title': '低空经济', 'value': 'cls82437'},
             {'title': '有色金属概念', 'value': 'cls82406'},
             {'title': '固态电池', 'value': 'cls81936'},
-            {'title': '家电', 'value': 'cls80051'},
+            #{'title': '家电', 'value': 'cls80051'},
             
         ]
         def onSelMenu(evt, args):
@@ -239,11 +240,6 @@ class ClsBkWindow(base_win.BaseWindow):
             self.model.setMode(self.tableWin, 'industry')
         else:
             self.model.setMode(self.tableWin, 'codes')
-
-
-
-#ds = cls.ClsUrl().loadFenShi('000099')
-
 
 if __name__ == '__main__':
     win = ClsBkWindow()

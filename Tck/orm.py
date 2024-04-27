@@ -92,4 +92,12 @@ class DailyFuPan(pw.Model):
         database = db_tck
         table_name = '复盘日记'
 
+class Remark(pw.Model):
+    kind = pw.CharField() # 
+    day = pw.CharField(null = True) # YYYY-MM-DD
+    code = pw.CharField(null = True)
+    name = pw.CharField(null = True)
+    markColor = pw.IntegerField(default = 0)
+    markText = pw.CharField(null = True)
+
 db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN, TCK_CiTiao, DailyFuPan])

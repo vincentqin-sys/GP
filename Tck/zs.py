@@ -13,7 +13,9 @@ class ZSWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, 20, '1fr')
-        self.cols = ('1fr', '1fr', '1fr', '1fr')
+        cw = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+        n = 4 if cw > 1600 else 3
+        self.cols = ('1fr', ) * n
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.listWins = []
         self.daysLabels =[]

@@ -435,12 +435,18 @@ class SimpleTimelineModel:
             print('[SimpleTimelineModel.loadCode] fail', code)
 
     # 最新一天的指数分时
-    def _loadCode_ZS(self, code):
+    def _loadCode_ZS(self, code, day = None):
         self.code = code
         try:
+            if type(day) == 'str':
+                day = day.replace('-', '')
+                day = int(day)
             hx = henxin.HexinUrl()
             data = hx.loadUrlData( hx.getFenShiUrl(code))
-            self.day = int(data['date'])
+            lastDay = int(data['date'])
+            if day != None and day != lastDay:
+                return
+            self.day = lastDay
             self.pre = int(data['pre'] * 100 + 0.5)
             for d in data['dataArr']:
                 ts = datafile.ItemData()
@@ -463,7 +469,7 @@ class SimpleTimelineModel:
             obj = orm.THS_GNTC.select(orm.THS_GNTC.name.distinct()).where(orm.THS_GNTC.code == code).scalar()
             self.name = obj
         else:
-            self._loadCode_ZS(code)
+            self._loadCode_ZS(code, day)
             obj = orm.THS_ZS_ZD.select(orm.THS_ZS_ZD.name.distinct()).where(orm.THS_ZS_ZD.code == code).scalar()
             self.name = obj
 
@@ -529,7 +535,7 @@ class SimpleTTimelineWindow(base_win.BaseWindow):
         super().__init__()
         self.model = None
         self.mouseXY = None
-        self.paddings = (45, 10, 60, 10)
+        self.paddings = (45, 10, 60, 30)
         self.volHeight = 160
         self.volSpace = 20
 
@@ -568,6 +574,21 @@ class SimpleTTimelineWindow(base_win.BaseWindow):
             return ow - self.paddings[2]
         return int(minuteIdx * p) + self.paddings[0]
 
+    def getMinuteIdxAtX(self, x, w):
+        if x < self.paddings[0]:
+            x = self.paddings[0]
+        elif x > w - self.paddings[2]:
+            x = w - self.paddings[2]
+        x -= self.paddings[0]
+        cw = w - self.paddings[0] - self.paddings[2]
+        ONE_DAY_LINES = 240
+        p = cw / ONE_DAY_LINES
+        x += p / 2
+        idx = int(x / p)
+        if idx >= len(self.model.data):
+            idx = len(self.model.data) - 1
+        return idx
+
     def formatAmount(self, amount):
         if amount >= 100000000:
             amount /= 100000000
@@ -580,6 +601,8 @@ class SimpleTTimelineWindow(base_win.BaseWindow):
             return
         # draw horizontal line
         pr = self.model.getPriceRange()
+        if not pr:
+            return
         ph = (pr[1] - pr[0]) / 4
         ps = (pr[1], pr[1] - ph, self.model.pre, self.model.pre - ph, pr[0])
         W, H = self.getClientSize()
@@ -596,8 +619,8 @@ class SimpleTTimelineWindow(base_win.BaseWindow):
             p2 = f'{zf :.02f}%'
             rc = (W - self.paddings[2] + 5, y - 8, W, y + 8)
             self.drawer.drawText(hdc, p2, rc, color, align = win32con.DT_LEFT)
-        y = H - self.paddings[3]
-        self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, 0x36332E, style = style, width = 2)
+        y = H - self.paddings[3] + 1
+        self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, 0x36332E, style = style, width = 1)
         # draw vol lines
         am = self.model.getAmountRange()
         y = H - self.paddings[3] - self.volHeight
@@ -608,7 +631,6 @@ class SimpleTTimelineWindow(base_win.BaseWindow):
         self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, 0x36332E, style = win32con.PS_DOT)
         rc = (W - self.paddings[2] + 5, y - 8, W, y + 8)
         self.drawer.drawText(hdc, self.formatAmount(am[1] / 2), rc, 0x993322, align = win32con.DT_LEFT)
-
         # draw vertical line
         for i in range(9):
             idx = i * 30
@@ -617,6 +639,26 @@ class SimpleTTimelineWindow(base_win.BaseWindow):
             ds = 0 if i == 0 or i == 8 else self.volHeight
             self.drawer.drawLine(hdc, x, self.paddings[1], x, H - self.paddings[3], 0x36332E, style)
             rc = (x - 20, H - self.paddings[3], x + 20, H - self.paddings[3] + 20)
+        # draw space
+        ey = H - self.paddings[3] - self.volHeight
+        rc = (self.paddings[0], ey - self.volSpace, W - self.paddings[2], ey)
+        self.drawer.fillRect(hdc, rc, self.drawer.darkness(self.css['bgColor']))
+
+    def drawMouse(self, hdc):
+        if not self.mouseXY or not self.model:
+            return
+        W, H = self.getClientSize()
+        x, y = self.mouseXY
+        idx = self.getMinuteIdxAtX(x, W)
+        if idx < 0:
+            return
+        x = self.getXAtMinuteIdx(idx, W)
+        self.drawer.drawLine(hdc, x, self.paddings[1], x, H - self.paddings[3], 0x905090, style = win32con.PS_DOT)
+        md = self.model.data[idx]
+        tips = f'{self.formatAmount(md.amount)}元'
+        ty = H - self.paddings[3] + 5
+        rc = (x - 50, ty, x + 50, H)
+        self.drawer.drawText(hdc, tips, rc, 0xf06050)
 
     def drawMinites(self, hdc):
         if not self.model.data:
@@ -667,13 +709,23 @@ class SimpleTTimelineWindow(base_win.BaseWindow):
         if not self.model:
             return
         self.drawBackground(hdc)
+        self.drawMouse(hdc)
         self.drawMinites(hdc)
         self.drawVol(hdc)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_MOUSEMOVE:
+            y, x = (lParam >> 16) & 0xffff,(lParam & 0xffff)
+            self.mouseXY = (x, y)
+            if self.model:
+                win32gui.InvalidateRect(hwnd, None, True)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
     
 if __name__ == '__main__':
     win = SimpleTTimelineWindow()
     win.createWindow(None, (100, 100, 1200, 600), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
-    win.load('002085', None)
-    #win.load('886033')
+    #win.load('002085', None)
+    win.load('886033')
     win32gui.PumpMessages()
