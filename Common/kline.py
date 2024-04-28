@@ -1,4 +1,4 @@
-import os, sys, functools
+import os, sys, functools, copy, datetime
 import win32gui, win32con
 import requests, peewee as pw
 
@@ -916,6 +916,8 @@ class KLineWindow(base_win.BaseWindow):
     def __init__(self):
         super().__init__()
         self.model = None
+        self.dateType = 'day'
+        self.models = {} # {'day': , 'week': xx, 'month': xx}
         self.showSelTip = True # 是否显示选中K线时的竖向提示框
         self.showCodeName = True # 显示代码，名称的提示
         self.klineWidth = 8 # K线宽度
@@ -986,6 +988,7 @@ class KLineWindow(base_win.BaseWindow):
         return [idt.x, idt.y, idt.width, idt.height]
 
     def setModel(self, model):
+        self.dateType = 'day'
         self.model = model
         self.hygn = None
         if not model:
@@ -1007,6 +1010,116 @@ class KLineWindow(base_win.BaseWindow):
             self.model.gn = gntcObj.gn.replace('【', '').replace('】', '').split(';')
         for idt in self.indicators:
             idt.setData(self.model.data)
+        self.models['day'] = self.model
+
+    def _mergeItem(self, dest, item):
+        if hasattr(item, 'high'):
+            dest.high = max(getattr(dest, 'high', 0), dest.high)
+        if hasattr(item, 'low'):
+            dest.low = min(getattr(dest, 'low', 99999999), dest.low)
+        if hasattr(item, 'close'):
+            dest.close = item.close
+        if hasattr(item, 'amount'):
+            dest.amount = getattr(dest, 'amount', 0) + item.amount
+        if hasattr(item, 'vol'):
+            dest.vol = getattr(dest, 'vol', 0) + item.vol
+        if hasattr(item, 'rate'):
+            dest.rate = getattr(dest, 'rate', 0) + item.rate
+        dest.days += 1
+
+    def _copyItem(self, item):
+        it = copy.copy(item)
+        EX = ('MA5', 'MA10', 'zhangFu', 'lbs', 'zdt', 'tdb')
+        for k in EX:
+            if hasattr(it, k):
+                delattr(it, k)
+        it.days = 1
+        return it
+
+    def _sumItem(self, item):
+        #item.rate = getattr(item, 'rate', 0) / item.days
+        #item.vol = getattr(item, 'vol', 0) // item.days
+        #item.amount = getattr(item, 'amount', 0) // item.days
+        pass
+
+    def initWeekModelData(self, ds):
+        rs = []
+        i = 0
+        cur = None
+        while i < len(ds):
+            if cur == None:
+                cur = self._copyItem(ds[i])
+                rs.append(cur)
+                i += 1
+            else:
+                item = ds[i]
+                dd = datetime.date(item.day // 10000, item.day // 100 % 100, item.day % 100)
+                if dd.weekday() == 0:
+                    self._sumItem(cur)
+                    cur = None
+                else:
+                    self._mergeItem(cur, item)
+                    i += 1
+        if cur: self._sumItem(cur)
+        return rs
+
+    def initMonthModelData(self, ds):
+        rs = []
+        i = 0
+        cur = None
+        curMonth = 0
+        while i < len(ds):
+            if cur == None:
+                cur = self._copyItem(ds[i])
+                rs.append(cur)
+                curMonth = cur.day // 100
+                i += 1
+            else:
+                item = ds[i]
+                if item.day // 100 != curMonth:
+                    self._sumItem(cur)
+                    cur = None
+                else:
+                    self._mergeItem(cur, item)
+                    i += 1
+        if cur: self._sumItem(cur)
+        return rs
+
+    # dateType = 'day' 'week'  'month'
+    def changeDateModel(self, dateType):
+        if self.dateType == dateType:
+            return
+        self.dateType = dateType
+        if dateType not in self.models:
+            md = copy.copy(self.models['day'])
+            if dateType == 'week':
+                md.data = self.initWeekModelData(md.data)
+            elif dateType == 'month':
+                md.data = self.initMonthModelData(md.data)
+            md.calcMA(5)
+            md.calcMA(10)
+            md.calcZhangFu()
+            self.models[dateType] = md
+        else:
+            md = self.models[dateType]
+        self.model = md
+        for idt in self.indicators:
+            idt.setData(md.data)
+        self.makeVisible(-1)
+        self.selIdx = len(md.data) - 1
+        x = self.klineIndicator.getCenterX(self.selIdx)
+        self.mouseXY = (x, self.mouseXY[1])
+        self.invalidWindow()
+
+    def onContextMenu(self, x, y):
+        mm = [{'title': '日线', 'name': 'day', 'enable': 'day' != self.dateType}, 
+              {'title': '周线', 'name': 'week', 'enable': 'week' != self.dateType}, 
+              {'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType}]
+        menu = base_win.PopupMenuHelper.create(self.hwnd, mm)
+        def onMM(evt, args):
+            self.changeDateModel(evt.item['name'])
+        menu.addNamedListener('Select', onMM)
+        menu.show(* win32gui.GetCursorPos())
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -1038,6 +1151,10 @@ class KLineWindow(base_win.BaseWindow):
             si = self.selIdx
             if si >= 0:
                 self.notifyListener(self.Event('DbClick', self, idx = si, data = self.model.data[si], code = self.model.code))
+            return True
+        if msg == win32con.WM_RBUTTONUP:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            self.onContextMenu(x, y)
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
@@ -1106,6 +1223,10 @@ class KLineWindow(base_win.BaseWindow):
                 x = self.klineIndicator.getCenterX(self.selIdx)
                 self.mouseXY = (x, self.mouseXY[1])
             win32gui.InvalidateRect(self.hwnd, None, True)
+        elif keyCode == 28:
+            ks = ('day', 'week', 'month')
+            idx = (ks.index(self.dateType) + 1) % len(ks)
+            self.changeDateModel(ks[idx])
 
     def makeVisible(self, idx):
         self.calcIndicatorsRect()
@@ -1342,7 +1463,7 @@ class CodeWindow(ext_win.CellRenderWindow):
         else:
             base_win.ThreadPool.addTask(scode, self.loadCodeBasic, scode)
 
-class KLineCodeWindow(base_win.BaseEditor):
+class KLineCodeWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.css['bgColor'] = 0x101010
@@ -1381,10 +1502,9 @@ if __name__ == '__main__':
     win = KLineCodeWindow()
     win.addIndicator('rate amount')
     win.addIndicator(DayIndicator({'height': 20}))
-    win.addIndicator(DdlrIndicator({'height' : 100}))
     win.addIndicator(HotIndicator()) # {'height' : 50}
     win.addIndicator(TckIndicator()) # {'height' : 50}
-    rect = (0, 0, 1250, 800)
+    rect = (0, 0, 1250, 600)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     win.changeCode(600281)
     win32gui.PumpMessages()
