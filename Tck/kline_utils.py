@@ -66,7 +66,8 @@ def openKlineMinutes_Simple(evt, parent : base_win.BaseWindow):
         return
     win = timeline.SimpleTTimelineWindow()
     rc = win32gui.GetWindowRect(parent.hwnd)
-    win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+    rc2 = (rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1])
+    win.createWindow(parent.hwnd, rc2, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
     day = evt.data.day
     win.load(evt.code, day)
 
