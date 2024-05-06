@@ -89,10 +89,8 @@ class TCK_Window(base_win.BaseWindow):
         self.cols = (60, 300, 80, 40, 150, 120, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = table.EditTableWindow()
-        self.tableWin.enableListeners['ContextMenu'] = True
         self.editorWin = base_win.Editor()
         self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
-        self.editorWin.enableListeners['DbClick'] = True
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.autoSyncCheckBox = base_win.CheckBox({'title': '自动同步显示'})
         self.tckData = None
@@ -417,8 +415,4 @@ class TCK_Window(base_win.BaseWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
     
 if __name__ == '__main__':
-    ls = 'ddd    cc    mm'.strip()
-    print(ls)
-    ls = ls.split('+')
-    print(ls)
     pass

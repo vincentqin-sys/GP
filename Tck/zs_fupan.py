@@ -15,7 +15,6 @@ class DailyFuPanWindow(base_win.BaseWindow):
         self.cols = (200, 150, 80, 80, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
-        self.tableWin.enableListeners['ContextMenu'] = True
         self.sheetWin = sheet.SheetWindow()
         self.sheetWin.css['enableVerGridLine'] = False
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})

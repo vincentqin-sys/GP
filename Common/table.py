@@ -100,9 +100,8 @@ class EditTableWindow(base_win.TableWindow):
             if self.headers[col].get('editable', False):
                 self.beginEdit(row, col)
                 return True
-            if self.enableListeners['DbClick']:
-                dx = self.sortData if self.sortData else self.data
-                self.notifyListener(self.Event('DbClick', self, x = x, y = y, row = row, data = dx[row], model = dx))
+            dx = self.sortData if self.sortData else self.data
+            self.notifyListener(self.Event('DbClick', self, x = x, y = y, row = row, data = dx[row], model = dx))
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 

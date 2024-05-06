@@ -2,7 +2,8 @@ import win32gui, win32con, sys, os, win32api
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
-import ddlr_detail, kpl_2, multi_kline, ddlr_struct, zs, Tck.tck_zt as tck_zt, vol_pm, tcgn2, cls_bk, hots_tcgn
+import ddlr_detail, top_scqx, ddlr_struct, top_zs, top_zt
+import top_vol_pm, top_cls_bk, top_hots_tcgn
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -16,7 +17,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         gpInfos = [{'name': 'KPL', 'title': '市场情绪'},
             #{'name': 'DDLR_STRUCT', 'title': '大单流入'},
             {'name': 'VOL_PM', 'title': '成交额排名'},
-            {'name': 'TCK', 'title': '涨停'},
+            {'name': 'ZT', 'title': '涨停'},
             {'name': 'THS_ZS', 'title': '指数'},
             {'name': 'HOTS', 'title': '热度'},
             #{'name': 'TCGN', 'title': '题材梳理'},
@@ -30,7 +31,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         gpLy.setContent(0, 0, gp)
         self.layout.setContent(0, 0, gpLy)
 
-        kplWin = kpl_2.KPL_MgrWindow()
+        kplWin = top_scqx.KPL_MgrWindow()
         kplWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(kplWin)
 
@@ -38,11 +39,11 @@ class FuPanMgrWindow(base_win.BaseWindow):
         #ddlrWin.createWindow(self.hwnd, (0, 0, 1, 1))
         #self.cardLayout.addContent(ddlrWin)
 
-        volPmWin = vol_pm.VolPMWindow()
+        volPmWin = top_vol_pm.VolPMWindow()
         volPmWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(volPmWin)
 
-        tckWin = tck_zt.TCK_Window()
+        tckWin = top_zt.TCK_Window()
         tckWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(tckWin)
 
@@ -50,15 +51,15 @@ class FuPanMgrWindow(base_win.BaseWindow):
         #tcgnWin.createWindow(self.hwnd, (0, 0, 1, 1))
         #self.cardLayout.addContent(tcgnWin)
 
-        zsWin = zs.ZSWindow()
+        zsWin = top_zs.ZSWindow()
         zsWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(zsWin)
 
-        hotsWin = hots_tcgn.Hots_Window()
+        hotsWin = top_hots_tcgn.Hots_Window()
         hotsWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(hotsWin)
 
-        clsbkWin = cls_bk.ClsBkWindow()
+        clsbkWin = top_cls_bk.ClsBkWindow()
         clsbkWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.cardLayout.addContent(clsbkWin)
 

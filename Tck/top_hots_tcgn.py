@@ -16,11 +16,9 @@ class Hots_Window(base_win.BaseWindow):
         self.cols = (150, 300, 120, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = table.EditTableWindow()
-        self.tableWin.enableListeners['ContextMenu'] = True
         self.tableWin.css['selBgColor'] = 0xEAD6D6
         self.editorWin = base_win.Editor()
         self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
-        self.editorWin.enableListeners['DbClick'] = True
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.datePicker = base_win.DatePicker()
         self.hotsData = None

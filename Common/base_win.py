@@ -46,7 +46,6 @@ class BaseWindow(Listener):
                     'borderColor': None, # None(no border) | int
                     'paddings': (0, 0, 0, 0) # (left, top, right, bottom)
                     } # config css style
-        self.enableListeners = {'ContextMenu': False, 'DbClick': False, 'R_DbClick': False}
     
     # @param rect = (x, y, width, height)
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''): #  0x00800000 | 
@@ -79,15 +78,15 @@ class BaseWindow(Listener):
                     win32gui.PostQuitMessage(0)
                 return True
             del BaseWindow.bindHwnds[hwnd]
-        if msg == win32con.WM_RBUTTONUP and self.enableListeners['ContextMenu']:
+        if msg == win32con.WM_RBUTTONUP:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
             self.notifyListener(self.Event('ContextMenu', self, x = x, y = y))
             return True
-        if msg == win32con.WM_LBUTTONDBLCLK and self.enableListeners['DbClick']:
+        if msg == win32con.WM_LBUTTONDBLCLK:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
             self.notifyListener(self.Event('DbClick', self, x = x, y = y))
             return True
-        if msg == win32con.WM_RBUTTONDBLCLK and self.enableListeners['R_DbClick']:
+        if msg == win32con.WM_RBUTTONDBLCLK:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
             self.notifyListener(self.Event('R_DbClick', self, x = x,  y = y))
             return True
@@ -899,7 +898,6 @@ class TableWindow(BaseWindow):
         self.css['headerBgColor'] = 0xc3c3c3
         self.css['cellBorder'] = 0xc0c0c0
         self.css['selBgColor'] = 0xf0a0a0
-        self.enableListeners['DbClick'] = True
         self.paddings = (2, 0, 2, 0) # cell default paddings
 
         self.enableCellSelect = False
@@ -1296,7 +1294,7 @@ class TableWindow(BaseWindow):
         if msg == win32con.WM_KEYDOWN:
             tg = self.onKeyDown(wParam)
             return tg
-        if msg == win32con.WM_LBUTTONDBLCLK and self.enableListeners['DbClick']:
+        if msg == win32con.WM_LBUTTONDBLCLK:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
             row = self.getRowAtY(y)
             if row >= 0:
@@ -1567,6 +1565,7 @@ class PopupMenu(PopupWindow):
         self.VISIBLE_MAX_ITEM = 20 # 最大显示的个数
         self.model = None  # [{title:xx, name:xx }, ...]   title = LINE 表示分隔线
         self.rowHeight = 24
+        self.minItemWidth = 150 # 最小宽度
         self.selIdx = -1
         self.startIdx = 0 # 开始显示的idx
 
@@ -1584,7 +1583,7 @@ class PopupMenu(PopupWindow):
     def calcSize(self):
         w, h = 0, 0
         if not self.model:
-            return (100, self.rowHeight)
+            return (self.minItemWidth, self.rowHeight)
         hdc = win32gui.GetDC(self.hwnd)
         self.drawer.use(hdc, self.getDefFont())
         # calc max height
@@ -1602,6 +1601,7 @@ class PopupMenu(PopupWindow):
         win32gui.ReleaseDC(self.hwnd, hdc)
         if len(self.model) > self.VISIBLE_MAX_ITEM:
             h += self.ARROW_HEIGHT * 2
+        w = max(self.minItemWidth, w)
         return (w, h)
     
     def getItemIdxAt(self, y):

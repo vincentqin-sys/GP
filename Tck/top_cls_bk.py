@@ -147,10 +147,8 @@ class ClsBkWindow(base_win.BaseWindow):
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = table.EditTableWindow()
         self.tableWin.css['selBgColor'] = 0xEAD6D6
-        self.tableWin.enableListeners['ContextMenu'] = True
         self.editorWin = base_win.Editor()
         self.editorWin.placeHolder = '板块概念代码'
-        self.editorWin.enableListeners['DbClick'] = True
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.industryCheckBox = base_win.CheckBox({'title': '仅显示产业链'})
         self.clsData = None

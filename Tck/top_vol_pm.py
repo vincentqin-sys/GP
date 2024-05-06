@@ -44,7 +44,6 @@ class VolPMWindow(base_win.BaseWindow):
                    ]
         for i in range(len(self.layout.templateColumns)):
             win = base_win.TableWindow()
-            win.enableListeners['ContextMenu'] = True
             win.createWindow(self.hwnd, (0, 0, 1, 1))
             win.headers = headers
             self.layout.setContent(2, i, win)

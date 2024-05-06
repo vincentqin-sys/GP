@@ -51,7 +51,6 @@ class DddlrStructWindow(base_win.BaseWindow):
             self.daysLabels.append(lw)
             self.layout.setContent(1, i, lw)
             win.addListener(self.onDbClick, i)
-            win.enableListeners['ContextMenu'] = True
             win.addListener(self.onContextMenu, i)
         datePicker.addListener(self.onSelDayChanged, None)
         # init view

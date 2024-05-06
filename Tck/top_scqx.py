@@ -8,7 +8,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile, orm as tdx_orm
 from Download import henxin, ths_ddlr
 from THS import hot_utils
-import ddlr_detail, multi_kline, orm
+import ddlr_detail, orm
 from Common import base_win, kline
 
 class KPL_Window(base_win.BaseWindow):

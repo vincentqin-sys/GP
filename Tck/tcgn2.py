@@ -61,8 +61,6 @@ class TCGN_Window(base_win.BaseWindow):
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableCntWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.tableCntWin.enableListeners['ContextMenu'] = True
-        self.tableWin.enableListeners['ContextMenu'] = True
         self.tableWin.rowHeight = 32
         self.tableWin.headers = headers
         self.tableCntWin.rowHeight = 40
