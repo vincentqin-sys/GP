@@ -2001,6 +2001,7 @@ class BaseEditor(BaseWindow):
 
 # listeners : PressEnter = {src, text}
 #             PressTab = {src, text}
+#             SelectPopupTip = {src, <PoupMenu.Model-Item> }
 class Editor(BaseEditor):
     def __init__(self) -> None:
         super().__init__()
@@ -2015,6 +2016,12 @@ class Editor(BaseEditor):
         self.insertPos = 0
         self.selRange = None # (beginPos, endPos)
         self.placeHolder = None # str text
+        self.popupTipModel = None
+
+    # model = [ {title: xxx, value? : , ...}, ... ] , same as PopupMenu model
+    # and post Event(self, PressEnter, text: , value ?: , ...)
+    def setPopupTip(self, model : list):
+        self.popupTipModel = model
 
     def setText(self, text):
         self.scrollX = 0
@@ -2162,6 +2169,19 @@ class Editor(BaseEditor):
         rc = (self.scrollX + self.paddingX, y, W, y + lh)
         self.drawer.drawText(hdc, self.text, rc, color=self.css['textColor'], align=win32con.DT_LEFT)
 
+    def _showPopupTip(self):
+        if not self.popupTipModel:
+            return
+        def onCc(evt, args):
+            self.setText(evt.item['title'])
+            self.invalidWindow()
+            newEvt = self.Event('SelectPopupTip', self, **evt.item)
+            self.notifyListener(newEvt)
+        menu = PopupMenuHelper.create(self.hwnd, self.popupTipModel)
+        menu.addNamedListener('Select', onCc)
+        rc = win32gui.GetWindowRect(self.hwnd)
+        menu.show(rc[0], rc[3])
+
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONDOWN:
             win32gui.SetFocus(self.hwnd)
@@ -2183,7 +2203,10 @@ class Editor(BaseEditor):
                 self.setSelRange(0, len(self.text))
                 self.invalidWindow()
                 return True
-            # else : NO return 
+            elif self.popupTipModel:
+                self._showPopupTip()
+                return True
+            # else : NO return
         if  msg == win32con.WM_IME_CHAR or msg == win32con.WM_CHAR:
             self.onChar(wParam)
             return True

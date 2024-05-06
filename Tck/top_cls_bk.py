@@ -38,6 +38,7 @@ def loadBkInfo(code : str):
         codesMap[c['secu_code']] = c
 
     rs['industry'] = None
+    rs['industry_codes'] = []
     if basic['has_industry']:
         url = 'https://x-quote.cls.cn/web_quote/plate/industry?' + curl.signParams(f'app=CailianpressWeb&os=web&rever=1&secu_code={code}&sv=7.7.5&way=last_px')
         resp = requests.get(url)
@@ -238,9 +239,128 @@ class ClsBkWindow(base_win.BaseWindow):
         else:
             self.model.setMode(self.tableWin, 'codes')
 
+class ClsBkZS:
+    def __init__(self) -> None:
+        self.codes = []
+
+    # codes = '600000' or 600000
+    #         ['600000', ...]
+    #         [600000, ...]
+    #         [ {'code': '600000', }, ....]
+    #         [ {'secu_code': '600000', }, ....]
+    def addCodes(self, codes):
+        if not codes:
+            return
+        if type(codes) == str:
+            self.codes.append(codes)
+        elif type(codes) == int:
+            self.codes.append(f'{codes :06d}')
+        elif type(codes) == list:
+            item = codes[0]
+            if type(item) == int:
+                self.codes.extend([f'{d: 06d}' for d in codes])
+            if type(item) == str:
+                self.codes.extend(codes)
+            elif 'code' in item:
+                self.codes.extend([d['code'] for d in codes])
+            elif 'secu_code' in item:
+                self.codes.extend([d['secu_code'] for d in codes])
+    
+    def buildZS(self, fromDay : int):
+        days = set()
+        for i in range(0, min(3, len(self.codes))):
+            cx = self.codes[i]
+            df = datafile.DataFile(cx, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
+            for d in df.data:
+                if d.day not in days:
+                    days.add(d)
+        days = list(days)
+        days.sort()
+        dfs = [datafile.DataFile(cx, datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL) for cx in self.codes]
+        for i in range(len(days)):
+            if fromDay <= days[i]:
+                fromDay = days[i]
+            else:
+                break
+        fromIdx = days.index(fromDay)
+        basePrice = self._calcZSBase(dfs, fromDay)
+        dayItems = []
+        fsItems = []
+        for i in range(fromIdx, len(days)):
+            di, fs = self._calcOneDay(dfs, days[i], basePrice)
+            dayItems.append(di)
+            fsItems.extend(fs)
+        return dayItems, fsItems
+
+    def save(self, dayItems, fsItems):
+        pass
+
+    def _calcZSBase(self, dfs, fromDay):
+        ddfs = []
+        for df in dfs:
+            idx = df.getItemIdx(fromDay)
+            if idx < 240 * 5: # 忽略上市5天内的股
+                continue
+            idx -= 1
+            da = df.data[idx]
+            ddfs.append(da)
+        base = self._calcZSPrice(ddfs, 'close')
+        return base
+
+    def _calcZSPrice(self, datas, name):
+        p  = 0
+        for d in datas:
+            p += getattr(d, name)
+        if name in ('open', 'close', 'low', 'high'):
+            p /= len(datas)
+        return p
+
+    def _calcOneDay(self, dfs, day, basePrice):
+        fsDatas = []
+        datas = []
+        ONE_DAY_ITEM_NUM = 240
+        for df in dfs:
+            idx = df.getItemIdx(day)
+            if idx < 240 * 5: # 忽略上市5天内的股
+                continue
+            datas.append(df.data[idx : idx + ONE_DAY_ITEM_NUM])
+
+        for ms in range(ONE_DAY_ITEM_NUM):
+            ds = []
+            it = datafile.ItemData()
+            fsDatas.append(it)
+            for d in datas:
+                ds.append(d[ms])
+            it.day = day
+            it.time = ds[0].time
+            it.open = self._calcZSPrice(ds, 'open') / basePrice * 1000
+            it.close = self._calcZSPrice(ds, 'close') / basePrice * 1000
+            it.low = min(it.open, it.close)
+            it.high = max(it.open, it.close)
+            it.amount = self._calcZSPrice(ds, 'amount')
+            it.vol = self._calcZSPrice(ds, 'vol')
+        cur = datafile.ItemData()
+        cur.day = day
+        cur.open = fsDatas[0].open
+        cur.close = fsDatas[-1].close
+        cur.low = cur.high = 0
+        cur.amount = cur.vol = 0
+        for fs in fsDatas:
+            if cur.low == 0:
+                cur.low = fs.low
+                cur.high = fs.high
+            else:
+                cur.low = min(fs.low, cur.low)
+                cur.high = max(fs.high, cur.high)
+            cur.amount += fs.amount
+            cur.vol += fs.vol
+        cur.amount = cur.amount // 100000000 #亿元
+        cur.vol = cur.vol // 100000000 # 亿股
+        return cur, fsDatas
+            
 if __name__ == '__main__':
     win = ClsBkWindow()
-    win.createWindow(None, (100, 100, 1500, 600), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE)
+    win.createWindow(None, (100, 100, 1200, 600), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE)
     #win.updateBk('cls82437')
     win.layout.resize(0, 0, *win.getClientSize())
     win32gui.PumpMessages()
