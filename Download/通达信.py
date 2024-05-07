@@ -4,12 +4,13 @@ from pywinauto.controls.common_controls import DateTimePickerWrapper # pip insta
 import peewee as pw
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from Tdx import datafile, orm
+from Tdx import datafile
+from db import tdx_orm
 
 class TdxVolPMTools:
     def __init__(self):
         fromDay = 20230101
-        v = orm.TdxVolPMModel.select(pw.fn.max(orm.TdxVolPMModel.day)).scalar()
+        v = tdx_orm.TdxVolPMModel.select(pw.fn.max(tdx_orm.TdxVolPMModel.day)).scalar()
         self.fromDay = v if v else fromDay
         self.codes = None
         self.codeNames = None
@@ -27,7 +28,7 @@ class TdxVolPMTools:
         self.days = datafile.DataFileUtils.calcDays(self.fromDay)
 
     def initCodeName(self):
-        ths_db = pw.SqliteDatabase(f'{orm.path}GP/db/THS_F10.db')
+        ths_db = pw.SqliteDatabase(f'{tdx_orm.path}GP/db/THS_F10.db')
         sql = 'select code, name from 最新动态'
         csr = ths_db.cursor()
         csr.execute(sql)
@@ -40,7 +41,7 @@ class TdxVolPMTools:
         ths_db.close()
     
     def save(self, datas):
-        orm.TdxVolPMModel.bulk_create(datas, 50)
+        tdx_orm.TdxVolPMModel.bulk_create(datas, 50)
     
     def calcVolOrder_Top100(self):
         dfs = self.datafiles
@@ -64,7 +65,7 @@ class TdxVolPMTools:
                 if not name:
                     name = 'N'
                 d = {'code': code, 'name': name, 'day': day, 'amount': amount, 'pm': i + 1}
-                top100.append(orm.TdxVolPMModel(**d))
+                top100.append(tdx_orm.TdxVolPMModel(**d))
                 #print(d)
             self.save(top100)
 
@@ -77,22 +78,22 @@ class TdxVolPMTools:
             d1 = sh.getItemData(day)
             d2 = sz.getItemData(day)
             amount = (d1.amount + d2.amount) // 100000000
-            zs.append(orm.TdxVolPMModel(**{'code': '999999', 'name': '上证指数', 'day': day, 'amount': d1.amount // 100000000, 'pm': 0}))
-            zs.append(orm.TdxVolPMModel(**{'code': '399001', 'name': '深证指数', 'day': day, 'amount': d2.amount // 100000000, 'pm': 0}))
-            zs.append(orm.TdxVolPMModel(**{'code': '000000', 'name': '两市成交', 'day': day, 'amount': amount, 'pm': 0}))
+            zs.append(tdx_orm.TdxVolPMModel(**{'code': '999999', 'name': '上证指数', 'day': day, 'amount': d1.amount // 100000000, 'pm': 0}))
+            zs.append(tdx_orm.TdxVolPMModel(**{'code': '399001', 'name': '深证指数', 'day': day, 'amount': d2.amount // 100000000, 'pm': 0}))
+            zs.append(tdx_orm.TdxVolPMModel(**{'code': '000000', 'name': '两市成交', 'day': day, 'amount': amount, 'pm': 0}))
         self.save(zs)
    
 class TdxLSTools:
     def __init__(self) -> None:
         fromDay = 20230101
-        v = orm.TdxLSModel.select(pw.fn.max(orm.TdxLSModel.day)).scalar()
+        v = tdx_orm.TdxLSModel.select(pw.fn.max(tdx_orm.TdxLSModel.day)).scalar()
         if v: fromDay = v
         self.fromDay = fromDay
         self.codes = None
         self.days = None
 
     def calcOneDayInfo(self, day, sz, sh, dfs):
-        item = orm.TdxLSModel()
+        item = tdx_orm.TdxLSModel()
         item.day = day
         item.amount = (sz.getItemData(day).amount + sh.getItemData(day).amount) // 100000000 # 亿元
         for df in dfs:
@@ -151,7 +152,7 @@ class TdxLSTools:
             item = self.calcOneDayInfo(day, sz, sh, dfs)
             rs.append(item)
             print('TdxLSTools.calcInfo item=', item.__data__)
-        orm.TdxLSModel.bulk_create(rs, 50)
+        tdx_orm.TdxLSModel.bulk_create(rs, 50)
 
 class TdxDownloader:
     def __init__(self) -> None:
@@ -317,7 +318,7 @@ class TdxDownloader:
         self.login()
         self.openDownloadDialog()
         self.startDownloadForDay()
-        #self.startDownloadForTimeMinute()
+        self.startDownloadForTimeMinute()
         self.killProcess()
 
 def work():

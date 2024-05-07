@@ -1,13 +1,14 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os, copy, json
 import os, sys, requests
+from db import ths_orm as ths_orm
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr, cls
-from THS import orm as ths_orm, ths_win, hot_utils
+from THS import ths_win, hot_utils
 from Common import base_win, timeline, kline, table
-import ddlr_detail, orm as tck_orm, kline_utils, cache
+import ddlr_detail, db.tck_orm as tck_orm, kline_utils, cache
 
 # code = 'cls00000'
 def loadBkInfo(code : str):
@@ -204,10 +205,12 @@ class ClsBkWindow(base_win.BaseWindow):
 
     def onDbClickEditor(self, evt, args):
         model = [
-            {'title': '高速连接器', 'value': 'cls82502'},
+            {'title': '合成生物', 'value': 'cls82475'},
+            {'title': '染料涂料', 'value': 'cls80068'},
+            {'title': '低空经济', 'value': 'cls82437'},
+            #{'title': '高速连接器', 'value': 'cls82502'},
             {'title': '固态电池', 'value': 'cls81936'},
             {'title': '证券', 'value': 'cls81985'},
-            {'title': '低空经济', 'value': 'cls82437'},
             {'title': '有色金属概念', 'value': 'cls82406'},
         ]
         def onSelMenu(evt, args):

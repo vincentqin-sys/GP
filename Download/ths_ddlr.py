@@ -4,7 +4,7 @@ import os, json, time, sys, pyautogui, io, datetime, win32api, win32event, winer
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
-from THS import orm
+from db import ths_orm
 
 BASE_STRUCT_PATH = 'D:/ThsData/ddlr-struct/'
 BASE_DETAIL_PATH = 'D:/ThsData/ddlr-detail-src/'
@@ -33,7 +33,7 @@ def isCode(name):
     return True
 
 def getNameByCode(code):
-    n = orm.THS_Newest.get_or_none(orm.THS_Newest.code == code)
+    n = ths_orm.THS_Newest.get_or_none(ths_orm.THS_Newest.code == code)
     if not n:
         return ''
     return n.name
@@ -97,13 +97,13 @@ class ThsDdlrStructLoader:
     def mergeSavedData(self, datas):
         code = datas[0]['code']
         name = getNameByCode(code)
-        maxDay = orm.THS_DDLR.select(pw.fn.Max(orm.THS_DDLR.day)).where(orm.THS_DDLR.code == code).scalar()
+        maxDay = ths_orm.THS_DDLR.select(pw.fn.Max(ths_orm.THS_DDLR.day)).where(ths_orm.THS_DDLR.code == code).scalar()
         if not maxDay:
             maxDay = ''
         for d in datas:
             if d['day'] > maxDay:
                 d['name'] = name
-                orm.THS_DDLR.create(**d)
+                ths_orm.THS_DDLR.create(**d)
 
 class ThsDdlrDetailLoader:
     def __init__(self) -> None:
@@ -112,7 +112,7 @@ class ThsDdlrDetailLoader:
         pass
 
     def getMaxTradeDays(self):
-        query = orm.THS_Hot.select(orm.THS_Hot.day).distinct().order_by(orm.THS_Hot.day.desc()).limit(100).tuples()
+        query = ths_orm.THS_Hot.select(ths_orm.THS_Hot.day).distinct().order_by(ths_orm.THS_Hot.day.desc()).limit(100).tuples()
         #print(query)
         maxDays = [str(d[0]) for d in query]
         return maxDays

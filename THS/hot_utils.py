@@ -2,7 +2,7 @@ import peewee as pw
 import sys, os
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS.orm import THS_Hot, THS_HotZH, THS_Newest
+from db.ths_orm import THS_Hot, THS_HotZH, THS_GNTC
 
 # param day : int
 def calcHotZHOnDay(day : int):
@@ -47,7 +47,7 @@ def calcAllHotZHAndSave():
 def getNameByCode(code):
     if type(code) == int:
         code = f'{code :06d}'
-    name = THS_Newest.select(THS_Newest.name).where(THS_Newest.code == code).scalar()
+    name = THS_GNTC.select(THS_GNTC.name).where(THS_GNTC.code == code).scalar()
     return name
 
 # 取得有热度排行的交易日期 从小到大排列

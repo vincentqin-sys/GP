@@ -3,9 +3,10 @@ import threading, time, datetime, sys, os, copy
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from db import ths_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
-from THS import orm, ths_win
+from THS import ths_win
 from Common import base_win, timeline, kline
 from Tck import zs_fupan, kline_utils
 
@@ -139,19 +140,19 @@ class ZSWindow(base_win.BaseWindow):
                 win.invalidWindow()
         elif evt.item['name'] == 'MARK':
             MARK_VAL = 1
-            qr = orm.THS_ZS_ZD.update({orm.THS_ZS_ZD.mark_1 : MARK_VAL}).where(orm.THS_ZS_ZD.id == rowData['id'])
+            qr = ths_orm.THS_ZS_ZD.update({ths_orm.THS_ZS_ZD.mark_1 : MARK_VAL}).where(ths_orm.THS_ZS_ZD.id == rowData['id'])
             qr.execute()
             rowData['mark_1'] = MARK_VAL
             self.listWins[tabIdx].invalidWindow()
         elif evt.item['name'] == 'MARK_BLUE':
             MARK_VAL = 2
-            qr = orm.THS_ZS_ZD.update({orm.THS_ZS_ZD.mark_1 : MARK_VAL}).where(orm.THS_ZS_ZD.id == rowData['id'])
+            qr = ths_orm.THS_ZS_ZD.update({ths_orm.THS_ZS_ZD.mark_1 : MARK_VAL}).where(ths_orm.THS_ZS_ZD.id == rowData['id'])
             qr.execute()
             rowData['mark_1'] = MARK_VAL
             self.listWins[tabIdx].invalidWindow()
         elif evt.item['name'] == 'MARK_GREEN':
             MARK_VAL = 3
-            qr = orm.THS_ZS_ZD.update({orm.THS_ZS_ZD.mark_1 : MARK_VAL}).where(orm.THS_ZS_ZD.id == rowData['id'])
+            qr = ths_orm.THS_ZS_ZD.update({ths_orm.THS_ZS_ZD.mark_1 : MARK_VAL}).where(ths_orm.THS_ZS_ZD.id == rowData['id'])
             qr.execute()
             rowData['mark_1'] = MARK_VAL
             self.listWins[tabIdx].invalidWindow()
@@ -160,10 +161,10 @@ class ZSWindow(base_win.BaseWindow):
             day = tabWin._day
             fm = getattr(tabWin, '_filter_mark_', False)
             if not fm:
-                qr = orm.THS_ZS_ZD.select().where(orm.THS_ZS_ZD.mark_1 > 0, orm.THS_ZS_ZD.day == day).dicts()
+                qr = ths_orm.THS_ZS_ZD.select().where(ths_orm.THS_ZS_ZD.mark_1 > 0, ths_orm.THS_ZS_ZD.day == day).dicts()
                 rs = [d for d in qr]
             else:
-                qr = orm.THS_ZS_ZD.select().where(orm.THS_ZS_ZD.day == day).dicts()
+                qr = ths_orm.THS_ZS_ZD.select().where(ths_orm.THS_ZS_ZD.day == day).dicts()
                 rs = [d for d in qr]
             setattr(tabWin, '_filter_mark_', not fm)
             tabWin.setData(rs)
@@ -196,10 +197,10 @@ class ZSWindow(base_win.BaseWindow):
         if type(day) == int:
             day = str(day)
         day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
-        q = orm.THS_ZS_ZD.select(orm.THS_ZS_ZD.day).distinct().where(orm.THS_ZS_ZD.day <= day).order_by(orm.THS_ZS_ZD.day.desc()).limit(len(self.cols)).tuples()
+        q = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.day).distinct().where(ths_orm.THS_ZS_ZD.day <= day).order_by(ths_orm.THS_ZS_ZD.day.desc()).limit(len(self.cols)).tuples()
         for i, d in enumerate(q):
             cday = d[0]
-            ds = orm.THS_ZS_ZD.select().where(orm.THS_ZS_ZD.day == cday)
+            ds = ths_orm.THS_ZS_ZD.select().where(ths_orm.THS_ZS_ZD.day == cday)
             datas = [d.__data__ for d in ds]
             self.listWins[i]._filter_mark_ = False
             self.listWins[i].setData(datas)

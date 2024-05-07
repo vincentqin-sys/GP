@@ -5,10 +5,10 @@ import peewee as pw
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
-from THS import orm, hot_utils
+from THS import hot_utils
 from Download import henxin, cls
 from Common import base_win
-from Tck import orm as tck_orm
+from db import tck_orm, ths_orm
 
 #-----------------------------------------------------------
 class ThsSortQuery:
@@ -38,8 +38,8 @@ class ThsSortQuery:
     
     def getMaxHotInfo(self, code):
         code = int(code)
-        maxHotZH = orm.THS_HotZH.select(pw.fn.min(orm.THS_HotZH.zhHotOrder), orm.THS_HotZH.day).where(orm.THS_HotZH.code == code).tuples()
-        maxHot = orm.THS_Hot.select(pw.fn.min(orm.THS_Hot.hotOrder), orm.THS_Hot.day).where(orm.THS_Hot.code == code).tuples()
+        maxHotZH = ths_orm.THS_HotZH.select(pw.fn.min(ths_orm.THS_HotZH.zhHotOrder), ths_orm.THS_HotZH.day).where(ths_orm.THS_HotZH.code == code).tuples()
+        maxHot = ths_orm.THS_Hot.select(pw.fn.min(ths_orm.THS_Hot.hotOrder), ths_orm.THS_Hot.day).where(ths_orm.THS_Hot.code == code).tuples()
         info = ''
         for d in maxHotZH:
             if d[0]:
@@ -54,9 +54,9 @@ class ThsSortQuery:
     def getCodeInfo_THS(self, code):
         code = int(code)
         code = "%06d" % code
-        gdInfo = orm.THS_Top10_LTGD.select().where(orm.THS_Top10_LTGD.code == code).order_by(orm.THS_Top10_LTGD.day.desc())
-        jgcgInfo = orm.THS_JGCG.select().where(orm.THS_JGCG.code == code).order_by(orm.THS_JGCG.day_sort.desc())
-        hydbInfo = orm.THS_HYDB.select().where(orm.THS_HYDB.code == code).order_by(orm.THS_HYDB.day.desc())
+        gdInfo = ths_orm.THS_Top10_LTGD.select().where(ths_orm.THS_Top10_LTGD.code == code).order_by(ths_orm.THS_Top10_LTGD.day.desc())
+        jgcgInfo = ths_orm.THS_JGCG.select().where(ths_orm.THS_JGCG.code == code).order_by(ths_orm.THS_JGCG.day_sort.desc())
+        hydbInfo = ths_orm.THS_HYDB.select().where(ths_orm.THS_HYDB.code == code).order_by(ths_orm.THS_HYDB.day.desc())
 
         name = ''
         rate = '--'
@@ -74,7 +74,7 @@ class ThsSortQuery:
 
         hy2, hy3 = '', ''
         hyName = ''
-        gntc = orm.THS_GNTC.get_or_none(code = code)
+        gntc = ths_orm.THS_GNTC.get_or_none(code = code)
         if gntc:
             hyName = gntc.hy
             name = gntc.name
@@ -287,7 +287,7 @@ class ZSCardView(CardView):
     def getZSInfo(self, zsCode):
         if type(zsCode) == int:
             zsCode = f'{zsCode :06d}'
-        qr = orm.THS_ZS_ZD.select().where(orm.THS_ZS_ZD.code == zsCode).order_by(orm.THS_ZS_ZD.day.asc())
+        qr = ths_orm.THS_ZS_ZD.select().where(ths_orm.THS_ZS_ZD.code == zsCode).order_by(ths_orm.THS_ZS_ZD.day.asc())
         data = [d.__data__ for d in qr]
         for d in data:
             d['day'] = int(d['day'].replace('-', ''))
@@ -398,10 +398,10 @@ class HotCardView(CardView):
             code = int(code)
         self.code = code
         # load hot data
-        qq = orm.THS_Hot.select(orm.THS_Hot.day, pw.fn.min(orm.THS_Hot.hotOrder).alias('minOrder'), pw.fn.max(orm.THS_Hot.hotOrder).alias('maxOrder')).where(orm.THS_Hot.code == code).group_by(orm.THS_Hot.day) #.order_by(orm.THS_Hot.day.desc())
+        qq = ths_orm.THS_Hot.select(ths_orm.THS_Hot.day, pw.fn.min(ths_orm.THS_Hot.hotOrder).alias('minOrder'), pw.fn.max(ths_orm.THS_Hot.hotOrder).alias('maxOrder')).where(ths_orm.THS_Hot.code == code).group_by(ths_orm.THS_Hot.day) #.order_by(orm.THS_Hot.day.desc())
         #print(qq.sql())
         self.hotData = [d for d in qq.dicts()]
-        qq2 = orm.THS_HotZH.select(orm.THS_HotZH.day, orm.THS_HotZH.zhHotOrder, orm.THS_HotZH.avgHotOrder, orm.THS_HotZH.avgHotValue).where(orm.THS_HotZH.code == code)
+        qq2 = ths_orm.THS_HotZH.select(ths_orm.THS_HotZH.day, ths_orm.THS_HotZH.zhHotOrder, ths_orm.THS_HotZH.avgHotOrder, ths_orm.THS_HotZH.avgHotValue).where(ths_orm.THS_HotZH.code == code)
         qdata = {}
         for d in qq2.tuples():
             qdata[d[0]] = d[1 : ]
@@ -427,7 +427,7 @@ class HotCardView(CardView):
         win32gui.SetWindowText(self.hwnd, self.getWindowTitle())
 
     def getWindowTitle(self):
-        obj = orm.THS_Newest.get_or_none(code = f"{self.code :06d}")
+        obj = ths_orm.THS_Newest.get_or_none(code = f"{self.code :06d}")
         if obj:
             title = f"{self.code :06d}  {obj.name}"
         else:
@@ -479,7 +479,7 @@ class HotCardView(CardView):
         self.tipInfo['hotRect'] = hot['rect']
         if 'detail' not in hot:
             day = hot['data']['day']
-            info = orm.THS_Hot.select().where(orm.THS_Hot.code == code, orm.THS_Hot.day == day)
+            info = ths_orm.THS_Hot.select().where(ths_orm.THS_Hot.code == code, ths_orm.THS_Hot.day == day)
             hot['detail'] = [d.__data__ for d in info]
         self.tipInfo['detail'] = hot['detail']
 
@@ -515,7 +515,7 @@ class KPLCardView(CardView):
         win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT)
 
     def getWindowTitle(self):
-        obj = orm.THS_Newest.get_or_none(code = self.code)
+        obj = ths_orm.THS_Newest.get_or_none(code = self.code)
         if obj:
             title = f"{self.code}  {obj.name}"
         else:
@@ -765,7 +765,7 @@ class HotZHCardView(ListView):
     def __init__(self, hwnd) -> None:
         super().__init__(hwnd)
         self.codeInfos = {}
-        qr = orm.THS_Newest.select()
+        qr = ths_orm.THS_Newest.select()
         for q in qr:
             self.codeInfos[q.code] = {'name': q.name}
         self.thread = base_win.Thread()
@@ -782,18 +782,18 @@ class HotZHCardView(ListView):
         if not foreUpdate and lt - self.updateDataTime < 60:
             return
         self.updateDataTime = lt
-        maxHotDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
-        maxHotZhDay = orm.THS_HotZH.select(pw.fn.max(orm.THS_HotZH.day)).scalar()
+        maxHotDay = ths_orm.THS_Hot.select(pw.fn.max(ths_orm.THS_Hot.day)).scalar()
+        maxHotZhDay = ths_orm.THS_HotZH.select(pw.fn.max(ths_orm.THS_HotZH.day)).scalar()
         self.maxHotDay = maxHotDay
         if self.curSelDay == 0 or self.curSelDay == maxHotDay or self.curSelDay == maxHotZhDay:
             if maxHotDay == maxHotZhDay:
-                qr = orm.THS_HotZH.select().where(orm.THS_HotZH.day == maxHotZhDay).order_by(orm.THS_HotZH.zhHotOrder.asc())
+                qr = ths_orm.THS_HotZH.select().where(ths_orm.THS_HotZH.day == maxHotZhDay).order_by(ths_orm.THS_HotZH.zhHotOrder.asc())
                 self.data = [d.__data__ for d in qr]
             else:
                 self.data = hot_utils.calcHotZHOnDay(maxHotDay)
         else:
             # is history 
-            qr = orm.THS_HotZH.select().where(orm.THS_HotZH.day == self.curSelDay).order_by(orm.THS_HotZH.zhHotOrder.asc())
+            qr = ths_orm.THS_HotZH.select().where(ths_orm.THS_HotZH.day == self.curSelDay).order_by(ths_orm.THS_HotZH.zhHotOrder.asc())
             self.data = [d.__data__ for d in qr]
 
     def loadCodeInfoNet(self, code):
@@ -926,7 +926,7 @@ class HotZHCardView(ListView):
             return
         if self.curSelDay == selDay:
             return
-        qr = orm.THS_Newest.select()
+        qr = ths_orm.THS_Newest.select()
         self.codeInfos.clear()
         for q in qr:
             self.codeInfos[q.code] = {'name': q.name}

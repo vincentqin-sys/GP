@@ -4,19 +4,17 @@ from multiprocessing import Process
 from PIL import Image  # pip install pillow
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from Tdx import orm as tdx_orm
-from THS import orm
+from db import ths_orm, tdx_orm
 from Common import base_win
-from LHB import orm as lhb_orm
-from Tck import orm as tck_orm
+from db import lhb_orm as lhb_orm
+from db import tck_orm as tck_orm
 
 class HotWindow(base_win.BaseWindow):
     #  HOT(热度)  LHB(龙虎榜) LS_INFO(两市信息) DDLR（大单流入） ZT_FUPAN(涨停复盘)
-    DATA_TYPE = ('HOT', 'LHB', 'LS_INFO', 'DDLR') 
+    DATA_TYPE = ('LHB', 'LS_INFO', 'DDLR')
 
     def __init__(self):
         super().__init__()
-        self.oldProc = None
         self.rect = None  # 窗口大小 (x, y, w, h)
         self.maxMode = True #  是否是最大化的窗口
         self.hotData = None # 热点数据
@@ -24,12 +22,11 @@ class HotWindow(base_win.BaseWindow):
         self.ddlrData = None # 大单流入数据
         self.lsInfoData = None # 两市信息
         self.ztFuPanData = None # 涨停复盘
-        self.kplSCQX = None # 涨停啦数据强度
         self.dataType = HotWindow.DATA_TYPE[0]
         self.selectDay = '' # YYYY-MM-DD
 
-    def createWindow(self, topHwnd):
-        rr = win32gui.GetClientRect(topHwnd)
+    def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''):
+        rr = win32gui.GetClientRect(parentWnd)
         print('THS top window: ', rr)
         HEIGHT = 265 #285
         x = 0
@@ -37,51 +34,25 @@ class HotWindow(base_win.BaseWindow):
         #w = rr[2] - rr[0]
         w = win32api.GetSystemMetrics(0) # desktop width
         self.rect = (x, y, w, HEIGHT)
-        style = (win32con.WS_VISIBLE | win32con.WS_POPUP)  # | win32con.WS_CAPTION & ~win32con.WS_SYSMENU | win32con.WS_BORDER | 
-        super().createWindow(topHwnd, self.rect, style, title='HOT-Window')
+        style = (win32con.WS_VISIBLE | win32con.WS_POPUP)
+        super().createWindow(parentWnd, self.rect, style, title='HOT-Window')
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        win32gui.SendMessage(self.hwnd, win32con.WM_PAINT)
         self.changeMode()
 
-    def destroy(self):
-        win32gui.DestroyWindow(self.hwnd)
-    
-    def onDraw(self):
-        hdc, ps = win32gui.BeginPaint(self.hwnd)
-        bk = win32gui.CreateSolidBrush(0xffffff)
-        win32gui.FillRect(hdc, win32gui.GetClientRect(self.hwnd), bk)
-        win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
-        win32gui.SetTextColor(hdc, 0x0)
-        a = win32gui.LOGFONT()
-        a.lfHeight = 12
-        a.lfFaceName = '新宋体'
-        font = win32gui.CreateFontIndirect(a)
-        win32gui.SelectObject(hdc, font)
+    def onDraw(self, hdc):
         if self.maxMode:
             self.drawDataType(hdc)
         else:
             self.drawMinMode(hdc)
-        win32gui.EndPaint(self.hwnd, ps)
-        win32gui.DeleteObject(font)
-        win32gui.DeleteObject(bk)
 
     def drawDataType(self, hdc):
         DEFAULT_ITEM_WIDTH = 120
-        if self.dataType == "HOT" and self.hotData:
-            days = [d[0]['day'] for d in self.hotData]
-            self._drawDataType(hdc, days, self.hotData, DEFAULT_ITEM_WIDTH, self.drawOneDayHot)
-        elif self.dataType == 'LHB' and self.lhbData:
-            days = [d['day'] for d in self.lhbData]
-            self._drawDataType(hdc, days, self.lhbData, DEFAULT_ITEM_WIDTH, self.drawOneDayLHB)
+        if self.dataType == 'LHB' and self.lhbData:
+            pass
         elif self.dataType == 'LS_INFO' and self.lsInfoData:
-            days = [d['day'] for d in self.lsInfoData]
-            self._drawDataType(hdc, days, self.lsInfoData, DEFAULT_ITEM_WIDTH, self.drawOneDayLSInfo)
+            pass
         elif self.dataType == 'DDLR' and self.ddlrData:
-            days = [d['day'] for d in self.ddlrData]
-            self._drawDataType(hdc, days, self.ddlrData, DEFAULT_ITEM_WIDTH - 30, self.drawOneDayDDLR)
-        elif self.dataType == 'ZT_FUPAN' and self.ztFuPanData:
-            days = [d['day'] for d in self.ztFuPanData]
-            self._drawDataType(hdc, days, self.ztFuPanData, DEFAULT_ITEM_WIDTH, self.drawOneDayZTFuPan)
+            pass
 
     # format day (int, str(8), str(10)) to YYYY-MM-DD
     def formatDay(self, day):
@@ -138,102 +109,6 @@ class HotWindow(base_win.BaseWindow):
                 break
         return (fromIdx, lastIdx)
 
-    def drawArrowTip(self, hdc, x, y, op, color = 0xff0000):
-        sdc = win32gui.SaveDC(hdc)
-        br = win32gui.CreateSolidBrush(color)
-        win32gui.SelectObject(hdc, br)
-        pen = win32gui.CreatePen(win32con.PS_SOLID, 1, color)
-        win32gui.SelectObject(hdc, pen)
-        pts = None
-        CW ,CH = 5, 6
-        if op == 0: # left more arrow
-            pts = [(x, y), (x + CW, y - CH), (x + CW, y + CH)]
-        else: # right more arrow
-            pts = [(x, y), (x - CW, y - CH), (x - CW, y + CH)]
-        win32gui.Polygon(hdc, pts)
-        win32gui.RestoreDC(hdc, sdc)
-        win32gui.DeleteObject(br)
-        win32gui.DeleteObject(pen)
-
-    def _drawDataType(self, hdc, days, datas, itemWidth, drawOneDay, optParams = None):
-        if not datas or len(datas) == 0:
-            return
-        x = (self.rect[2] % itemWidth) // 2
-        startX = x
-        pen = win32gui.CreatePen(win32con.PS_DASH, 1, 0xff0000) # day split vertical line
-        startIdx, endIdx = self.findDrawDaysIndex(days, itemWidth)
-        for i, data in enumerate(datas):
-            if i < startIdx or i >= endIdx:
-                continue
-            sdc = win32gui.SaveDC(hdc)
-            if data:
-                drawOneDay(hdc, data, x, itemWidth, i, startIdx, endIdx, optParams)
-            # draw vertical split line
-            win32gui.SelectObject(hdc, pen)
-            win32gui.MoveToEx(hdc, x + itemWidth, 0)
-            win32gui.LineTo(hdc, x + itemWidth, self.rect[3])
-            win32gui.RestoreDC(hdc, sdc)
-            x += itemWidth
-        if startIdx > 0:
-            self.drawArrowTip(hdc, max(startX - 5, 0), self.rect[3] // 2, 0)
-        if endIdx < len(datas):
-            self.drawArrowTip(hdc, min(x + 5, self.rect[2]), self.rect[3] // 2, 1)
-        win32gui.DeleteObject(pen)
-
-    def drawOneDayLHB(self, hdc, data, x, itemWidth, *args): # data = {'day': '', 'famous': [] }
-        y = 0
-        WIDTH, HEIGHT = itemWidth, 14
-        day = data['day']
-        sdc = self.drawDayTitle(hdc, x, day, itemWidth)
-
-        y += 10
-        flag = True
-        for d in data['famous']:
-            y += HEIGHT
-            if flag and ('-' == d[0]):
-                flag = False
-                y += 10
-            win32gui.DrawText(hdc, d, len(d), (x + 5, y, x + WIDTH, y + HEIGHT), win32con.DT_LEFT)
-
-    def drawOneDayHot(self, hdc, data, x, itemWidth, *args): # data = [ {day:'', time:'', hotValue:xx, hotOrder: '' }, ... ]
-        if not data or len(data) == 0:
-            return
-        pen2 = win32gui.CreatePen(win32con.PS_DOT, 1, 0x0000ff) # split one day hor-line
-        win32gui.SelectObject(hdc, pen2)
-        y = 0
-        WIDTH, HEIGHT = itemWidth, 14
-        day = data[0]['day']
-        sdc = self.drawDayTitle(hdc, x, day, itemWidth)
-        isDrawSplit = False
-        for d in data:
-            y += HEIGHT
-            row = '%s  %3d万  %3d' % (d['time'], d['hotValue'], d['hotOrder'])
-            win32gui.DrawText(hdc, row, len(row), (x, y, x + WIDTH, y + HEIGHT), win32con.DT_CENTER)
-            if d['time'] >= '13:00' and (not isDrawSplit):
-                isDrawSplit = True
-                win32gui.MoveToEx(hdc, x + 5, y - 2)
-                win32gui.LineTo(hdc, x + WIDTH - 5, y - 2)
-        win32gui.DeleteObject(pen2)
-
-    # day = int, str(8), str(10)
-    def drawDayTitle(self, hdc, x, day, itemWidth):
-        WIDTH, HEIGHT = itemWidth, 14
-        day = self.formatDay(day)
-        ds = time.strptime(day, '%Y-%m-%d')
-        wd = datetime.date(ds[0], ds[1], ds[2]).isoweekday()
-        WDS = '一二三四五六日'
-        title = day + ' ' + WDS[wd - 1]
-        sdc = 0
-        if day == self.selectDay:
-            sdc = win32gui.SaveDC(hdc)
-            win32gui.SetTextColor(hdc, 0xEE00EE)
-            hbrBlack = win32gui.CreateSolidBrush(0xd0d0d0)
-            #win32gui.FillRect(hdc, (x + 40, self.rect[3] - 15, x + 70, self.rect[3] - 10), hbrBlack)
-            win32gui.FillRect(hdc, (x, 0, x + itemWidth, 20), hbrBlack)
-            win32gui.DeleteObject(hbrBlack)
-        win32gui.DrawText(hdc, title, len(title), (x, 0, x + WIDTH, HEIGHT), win32con.DT_CENTER)
-        return sdc
-
     def getRangeOf(self, datas, name, startIdx, endIdx):
         maxVal, minVal = 0, 0
         for i in range(max(startIdx, 0), min(len(datas), endIdx)):
@@ -244,149 +119,6 @@ class HotWindow(base_win.BaseWindow):
                 maxVal = max(maxVal, v)
                 minVal = min(minVal, v)
         return minVal, maxVal
-
-    def drawOneDayLSInfo(self, hdc, data, x, itemWidth, *args):
-        idx, startIdx, endIdx, *_ = args
-        if idx <= 0:
-            return
-        day = data['day']
-        sdc = self.drawDayTitle(hdc, x, day, itemWidth)
-
-        # 显示当前选中日期的图标
-        #if day == self.selectDay:
-        #    hbrBlack = win32gui.CreateSolidBrush(0xd0d0d0)
-        #    #win32gui.FillRect(hdc, (x + 40, self.rect[3] - 15, x + 70, self.rect[3] - 10), hbrBlack)
-        #    win32gui.FillRect(hdc, (x, 50, x + itemWidth, self.rect[3]), hbrBlack)
-        #    win32gui.DeleteObject(hbrBlack)
-        #info = '  排名: ' + str(data['pm'])
-        #win32gui.DrawText(hdc, info, len(info), (x, 20, x + itemWidth, 80), win32con.DT_LEFT)
-
-        startY, endY = 60, self.rect[3] - 40
-        hbrRed = win32gui.CreateSolidBrush(0x0000ff)
-        hbrGreen = win32gui.CreateSolidBrush(0x00ff00)
-        hbrBlue = win32gui.CreateSolidBrush(0xff0000)
-        hbrYellow = win32gui.CreateSolidBrush(0x00ffff)
-        hbrYellow2 = win32gui.CreateSolidBrush(0x00aaaa)
-        # 涨跌数量图表
-        upRate =  data['upNum'] / (data['upNum'] + data['downNum'])
-        startY = 30
-        spY = startY + int(upRate * (endY - startY))
-        win32gui.FillRect(hdc, (x + 5, startY, x + 10, spY), hbrRed)
-        win32gui.FillRect(hdc, (x + 5, spY, x + 10, endY), hbrGreen)
-        # 涨跌停数量图表
-        ztX, ztStartY = x + 20, startY + 30
-        ztMin, ztMax = self.getRangeOf(self.lsInfoData, 'ztNum', startIdx, endIdx)
-        ZT_NUM_BASE = ztMin // 2
-        ztY = int(ztStartY + (1 - (data['ztNum'] - ZT_NUM_BASE) / (ztMax - ZT_NUM_BASE)) * (endY - ztStartY))
-        win32gui.FillRect(hdc, (ztX, ztY, ztX + 5, endY), hbrBlue)
-        info = str(data['ztNum'])
-        win32gui.DrawText(hdc, info, len(info), (ztX - 10, ztY - 12, ztX + 8, ztY), win32con.DT_CENTER)
-        #连板数量图表
-        lbX = ztX + 15
-        lbY = int(ztStartY + (1 - (data['lbNum']) / ztMax) * (endY - ztStartY))
-        win32gui.FillRect(hdc, (lbX, lbY, lbX + 5, endY), hbrBlue)
-        info = str(data['lbNum'])
-        win32gui.DrawText(hdc, info, len(info), (lbX - 4, lbY - 12, lbX + 8, lbY), win32con.DT_CENTER)
-        #最高板数量图表
-        zgbX = lbX + 15
-        zgbY = int(ztStartY + (1 - (data['zgb']) / ztMax) * (endY - ztStartY))
-        win32gui.FillRect(hdc, (zgbX, zgbY, zgbX + 5, endY), hbrBlue)
-        info = str(data['zgb'])
-        win32gui.DrawText(hdc, info, len(info), (zgbX - 4, zgbY - 12, zgbX + 8, zgbY), win32con.DT_CENTER)
-        #跌停数量图表
-        dtX = zgbX + 15
-        dtMin, dtMax = self.getRangeOf(self.lsInfoData, 'dtNum', startIdx, endIdx)
-        dtMax = max(ztMax, dtMax)
-        dtY = int(ztStartY + (1 - (data['dtNum']) / dtMax) * (endY - ztStartY))
-        #dtY = max(dtY, ztStartY)
-        win32gui.FillRect(hdc, (dtX, dtY, dtX + 5, endY), hbrYellow)
-        info = str(data['dtNum'])
-        win32gui.DrawText(hdc, info, len(info), (dtX - 10, dtY - 12, dtX + 14, dtY), win32con.DT_CENTER)
-        #下跌超过7%的个股数量图表
-        d7X = dtX + 15
-        _, d7Max = self.getRangeOf(self.lsInfoData, 'd7', startIdx, endIdx)
-        d7Max = max(d7Max, ztMax)
-        d7Y = int(ztStartY + (1 - (data['d7']) / d7Max) * (endY - ztStartY))
-        win32gui.FillRect(hdc, (d7X, d7Y, d7X + 5, endY), hbrYellow2)
-        info = str(data['d7'])
-        win32gui.DrawText(hdc, info, len(info), (d7X - 8, d7Y - 12, d7X + 15, d7Y), win32con.DT_CENTER)
-        # 成交额图表
-        BASE_VOL = 6000 #基准成交额为6000亿
-        lsvol = max(data['amount'] - BASE_VOL, 100)
-        maxVol = 100
-        for i in range(startIdx, endIdx):
-            maxVol = max(self.lsInfoData[i]['amount'] - BASE_VOL, maxVol)
-        volY = int(startY + (1 - lsvol / maxVol) * (endY - startY))
-        volX = d7X + 15
-        hbr = hbrRed if data['amount'] >= 8000 else hbrGreen # 8000亿以上显示红色，以下为绿色
-        win32gui.FillRect(hdc, (volX, volY, volX + 10, endY), hbr)
-        info = f"{int(data['amount'])}"
-        win32gui.DrawText(hdc, info, len(info), (volX - 10, volY - 12, volX + 20, volY + 30), win32con.DT_CENTER)
-        info = f"{int(data['amount'] - self.lsInfoData[idx - 1]['amount']) :+d}"
-        win32gui.DrawText(hdc, info, len(info), (volX - 10, endY, volX + 20, endY + 15), win32con.DT_CENTER)
-        # 开盘啦市场情绪
-        if self.kplSCQX:
-            zhqd = self.kplSCQX.get(self.formatDay(day), 0)
-            xdc = win32gui.SaveDC(hdc)
-            if zhqd > 0:
-                fnt = self.drawer.getFont('黑体', fontSize = 20,  weight = 1200)
-                self.drawer.use(hdc, fnt)
-                if zhqd >= 60: color = 0x0000ff
-                elif zhqd >= 40: color= 0x1D77FF
-                else: color = 0x24E7C8
-                rc = (x + itemWidth // 2 - 15, 20, x + itemWidth // 2 + 15, 50)
-                self.drawer.drawText(hdc, str(zhqd), rc, color)
-            win32gui.RestoreDC(hdc, xdc)
-        
-        win32gui.DeleteObject(hbrRed)
-        win32gui.DeleteObject(hbrGreen)
-        win32gui.DeleteObject(hbrBlue)
-        win32gui.DeleteObject(hbrYellow)
-
-    def drawOneDayDDLR(self, hdc, data, x, itemWidth, *args):
-        idx, startIdx, endIdx, *_ = args
-        self.drawDayTitle(hdc, x, data['day'], itemWidth)
-        startY, endY = 60, self.rect[3] - 40
-        hbrRed = win32gui.CreateSolidBrush(0x0000ff)
-        hbrGreen = win32gui.CreateSolidBrush(0x00ff00)
-        buyMin, buyMax  = self.getRangeOf(self.ddlrData, 'buy', startIdx, endIdx)
-        sellMin, sellMax = self.getRangeOf(self.ddlrData, 'sell', startIdx, endIdx)
-        maxVal = max(buyMax, sellMax)
-        
-        # buy
-        spY = int(startY + (1 - (data['buy']) / maxVal) * (endY - startY))
-        spX = x + 20
-        win32gui.FillRect(hdc, (spX, spY, spX + 8, endY), hbrRed)
-        info = f'{data["buy"] :+.1f}'
-        win32gui.DrawText(hdc, info, len(info), (spX - 10, spY - 12, spX + 20, spY), win32con.DT_CENTER)
-        # sell
-        spX += 35
-        spY = int(startY + (1 - (data['sell']) / maxVal) * (endY - startY))
-        win32gui.FillRect(hdc, (spX, spY, spX + 8, endY), hbrGreen)
-        info = f'{data["sell"] :.1f}'
-        win32gui.DrawText(hdc, info, len(info), (spX - 10, spY - 12, spX + 20, spY), win32con.DT_CENTER)
-        # rate
-        if data['amount']:
-            spX = x + 40
-            spY = 40
-            bb = max(data['buy'], data['sell'])
-            rate = int(bb / data['amount'] * 100)
-            rate = f'占 {rate}%'
-            win32gui.DrawText(hdc, rate, len(rate), (spX - 15, spY - 12, spX + 25, spY), win32con.DT_CENTER)
-        # 显示当前选中日期的图标
-        if self.formatDay(data['day']) == self.selectDay:
-            hbrBlack = win32gui.CreateSolidBrush(0x000000)
-            sx = (itemWidth - 30) // 2 + x
-            win32gui.FillRect(hdc, (sx, self.rect[3] - 15, sx + 30, self.rect[3] - 10), hbrBlack)
-            win32gui.DeleteObject(hbrBlack)
-        win32gui.DeleteObject(hbrRed)
-        win32gui.DeleteObject(hbrGreen)
-    
-    def drawOneDayZTFuPan(self, hdc, data, x, itemWidth, *args):
-        idx, startIdx, endIdx, *_ = args
-        self.drawDayTitle(hdc, x, data['day'], itemWidth)
-        info = f'{data["ztTime"]}\n\n{data["status"]}\n\n{data["ztReason"]}\n\n{data["tag"]}'
-        win32gui.DrawText(hdc, info, len(info), (x, 40, x + itemWidth, 150), win32con.DT_CENTER)
 
     def drawMinMode(self, hdc):
         title = '【我的热点】'
@@ -416,12 +148,9 @@ class HotWindow(base_win.BaseWindow):
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def updateCode(self, code):
-        self.updateHotData(code)
         self.updateLHBData(code)
         self.updateLSInfoData(code)
         self.updateDDLRData(code)
-        self.updateZtFuPanData(code)
-        self.updateKPL_SCQX(code)
 
     def updateLHBData(self, code):
         def gn(name : str):
@@ -450,38 +179,8 @@ class HotWindow(base_win.BaseWindow):
         self.selectDay = None
         win32gui.InvalidateRect(self.hwnd, None, True)
 
-    def updateHotData(self, code):
-        def formatThsHot(thsHot):
-            day = thsHot['day']
-            day = f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
-            t = thsHot['time']
-            t = f'{t // 100: 02d}:{t % 100 :02d}'
-            thsHot['day'] = day
-            thsHot['time'] = t
-            return thsHot
-
-        ds = orm.THS_Hot.select().where(orm.THS_Hot.code == int(code))
-        hts = [formatThsHot(d.__data__) for d in ds]
-        #if len(hts) > 0:
-        #    print('Load ', code, ' Count:', len(hts))
-        #elif code:
-        #    print('Load ', code , ' not find in DB')
-        data = hts
-        self.selectDay = None
-        lastDay = None
-        newDs = None
-        rs = []
-        for d in data:
-            if lastDay != d['day']:
-                lastDay = d['day']
-                newDs = []
-                rs.append(newDs)
-            newDs.append(d)
-        self.hotData = rs
-        win32gui.InvalidateRect(self.hwnd, None, True)
-
     def updateDDLRData(self, code):
-        ds = orm.THS_DDLR.select().where(orm.THS_DDLR.code == code)
+        ds = ths_orm.THS_DDLR.select().where(ths_orm.THS_DDLR.code == code)
         self.ddlrData = [d.__data__ for d in ds]
         for d in self.ddlrData:
             d['buy'] = d['activeIn'] + d['positiveIn']
@@ -491,9 +190,9 @@ class HotWindow(base_win.BaseWindow):
     
     def updateLSInfoData(self, code):
         zsDatas = tdx_orm.TdxLSModel.select()
-        codeDatas = tdx_orm.TdxVolPMModel.select().where(tdx_orm.TdxVolPMModel.code == code)
+        qxDatas = tck_orm.CLS_SCQX.select().dicts()
         cs = {}
-        for c in codeDatas:
+        for c in qxDatas:
             cs[c.day] = c
         dd = []
         for d in zsDatas:
@@ -509,19 +208,6 @@ class HotWindow(base_win.BaseWindow):
         self.selectDay = None
         win32gui.InvalidateRect(self.hwnd, None, True)
 
-    def updateZtFuPanData(self, code):
-        ds = tck_orm.KPL_ZT.select().where(tck_orm.KPL_ZT.code == code).order_by(tck_orm.KPL_ZT.day.asc())
-        self.ztFuPanData = [d.__data__ for d in ds]
-        self.selectDay = None
-        win32gui.InvalidateRect(self.hwnd, None, True)
-
-    def updateKPL_SCQX(self, code):
-        qr = tck_orm.KPL_SCQX.select().order_by(tck_orm.KPL_SCQX.day.asc())
-        if not self.kplSCQX:
-            self.kplSCQX = {}
-        for d in qr:
-            self.kplSCQX[d.day] = d.zhqd
-
     def updateSelectDay(self, newDay):
         if not newDay or self.selectDay == newDay:
             return
@@ -530,10 +216,7 @@ class HotWindow(base_win.BaseWindow):
 
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_PAINT:
-            self.onDraw()
-            return True
-        elif msg == win32con.WM_DESTROY:
+        if msg == win32con.WM_DESTROY:
             win32gui.PostQuitMessage(0)
             return True
         elif msg == win32con.WM_LBUTTONDBLCLK:
@@ -546,4 +229,4 @@ class HotWindow(base_win.BaseWindow):
         elif msg == win32con.WM_LBUTTONDOWN:
             win32gui.SendMessage(self.hwnd, win32con.WM_NCLBUTTONDOWN, 2, 0)
             return True
-        return False
+        return super().winProc(hwnd, msg, wParam, lParam)

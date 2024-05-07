@@ -9,7 +9,8 @@ import logging
 from multiprocessing import Process
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import hot_utils, orm
+from db import ths_orm
+from THS import hot_utils
 from Common import holiday
 from Download import console
 
@@ -28,9 +29,9 @@ def saveHot():
         hi['code'] = int(hi['code'])
         del hi['name']
 
-    with orm.db2.atomic():
+    with ths_orm.db_hot.atomic():
         for i in range(0, len(hotInfos), 20):
-            orm.THS_Hot.insert_many(hotInfos[i : i + 20]).execute()
+            ths_orm.THS_Hot.insert_many(hotInfos[i : i + 20]).execute()
     lt = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
     console.write_1(console.RED, f'[hot-server] ')
     print(f'{lt} saveHot success, insert {hotDay} {hotTime} num:{len(hotInfos)}')
@@ -38,7 +39,7 @@ def saveHot():
 
 # 热点股票信息
 def getHot(code): 
-    datas = orm.THS_Hot.select(orm.THS_Hot.day, orm.THS_Hot.time, orm.THS_Hot.hotValue, orm.THS_Hot.hotOrder).where(orm.THS_Hot.code == code)
+    datas = ths_orm.THS_Hot.select(ths_orm.THS_Hot.day, ths_orm.THS_Hot.time, ths_orm.THS_Hot.hotValue, ths_orm.THS_Hot.hotOrder).where(ths_orm.THS_Hot.code == code)
     nd = [d.__data__ for d in datas]
     return nd
 
@@ -74,9 +75,9 @@ def getMoreHotOrders():
         lastDay = datetime.date.today().strftime('%Y%m%d')
     lastDay = int(lastDay)
     num = 200 if not num else int(num)
-    q = orm.THS_HotZH.select(orm.THS_HotZH.day).distinct().order_by(orm.THS_HotZH.day.desc()).tuples()
+    q = ths_orm.THS_HotZH.select(ths_orm.THS_HotZH.day).distinct().order_by(ths_orm.THS_HotZH.day.desc()).tuples()
     existsDays = [d[0] for d in q]
-    hotLastDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
+    hotLastDay = ths_orm.THS_Hot.select(pw.fn.max(ths_orm.THS_Hot.day)).scalar()
     rs = []
     if (lastDay >= hotLastDay) and (hotLastDay not in existsDays):
         nn = hot_utils.calcHotZHOnDay(hotLastDay)[0 : num]
@@ -96,7 +97,7 @@ def getMoreHotOrders():
             break
         day = existsDays[i + fromIdx]
         news = []
-        qd = orm.THS_HotZH.select(orm.THS_HotZH.code).where(orm.THS_HotZH.day == day).order_by(orm.THS_HotZH.zhHotOrder.asc()).limit(num).tuples()
+        qd = ths_orm.THS_HotZH.select(ths_orm.THS_HotZH.code).where(ths_orm.THS_HotZH.day == day).order_by(ths_orm.THS_HotZH.zhHotOrder.asc()).limit(num).tuples()
         for d in qd:
             name = hot_utils.getNameByCode(d[0])
             if not name:
@@ -111,9 +112,9 @@ def saveZS():
         #datas = [orm.THS_ZS_ZD(**d) for d in data]
         num = 0
         for d in data:
-            obj = orm.THS_ZS_ZD.get_or_none(code = d['code'], day = d['day'])
+            obj = ths_orm.THS_ZS_ZD.get_or_none(code = d['code'], day = d['day'])
             if not obj:
-                orm.THS_ZS_ZD.create(**d)
+                ths_orm.THS_ZS_ZD.create(**d)
                 num += 1
         #orm.THS_ZS_ZD.bulk_create(datas, 100)
         console.write_1(console.GREEN, f'[THS-ZS] ')

@@ -4,11 +4,11 @@ import threading, time, datetime, sys, os, copy
 import os, sys
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-
-from Tdx import datafile, orm as tdx_orm
+from db import tdx_orm
+from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import hot_utils
-import ddlr_detail, orm
+import ddlr_detail, db.tck_orm as tck_orm
 from Common import base_win, kline
 
 class KPL_Window(base_win.BaseWindow):
@@ -142,7 +142,7 @@ class KPL_Window(base_win.BaseWindow):
         else:
             self.data = obj.__data__
         day = f'{self.day // 10000}-{self.day // 100 % 100 :02d}-{self.day % 100 :02d}'
-        obj = orm.CLS_SCQX.get_or_none(day = day)
+        obj = tck_orm.CLS_SCQX.get_or_none(day = day)
         if obj:
             self.data['zhqd'] = obj.zhqd
         self.invalidWindow()

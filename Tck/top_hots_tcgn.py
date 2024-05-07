@@ -3,11 +3,12 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from db import ths_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
-from THS import orm as ths_orm, ths_win, hot_utils
+from THS import ths_win, hot_utils
 from Common import base_win, timeline, kline, table
-import ddlr_detail, orm, kline_utils, cache
+import ddlr_detail, db.tck_orm as tck_orm, kline_utils, cache
 
 class Hots_Window(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -79,7 +80,7 @@ class Hots_Window(base_win.BaseWindow):
         for s in self.inputTips:
             model.append({'title': s})
         model.append({'title': 'LINE'})
-        for s in orm.TCK_CiTiao.select():
+        for s in tck_orm.TCK_CiTiao.select():
             model.append({'title': s.name})
         if len(model) == 1:
             return

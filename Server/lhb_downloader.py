@@ -4,7 +4,7 @@ import requests, json, flask
 import datetime, time, sys, os
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from LHB import orm
+from db import lhb_orm
 
 # yyyy-mm-dd
 # return [ {code, name}, ... ]
@@ -147,13 +147,13 @@ def loadOneGP(code, day, name):
 
 # yyyy-mm-dd
 def loadOneDayLHB(day):
-    cc = orm.TdxLHB.select().where(orm.TdxLHB.day == day).count()
+    cc = lhb_orm.TdxLHB.select().where(lhb_orm.TdxLHB.day == day).count()
     result = []
     gps = loadOneDayTotal(day)
     if ((not gps) or (cc == len(gps))):
         return True
 
-    q = orm.TdxLHB.select().where(orm.TdxLHB.day == day)
+    q = lhb_orm.TdxLHB.select().where(lhb_orm.TdxLHB.day == day)
     oldDatas = [d.code for d in q]
     
     for gp in gps:
@@ -164,9 +164,9 @@ def loadOneDayLHB(day):
             continue
         r = loadOneGP(gp['code'], day, gp['name'])
         result.extend(r)
-    with orm.db_lhb.atomic():
+    with lhb_orm.db_lhb.atomic():
         for batch in pw.chunked(result, 10):
-            dd = orm.TdxLHB.insert_many(batch)
+            dd = lhb_orm.TdxLHB.insert_many(batch)
             dd.execute()
     if len(result) > 0:
         lt = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
@@ -176,7 +176,7 @@ def loadOneDayLHB(day):
 runLock = threading.RLock()
 def loadTdxLHB():
     dayFrom = datetime.date(2023, 1, 1)
-    cursor = orm.db_lhb.cursor()
+    cursor = lhb_orm.db_lhb.cursor()
     rs = cursor.execute('select min(日期), max(日期) from tdxlhb').fetchall()
     rs = rs[0]
     if rs[0]:

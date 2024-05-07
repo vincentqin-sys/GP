@@ -9,7 +9,7 @@ import functools
 
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from Tck import orm as tck_orm
+from db import tck_orm
 from Download import henxin, console
 
 def formatZtTime(ds):

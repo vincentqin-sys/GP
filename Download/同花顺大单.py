@@ -3,8 +3,8 @@ from peewee import fn
 import os, json, time, sys, pyautogui, io, datetime, win32api, win32event, winerror, traceback
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-
-from THS import orm, hot_utils
+from db import ths_orm
+from THS import hot_utils
 from Tdx import datafile
 from Download import fiddler, ths_dd_win, ths_ddlr
 from Common import holiday
@@ -96,11 +96,11 @@ def runOneTime():
     return checkLoadFinised()
 
 def checkDDLR_Amount():
-    query = orm.THS_DDLR.select(orm.THS_DDLR.code).distinct().where(orm.THS_DDLR.amount.is_null(True) | (orm.THS_DDLR.amount == 0) ).tuples()
+    query = ths_orm.THS_DDLR.select(ths_orm.THS_DDLR.code).distinct().where(ths_orm.THS_DDLR.amount.is_null(True) | (ths_orm.THS_DDLR.amount == 0) ).tuples()
     for q in query:
         code = q[0]
         df = datafile.DataFile(code, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
-        cs = orm.THS_DDLR.select().where(orm.THS_DDLR.code == code)
+        cs = ths_orm.THS_DDLR.select().where(ths_orm.THS_DDLR.code == code)
         for ddlr in cs:
             if not ddlr.amount:
                 ad = df.getItemData(ddlr.day)
@@ -134,7 +134,7 @@ def getCodes():
     def isCode(code):
         code = f'{code :06d}'
         return code[0] == '0' or code[0] == '3' or code[0] == '6'
-    curDay = orm.THS_Hot.select(pw.fn.max(orm.THS_Hot.day)).scalar()
+    curDay = ths_orm.THS_Hot.select(pw.fn.max(ths_orm.THS_Hot.day)).scalar()
     if curDay in _codes:
         return _codes[curDay]
     ds = hot_utils.calcHotZHOnDay(curDay)

@@ -3,11 +3,12 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from db import ths_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
-from THS import orm as ths_orm, ths_win
+from THS import ths_win
 from Common import base_win, timeline, kline, table
-import ddlr_detail, orm
+import ddlr_detail, db.tck_orm as tck_orm
 
 thsWin = ths_win.ThsWindow()
 thsWin.init()
@@ -179,7 +180,7 @@ class TCK_Window(base_win.BaseWindow):
                 datas = self.tableWin.getData()
                 data = datas[selRow]
                 data['ths_mark_3'] = 1
-                qr = orm.THS_ZT.update({orm.THS_ZT.mark_3 : 1}).where(orm.THS_ZT.id == data['ths_id'])
+                qr = tck_orm.THS_ZT.update({tck_orm.THS_ZT.mark_3 : 1}).where(tck_orm.THS_ZT.id == data['ths_id'])
                 qr.execute()
                 self.tableWin.invalidWindow()
             elif item['name'] == 'PREV':
@@ -212,16 +213,16 @@ class TCK_Window(base_win.BaseWindow):
         txt =  self.editorWin.getText().strip()
         if not txt:
             return
-        obj = orm.TCK_CiTiao.get_or_none(name = txt)
+        obj = tck_orm.TCK_CiTiao.get_or_none(name = txt)
         if not obj:
-            orm.TCK_CiTiao.create(name = txt)
+            tck_orm.TCK_CiTiao.create(name = txt)
 
     def onDbClickEditor(self, evt, args):
         model = []
         for s in self.inputTips:
             model.append({'title': s})
         model.append({'title': 'LINE'})
-        for s in orm.TCK_CiTiao.select():
+        for s in tck_orm.TCK_CiTiao.select():
             model.append({'title': s.name})
         if len(model) == 1:
             return
@@ -242,7 +243,7 @@ class TCK_Window(base_win.BaseWindow):
             return
         val = evt.data.get(colName, '')
         _id = evt.data['ths_id']
-        qr = orm.THS_ZT.update({orm.THS_ZT.mark_1 : val}).where(orm.THS_ZT.id == _id)
+        qr = tck_orm.THS_ZT.update({tck_orm.THS_ZT.mark_1 : val}).where(tck_orm.THS_ZT.id == _id)
         qr.execute()
 
     def onAutoSync(self, code, day):
@@ -301,9 +302,9 @@ class TCK_Window(base_win.BaseWindow):
     def loadAllData(self):
         if self.tckData != None:
             return
-        kplQr = orm.KPL_ZT.select().order_by(orm.KPL_ZT.day.desc(), orm.KPL_ZT.id.asc()).dicts()
-        thsQr = orm.THS_ZT.select().dicts()
-        clsQr = orm.CLS_ZT.select().dicts()
+        kplQr = tck_orm.KPL_ZT.select().order_by(tck_orm.KPL_ZT.day.desc(), tck_orm.KPL_ZT.id.asc()).dicts()
+        thsQr = tck_orm.THS_ZT.select().dicts()
+        clsQr = tck_orm.CLS_ZT.select().dicts()
         hotZH = ths_orm.THS_HotZH.select().dicts()
         
         allDicts = {}

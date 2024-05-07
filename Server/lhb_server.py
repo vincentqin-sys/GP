@@ -6,7 +6,7 @@ import traceback
 import requests, json, logging
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from LHB import orm
+from db import lhb_orm
 from Download import console
 
 def toJE(s):
@@ -21,7 +21,7 @@ def toJE(s):
 def getLHBInfo():
     params = request.data
     params = json.loads(params)
-    cs = orm.db_lhb.cursor()
+    cs = lhb_orm.db_lhb.cursor()
     cs.execute(params['sql'])
     data = cs.fetchall()
     txt = json.dumps(data, ensure_ascii = False) # ensure_ascii = False
@@ -29,7 +29,7 @@ def getLHBInfo():
     return txt
 
 def showLhbDB():
-    cs = orm.db_lhb.cursor()
+    cs = lhb_orm.db_lhb.cursor()
     cs.execute('select max(日期) from TdxLHB')
     data = cs.fetchone()
     day = data[0]
@@ -38,8 +38,8 @@ def showLhbDB():
 
 def queryBySql():
     try:
-        cs = orm.db_lhb.cursor()
-        cs2 = orm.db_ths.cursor()
+        cs = lhb_orm.db_lhb.cursor()
+        cs2 = lhb_orm.db_ths.cursor()
         params = json.loads(request.data)
         cs.execute(params['sql'])
         cols = [c[0] for c in cs.description]

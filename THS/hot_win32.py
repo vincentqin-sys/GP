@@ -3,8 +3,10 @@ import threading, time, datetime, sys, os, json, copy
 from multiprocessing import Process
 from multiprocessing.shared_memory import SharedMemory
 
+from db import ths_orm
+
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import orm, hot_utils, hot_win_small, ths_win, hot_win
+from THS import hot_utils, hot_win_small, ths_win, hot_win
 
 curCode = None
 thsWindow = ths_win.ThsWindow()

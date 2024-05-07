@@ -6,7 +6,7 @@ import traceback
 import requests, json, logging
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from Tck import orm
+from db import tck_orm
 from Download import console
 
 def now():
@@ -14,7 +14,7 @@ def now():
 
 def saveCls_ZT_One(it):
     insertNum, updateNum = 0, 0
-    obj = orm.CLS_ZT.get_or_none(code = it['code'], day = it['day'])
+    obj = tck_orm.CLS_ZT.get_or_none(code = it['code'], day = it['day'])
     if obj:
         if obj.ztReason != it['ztReason'] or obj.detail != it['detail']:
             obj.ztReason = it['ztReason']
@@ -23,7 +23,7 @@ def saveCls_ZT_One(it):
             obj.save()
     else:
         insertNum += 1
-        orm.CLS_ZT.create(**it)
+        tck_orm.CLS_ZT.create(**it)
     return insertNum, updateNum
 
 def saveCls_ZT_List(its):
@@ -93,7 +93,7 @@ def tryDownloadDegree():
     try:
         now = datetime.datetime.now()
         today = now.strftime('%Y-%m-%d')
-        obj = orm.CLS_SCQX.get_or_none(day = today)
+        obj = tck_orm.CLS_SCQX.get_or_none(day = today)
         if obj:
             return
         url = 'https://x-quote.cls.cn/quote/stock/emotion_options?app=CailianpressWeb&fields=up_performance&os=web&sv=7.7.5&sign=5f473c4d9440e4722f5dc29950aa3597'
@@ -103,9 +103,9 @@ def tryDownloadDegree():
         day = js['data']['date']
         degree = js['data']['market_degree']
         degree = int(float(degree) * 100)
-        obj = orm.CLS_SCQX.get_or_none(day = day)
+        obj = tck_orm.CLS_SCQX.get_or_none(day = day)
         if not obj:
-            orm.CLS_SCQX.create(day = day, zhqd = degree)
+            tck_orm.CLS_SCQX.create(day = day, zhqd = degree)
             console.write_1(console.CYAN, '[cls-server] ')
             print(' load degree: ', day, ' -> ', degree)
         return True
@@ -140,14 +140,14 @@ def saveCLS_Degree():
     js = request.json
     day = js['day']
     zhqd = js['degree']
-    obj = orm.CLS_SCQX.get_or_none(day = day)
+    obj = tck_orm.CLS_SCQX.get_or_none(day = day)
     if obj:
         if obj.zhqd != zhqd:
             obj.zhqd = zhqd
             obj.save()
             print(f'[cls-server] {now()} update degree ok, {day} = {zhqd}')
     else:
-        orm.CLS_SCQX.create(day = day, zhqd = zhqd)
+        tck_orm.CLS_SCQX.create(day = day, zhqd = zhqd)
         console.write_1(console.CYAN, '[cls-server] ')
         print(f'{now()} save degree ok, {day} = {zhqd}')
     return {'status': 'OK'}

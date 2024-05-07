@@ -3,9 +3,10 @@ import threading, time, datetime, sys, os, copy
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from db import ths_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
-from THS import orm, ths_win
+from THS import ths_win
 from Common import base_win, timeline
 
 class TableWindow(base_win.BaseWindow):
@@ -487,7 +488,7 @@ class DDLR_MinuteMgrWindow(base_win.BaseWindow):
             code = f'{code :06d}'
         if type(day) == str:
             day = int(day.replace('-', ''))
-        xx = orm.THS_Newest.get_or_none(orm.THS_Newest.code == code)
+        xx = ths_orm.THS_Newest.get_or_none(ths_orm.THS_Newest.code == code)
         name = xx.name if xx else ''
         title = f'{code} {name} {day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
         win32gui.SetWindowText(self.hwnd, f'大单复盘 -- {title}')

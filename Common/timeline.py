@@ -3,10 +3,12 @@ import threading, time, datetime, sys, os, copy, traceback
 import os, sys, requests
 import win32gui, win32con
 
+from db import ths_orm
+
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr, cls
-from THS import orm, ths_win
+from THS import ths_win
 from Common import base_win
 
 class TimelineModel:
@@ -466,11 +468,11 @@ class SimpleTimelineModel:
             return
         if code[0] != '8':
             self._loadCode(code, day)
-            obj = orm.THS_GNTC.select(orm.THS_GNTC.name.distinct()).where(orm.THS_GNTC.code == code).scalar()
+            obj = ths_orm.THS_GNTC.select(ths_orm.THS_GNTC.name.distinct()).where(ths_orm.THS_GNTC.code == code).scalar()
             self.name = obj
         else:
             self._loadCode_ZS(code, day)
-            obj = orm.THS_ZS_ZD.select(orm.THS_ZS_ZD.name.distinct()).where(orm.THS_ZS_ZD.code == code).scalar()
+            obj = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name.distinct()).where(ths_orm.THS_ZS_ZD.code == code).scalar()
             self.name = obj
 
     def getPriceRange(self):

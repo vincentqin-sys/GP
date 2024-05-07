@@ -2,10 +2,12 @@ import os, sys, functools, copy, datetime
 import win32gui, win32con
 import requests, peewee as pw
 
+from db import tdx_orm as tdx_orm
+
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import orm as ths_orm
-from Tck import orm as tck_orm
-from Tdx import datafile, orm as tdx_orm
+from db import ths_orm as ths_orm
+from db import tck_orm as tck_orm
+from Tdx import datafile
 from Download import henxin, cls
 from Common import base_win, ext_win
 

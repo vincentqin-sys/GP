@@ -3,11 +3,12 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from db import ths_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
-from THS import ths_win, orm as ths_orm
+from THS import ths_win
 from Common import base_win, timeline, kline, sheet, dialog, table
-import ddlr_detail, orm
+import ddlr_detail, db.tck_orm as tck_orm
 
 thsWin = ths_win.ThsWindow()
 thsWin.init()
@@ -183,7 +184,7 @@ class TCGN_Window(base_win.BaseWindow):
             tab.setData([])
         else:
             si = tab.startRow
-            qr = orm.TCK_TCGN.select().where(orm.TCK_TCGN.tcgn == tcgn).order_by(orm.TCK_TCGN.order_.asc()).dicts()
+            qr = tck_orm.TCK_TCGN.select().where(tck_orm.TCK_TCGN.tcgn == tcgn).order_by(tck_orm.TCK_TCGN.order_.asc()).dicts()
             dx = [d for d in qr]
             tab.setData(dx)
             tab.setSelRow(newSelRow)
@@ -197,7 +198,7 @@ class TCGN_Window(base_win.BaseWindow):
             return
         selData = datas[selRow]
         selData['mark'] = 1
-        qr = orm.TCK_TCGN.update({orm.TCK_TCGN.mark : 1}).where(orm.TCK_TCGN.id == selData['id'])
+        qr = tck_orm.TCK_TCGN.update({tck_orm.TCK_TCGN.mark : 1}).where(tck_orm.TCK_TCGN.id == selData['id'])
         qr.execute()
         self.tableCntWin.invalidWindow()
 
@@ -211,21 +212,21 @@ class TCGN_Window(base_win.BaseWindow):
         if name == 'MoveUp' or name == 'MoveDown':
             delta = 1 if name == 'MoveUp' else -1
             preData = datas[selRow - delta]
-            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : preData['order_']}).where(orm.TCK_TCGN.id == selData['id'])
+            qr = tck_orm.TCK_TCGN.update({tck_orm.TCK_TCGN.order_ : preData['order_']}).where(tck_orm.TCK_TCGN.id == selData['id'])
             qr.execute()
-            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : selData['order_']}).where(orm.TCK_TCGN.id == preData['id'])
+            qr = tck_orm.TCK_TCGN.update({tck_orm.TCK_TCGN.order_ : selData['order_']}).where(tck_orm.TCK_TCGN.id == preData['id'])
             qr.execute()
             self.reload(tcgn, selRow - delta)
         elif name == 'MoveBottom':
             newOrder = datas[-1]['order_'] + 1
-            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : newOrder}).where(orm.TCK_TCGN.id == selData['id'], orm.TCK_TCGN.tcgn == tcgn)
+            qr = tck_orm.TCK_TCGN.update({tck_orm.TCK_TCGN.order_ : newOrder}).where(tck_orm.TCK_TCGN.id == selData['id'], tck_orm.TCK_TCGN.tcgn == tcgn)
             qr.execute()
             self.reload(tcgn, len(datas) - 1)
         elif name == 'MoveTop':
             newOrder = datas[0]['order_']
-            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : orm.TCK_TCGN.order_ + 1}).where(orm.TCK_TCGN.order_ < selData['order_'], orm.TCK_TCGN.tcgn == tcgn)
+            qr = tck_orm.TCK_TCGN.update({tck_orm.TCK_TCGN.order_ : tck_orm.TCK_TCGN.order_ + 1}).where(tck_orm.TCK_TCGN.order_ < selData['order_'], tck_orm.TCK_TCGN.tcgn == tcgn)
             qr.execute()
-            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : newOrder}).where(orm.TCK_TCGN.id == selData['id'])
+            qr = tck_orm.TCK_TCGN.update({tck_orm.TCK_TCGN.order_ : newOrder}).where(tck_orm.TCK_TCGN.id == selData['id'])
             qr.execute()
             self.reload(tcgn, 0)
 
@@ -234,14 +235,14 @@ class TCGN_Window(base_win.BaseWindow):
             return
         name = evt.header['name']
         cellVal = evt.data[name].strip()
-        qr = orm.TCK_TCGN.update({name : cellVal}).where(orm.TCK_TCGN.id == evt.data['id'])
+        qr = tck_orm.TCK_TCGN.update({name : cellVal}).where(tck_orm.TCK_TCGN.id == evt.data['id'])
         qr.execute()
         if name != 'name':
             return
         code = self.getCodeByName(cellVal)
         if not code or evt.data['code'] == code:
             return
-        qr = orm.TCK_TCGN.update({'code' : code}).where(orm.TCK_TCGN.id == evt.data['id'])
+        qr = tck_orm.TCK_TCGN.update({'code' : code}).where(tck_orm.TCK_TCGN.id == evt.data['id'])
         qr.execute()
         evt.data['code'] = code
         evt.src.invalidWindow()
@@ -254,7 +255,7 @@ class TCGN_Window(base_win.BaseWindow):
             return
         model = self.tableCntWin.getData()
         data = model[row]
-        orm.TCK_TCGN.delete_by_id(data['id'])
+        tck_orm.TCK_TCGN.delete_by_id(data['id'])
         model.pop(row)
         self.tableCntWin.invalidWindow()
 
@@ -302,7 +303,7 @@ class TCGN_Window(base_win.BaseWindow):
             self.tableWin.setSelRow(len(dt) - 1)
             self.tableWin.showRow(len(dt) - 1)
         else: # update
-            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.tcgn : self.curTcgn}).where(orm.TCK_TCGN.tcgn == args['tcgn'])
+            qr = tck_orm.TCK_TCGN.update({tck_orm.TCK_TCGN.tcgn : self.curTcgn}).where(tck_orm.TCK_TCGN.tcgn == args['tcgn'])
             qr.execute()
             args['tcgn'] = self.curTcgn
         self.tableCntWin.invalidWindow()
@@ -337,19 +338,19 @@ class TCGN_Window(base_win.BaseWindow):
             selData = model[curSelRow]
             cur['order_'] = selData['order_'] + 1
             cur['tcgn_sub'] = selData['tcgn_sub']
-            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : orm.TCK_TCGN.order_ + 1}).where(orm.TCK_TCGN.tcgn == self.curTcgn, orm.TCK_TCGN.order_ > selData['order_'])
+            qr = tck_orm.TCK_TCGN.update({tck_orm.TCK_TCGN.order_ : tck_orm.TCK_TCGN.order_ + 1}).where(tck_orm.TCK_TCGN.tcgn == self.curTcgn, tck_orm.TCK_TCGN.order_ > selData['order_'])
             qr.execute()
         elif args == 'Insert':
             rl = curSelRow
             selData = model[curSelRow]
             cur['order_'] = selData['order_']
             cur['tcgn_sub'] = selData['tcgn_sub']
-            qr = orm.TCK_TCGN.update({orm.TCK_TCGN.order_ : orm.TCK_TCGN.order_ + 1}).where(orm.TCK_TCGN.tcgn == self.curTcgn, orm.TCK_TCGN.order_ >= selData['order_'])
+            qr = tck_orm.TCK_TCGN.update({tck_orm.TCK_TCGN.order_ : tck_orm.TCK_TCGN.order_ + 1}).where(tck_orm.TCK_TCGN.tcgn == self.curTcgn, tck_orm.TCK_TCGN.order_ >= selData['order_'])
             qr.execute()
         if model == None:
             model = []
             self.tableCntWin.setData(model)
-        obj = orm.TCK_TCGN.create(**cur)
+        obj = tck_orm.TCK_TCGN.create(**cur)
         self.reload(cur['tcgn'], rl)
 
     def isCode(self, s):
@@ -393,7 +394,7 @@ class TCGN_Window(base_win.BaseWindow):
         queryText = queryText.upper()
         llt = getattr(self, 'last_load_time', 0)
         if time.time() - llt > 10 * 60: # 10 minutes
-            qr = orm.TCK_TCGN.select().dicts()
+            qr = tck_orm.TCK_TCGN.select().dicts()
             self.allDatas = [d for d in qr]
             setattr(self, 'last_load_time', time.time())
 
@@ -450,7 +451,7 @@ class TCGN_Window(base_win.BaseWindow):
         if not data:
             return
         self.curTcgn = data['tcgn']
-        qr = orm.TCK_TCGN.select().where(orm.TCK_TCGN.tcgn == self.curTcgn).order_by(orm.TCK_TCGN.order_.asc()).dicts()
+        qr = tck_orm.TCK_TCGN.select().where(tck_orm.TCK_TCGN.tcgn == self.curTcgn).order_by(tck_orm.TCK_TCGN.order_.asc()).dicts()
         datas = [d for d in qr]
         self.tableCntWin.setData(datas)
         self.tableCntWin.invalidWindow()
@@ -460,7 +461,7 @@ class TCGN_Window(base_win.BaseWindow):
         kline_utils.openInCurWindow_Code(self, data)
 
     def loadAllTcgnDatas(self):
-        qr = orm.TCK_TCGN.select(orm.TCK_TCGN.tcgn).distinct().order_by(orm.TCK_TCGN.tcgn).dicts()
+        qr = tck_orm.TCK_TCGN.select(tck_orm.TCK_TCGN.tcgn).distinct().order_by(tck_orm.TCK_TCGN.tcgn).dicts()
         rs = []
         for d in qr:
             rs.append(d)

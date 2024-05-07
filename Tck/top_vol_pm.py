@@ -3,9 +3,10 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from Tdx import datafile, orm as tdx_orm
+from db import tdx_orm, ths_orm
+from Tdx import datafile
 from Download import henxin, ths_ddlr
-from THS import orm, ths_win
+from THS import ths_win
 from Common import base_win, timeline, kline
 import ddlr_detail
 

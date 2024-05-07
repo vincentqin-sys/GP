@@ -7,7 +7,7 @@ import time, re
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
 from Download import fiddler
-from THS import orm
+from db import ths_orm
 
 BASE_PATH = 'D:/thsdata/f10/'
 
@@ -47,12 +47,12 @@ def toInt(s):
 #最新动态
 class LoadNewest:
     def saveDB(self, objx):
-        obj = orm.THS_Newest.get_or_none(code = objx['code'])
+        obj = ths_orm.THS_Newest.get_or_none(code = objx['code'])
         if (obj):
             obj.update(**objx)
             obj.save()
         else:
-            orm.THS_Newest.create(**objx)
+            ths_orm.THS_Newest.create(**objx)
 
     def load(self, code):
         f = open(BASE_PATH + code + '-最新动态.html', 'r', encoding= 'gbk')
@@ -101,12 +101,12 @@ class LoadNewest:
 #前十大流通股东
 class LoadTHS_Top10_LTGD:
     def saveDB(self, objx):
-        obj = orm.THS_Top10_LTGD.get_or_none(code = objx['code'], day = objx['day'])
+        obj = ths_orm.THS_Top10_LTGD.get_or_none(code = objx['code'], day = objx['day'])
         if (obj):
             obj.update(**objx)
             obj.save()
         else:
-            orm.THS_Top10_LTGD.create(**objx)
+            ths_orm.THS_Top10_LTGD.create(**objx)
 
     def load(self, code):
         f = open(BASE_PATH + code + '-股东研究.html', 'r', encoding= 'gbk')
@@ -142,12 +142,12 @@ class LoadTHS_Top10_LTGD:
 #机构持股
 class LoadJGCG:
     def saveDB(self, objx):
-        obj = orm.THS_JGCG.get_or_none(code = objx['code'], day = objx['day'])
+        obj = ths_orm.THS_JGCG.get_or_none(code = objx['code'], day = objx['day'])
         if (obj):
             obj.update(**objx)
             obj.save()
         else:
-            orm.THS_JGCG.create(**objx)
+            ths_orm.THS_JGCG.create(**objx)
 
     def load(self, code):
         f = open(BASE_PATH + code + '-主力持仓.html', 'r', encoding= 'utf8')
@@ -285,12 +285,12 @@ class LoadHYDB:
         for hy in keys:
             datas = self.hyInfos[hy].values()
             for d in datas:
-                obj = orm.THS_HYDB.get_or_none(hy = d['hy'], code = d['code'], day = d['day'])
+                obj = ths_orm.THS_HYDB.get_or_none(hy = d['hy'], code = d['code'], day = d['day'])
                 if obj:
                     obj.update(d)
                     obj.save()
                 else:
-                    orm.THS_HYDB.create(**d)
+                    ths_orm.THS_HYDB.create(**d)
 
     def loadAllFiles(self):
         files =  self.listHydbFiles()
@@ -367,12 +367,12 @@ class Download_HYDB:
 
     def getCodes(self):
         codes = []
-        qr = orm.THS_GNTC.select().group_by(orm.THS_GNTC.hy)
+        qr = ths_orm.THS_GNTC.select().group_by(ths_orm.THS_GNTC.hy)
         for d in qr:
             if self.accept(d):
                 codes.append((d.code, d.name, d.hy))
                 continue
-            qn = orm.THS_GNTC.select().where(orm.THS_GNTC.hy == d.hy)
+            qn = ths_orm.THS_GNTC.select().where(ths_orm.THS_GNTC.hy == d.hy)
             for dx in qn:
                 if self.accept(dx):
                     codes.append((dx.code, dx.name, dx.hy))

@@ -3,9 +3,10 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from db import ths_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
-from THS import orm, ths_win
+from THS import ths_win
 from Common import base_win, timeline, kline
 import ddlr_detail, kline_utils
 
@@ -141,10 +142,10 @@ class DddlrStructWindow(base_win.BaseWindow):
         if type(day) == int:
             day = str(day)
         day = day.replace('-', '')
-        q = orm.THS_DDLR.select(orm.THS_DDLR.day).distinct().where(orm.THS_DDLR.day <= day).order_by(orm.THS_DDLR.day.desc()).limit(self.colsNum).tuples()
+        q = ths_orm.THS_DDLR.select(ths_orm.THS_DDLR.day).distinct().where(ths_orm.THS_DDLR.day <= day).order_by(ths_orm.THS_DDLR.day.desc()).limit(self.colsNum).tuples()
         for i, d in enumerate(q):
             cday = d[0]
-            ds = orm.THS_DDLR.select().where(orm.THS_DDLR.day == cday)
+            ds = ths_orm.THS_DDLR.select().where(ths_orm.THS_DDLR.day == cday)
             datas = [d.__data__ for d in ds]
             for xd in datas:
                 xd['in'] = xd['activeIn'] + xd['positiveIn']

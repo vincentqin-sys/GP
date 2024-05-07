@@ -34,7 +34,7 @@ _lpID = setInterval(function() {
 import sys
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import orm
+from db import ths_orm
 
 f = open('D:/a.txt', 'r', encoding='utf8')
 lines = f.readlines()
@@ -49,7 +49,7 @@ for line in lines:
     gn = gn.strip()
     if ' ' in gn:
         gn = gn.replace(' ', '')
-    obj = orm.THS_GNTC.get_or_none(orm.THS_GNTC.code == code)
+    obj = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == code)
     if obj:
         obj.hy = hy
         obj.name = name
@@ -57,7 +57,7 @@ for line in lines:
         obj.save()
         print('update ', code, name, hy, gn)
     else:
-        orm.THS_GNTC.create(code = code, name = name, gn = gn, hy = hy)
+        ths_orm.THS_GNTC.create(code = code, name = name, gn = gn, hy = hy)
         print('insert ', code, name,hy, gn)
 
     
