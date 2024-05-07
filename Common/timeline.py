@@ -3,13 +3,12 @@ import threading, time, datetime, sys, os, copy, traceback
 import os, sys, requests
 import win32gui, win32con
 
-from db import ths_orm
-
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr, cls
 from THS import ths_win
 from Common import base_win
+from db import ths_orm
 
 class TimelineModel:
     def __init__(self):
@@ -405,7 +404,7 @@ class SimpleTimelineModel:
 
     # code : str
     # day : int | None(is last day)
-    def _loadCode(self, code, day = None):
+    def _loadCode_Cls(self, code, day = None):
         self.code = code
         try:
             if type(day) == 'str':
@@ -437,7 +436,7 @@ class SimpleTimelineModel:
             print('[SimpleTimelineModel.loadCode] fail', code)
 
     # 最新一天的指数分时
-    def _loadCode_ZS(self, code, day = None):
+    def _loadCode_Ths(self, code, day = None):
         self.code = code
         try:
             if type(day) == 'str':
@@ -464,15 +463,15 @@ class SimpleTimelineModel:
     def load(self, code, day = None):
         if type(code) == int:
             code = f'{code :06d}'
-        if not code or len(code) != 6:
+        if not code:
             return
-        if code[0] != '8':
-            self._loadCode(code, day)
-            obj = ths_orm.THS_GNTC.select(ths_orm.THS_GNTC.name.distinct()).where(ths_orm.THS_GNTC.code == code).scalar()
+        if code[0] == '8':
+            self._loadCode_Ths(code, day)
+            obj = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name.distinct()).where(ths_orm.THS_ZS_ZD.code == code).scalar()
             self.name = obj
         else:
-            self._loadCode_ZS(code, day)
-            obj = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name.distinct()).where(ths_orm.THS_ZS_ZD.code == code).scalar()
+            self._loadCode_Cls(code, day)
+            obj = ths_orm.THS_GNTC.select(ths_orm.THS_GNTC.name.distinct()).where(ths_orm.THS_GNTC.code == code).scalar()
             self.name = obj
 
     def getPriceRange(self):
@@ -729,5 +728,5 @@ if __name__ == '__main__':
     win.createWindow(None, (100, 100, 1200, 600), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
     #win.load('002085', None)
-    win.load('886033')
+    win.load('cls82437') # cls82437 sh000001
     win32gui.PumpMessages()

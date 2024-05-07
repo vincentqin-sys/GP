@@ -22,6 +22,10 @@ class KLineModel_Ths(henxin.ThsDataFile):
     def __init__(self, code) -> None:
         super().__init__(code, datafile.DataFile.DT_DAY)
 
+class KLineModel_Cls(cls.ClsDataFile):
+    def __init__(self, code) -> None:
+        super().__init__(code, datafile.DataFile.DT_DAY)        
+
 # 指标 Vol, Amount, Rate等
 class Indicator:
     # config = { height: int 必填
@@ -1494,7 +1498,12 @@ class KLineCodeWindow(base_win.BaseWindow):
 
     def changeCode(self, code):
         self.codeWin.changeCode(code)
-        model = KLineModel_Ths(code)
+        if type(code) == int:
+            code = f'{code :06d}'
+        if code[0] == '8':
+            model = KLineModel_Ths(code)
+        else:
+            model = KLineModel_Cls(code)
         model.loadDataFile()
         self.klineWin.setModel(model)
         self.klineWin.makeVisible(-1)

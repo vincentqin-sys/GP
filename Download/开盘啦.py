@@ -666,7 +666,7 @@ class OCRUtil:
         xiaoYaoWnd = win32gui.FindWindow('Qt5QWindowIcon', '逍遥模拟器')
         if not xiaoYaoWnd:
             print('Not find 逍遥模拟器')
-            return
+            return False
         print(f'逍遥模拟器 top hwnd=0x{xiaoYaoWnd :x}')
         self.xiaoWnds['topWnd'] = xiaoYaoWnd
         hwnd = win32gui.FindWindowEx(xiaoYaoWnd, None, 'Qt5QWindowIcon', 'MainWindowWindow')
@@ -680,6 +680,13 @@ class OCRUtil:
         hwnd = win32gui.FindWindowEx(hwnd, None, 'subWin', 'sub')
         print(f'逍遥模拟器 contentWin=0x{hwnd :x}')
         self.xiaoWnds['contentWin'] = hwnd
+        return True
+
+    def checkXiaoYaoWindows(self):
+        cw = self.xiaoWnds.get('contentWin', None)
+        if not cw or not win32gui.IsWindow(cw):
+            return self.initXiaoYaoWnd()
+        return True
 
 class MainTools:
     def __init__(self, util) -> None:
@@ -716,11 +723,15 @@ class MainTools:
 
     def runOpt(self, opt):
         if opt == 'next-zt-page':
-            finish = self.util.updateZT_Image()
-            #self.util.printeModels()
-            print('next...end')
-            finish = 'Finish' if finish else False
-            return finish
+            if self.util.checkXiaoYaoWindows():
+                finish = self.util.updateZT_Image()
+                #self.util.printeModels()
+                print('next...end')
+                finish = 'Finish' if finish else False
+                return finish
+            else:
+                print('Xiao Yao window not find')
+                return True
         elif opt == 'save-zt':
             file = open(KPL_OCR_FILE, 'a')
             self.util.writeModels(file)

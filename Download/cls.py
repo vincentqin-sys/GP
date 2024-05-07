@@ -1,5 +1,8 @@
 import ctypes, os, sys, requests, json, traceback
 
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from Tdx import datafile
+
 PX = os.path.join(os.path.dirname(__file__), 'cls-sign.dll')
 mydll = ctypes.CDLL(PX)
 
@@ -39,7 +42,7 @@ class ClsUrl:
             return 'sh' + code
         if code[0] == '0' or code[0] == '3':
             return 'sz' + code
-        raise Exception('Not Support code: ', code)
+        return code
     
     def signParams(self, params):
         if isinstance(params, str):
@@ -156,6 +159,50 @@ class ClsUrl:
         return data
 
 
+class ClsDataFile(datafile.DataFile):
+    def __init__(self, code, dataType, flag):
+        #super().__init__(code, dataType, flag)
+        if type(code) == int:
+            code = f'{code :06d}'
+        self.code = code
+        self.dataType = dataType
+        self.name = ''
+        self.data = []
+
+    def loadDataFile(self):
+        if self.dataType == self.DT_DAY:
+            self._loadDataFile_KLine()
+        else:
+            self._loadDataFile_FS()
+
+    def _loadDataFile_KLine(self):
+        datas = ClsUrl().loadKline(self.code, 500)
+        for ds in datas:
+            it = datafile.ItemData()
+            it.day = ds['date']
+            it.open = int(ds['open_px'] * 100 + 0.5)
+            it.close = int(ds['close_px'] * 100 + 0.5)
+            it.low = int(ds['low_px'] * 100 + 0.5)
+            it.high = int(ds['high_px'] * 100 + 0.5)
+            it.amount = int(ds['business_balance'])
+            it.vol = int(ds['business_amount'])
+            self.data.append(it)
+        
+    def _loadDataFile_FS(self):
+        datas = ClsUrl().loadHistory5FenShi(self.code)
+        for ds in datas:
+            it = datafile.ItemData()
+            it.day = ds['date']
+            it.time = ds['minute']
+            it.open = int(ds['open_px'] * 100 + 0.5)
+            it.close = int(ds['close_px'] * 100 + 0.5)
+            it.low = int(ds['low_px'] * 100 + 0.5)
+            it.high = int(ds['high_px'] * 100 + 0.5)
+            it.amount = int(ds['business_balance'])
+            it.vol = int(ds['business_amount'])
+            self.data.append(it)
+
+
 #signByStr('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012')
 #signByStr('app=CailianpressWeb&fields=date,minute,last_px,business_balance,business_amount,open_px,preclose_px,av_px&os=web&secu_code=sz301488&sv=7.7.5')
-#ClsUrl().loadKline('000506')
+#ClsUrl().loadHistory5FenShi('cls80133')
