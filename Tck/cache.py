@@ -58,7 +58,8 @@ class CacheManager(base_win.Listener):
         render.setData(ds)
         rs = {'_load_time': datetime.datetime.now(), 'render': render, 'zf': zf}
         self.cache[code] = rs
-        win.invalidWindow()
+        if win:
+            win.invalidWindow()
 
 _cache = CacheManager()
 
@@ -97,6 +98,10 @@ class TimelineRender:
         y = (self.priceRange[1] - price) / ph * height + self.paddings[1]
         return int(y)
     
+    def getLineColor(self):
+        color = self.getPriceColor(self.maxPrice) or self.getPriceColor(self.minPrice)
+        return color
+
     def getPriceColor(self, price):
         color = 0x0
         GREEN = 0xA3C252
@@ -128,7 +133,7 @@ class TimelineRender:
         if not da:
             return
         dx = cwidth / 240
-        drawer.use(hdc, drawer.getPen(self.getPriceColor(da[-1]['price'])))
+        drawer.use(hdc, drawer.getPen(self.getLineColor()))
         for i, d in enumerate(da):
             x = int(i * dx + self.paddings[0])
             y = self.getYAtPrice(d['price'], height)
@@ -165,6 +170,18 @@ def renderTimeline(win : base_win.TableWindow, hdc, row, col, colName, value, ro
     if not data:
         return
     data['render'].onDraw(hdc, win.drawer, rect)
+
+def sorterTimeline(colName, val, rowData, allDatas, asc):
+    if 'secu_code' in rowData:
+        code = rowData['secu_code'][2 : ]
+    elif 'code' in rowData:
+        code = rowData['code']
+    else:
+        return 0
+    data = _cache.getData(code, None)
+    if data and 'zf' in data:
+        return data['zf']
+    return rowData.get('change', 0)
 
 # 涨幅
 def renderZFColor(win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):

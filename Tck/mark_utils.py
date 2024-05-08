@@ -60,3 +60,19 @@ def markRender(win, hdc, row, col, colName, value, rowData, rect):
     align = win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE
     win.drawer.drawText(hdc, value, rect, color, align = align)
 
+def sortMarkColor(colName, val, rowData, allDatas, asc):
+    if val == None:
+        return 9999999 if asc else 0
+    return val
+
+def markColorRender(win, hdc, row, col, colName, value, rowData, rect):
+    if value == None:
+        return
+    color = markColor2RgbColor(value)
+    if color == None:
+        return
+    x, y, w, h = rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1]
+    SZ = 10
+    x += (w - SZ) // 2
+    y += (h - SZ) // 2
+    win.drawer.fillRect(hdc, (x, y, x + SZ, y + SZ), color)

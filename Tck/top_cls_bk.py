@@ -6,7 +6,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import tck_orm
 from Download import cls
 from THS import hot_utils
-from Common import base_win, ext_win
+from Common import base_win, ext_win, timeline
 import kline_utils, cache, mark_utils
 
 # code = 'cls00000'
@@ -64,16 +64,17 @@ class CodesTableModel:
     
     def __init__(self, bkInfo) -> None:
         self.headers = [{'name': '#idx', 'width': 40, 'title': ''},
-                        {'name': 'markColor', 'title': 'M', 'width' : 40, 'sortable' :True, 'render' : self.markColorRender, 'sorter': self.sortMarkColor},
+                        {'name': 'markColor', 'title': 'M', 'width' : 40, 'sortable' :True, 'render' : mark_utils.markColorRender, 'sorter': mark_utils.sortMarkColor},
                         {'name': 'secu_name', 'title': '名称', 'width' : 80, 'render' : mark_utils.markRender},
                         {'name': 'zhHotOrder', 'title': '热度',  'width':80, 'sortable' :True, 'sorter': self.sortZhHot},
-                        {'name': 'change', 'title': '涨幅', 'width': 80, 'sortable' :True, 'render': cache.renderZF, 'sorter': self.sorter},
+                        #{'name': 'change', 'title': '涨幅', 'width': 80, 'sortable' :True, 'render': cache.renderZF, 'sorter': self.sorter},
                         {'name': 'head_num', 'title': '领涨', 'width': 50, 'sortable' :True, 'sorter': self.sorter },
                         {'name': 'cmc', 'title': '流通市值', 'width': 80, 'sortable' :True , 'render': self.renderZJ, 'sorter': self.sorter},
                         {'name': 'is_core', 'title': '核心', 'width': 50, 'sortable' :True , 'render': self.renderCore, 'sorter': self.sorter},
                         {'name': 'fundflow', 'title': '资金', 'width': 80, 'sortable' :True , 'render': self.renderZJ, 'sorter': self.sorter},
                         {'name': '_industry_name', 'title': '产业链', 'width': 120},
-                        {'name': 'secu_code', 'title': '分时图', 'width': 250, 'render': cache.renderTimeline},
+                        {'name': 'secu_code', 'title': '分时图', 'width': 250, 'sortable' :True, 'render': cache.renderTimeline, 'sorter': cache.sorterTimeline},
+                        {'name': 'NN', 'title': '', 'width': 15},
                         {'name': 'assoc_desc', 'title': '简介', 'width': 0, 'stretch' : 1, 'fontSize': 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER}
                         ]
         self.bkInfo = bkInfo or {'basic': None, 'codes': [], 'industry_codes': []}
@@ -83,11 +84,7 @@ class CodesTableModel:
         if val == None:
             return 10000
         return val
-    def sortMarkColor(self, colName, val, rowData, allDatas, asc):
-        if val == None:
-            return 9999999 if asc else 0
-        return val
-
+    
     def sorter(self, colName, val, rowData, allDatas, asc):
         if self.mode == 'codes':
             return val
@@ -146,18 +143,6 @@ class CodesTableModel:
         value = '是' if value == 1 else '否'
         win.drawer.drawText(hdc, value, rect, 0x0, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
-    def markColorRender(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
-        if value == None:
-            return
-        color = mark_utils.markColor2RgbColor(value)
-        if color == None:
-            return
-        x, y, w, h = rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1]
-        SZ = 10
-        x += (w - SZ) // 2
-        y += (h - SZ) // 2
-        win.drawer.fillRect(hdc, (x, y, x + SZ, y + SZ), color)
-
 class ClsBkWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -182,10 +167,14 @@ class ClsBkWindow(base_win.BaseWindow):
         flowLayout = base_win.FlowLayout(lineHeight = 30)
         self.editorWin.createWindow(self.hwnd, (0, 0, 200, 25))
         flowLayout.addContent(self.editorWin, style = {'margins': (200, 0, 0, 0)})
-        btn = base_win.Button({'title': '指数'})
+        btn = base_win.Button({'title': '指数K线'})
         btn.createWindow(self.hwnd, (0, 0, 80, 25))
         flowLayout.addContent(btn)
         btn.addNamedListener('Click', self.onShowKLine)
+        btn = base_win.Button({'title': '指数分时'})
+        btn.createWindow(self.hwnd, (0, 0, 80, 25))
+        flowLayout.addContent(btn)
+        btn.addNamedListener('Click', self.onShowFS)
         self.industryCheckBox.createWindow(self.hwnd, (0, 0, 150, 25))
         flowLayout.addContent(self.industryCheckBox)
         self.industryCheckBox.addNamedListener('Checked', self.industryChecked)
@@ -209,10 +198,15 @@ class ClsBkWindow(base_win.BaseWindow):
         if not self.bkCode:
             return
         rdata = {'code': self.bkCode, 'day': None}
-        if self.checkBox.isChecked():
-            kline_utils.openInThsWindow(rdata)
-        else:
-            kline_utils.openInCurWindow_Code(self, rdata)
+        kline_utils.openInCurWindow_Code(self, rdata)
+    
+    def onShowFS(self, evt, args):
+        if not self.bkCode:
+            return
+        win = timeline.SimpleTTimelineWindow()
+        rc2 = (0, 100, 1500, 500)
+        win.createWindow(self.hwnd, rc2, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+        win.load(self.bkCode, None)
 
     def onContextMenu(self, evt, args):
         selRow = self.tableWin.selRow
@@ -253,14 +247,15 @@ class ClsBkWindow(base_win.BaseWindow):
 
     def onDbClickEditor(self, evt, args):
         model = [
-            {'title': '合成生物 cls82475'},
-            {'title': '染料涂料 cls80068'},
-            {'title': '低空经济 cls82437'},
-            {'title': '智能驾驶 cls80233'},
-            {'title': '固态电池 cls81936'},
+            {'title': '合成生物  cls82475'},
+            {'title': '染料涂料  cls80068'},
+            {'title': '低空经济  cls82437'},
+            {'title': '黄金概念  cls81377'},
+            {'title': '智能驾驶  cls80233'},
+            {'title': '固态电池  cls81936'},
             {'title': 'LINE'},
-            {'title': '有色金属概念 cls82406'},
-            {'title': '高速连接器 cls82502'},
+            {'title': '有色金属概念  cls82406'},
+            {'title': '高速连接器  cls82502'},
         ]
         def onSelMenu(evt, args):
             self.editorWin.setText(evt.item['title'])

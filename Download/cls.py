@@ -138,6 +138,23 @@ class ClsUrl:
         #print(data)
         return data
     
+    def _toStd(self, data):
+        data['day'] = data['date']
+        sc = data['secu_code']
+        if ('cls' in sc) or ('sh0' in sc):
+            data['code'] = sc
+        else:
+            data['code'] = sc[2 : ]
+        if 'open_px' in data: data['open'] = data['open_px']
+        if 'close_px' in data: data['close'] = data['close_px']
+        if 'low_px' in data: data['low'] = data['low_px']
+        if 'high_px' in data: data['high'] = data['high_px']
+        if 'preclose_px' in data: data['pre'] = data['preclose_px']
+        if 'change' in data: data['zf'] = data['change'] * 100 # %  zf = 涨幅
+        if 'tr' in data: data['rate'] = data['tr'] * 100 # %
+        if 'business_amount' in data: data['vol'] = data['business_amount']
+        if 'business_balance' in data: data['amount'] = data['business_balance']
+
     # K线数据
     # limit : K线数量
     def loadKline(self, code, limit = 100):
@@ -155,9 +172,10 @@ class ClsUrl:
         txt = resp.content.decode('utf-8')
         js = json.loads(txt)
         data = js['data']
+        for d in data:
+            self._toStd(d)
         #print(data)
         return data
-
 
 class ClsDataFile(datafile.DataFile):
     def __init__(self, code, dataType):
@@ -186,6 +204,7 @@ class ClsDataFile(datafile.DataFile):
             it.high = int(ds['high_px'] * 100 + 0.5)
             it.amount = int(ds['business_balance'])
             it.vol = int(ds['business_amount'])
+            it.rate = ds.get('tr', 0) * 100
             self.data.append(it)
         
     def _loadDataFile_FS(self):
@@ -205,4 +224,4 @@ class ClsDataFile(datafile.DataFile):
 
 #signByStr('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012')
 #signByStr('app=CailianpressWeb&fields=date,minute,last_px,business_balance,business_amount,open_px,preclose_px,av_px&os=web&secu_code=sz301488&sv=7.7.5')
-#ClsUrl().loadHistory5FenShi('cls80133')
+#ClsUrl().loadKline('603900') #cls80133

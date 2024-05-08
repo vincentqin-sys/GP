@@ -402,10 +402,29 @@ class SimpleTimelineModel:
             c = lines[idx - 1]['last_px']
         self.pre = int(c * 100 + 0.5)
 
+    def _loadCode_Cls_Newest(self, code):
+        self.code = code
+        self.data.clear()
+        try:
+            url = cls.ClsUrl()
+            ds = url.loadFenShi(code)
+            for d in ds['line']:
+                ts = datafile.ItemData()
+                ts.time = url.getVal(d, 'minute', int, 0)
+                ts.price = int(url.getVal(d, 'last_px', float, 0) * 100 + 0.5)
+                ts.vol = url.getVal(d, 'business_amount', int, 0)
+                ts.amount = url.getVal(d, 'business_balance', int, 0)
+                ts.avgPrice = int(url.getVal(d, 'av_px', float, 0) * 100 + 0.5)
+                self.data.append(ts)
+        except Exception as e:
+            traceback.print_exc()
+            print('[SimpleTimelineModel.loadCode] fail', code)
+
     # code : str
     # day : int | None(is last day)
     def _loadCode_Cls(self, code, day = None):
         self.code = code
+        self.data.clear()
         try:
             if type(day) == 'str':
                 day = day.replace('-', '')
@@ -418,6 +437,7 @@ class SimpleTimelineModel:
             self.day = day
             if day not in days:
                 return
+            isLast = days[-1] == day
             lines = his5datas['line']
             ONE_DAY_LINES = 241
             idx = days.index(day) * ONE_DAY_LINES
@@ -436,7 +456,7 @@ class SimpleTimelineModel:
             print('[SimpleTimelineModel.loadCode] fail', code)
 
     # 最新一天的指数分时
-    def _loadCode_Ths(self, code, day = None):
+    def _loadCode_Ths_Newest(self, code):
         self.code = code
         try:
             if type(day) == 'str':
@@ -466,7 +486,7 @@ class SimpleTimelineModel:
         if not code:
             return
         if code[0] == '8':
-            self._loadCode_Ths(code, day)
+            self._loadCode_Ths_Newest(code)
             obj = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name.distinct()).where(ths_orm.THS_ZS_ZD.code == code).scalar()
             self.name = obj
         else:
