@@ -146,7 +146,8 @@ class BaseWindow(Listener):
         return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
     
     def invalidWindow(self):
-        win32gui.InvalidateRect(self.hwnd, None, True)
+        if win32gui.IsWindow(self.hwnd):
+            win32gui.InvalidateRect(self.hwnd, None, True)
 
 class Thread:
     _num = 0
@@ -1205,7 +1206,7 @@ class TableWindow(BaseWindow):
             if 'sorter' in header:
                 def keyn(rowData):
                     hdn = header['name']
-                    return header['sorter'](hdn, rowData[hdn], rowData, self.data, state == 'ASC')
+                    return header['sorter'](hdn, rowData.get(hdn, None), rowData, self.data, state == 'ASC')
                 self.sortData = sorted(self.data, key = keyn, reverse = reverse)
             else:
                 self.sortData = sorted(self.data, key = lambda d: d.get(header['name'], ''), reverse = reverse)
@@ -2180,6 +2181,7 @@ class Editor(BaseEditor):
         menu = PopupMenuHelper.create(self.hwnd, self.popupTipModel)
         menu.addNamedListener('Select', onCc)
         rc = win32gui.GetWindowRect(self.hwnd)
+        menu.minItemWidth = rc[2] - rc[0]
         menu.show(rc[0], rc[3])
 
     def winProc(self, hwnd, msg, wParam, lParam):

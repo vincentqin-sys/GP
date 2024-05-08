@@ -160,7 +160,7 @@ class ClsUrl:
 
 
 class ClsDataFile(datafile.DataFile):
-    def __init__(self, code, dataType, flag):
+    def __init__(self, code, dataType):
         #super().__init__(code, dataType, flag)
         if type(code) == int:
             code = f'{code :06d}'

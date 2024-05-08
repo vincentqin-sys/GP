@@ -4,11 +4,9 @@ import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm
-from Tdx import datafile
-from Download import henxin, ths_ddlr
 from THS import ths_win
-from Common import base_win, timeline, kline, table
-import ddlr_detail, db.tck_orm as tck_orm
+from Common import base_win, ext_win
+from db import tck_orm
 
 thsWin = ths_win.ThsWindow()
 thsWin.init()
@@ -73,7 +71,7 @@ class PageInfo:
             editWin.setText(self.searchText)
             editWin.invalidWindow()
             self.tckWin.onQuery(self.searchText)
-        tabWin : table.EditTableWindow = self.tckWin.tableWin
+        tabWin : ext_win.EditTableWindow = self.tckWin.tableWin
         for f in self.flag:
             if f == 'selRow':
                 tabWin.setSelRow(self.selRow)
@@ -89,7 +87,7 @@ class TCK_Window(base_win.BaseWindow):
         rows = (30, '1fr')
         self.cols = (60, 300, 80, 40, 150, 120, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
-        self.tableWin = table.EditTableWindow()
+        self.tableWin = ext_win.EditTableWindow()
         self.editorWin = base_win.Editor()
         self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
@@ -233,6 +231,7 @@ class TCK_Window(base_win.BaseWindow):
             self.onQuery(self.editorWin.getText())
         menu = base_win.PopupMenuHelper.create(self.editorWin.hwnd, model)
         menu.addNamedListener('Select', onSelMenu)
+        menu.minItemWidth = self.editorWin.getClientSize()[0]
         menu.show()
 
     def onEditCell(self, evt, args):

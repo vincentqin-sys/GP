@@ -3,9 +3,8 @@ import threading, time, datetime, sys, os, copy, json
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from Download import henxin, ths_ddlr, cls
-from THS import ths_win, hot_utils
-from Common import base_win, timeline, kline, table
+from Download import henxin
+from Common import base_win
 
 base_win.ThreadPool.start()
 
@@ -168,7 +167,7 @@ def renderTimeline(win : base_win.TableWindow, hdc, row, col, colName, value, ro
     data['render'].onDraw(hdc, win.drawer, rect)
 
 # 涨幅
-def renderZF(win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
+def renderZFColor(win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
     GREEN = 0xA3C252
     RED = 0x2204de
     global _cache
@@ -188,3 +187,21 @@ def renderZF(win : base_win.TableWindow, hdc, row, col, colName, value, rowData,
     elif value < 0: color = GREEN
     value *= 100
     win.drawer.drawText(hdc, f'{value :.2f} %', rect, color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)    
+
+# 涨幅
+def renderZF(win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
+    global _cache
+    if value == None:
+        return
+    if 'secu_code' in rowData:
+        code = rowData['secu_code'][2 : ]
+    elif 'code' in rowData:
+        code = rowData['code']
+    else:
+        return
+    data = _cache.getData(code, win)
+    if data and 'zf' in data:
+        value = data['zf']
+    color = 0x00
+    value *= 100
+    win.drawer.drawText(hdc, f'{value :.2f} %', rect, color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)     

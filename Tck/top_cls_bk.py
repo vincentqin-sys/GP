@@ -1,14 +1,13 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
-import threading, time, datetime, sys, os, copy, json
+import threading, time, datetime, sys, os, copy, json, re
 import os, sys, requests
-from db import ths_orm as ths_orm
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from Tdx import datafile
-from Download import henxin, ths_ddlr, cls
-from THS import ths_win, hot_utils
-from Common import base_win, timeline, kline, table
-import ddlr_detail, db.tck_orm as tck_orm, kline_utils, cache
+from db import tck_orm
+from Download import cls
+from THS import hot_utils
+from Common import base_win, ext_win
+import kline_utils, cache, mark_utils
 
 # code = 'cls00000'
 def loadBkInfo(code : str):
@@ -65,7 +64,8 @@ class CodesTableModel:
     
     def __init__(self, bkInfo) -> None:
         self.headers = [{'name': '#idx', 'width': 40, 'title': ''},
-                        {'name': 'secu_name', 'title': '名称', 'width' : 80},
+                        {'name': 'markColor', 'title': 'M', 'width' : 40, 'sortable' :True, 'render' : self.markColorRender, 'sorter': self.sortMarkColor},
+                        {'name': 'secu_name', 'title': '名称', 'width' : 80, 'render' : mark_utils.markRender},
                         {'name': 'zhHotOrder', 'title': '热度',  'width':80, 'sortable' :True, 'sorter': self.sortZhHot},
                         {'name': 'change', 'title': '涨幅', 'width': 80, 'sortable' :True, 'render': cache.renderZF, 'sorter': self.sorter},
                         {'name': 'head_num', 'title': '领涨', 'width': 50, 'sortable' :True, 'sorter': self.sorter },
@@ -82,6 +82,10 @@ class CodesTableModel:
     def sortZhHot(self, colName, val, rowData, allDatas, asc):
         if val == None:
             return 10000
+        return val
+    def sortMarkColor(self, colName, val, rowData, allDatas, asc):
+        if val == None:
+            return 9999999 if asc else 0
         return val
 
     def sorter(self, colName, val, rowData, allDatas, asc):
@@ -121,6 +125,7 @@ class CodesTableModel:
             data = self.bkInfo['industry_codes']
             industry_name['sortable'] = False
         self._loadHotZH(data)
+        mark_utils.mergeMarks(data, 'cls-bk', False)
         tabWin.setData(data)
         tabWin.invalidWindow()
     
@@ -130,8 +135,8 @@ class CodesTableModel:
         value /= 100000000
         color = 0x00
         if colName == 'fundflow':
-            if value > 0: color = self.RED
-            elif value < 0: color = self.GREEN
+            #if value > 0: color = self.RED
+            #elif value < 0: color = self.GREEN
             value = f'{value :.2f} 亿'
         else:
             value = f'{int(value)} 亿'
@@ -141,13 +146,25 @@ class CodesTableModel:
         value = '是' if value == 1 else '否'
         win.drawer.drawText(hdc, value, rect, 0x0, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
+    def markColorRender(self, win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):
+        if value == None:
+            return
+        color = mark_utils.markColor2RgbColor(value)
+        if color == None:
+            return
+        x, y, w, h = rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1]
+        SZ = 10
+        x += (w - SZ) // 2
+        y += (h - SZ) // 2
+        win.drawer.fillRect(hdc, (x, y, x + SZ, y + SZ), color)
+
 class ClsBkWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
         self.cols = ('1fr', )
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
-        self.tableWin = table.EditTableWindow()
+        self.tableWin = ext_win.EditTableWindow()
         self.tableWin.css['selBgColor'] = 0xEAD6D6
         self.editorWin = base_win.Editor()
         self.editorWin.placeHolder = '板块概念代码'
@@ -156,19 +173,24 @@ class ClsBkWindow(base_win.BaseWindow):
         self.clsData = None
         self.searchText = ''
         self.model = None
+        self.bkCode = None
         
         #base_win.ThreadPool.addTask('CLS_BK', self.runTask)
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
 
         flowLayout = base_win.FlowLayout(lineHeight = 30)
-        self.checkBox.createWindow(self.hwnd, (0, 0, 150, 25))
-        flowLayout.addContent(self.checkBox)
         self.editorWin.createWindow(self.hwnd, (0, 0, 200, 25))
-        flowLayout.addContent(self.editorWin)
+        flowLayout.addContent(self.editorWin, style = {'margins': (200, 0, 0, 0)})
+        btn = base_win.Button({'title': '指数'})
+        btn.createWindow(self.hwnd, (0, 0, 80, 25))
+        flowLayout.addContent(btn)
+        btn.addNamedListener('Click', self.onShowKLine)
         self.industryCheckBox.createWindow(self.hwnd, (0, 0, 150, 25))
         flowLayout.addContent(self.industryCheckBox)
         self.industryCheckBox.addNamedListener('Checked', self.industryChecked)
+        self.checkBox.createWindow(self.hwnd, (0, 0, 150, 25))
+        flowLayout.addContent(self.checkBox)
 
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.rowHeight = 50
@@ -180,12 +202,34 @@ class ClsBkWindow(base_win.BaseWindow):
             self.onQuery(q)
         self.editorWin.addNamedListener('PressEnter', onPressEnter, None)
         self.editorWin.addNamedListener('DbClick', self.onDbClickEditor, None)
-        self.tableWin.addListener(self.onDbClickTable)
-        #self.tableWin.addListener(self.onEditCell, None)
+        self.tableWin.addNamedListener('DbClick', self.onDbClickTable)
+        self.tableWin.addNamedListener('ContextMenu', self.onContextMenu)
+
+    def onShowKLine(self, evt, args):
+        if not self.bkCode:
+            return
+        rdata = {'code': self.bkCode, 'day': None}
+        if self.checkBox.isChecked():
+            kline_utils.openInThsWindow(rdata)
+        else:
+            kline_utils.openInCurWindow_Code(self, rdata)
+
+    def onContextMenu(self, evt, args):
+        selRow = self.tableWin.selRow
+        model = mark_utils.getMarkModel(selRow >= 0)
+        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        def onMM(evt, args):
+            rowData = self.tableWin.getData()[selRow]
+            obj = tck_orm.Mark.get_or_create(code = rowData['secu_code'], kind = 'cls-bk')[0]
+            obj.name = rowData['secu_name']
+            obj.markColor = evt.item['markValue']
+            obj.save()
+            rowData['markColor'] = obj.markColor
+            self.tableWin.invalidWindow()
+        menu.addNamedListener('Select', onMM)
+        menu.show(* win32gui.GetCursorPos())
 
     def onDbClickTable(self, evt, args):
-        if evt.name != 'RowEnter' and evt.name != 'DbClick':
-            return
         data = evt.data
         if not data:
             return
@@ -199,26 +243,32 @@ class ClsBkWindow(base_win.BaseWindow):
         text = text.strip()
         self.tableWin.setData(None)
         self.tableWin.invalidWindow()
-        if not text or (len(text) != 5 and len(text) != 8):
+        if not text:
             return
-        self.updateBk(text)
+        cc = re.compile('cls\d{5}')
+        mb = cc.search(text)
+        if mb:
+            bk = mb.group(0)
+            self.updateBk(bk)
 
     def onDbClickEditor(self, evt, args):
         model = [
-            {'title': '合成生物', 'value': 'cls82475'},
-            {'title': '染料涂料', 'value': 'cls80068'},
-            {'title': '低空经济', 'value': 'cls82437'},
-            #{'title': '高速连接器', 'value': 'cls82502'},
-            {'title': '固态电池', 'value': 'cls81936'},
-            {'title': '证券', 'value': 'cls81985'},
-            {'title': '有色金属概念', 'value': 'cls82406'},
+            {'title': '合成生物 cls82475'},
+            {'title': '染料涂料 cls80068'},
+            {'title': '低空经济 cls82437'},
+            {'title': '智能驾驶 cls80233'},
+            {'title': '固态电池 cls81936'},
+            {'title': 'LINE'},
+            {'title': '有色金属概念 cls82406'},
+            {'title': '高速连接器 cls82502'},
         ]
         def onSelMenu(evt, args):
-            self.editorWin.setText(evt.item['title'] + '(' + evt.item['value'] + ')')
+            self.editorWin.setText(evt.item['title'])
             self.editorWin.invalidWindow()
-            self.onQuery(evt.item['value'])
+            self.onQuery(evt.item['title'])
         menu = base_win.PopupMenuHelper.create(self.editorWin.hwnd, model)
         menu.addNamedListener('Select', onSelMenu)
+        menu.minItemWidth = self.editorWin.getClientSize()[0]
         menu.show()
 
     def industryChecked(self, evt, args):
@@ -230,137 +280,14 @@ class ClsBkWindow(base_win.BaseWindow):
             self.model.setMode(self.tableWin, 'codes')
 
     def updateBk(self, bkCode):
+        self.bkCode = bkCode
         bkInfo = loadBkInfo(bkCode)
-        ccs = []
-        for c in bkInfo['codes']:
-            if '000099' in c['secu_code']:
-                ccs.append(c)
-        #bkInfo['codes'] = ccs
         self.model = CodesTableModel(bkInfo)
         if self.industryCheckBox.isChecked():
             self.model.setMode(self.tableWin, 'industry')
         else:
             self.model.setMode(self.tableWin, 'codes')
 
-class ClsBkZS:
-    def __init__(self) -> None:
-        self.codes = []
-
-    # codes = '600000' or 600000
-    #         ['600000', ...]
-    #         [600000, ...]
-    #         [ {'code': '600000', }, ....]
-    #         [ {'secu_code': '600000', }, ....]
-    def addCodes(self, codes):
-        if not codes:
-            return
-        if type(codes) == str:
-            self.codes.append(codes)
-        elif type(codes) == int:
-            self.codes.append(f'{codes :06d}')
-        elif type(codes) == list:
-            item = codes[0]
-            if type(item) == int:
-                self.codes.extend([f'{d: 06d}' for d in codes])
-            if type(item) == str:
-                self.codes.extend(codes)
-            elif 'code' in item:
-                self.codes.extend([d['code'] for d in codes])
-            elif 'secu_code' in item:
-                self.codes.extend([d['secu_code'] for d in codes])
-    
-    def buildZS(self, fromDay : int):
-        days = set()
-        for i in range(0, min(3, len(self.codes))):
-            cx = self.codes[i]
-            df = datafile.DataFile(cx, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
-            for d in df.data:
-                if d.day not in days:
-                    days.add(d)
-        days = list(days)
-        days.sort()
-        dfs = [datafile.DataFile(cx, datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL) for cx in self.codes]
-        for i in range(len(days)):
-            if fromDay <= days[i]:
-                fromDay = days[i]
-            else:
-                break
-        fromIdx = days.index(fromDay)
-        basePrice = self._calcZSBase(dfs, fromDay)
-        dayItems = []
-        fsItems = []
-        for i in range(fromIdx, len(days)):
-            di, fs = self._calcOneDay(dfs, days[i], basePrice)
-            dayItems.append(di)
-            fsItems.extend(fs)
-        return dayItems, fsItems
-
-    def save(self, dayItems, fsItems):
-        pass
-
-    def _calcZSBase(self, dfs, fromDay):
-        ddfs = []
-        for df in dfs:
-            idx = df.getItemIdx(fromDay)
-            if idx < 240 * 5: # 忽略上市5天内的股
-                continue
-            idx -= 1
-            da = df.data[idx]
-            ddfs.append(da)
-        base = self._calcZSPrice(ddfs, 'close')
-        return base
-
-    def _calcZSPrice(self, datas, name):
-        p  = 0
-        for d in datas:
-            p += getattr(d, name)
-        if name in ('open', 'close', 'low', 'high'):
-            p /= len(datas)
-        return p
-
-    def _calcOneDay(self, dfs, day, basePrice):
-        fsDatas = []
-        datas = []
-        ONE_DAY_ITEM_NUM = 240
-        for df in dfs:
-            idx = df.getItemIdx(day)
-            if idx < 240 * 5: # 忽略上市5天内的股
-                continue
-            datas.append(df.data[idx : idx + ONE_DAY_ITEM_NUM])
-
-        for ms in range(ONE_DAY_ITEM_NUM):
-            ds = []
-            it = datafile.ItemData()
-            fsDatas.append(it)
-            for d in datas:
-                ds.append(d[ms])
-            it.day = day
-            it.time = ds[0].time
-            it.open = self._calcZSPrice(ds, 'open') / basePrice * 1000
-            it.close = self._calcZSPrice(ds, 'close') / basePrice * 1000
-            it.low = min(it.open, it.close)
-            it.high = max(it.open, it.close)
-            it.amount = self._calcZSPrice(ds, 'amount')
-            it.vol = self._calcZSPrice(ds, 'vol')
-        cur = datafile.ItemData()
-        cur.day = day
-        cur.open = fsDatas[0].open
-        cur.close = fsDatas[-1].close
-        cur.low = cur.high = 0
-        cur.amount = cur.vol = 0
-        for fs in fsDatas:
-            if cur.low == 0:
-                cur.low = fs.low
-                cur.high = fs.high
-            else:
-                cur.low = min(fs.low, cur.low)
-                cur.high = max(fs.high, cur.high)
-            cur.amount += fs.amount
-            cur.vol += fs.vol
-        cur.amount = cur.amount // 100000000 #亿元
-        cur.vol = cur.vol // 100000000 # 亿股
-        return cur, fsDatas
-            
 if __name__ == '__main__':
     win = ClsBkWindow()
     win.createWindow(None, (100, 100, 1200, 600), win32con.WS_OVERLAPPEDWINDOW  | win32con.WS_VISIBLE)

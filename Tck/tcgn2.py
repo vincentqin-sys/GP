@@ -7,7 +7,7 @@ from db import ths_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import ths_win
-from Common import base_win, timeline, kline, sheet, dialog, table
+from Common import base_win, timeline, kline, sheet, dialog, table, ext_win
 import ddlr_detail, db.tck_orm as tck_orm
 
 thsWin = ths_win.ThsWindow()
@@ -20,7 +20,7 @@ class TCGN_Window(base_win.BaseWindow):
         self.cols = (200, 150, 60, 200, 100, 60, 60, 60, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = base_win.TableWindow()
-        self.tableCntWin = table.EditTableWindow()
+        self.tableCntWin = ext_win.EditTableWindow()
         self.editorWin = base_win.Editor()
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.autoSyncCheckBox = base_win.CheckBox({'title': '自动同步显示'})

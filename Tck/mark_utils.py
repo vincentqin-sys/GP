@@ -3,12 +3,7 @@ import threading, time, datetime, sys, os, copy, json, functools
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import ths_orm
-from Tdx import datafile
-from Download import henxin, ths_ddlr, cls
-from THS import ths_win, hot_utils
-from Common import base_win, timeline, kline, table, dialog
-import ddlr_detail, db.tck_orm as tck_orm, kline_utils
+from db import tck_orm
 
 def formatDay(day):
     if not day:
@@ -23,10 +18,11 @@ def formatDay(day):
 def _buildKey(data, kind, enableDays):
     if kind == None:
         kind = ''
+    k = 'code' if 'code' in data else 'secu_code'
     if enableDays:
-        key = f'{data["code"]}:{kind}:{data["day"]}'
+        key = f'{data[k]}:{kind}:{data["day"]}'
     else:
-        key = f'{data["code"]}:{kind}'
+        key = f'{data[k]}:{kind}'
     return key
 
 def mergeMarks(datas : list, kind, enableDays : bool):
@@ -41,7 +37,6 @@ def mergeMarks(datas : list, kind, enableDays : bool):
             d['markColor'] = marks[k]['markColor']
             d['markText'] = marks[k]['markText']
 
-
 def getMarkModel(enable):
     model = [
         {'name': 'mark_1', 'title': '标记红色重点', 'enable': enable, 'markValue': 1},
@@ -50,15 +45,18 @@ def getMarkModel(enable):
     ]
     return model
 
+def markColor2RgbColor(markColor):
+    if not markColor:
+        return None
+    CS = (0x0000dd, 0xdd0000, 0x00AA00)
+    if markColor >= 1 and markColor <= len(CS):
+        return CS[markColor - 1]
+    return None
+
 def markRender(win, hdc, row, col, colName, value, rowData, rect):
     color = win.css['textColor']
     mc = rowData.get('markColor', None)
-    if mc == 1:
-        color = 0x0000dd
-    elif mc == 2:
-        color = 0xdd0000
-    elif mc == 3:
-        color = 0x00AA00
+    color = markColor2RgbColor(mc) or color
     align = win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE
     win.drawer.drawText(hdc, value, rect, color, align = align)
 

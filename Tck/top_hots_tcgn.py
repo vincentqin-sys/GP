@@ -4,11 +4,9 @@ import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm
-from Tdx import datafile
-from Download import henxin, ths_ddlr
 from THS import ths_win, hot_utils
-from Common import base_win, timeline, kline, table
-import ddlr_detail, db.tck_orm as tck_orm, kline_utils, cache
+from Common import base_win, ext_win
+import db.tck_orm as tck_orm, kline_utils, cache
 
 class Hots_Window(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -16,7 +14,7 @@ class Hots_Window(base_win.BaseWindow):
         rows = (30, '1fr')
         self.cols = (150, 300, 120, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
-        self.tableWin = table.EditTableWindow()
+        self.tableWin = ext_win.EditTableWindow()
         self.tableWin.css['selBgColor'] = 0xEAD6D6
         self.editorWin = base_win.Editor()
         self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
@@ -91,6 +89,7 @@ class Hots_Window(base_win.BaseWindow):
             self.onQuery()
         menu = base_win.PopupMenuHelper.create(self.editorWin.hwnd, model)
         menu.addNamedListener('Select', onSelMenu)
+        menu.minItemWidth = self.editorWin.getClientSize()[0]
         menu.show()
 
     def onQuery(self):

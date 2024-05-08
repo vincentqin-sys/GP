@@ -2,11 +2,8 @@ import os, sys, functools, copy, datetime
 import win32gui, win32con
 import requests, peewee as pw
 
-from db import tdx_orm as tdx_orm
-
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import ths_orm as ths_orm
-from db import tck_orm as tck_orm
+from db import ths_orm, tdx_orm, tck_orm
 from Tdx import datafile
 from Download import henxin, cls
 from Common import base_win, ext_win
@@ -739,10 +736,11 @@ class HotIndicator(CustomIndicator):
 
     def setData(self, data):
         super().setData(data)
-        if not self.klineWin.model:
+        model = self.klineWin.model
+        if not model or not model.code or (type(model.code) == str and len(model.code) != 6):
             self.setCustomData(None)
             return
-        hots = ths_orm.THS_HotZH.select().where(ths_orm.THS_HotZH.code == int(self.klineWin.model.code)).order_by(ths_orm.THS_HotZH.day.asc()).dicts()
+        hots = ths_orm.THS_HotZH.select().where(ths_orm.THS_HotZH.code == int(model.code)).order_by(ths_orm.THS_HotZH.day.asc()).dicts()
         maps = {}
         for d in hots:
             maps[d['day']] = d
@@ -1446,6 +1444,7 @@ class CodeWindow(ext_win.CellRenderWindow):
             return
         url = cls.ClsUrl()
         data = url.loadBasic(code)
+        data['code'] = code
         self.cacheData[code] = data
         self._useCacheData(code)
 
@@ -1517,5 +1516,5 @@ if __name__ == '__main__':
     win.addIndicator(TckIndicator()) # {'height' : 50}
     rect = (0, 0, 1250, 600)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode(600281)
+    win.changeCode('cls82475')
     win32gui.PumpMessages()
