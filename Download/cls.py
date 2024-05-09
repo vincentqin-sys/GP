@@ -145,15 +145,15 @@ class ClsUrl:
             data['code'] = sc
         else:
             data['code'] = sc[2 : ]
-        if 'open_px' in data: data['open'] = data['open_px']
-        if 'close_px' in data: data['close'] = data['close_px']
-        if 'low_px' in data: data['low'] = data['low_px']
-        if 'high_px' in data: data['high'] = data['high_px']
-        if 'preclose_px' in data: data['pre'] = data['preclose_px']
-        if 'change' in data: data['zf'] = data['change'] * 100 # %  zf = 涨幅
-        if 'tr' in data: data['rate'] = data['tr'] * 100 # %
-        if 'business_amount' in data: data['vol'] = data['business_amount']
-        if 'business_balance' in data: data['amount'] = data['business_balance']
+        if 'open_px' in data: data['open'] = self.getVal(data, 'open_px', float, 0)
+        if 'close_px' in data: data['close'] = self.getVal(data, 'close_px', float, 0)
+        if 'low_px' in data: data['low'] = self.getVal(data, 'low_px', float, 0)
+        if 'high_px' in data: data['high'] = self.getVal(data, 'high_px', float, 0)
+        if 'preclose_px' in data: data['pre'] = self.getVal(data, 'preclose_px', float, 0)
+        if 'change' in data: data['zf'] = self.getVal(data, 'change', float, 0) * 100 # %  zf = 涨幅
+        if 'tr' in data: data['rate'] = self.getVal(data, 'tr', float, 0) * 100 # %
+        if 'business_amount' in data: data['vol'] = self.getVal(data, 'business_amount', float, 0)
+        if 'business_balance' in data: data['amount'] = self.getVal(data, 'business_balance', float, 0)
 
     # K线数据
     # limit : K线数量

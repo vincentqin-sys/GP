@@ -459,14 +459,9 @@ class SimpleTimelineModel:
     def _loadCode_Ths_Newest(self, code):
         self.code = code
         try:
-            if type(day) == 'str':
-                day = day.replace('-', '')
-                day = int(day)
             hx = henxin.HexinUrl()
             data = hx.loadUrlData( hx.getFenShiUrl(code))
             lastDay = int(data['date'])
-            if day != None and day != lastDay:
-                return
             self.day = lastDay
             self.pre = int(data['pre'] * 100 + 0.5)
             for d in data['dataArr']:

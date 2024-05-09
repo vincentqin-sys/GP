@@ -39,16 +39,18 @@ def mergeMarks(datas : list, kind, enableDays : bool):
 
 def getMarkModel(enable):
     model = [
-        {'name': 'mark_1', 'title': '标记红色重点', 'enable': enable, 'markValue': 1},
-        {'name': 'mark_2', 'title': '标记蓝色观察', 'enable': enable, 'markValue': 2},
-        {'name': 'mark_3', 'title': '标记绿色负面', 'enable': enable, 'markValue': 3},
+        {'name': 'mark_1', 'title': '标记红色', 'enable': enable, 'markValue': 1},
+        {'name': 'mark_2', 'title': '标记蓝色', 'enable': enable, 'markValue': 2},
+        {'name': 'mark_3', 'title': '标记绿色', 'enable': enable, 'markValue': 3},
+        {'name': 'mark_4', 'title': '标记紫色', 'enable': enable, 'markValue': 4},
+        {'name': 'mark_5', 'title': '标记棕色', 'enable': enable, 'markValue': 5},
     ]
     return model
 
 def markColor2RgbColor(markColor):
     if not markColor:
         return None
-    CS = (0x0000dd, 0xdd0000, 0x00AA00)
+    CS = (0x8B008B, 0xCD0000, 0x008800, 0xCC3299, 0x1E69D2)
     if markColor >= 1 and markColor <= len(CS):
         return CS[markColor - 1]
     return None

@@ -22,7 +22,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
             {'name': 'HOTS', 'title': '热度'},
             #{'name': 'TCGN', 'title': '题材梳理'},
             {'name': 'CLS_BK', 'title': '财联社板块'},
-            ] 
+            ]
         gp = base_win.GroupButton(gpInfos)
         gp.setSelGroup(0)
         gp.createWindow(self.hwnd, (0, 0, 80 * len(gpInfos), 30))

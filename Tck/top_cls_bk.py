@@ -249,13 +249,14 @@ class ClsBkWindow(base_win.BaseWindow):
         model = [
             {'title': '合成生物  cls82475'},
             {'title': '染料涂料  cls80068'},
+            {'title': '细胞治疗  cls82519'},
             {'title': '低空经济  cls82437'},
-            {'title': '黄金概念  cls81377'},
-            {'title': '智能驾驶  cls80233'},
             {'title': '固态电池  cls81936'},
             {'title': 'LINE'},
+            {'title': '黄金概念  cls81377'},
             {'title': '有色金属概念  cls82406'},
-            {'title': '高速连接器  cls82502'},
+            #{'title': '智能驾驶  cls80233'},
+            #{'title': '高速连接器  cls82502'},
         ]
         def onSelMenu(evt, args):
             self.editorWin.setText(evt.item['title'])

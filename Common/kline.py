@@ -626,7 +626,7 @@ class DdlrIndicator(CustomIndicator):
         WW = self.config['itemWidth']
         data = self.customData[idx]
         selIdx = self.klineWin.selIdx
-        selData = self.data[selIdx] if selIdx >= 0 else None
+        selData = self.data[selIdx] if selIdx >= 0 and selIdx < len(self.data) else None
         selDay = int(selData.day) if selData else 0
         rc = (x + 1, 1, x + WW, self.height)
         if selDay == int(data['__day']):
@@ -719,7 +719,7 @@ class DdlrPmIndicator(CustomIndicator):
         WW = self.config['itemWidth']
         data = self.customData[idx]
         selIdx = self.klineWin.selIdx
-        selData = self.data[selIdx] if selIdx >= 0 else None
+        selData = self.data[selIdx] if selIdx >= 0 and selIdx < len(self.data) else None
         selDay = int(selData.day) if selData else 0
         rc = (x + 1, 1, x + WW, self.height)
         if selDay == int(data['__day']):
@@ -756,7 +756,7 @@ class HotIndicator(CustomIndicator):
         WW = self.config['itemWidth']
         data = self.customData[idx]
         selIdx = self.klineWin.selIdx
-        selData = self.data[selIdx] if selIdx >= 0 else None
+        selData = self.data[selIdx] if selIdx >= 0 and selIdx < len(self.data) else None
         selDay = int(selData.day) if selData else 0
         rc = (x + 1, 1, x + WW, self.height)
         if selDay == int(data['__day']):
@@ -779,7 +779,7 @@ class DayIndicator(CustomIndicator):
         iw = self.config['itemWidth']
         data = self.customData[idx]
         selIdx = self.klineWin.selIdx
-        selData = self.data[selIdx] if selIdx >= 0 else None
+        selData = self.data[selIdx] if selIdx >= 0 and selIdx < len(self.data) else None
         selDay = int(selData.day) if selData else 0
         rc = (x + 1, 1, x + iw, self.height)
         if selDay == int(data['__day']):
@@ -820,7 +820,7 @@ class ThsZsPMIndicator(CustomIndicator):
         iw = self.config['itemWidth']
         data = self.customData[idx]
         selIdx = self.klineWin.selIdx
-        selData = self.data[selIdx] if selIdx >= 0 else None
+        selData = self.data[selIdx] if selIdx >= 0 and selIdx < len(self.data) else None
         selDay = int(selData.day) if selData else 0
         rc = (x + 1, 1, x + iw, self.height)
         if selDay == int(data['__day']):
@@ -871,7 +871,7 @@ class TckIndicator(CustomIndicator):
         iw = self.config['itemWidth']
         cdata = self.customData[idx]
         selIdx = self.klineWin.selIdx
-        selData = self.data[selIdx] if selIdx >= 0 else None
+        selData = self.data[selIdx] if selIdx >= 0 and selIdx < len(self.data) else None
         selDay = int(selData.day) if selData else 0
         rc = (x + 1, 1, x + iw, self.height)
         if selDay == int(cdata['__day']):
@@ -892,6 +892,8 @@ class KLineSelTipWindow(base_win.BaseWindow):
     def onDraw(self, hdc):
         selIdx = self.klineWin.selIdx
         model = self.klineWin.model
+        rc = (0, 0, *self.getClientSize())
+        self.drawer.drawRect(hdc, rc, 0x0000dd)
         if selIdx < 0 or (not model) or (not model.data) or selIdx >= len(model.data):
             return
         d = model.data[selIdx]
@@ -905,8 +907,6 @@ class KLineSelTipWindow(base_win.BaseWindow):
         txt = f'涨幅\n{getattr(d, "zhangFu", 0):.2f}%\n\n成交额\n{am}亿' # 时间\n{d.day//10000}\n{d.day%10000:04d}\n\n
         if hasattr(d, 'rate'):
             txt += f'\n\n换手率\n{d.rate :.1f}%'
-        rc = (0, 0, *self.getClientSize())
-        self.drawer.drawRect(hdc, rc, 0x0000dd)
         self.drawer.drawText(hdc, txt, rc, 0xd0d0d0, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_WORDBREAK)
 
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -992,8 +992,10 @@ class KLineWindow(base_win.BaseWindow):
         return [idt.x, idt.y, idt.width, idt.height]
 
     def setModel(self, model):
+        self.selIdx = -1
         self.dateType = 'day'
         self.model = model
+        self.models = {}
         self.hygn = None
         if not model:
             for idt in self.indicators:
@@ -1129,9 +1131,14 @@ class KLineWindow(base_win.BaseWindow):
         super().createWindow(parentWnd, rect, style, className, title)
         self.calcIndicatorsRect()
         if self.showSelTip:
-            selTipWin = KLineSelTipWindow(self)
+            self.createTipWindow(self.hwnd)
+            
+    def createTipWindow(self, parentWnd, rect = None, style = win32con.WS_POPUP | win32con.WS_VISIBLE):
+        selTipWin = KLineSelTipWindow(self)
+        if rect == None:
             prc = win32gui.GetWindowRect(self.hwnd)
-            selTipWin.createWindow(self.hwnd, (prc[0] + 10, prc[1] + 80, 80, 140), win32con.WS_POPUP | win32con.WS_VISIBLE) # win32con.WS_CAPTION |
+            rect = (prc[0] + 10, prc[1] + 80, 80, 140)
+        selTipWin.createWindow(self.hwnd, rect, style) # win32con.WS_CAPTION |
     
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -1344,6 +1351,15 @@ class KLineWindow(base_win.BaseWindow):
         for k in hbrs:
             win32gui.DeleteObject(hbrs[k])
 
+        # draw day | week | month
+        cf = self.klineIndicator
+        y = cf.getMargins(1) + cf.height
+        title = {'day': '日线', 'week': '周线', 'month': '月线'}
+        title = '【' + title[self.dateType] + '】'
+        self.drawer.use(hdc, self.drawer.getFont(fontSize = 18))
+        rc = (5, y, 100, y + 30)
+        self.drawer.drawText(hdc, title, rc, color = 0x00dddd, align = win32con.DT_LEFT)
+        
     def drawMouse(self, hdc, pens):
         if not self.mouseXY:
             return
@@ -1432,11 +1448,9 @@ class CodeWindow(ext_win.CellRenderWindow):
             self.addRow({'height': RH, 'margin': 5, 'name': k}, {'text': k, 'color': 0xcccccc}, self.getCell)
 
     def loadZS(self, code):
-        obj = ths_orm.THS_ZS.get_or_none(code = code)
-        if not obj:
-            self.data = {'code': self.curCode}
-            return
-        self.data = obj.__data__
+        name = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name).where(ths_orm.THS_ZS_ZD.code == code).scalar()
+        self.data = {'code': self.curCode, 'name': name}
+        self.invalidWindow()
 
     def loadCodeBasic(self, code):
         if code[0] == '8':
@@ -1477,15 +1491,56 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.klineWin.showSelTip = True
         self.klineWin.showCodeName = False
         self.codeWin = CodeWindow()
+        self.codeList = None
+        self.code = None
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title = ''):
         super().createWindow(parentWnd, rect, style, className, title)
         self.layout = base_win.GridLayout(('100%', ), ('1fr', 150), (5, 5))
         self.klineWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.layout.setContent(0, 0, self.klineWin)
-        self.codeWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.layout.setContent(0, 1, self.codeWin)
+        self.codeWin.createWindow(self.hwnd, (0, 0, 150, 280))
+
+        rightLayout = base_win.AbsLayout()
+        rightLayout.setContent(0, 0, self.codeWin)
+        btn = base_win.Button({'title': '<<', 'name': 'LEFT'})
+        btn.createWindow(self.hwnd, (0, 0, 40, 30))
+        btn.addNamedListener('Click', self.onLeftRight)
+        rightLayout.setContent(10, 300, btn)
+        btn = base_win.Button({'title': '>>', 'name': 'RIGHT'})
+        btn.createWindow(self.hwnd, (0, 0, 40, 30))
+        btn.addNamedListener('Click', self.onLeftRight)
+        rightLayout.setContent(110, 300, btn)
+        self.layout.setContent(0, 1, rightLayout)
         self.layout.resize(0, 0, *self.getClientSize())
+
+    def _getCode(self, d):
+        if type(d) == dict:
+            return d.get('code', None)
+        if type(d) == str:
+            return d
+        if type(d) == int:
+            return f'{d :06d}'
+        return d
+
+    def _findIdx(self):
+        for idx, d in enumerate(self.codeList):
+            if self._getCode(d) == self.code:
+                return idx
+        return -1
+
+    def onLeftRight(self, evt, args):
+        if not self.codeList or not self.code:
+            return
+        idx = self._findIdx()
+        if evt.info['name'] == 'LEFT':
+            if idx == 0: return
+            idx -= 1
+        else:
+            if idx == len(self.codeList) - 1: return
+            idx += 1
+        cur = self.codeList[idx]
+        self.changeCode(self._getCode(cur))
 
     # nameOrObj : str = 'rate amount'
     # nameOrObj : Indicator
@@ -1496,6 +1551,7 @@ class KLineCodeWindow(base_win.BaseWindow):
             self.klineWin.addIndicator(nameOrObj)
 
     def changeCode(self, code):
+        self.code = code
         self.codeWin.changeCode(code)
         if type(code) == int:
             code = f'{code :06d}'
@@ -1507,6 +1563,11 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.klineWin.setModel(model)
         self.klineWin.makeVisible(-1)
         self.klineWin.invalidWindow()
+
+    # codes = [ str, str, ... ]  |  [ int, int, ... ]
+    #         [ {'code':xxx, }, ... ]  | [ {'secu_code':xxx, }, ... ]
+    def setCodeList(self, codes):
+        self.codeList = codes
 
 if __name__ == '__main__':
     win = KLineCodeWindow()

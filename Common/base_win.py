@@ -1867,6 +1867,7 @@ class DatePicker(BaseWindow):
         self.popWin.destroyOnHide = False
         self.popWin.addListener(self.onSelDayChanged, 'DatePopupWindow')
 
+    # day = int | datetime.date | str
     def setSelDay(self, selDay):
         self.popWin.setSelDay(selDay)
         self.invalidWindow()
@@ -2871,9 +2872,6 @@ def testPopMenu():
     btn.addListener(back, None)
 
 if __name__ == '__main__':
-    rgb = Drawer.hsv2rgb(59, 0.265, 0.785)
-    #print(f'{rgb: X}')
-    h, s, v = Drawer.rgb2hsv(0xf3da56)
     #testGridLayout()
     #testPopMenu()
     label = Label('Hello')
