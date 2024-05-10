@@ -100,15 +100,15 @@ class ConfirmDialog(Dialog):
 
 # listeners : SelectColor = color
 class PopupColorWindow(base_win.PopupWindow):
-    HSV_H_STEP = 30
-    HSV_SV_STEP = 20
-    COL_NUM = 360 // HSV_H_STEP
-    ROW_NUM = 100 // HSV_SV_STEP * 2
-    CELL_SIZE = 15
+    COL_NUM = 13
+    ROW_NUM = 9
+    CELL_SIZE = 20
 
     def __init__(self) -> None:
         super().__init__()
         self.destroyOnHide = True
+        self.css['borderColor'] = None
+        self.COLORS = [0x000033,0x001933,0x003333,0x003319,0x003300,0x193300,0x333300,0x331900,0x330000,0x330019,0x330033,0x190033,0x000000,0x000066,0x003366,0x006666,0x006633,0x006600,0x336600,0x666600,0x663300,0x660000,0x660033,0x660066,0x330066,0x202020,0x000099,0x004C99,0x009999,0x00994C,0x009900,0x4C9900,0x999900,0x994C00,0x990000,0x99004C,0x990099,0x4C0099,0x404040,0x0000CC,0x0066CC,0x00CCCC,0x00CC66,0x00CC00,0x66CC00,0xCCCC00,0xCC6600,0xCC0000,0xCC0066,0xCC00CC,0x6600CC,0x606060,0x0000FF,0x0080FF,0x00FFFF,0x00FF80,0x00FF00,0x80FF00,0xFFFF00,0xFF8000,0xFF0000,0xFF007F,0xFF00FF,0x7F00FF,0x808080,0x3333FF,0x3399FF,0x33FFFF,0x33FF99,0x33FF33,0x99FF33,0xFFFF33,0xFF9933,0xFF3333,0xFF3399,0xFF33FF,0x9933FF,0xA0A0A0,0x6666FF,0x66B2FF,0x66FFFF,0x66FFB2,0x66FF66,0xB2FF66,0xFFFF66,0xFFB266,0xFF6666,0xFF66B2,0xFF66FF,0xB266FF,0xC0C0C0,0x9999FF,0x99CCFF,0x99FFFF,0x99FFCC,0x99FF99,0xCCFF99,0xFFFF99,0xFFCC99,0xFF9999,0xFF99CC,0xFF99FF,0xCC99FF,0xE0E0E0,0xCCCCFF,0xCCE5FF,0xCCFFFF,0xCCFFE5,0xCCFFCC,0xE5FFCC,0xFFFFCC,0xFFE5CC,0xFFCCCC,0xFFCCE5,0xFFCCFF,0xE5CCFF,0xFFFFFF]
 
     def getColorAtXY(self, x, y):
         row = y // self.CELL_SIZE
@@ -116,23 +116,15 @@ class PopupColorWindow(base_win.PopupWindow):
         return self.getColor(row, col)
 
     def getColor(self, row, col):
-        h = col * self.HSV_H_STEP
-        s, v = 0, 0.6
-        s = row * self.HSV_SV_STEP / 100 + 0.3
-        if s > 1:
-            v = s - 1
-            s = 1
-        if v > 1:
-            v = 1
-        color = self.drawer.hsv2rgb(h, s, v)
-        return color
+        return self.COLORS[row * self.COL_NUM + col]
 
     def onDraw(self, hdc):
         for r in range(self.ROW_NUM):
             for c in range(self.COL_NUM):
                 sx = c * self.CELL_SIZE
                 sy = r * self.CELL_SIZE
-                self.drawer.fillRect(hdc, (sx, sy, sx + self.CELL_SIZE, sy + self.CELL_SIZE), self.getColor(r, c))
+                rc = (sx + 1, sy + 1, sx + self.CELL_SIZE, sy + self.CELL_SIZE)
+                self.drawer.fillRect(hdc, rc, self.getColor(r, c))
 
     def createWindow(self, parentWnd, rect = None, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
         W = self.CELL_SIZE * self.COL_NUM

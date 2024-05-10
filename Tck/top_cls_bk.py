@@ -151,7 +151,7 @@ class ClsBkWindow(base_win.BaseWindow):
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = ext_win.EditTableWindow()
         self.tableWin.css['selBgColor'] = 0xEAD6D6
-        self.editorWin = base_win.Editor()
+        self.editorWin = base_win.ComboBox()
         self.editorWin.placeHolder = '板块概念代码'
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.industryCheckBox = base_win.CheckBox({'title': '仅显示产业链'})
@@ -190,9 +190,9 @@ class ClsBkWindow(base_win.BaseWindow):
             q = evt.text.strip()
             self.onQuery(q)
         self.editorWin.addNamedListener('PressEnter', onPressEnter, None)
-        self.editorWin.addNamedListener('DbClick', self.onDbClickEditor, None)
         self.tableWin.addNamedListener('DbClick', self.onDbClickTable)
         self.tableWin.addNamedListener('ContextMenu', self.onContextMenu)
+        self.initTip()
 
     def onShowKLine(self, evt, args):
         if not self.bkCode:
@@ -204,7 +204,7 @@ class ClsBkWindow(base_win.BaseWindow):
         if not self.bkCode:
             return
         win = timeline.SimpleTTimelineWindow()
-        rc2 = (0, 100, 1500, 500)
+        rc2 = (0, 100, 1250, 500)
         win.createWindow(self.hwnd, rc2, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
         win.load(self.bkCode, None)
 
@@ -245,11 +245,11 @@ class ClsBkWindow(base_win.BaseWindow):
             bk = mb.group(0)
             self.updateBk(bk)
 
-    def onDbClickEditor(self, evt, args):
+    def initTip(self):
         model = [
-            {'title': '合成生物  cls82475'},
+            {'title': '* 合成生物  cls82475'},
+            {'title': '* 细胞治疗  cls82519'},
             {'title': '染料涂料  cls80068'},
-            {'title': '细胞治疗  cls82519'},
             {'title': '低空经济  cls82437'},
             {'title': '固态电池  cls81936'},
             {'title': 'LINE'},
@@ -258,14 +258,7 @@ class ClsBkWindow(base_win.BaseWindow):
             #{'title': '智能驾驶  cls80233'},
             #{'title': '高速连接器  cls82502'},
         ]
-        def onSelMenu(evt, args):
-            self.editorWin.setText(evt.item['title'])
-            self.editorWin.invalidWindow()
-            self.onQuery(evt.item['title'])
-        menu = base_win.PopupMenuHelper.create(self.editorWin.hwnd, model)
-        menu.addNamedListener('Select', onSelMenu)
-        menu.minItemWidth = self.editorWin.getClientSize()[0]
-        menu.show()
+        self.editorWin.setPopupTip(model)
 
     def industryChecked(self, evt, args):
         if not self.model:

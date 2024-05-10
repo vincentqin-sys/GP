@@ -1,11 +1,14 @@
+from win32.lib.win32con import WS_CHILD, WS_VISIBLE
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os, json, copy
 from multiprocessing import Process
 from multiprocessing.shared_memory import SharedMemory
+import system_hotkey #pip install system_hotkey
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import hot_utils, hot_win_small, ths_win, hot_win
 from db import ths_orm
+from Common import base_win
 
 curCode = None
 thsWindow = ths_win.ThsWindow()
@@ -140,6 +143,8 @@ def subprocess_main():
     codeBasicWindow.createWindow(thsWindow.topHwnd)
     hotWindow.addListener(onListen, 'ListenHotWindow')
     threading.Thread(target = _workThread, args=(thsWindow, 'hot-win32.json')).start()
+    
+    sysMarkWin = MarkWin()
     win32gui.PumpMessages()
     print('Quit Sub Process')
 
@@ -165,6 +170,18 @@ def listen_ThsFuPing_Process():
         p.start()
         print('start a new sub process(FU PING), pid=', p.pid)
         p.join()
+
+class MarkWin:
+    def __init__(self) -> None:
+        self.reg()
+    
+    def doHotKey(self, args):
+        d = thsShareMem.readSelDay()
+        thsShareMem.writeMarkDay(d)
+    
+    def reg(self):
+        hk = system_hotkey.SystemHotkey()
+        hk.register(('control', 'alt', 'm'), callback = self.doHotKey, overwrite = True)
 
 if __name__ == '__main__':
     tsm = ths_win.ThsShareMemory(True)

@@ -53,18 +53,24 @@ class HotWindow(base_win.BaseWindow):
         
         data = None
         drawOnDay = None
-        if self.dataType == 'LHB' and self.lhbData:
+        if self.dataType == 'LHB':
             data = self.lhbData
             drawOnDay = self.drawOnDay_LHB
-        elif self.dataType == 'LS_INFO' and self.lsInfoData:
+            title = '【龙虎榜】'
+        elif self.dataType == 'LS_INFO':
             data = self.lsInfoData
             drawOnDay = self.drawOnDay_LS
-        elif self.dataType == 'DDLR' and self.ddlrData:
+            title = '【两市成交信息】'
+        elif self.dataType == 'DDLR':
             ITEM_WIDTH = 80
             data = self.ddlrData
             drawOnDay = self.drawOnDay_DDLR
-        
-        self.drawer.fillRect(hdc, (0, 0, W, TITLE_HEIGHT), 0x1d201d)
+            title = '【大单流入】'
+        TITLE_BG_COLOR = 0x1d201d
+        self.drawer.fillRect(hdc, (0, 0, W, TITLE_HEIGHT), TITLE_BG_COLOR)
+        # draw name
+        rc = (0, 5, 120, TITLE_HEIGHT)
+        self.drawer.drawText(hdc, title, rc, 0x00dddd, align = win32con.DT_LEFT)
         rg = self.findDrawDaysIndex(self.tradeDays, ITEM_WIDTH)
         if not data or not rg or rg[1] == rg[0]:
             return
@@ -77,7 +83,8 @@ class HotWindow(base_win.BaseWindow):
             if day == self.selectDay:
                 self.drawer.fillRect(hdc, rc, 0x202020)
             self.drawer.drawLine(hdc, rc[2], 0, rc[2], H, 0x303030, win32con.PS_DASHDOTDOT)
-            self.drawer.drawText(hdc, day[5 : ], (sx, 0, sx + ITEM_WIDTH, TITLE_HEIGHT), 0xb0b0b0, win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+            if i != rg[0]:
+                self.drawer.drawText(hdc, day[5 : ], (sx, 0, sx + ITEM_WIDTH, TITLE_HEIGHT), 0xb0b0b0, win32con.DT_CENTER | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
             cur = data.get(day, None)
             if cur: drawOnDay(hdc, rc, cur, rg)
             sx += ITEM_WIDTH
@@ -137,7 +144,6 @@ class HotWindow(base_win.BaseWindow):
 
         self.drawer.use(hdc, self.drawer.getFont(fontSize = 14))
         self.drawer.drawText(hdc, f'{data["total"] :.1f}亿', (rc[0], rc[3] - TAIL + 10, rc[2], rc[3]), color = 0xd0d0d0)
-
 
     # format day (int, str(8), str(10)) to YYYY-MM-DD
     def formatDay(self, day):

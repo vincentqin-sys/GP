@@ -2050,6 +2050,7 @@ class Editor(BaseEditor):
         hdc = win32gui.GetDC(self.hwnd)
         self.drawer.use(hdc, self.getDefFont())
         W, H = self.getClientSize()
+        W -= self.css['paddings'][2]
         stw, *_ = win32gui.GetTextExtentPoint32(hdc, self.text[0 : pos])
         px = self.scrollX + stw + self.paddingX
         if px < self.paddingX:
@@ -2168,8 +2169,8 @@ class Editor(BaseEditor):
             ex = self.getXAtPos(self.selRange[1])
             src = (sx, y - 2, ex, y + lh + 2)
             self.drawer.fillRect(hdc, src, self.css['selBgColor'])
-        rc = (self.scrollX + self.paddingX, y, W, y + lh)
-        self.drawer.drawText(hdc, self.text, rc, color=self.css['textColor'], align=win32con.DT_LEFT)
+        rc = (self.scrollX + self.paddingX, y, W - self.css['paddings'][2], y + lh)
+        self.drawer.drawText(hdc, self.text, rc, color=self.css['textColor'], align = win32con.DT_LEFT)
 
     def _showPopupTip(self):
         if not self.popupTipModel:
@@ -2177,7 +2178,7 @@ class Editor(BaseEditor):
         def onCc(evt, args):
             self.setText(evt.item['title'])
             self.invalidWindow()
-            newEvt = self.Event('SelectPopupTip', self, **evt.item)
+            newEvt = self.Event('PressEnter', self, text = evt.item['title'], **evt.item)
             self.notifyListener(newEvt)
         menu = PopupMenuHelper.create(self.hwnd, self.popupTipModel)
         menu.addNamedListener('Select', onCc)
@@ -2810,6 +2811,36 @@ class MutiEditor(BaseEditor):
         self.setCaretPos(rc[0], rc[1])
         super().onSetFocus()
 
+class ComboBox(Editor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.css['paddings'] = (0, 0, 20, 0)
+
+    def onDraw(self, hdc):
+        super().onDraw(hdc)
+        W, H = self.getClientSize()
+        rc = (W - self.css['paddings'][2], 1, W - 1, H - 1)
+        self.drawer.fillRect(hdc, rc, 0xDEC4B0)
+        CW = 6
+        x = (rc[2] - rc[0] - CW) // 2 + rc[0]
+        y = (rc[3] - rc[1] - CW) // 2 + rc[1]
+        pts = [(x, y), (x + CW, y), (x + CW // 2, y + CW)]
+        ARROW_COLOR = 0xFF901E
+        self.drawer.use(hdc, self.drawer.getPen(ARROW_COLOR))
+        self.drawer.use(hdc, self.drawer.getBrush(ARROW_COLOR))
+        win32gui.Polygon(hdc, pts)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONDOWN or msg == win32con.WM_LBUTTONUP:
+            W, H = self.getClientSize()
+            x = lParam & 0xffff
+            if x >= W - self.css['paddings'][2]:
+                if msg == win32con.WM_LBUTTONUP:
+                    self._showPopupTip()
+                return True
+            # no return
+        return super().winProc(hwnd, msg, wParam, lParam)
+
 def testGridLayout():
     class TestMain(BaseWindow):
         def __init__(self, gl) -> None:
@@ -2883,6 +2914,7 @@ if __name__ == '__main__':
     editor1 = Editor()
     editor1.createWindow(label.hwnd, (20, 20, 200, 30))
 
-    editor2 = Editor()
+    editor2 = ComboBox()
+    editor2.setPopupTip([{'title': 'AAAAA'}, {'title': 'BBBBB'}])
     editor2.createWindow(label.hwnd, (20, 80, 200, 30))
     win32gui.PumpMessages()

@@ -208,12 +208,14 @@ class ThsSmallF10Window:
 class ThsShareMemory:
     POS_CODE = 0
     POS_SEL_DAY = 1
+    POS_MARK_DAY = 2
+
+    _thread = None
 
     def __init__(self, create : bool = False) -> None:
         self.create = create
         self.listeners = []
         self.shm = None
-        self.thread = None
 
     @classmethod
     def instance(cls):
@@ -255,15 +257,16 @@ class ThsShareMemory:
             return
         try:
             if self.create:
-                self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', True, size = 512)
+                SZ = 512
+                self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', True, size = SZ)
                 buf = self.shm.buf.cast('i')
-                buf[self.POS_CODE] = 0
-                buf[self.POS_SEL_DAY] = 0
+                for i in range(SZ // 4):
+                    buf[i] = 0
             else:
                 self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', False)
-            if not self.thread:
-                self.thread = threading.Thread(target = self.onListenThread, daemon = True)
-                self.thread.start()
+            if not ThsShareMemory._thread:
+                ThsShareMemory._thread = threading.Thread(target = self.onListenThread, daemon = True)
+                ThsShareMemory._thread.start()
         except Exception as e:
             print('ths_win.ThsShareMemory.open exception: ', e)
 
@@ -286,20 +289,33 @@ class ThsShareMemory:
         return code
     
     def writeSelDay(self, day):
+        self._writeDay(day, self.POS_SEL_DAY)
+
+    # return int
+    def readSelDay(self):
+        return self._readDay(self.POS_SEL_DAY)
+    
+    def writeMarkDay(self, day):
+        self._writeDay(day, self.POS_MARK_DAY)
+        
+    # return int
+    def readMarkDay(self):
+        return self._readDay(self.POS_MARK_DAY)
+    
+    def _writeDay(self, day, pos):
         if not day or not self.shm:
             return
         if type(day) == str:
             day = day.replace('-', '')
             day = int(day)
         buf = self.shm.buf.cast('i')
-        buf[self.POS_SEL_DAY] = day
+        buf[pos] = day
 
-    # return int
-    def readSelDay(self):
+    def _readDay(self, pos):
         if not self.shm:
-            return
+            return 0
         buf = self.shm.buf.cast('i')
-        day = buf[self.POS_SEL_DAY]
+        day = buf[pos]
         return day
 
     def close(self):

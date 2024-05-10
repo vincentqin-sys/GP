@@ -570,7 +570,7 @@ class THS_ZTCardView(KPLCardView):
 class SimpleWindow(CardWindow):
     # type_ is 'HOT' | 'ZT_GN'
     def __init__(self, type_) -> None:
-        super().__init__((380, 230), (380, 30))
+        super().__init__((380, 230), (180, 30))
         self.curCode = None
         self.selectDay = 0
         self.zsCardView = None

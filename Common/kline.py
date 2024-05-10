@@ -7,6 +7,7 @@ from db import ths_orm, tdx_orm, tck_orm
 from Tdx import datafile
 from Download import henxin, cls
 from Common import base_win, ext_win
+from THS import ths_win
 
 class KLineModel_Tdx(datafile.DataFile):
     def __init__(self, code):
@@ -198,14 +199,17 @@ class KLineIndicator(Indicator):
             return
         self.drawBackground(hdc, pens, hbrs)
         self.drawKLines(hdc, pens, hbrs)
-        self.drawMarkDay(hdc, pens, hbrs)
+        self.drawMarkDay(self.markDay, hdc, pens, hbrs)
+        sm = ths_win.ThsShareMemory.instance()
+        if sm.readMarkDay() != 0:
+            self.drawMarkDay(sm.readMarkDay(), hdc, pens, hbrs)
         self.drawMA(hdc, 5)
         self.drawMA(hdc, 10)
     
-    def drawMarkDay(self, hdc, pens, hbrs):
-        if not self.markDay or not self.klineWin.model or not self.visibleRange:
+    def drawMarkDay(self, markDay, hdc, pens, hbrs):
+        if not markDay or not self.klineWin.model or not self.visibleRange:
             return
-        idx = self.klineWin.model.getItemIdx(self.markDay)
+        idx = self.klineWin.model.getItemIdx(markDay)
         if idx < 0:
             return
         if idx < self.visibleRange[0] or idx >= self.visibleRange[1]:
@@ -1570,6 +1574,8 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.codeList = codes
 
 if __name__ == '__main__':
+    sm = ths_win.ThsShareMemory.instance()
+    sm.open()
     win = KLineCodeWindow()
     win.addIndicator('rate amount')
     win.addIndicator(DayIndicator({'height': 20}))
