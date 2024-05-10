@@ -70,6 +70,7 @@ def autoLoadTop200Data():
         print('Exception: ', e)
         pass
     ddWin.closeDDLJ()
+    thsWin.minisize()
     thsWin.close()
     fd.close()
     print(f'Load success {successTimes}, total {total}')

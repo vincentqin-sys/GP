@@ -34,6 +34,9 @@ class THS_Window:
         win32gui.EnumWindows(THS_Window.cb, self)
         return self.hwnd
 
+    def minisize(self):
+        win32gui.ShowWindow(self.hwnd, win32con.SW_MINIMIZE)
+
 # 同花顺大单的窗口
 class THS_DDWindow:
     def __init__(self) -> None:
