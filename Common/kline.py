@@ -1520,7 +1520,7 @@ class KLineCodeWindow(base_win.BaseWindow):
 
     def _getCode(self, d):
         if type(d) == dict:
-            return d.get('code', None)
+            return d.get('code', None) or d.get('secu_code', None)
         if type(d) == str:
             return d
         if type(d) == int:

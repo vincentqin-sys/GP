@@ -66,7 +66,7 @@ def openKlineMinutes_DDLR(evt, parent : base_win.BaseWindow):
 def openKlineMinutes_Simple(evt, parent : base_win.BaseWindow):
     if evt.name != 'DbClick':
         return
-    win = timeline.SimpleTTimelineWindow()
+    win = timeline.SimpleTimelineWindow()
     rc = win32gui.GetWindowRect(parent.hwnd)
     rc2 = (rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1])
     win.createWindow(parent.hwnd, rc2, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)

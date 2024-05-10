@@ -546,7 +546,7 @@ class SimpleTimelineModel:
         self.amountRange = (0, maxVol)
         return self.amountRange
 
-class SimpleTTimelineWindow(base_win.BaseWindow):
+class SimpleTimelineWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.model = None
@@ -626,7 +626,9 @@ class SimpleTTimelineWindow(base_win.BaseWindow):
             y = self.getYAtPrice(price, H)
             style = win32con.PS_SOLID if i % 2 == 0 else win32con.PS_DOT
             psWidth = 2 if i == len(ps) - 1 else 1
-            self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, 0x36332E, style = style, width = psWidth)
+            if i == 2: lc = 0x66B2FF
+            else: lc = 0x36332E
+            self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, lc, style = style, width = psWidth)
             #p1 = f'{price / 100 :.02f}'
             color = 0x0000ff if price >= self.model.pre else 0x00ff00
             #rc = (self.leftPriceRect[0], y - 8, self.leftPriceRect[2]- 5, y + 8)
@@ -739,7 +741,7 @@ class SimpleTTimelineWindow(base_win.BaseWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
     
 if __name__ == '__main__':
-    win = SimpleTTimelineWindow()
+    win = SimpleTimelineWindow()
     win.createWindow(None, (100, 100, 1200, 600), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
     #win.load('002085', None)

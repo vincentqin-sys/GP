@@ -203,8 +203,8 @@ class ClsBkWindow(base_win.BaseWindow):
     def onShowFS(self, evt, args):
         if not self.bkCode:
             return
-        win = timeline.SimpleTTimelineWindow()
-        rc2 = (0, 100, 1250, 500)
+        win = timeline.SimpleTimelineWindow()
+        rc2 = (0, 100, 1250, 600)
         win.createWindow(self.hwnd, rc2, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
         win.load(self.bkCode, None)
 
@@ -231,7 +231,8 @@ class ClsBkWindow(base_win.BaseWindow):
         if self.checkBox.isChecked():
             kline_utils.openInThsWindow(rdata)
         else:
-            kline_utils.openInCurWindow_Code(self, rdata)
+            win = kline_utils.openInCurWindow_Code(self, rdata)
+            win.setCodeList(evt.model)
 
     def onQuery(self, text):
         text = text.strip()
