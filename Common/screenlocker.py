@@ -22,7 +22,7 @@ class ScreenLocker(base_win.BaseWindow):
 
     def onChar(self, keyCode):
         if keyCode == win32con.VK_RETURN:
-            if self.keys == 'gaoyan2012':
+            if 'gaoyan2012' in self.keys or 'gaoyan' in self.keys:
                 self.unlock()
             self.keys = ''
             self.invalidWindow()
@@ -67,9 +67,10 @@ class ScreenLocker(base_win.BaseWindow):
         x = (W - CW) // 2
         y = (H - CH) // 2
         rc = (x, y, x + CW, y + CH)
-        self.drawer.fillRect(hdc, rc, 0x202020)
-        if win32gui.GetFocus() == self.hwnd:
-            self.drawer.drawRect(hdc, rc, 0x66B2FF)
+        #self.drawer.fillRect(hdc, rc, 0x202020)
+        focusColor = 0x66B2FF if win32gui.GetFocus() == self.hwnd else 0x303030
+        self.drawer.drawLine(hdc, rc[0], rc[3], rc[2], rc[3], color = focusColor)
+            
         txt = '*' * len(self.keys)
         self.drawer.use(hdc, self.drawer.getFont(fontSize = 20))
         self.drawer.drawText(hdc, txt, rc, 0x0C95CD, align = win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
@@ -163,4 +164,5 @@ if __name__ == '__main__':
     #locker.lock()
     win32gui.PumpMessages()
 
-    # pyinstaller.exe -F -w screenlocker.py base_win.py   生成无cmd窗口的exe程序
+    # 生成无cmd窗口的exe程序
+    # cd Common; pyinstaller.exe -F -w screenlocker.py base_win.py   
