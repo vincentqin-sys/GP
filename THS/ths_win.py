@@ -212,10 +212,11 @@ class ThsShareMemory:
 
     _thread = None
 
-    def __init__(self, create : bool = False) -> None:
+    def __init__(self, create : bool = False, name = 'Ths-Share-window-Memory') -> None:
         self.create = create
         self.listeners = []
         self.shm = None
+        self._name = name
 
     @classmethod
     def instance(cls):
@@ -258,12 +259,12 @@ class ThsShareMemory:
         try:
             if self.create:
                 SZ = 512
-                self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', True, size = SZ)
+                self.shm = shared_memory.SharedMemory(self._name, True, size = SZ)
                 buf = self.shm.buf.cast('i')
                 for i in range(SZ // 4):
                     buf[i] = 0
             else:
-                self.shm = shared_memory.SharedMemory('Ths-Share-window-Memory', False)
+                self.shm = shared_memory.SharedMemory(self._name, False)
             if not ThsShareMemory._thread:
                 ThsShareMemory._thread = threading.Thread(target = self.onListenThread, daemon = True)
                 ThsShareMemory._thread.start()
@@ -317,6 +318,19 @@ class ThsShareMemory:
         buf = self.shm.buf.cast('i')
         day = buf[pos]
         return day
+
+    def writeIntData(self, data, pos):
+        if not self.shm:
+            return
+        buf = self.shm.buf.cast('i')
+        buf[pos] = data
+
+    def readIntData(self, pos):
+        if not self.shm:
+            return 0
+        buf = self.shm.buf.cast('i')
+        data = buf[pos]
+        return data
 
     def close(self):
         if not self.shm:

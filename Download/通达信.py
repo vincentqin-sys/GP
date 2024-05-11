@@ -2,6 +2,7 @@ import sys, os, pyautogui, win32gui, win32con, time, datetime
 import io, psutil, subprocess, win32process, win32event, win32api, winerror
 from pywinauto.controls.common_controls import DateTimePickerWrapper # pip install pywinauto
 import peewee as pw
+from multiprocessing import shared_memory # python 3.8+
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
@@ -321,6 +322,18 @@ class TdxDownloader:
         self.startDownloadForTimeMinute()
         self.killProcess()
 
+def unlockScreen():
+    try:
+        shm = shared_memory.SharedMemory('PY_Screen_Locker', False)
+        buf = shm.buf.cast('i')
+        buf[0] = win32api.GetTickCount() + 60 * 1000 * 60
+        buf[1] = 200
+        time.sleep(10)
+    except Exception as e:
+        #import traceback
+        #traceback.print_exc()
+        pass
+
 def work():
     tm = datetime.datetime.now()
     ss = tm.strftime('%Y-%m-%d %H:%M')
@@ -414,7 +427,7 @@ def autoMain():
             time.sleep(60 * 60)
             continue
         ts = f"{today.hour:02d}:{today.minute:02d}"
-        if ts < '18:05':
+        if ts < '21:05':
             time.sleep(3 * 60)
             continue
         lock = getDesktopGUILock()
@@ -427,4 +440,7 @@ def autoMain():
 
 if __name__ == '__main__':
     #work() # run one time
+    time.sleep(20)
+    unlockScreen()
+    time.sleep(100)
     autoMain()

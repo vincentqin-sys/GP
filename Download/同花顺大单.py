@@ -1,6 +1,7 @@
 import peewee as pw
 from peewee import fn
 import os, json, time, sys, pyautogui, io, datetime, win32api, win32event, winerror, traceback
+from multiprocessing import shared_memory # python 3.8+
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm
@@ -87,10 +88,23 @@ def checkLoadFinised():
         print('Fails :', fails)
     return len(cs) == 0
 
+def unlockScreen():
+    try:
+        shm = shared_memory.SharedMemory('PY_Screen_Locker', False)
+        buf = shm.buf.cast('i')
+        buf[0] = win32api.GetTickCount() + 60 * 60 * 1000
+        buf[1] = 200
+        time.sleep(10)
+    except Exception as e:
+        #import traceback
+        #traceback.print_exc()
+        pass
+
 def runOneTime():
     # check is finished
     if checkLoadFinised():
         return True
+    unlockScreen()
     pyautogui.hotkey('win', 'd')
     autoLoadTop200Data()
     print('\n')
@@ -161,7 +175,7 @@ def main():
             time.sleep(60 * 60)
             continue
         st = today.strftime('%H:%M')
-        if (st < '18:00' ):
+        if (st < '21:00' ):
             time.sleep(5 * 60)
             continue
         lock = getDesktopGUILock()
