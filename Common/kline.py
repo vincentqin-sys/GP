@@ -40,6 +40,15 @@ class Indicator:
         self.width = 0
         self.height = 0
 
+    def getSimpleStrCode(self, code):
+        if code == None:
+            return None
+        if type(code) == int:
+            return f'{code :06d}'
+        if len(code) == 8 and (code[0 : 2] == 'sh' or code[0 : 2] == 'sz'):
+            return code[2 : ]
+        return code
+
     def init(self, klineWin):
         self.klineWin = klineWin
 
@@ -608,7 +617,8 @@ class DdlrIndicator(CustomIndicator):
         if not data:
             self.setCustomData(None)
             return
-        ddlr = ths_orm.THS_DDLR.select().where(ths_orm.THS_DDLR.code == self.klineWin.model.code).order_by(ths_orm.THS_DDLR.day.asc()).dicts()
+        code = self.getSimpleStrCode(self.klineWin.model.code)
+        ddlr = ths_orm.THS_DDLR.select().where(ths_orm.THS_DDLR.code == code).order_by(ths_orm.THS_DDLR.day.asc()).dicts()
         maps = {}
         for d in ddlr:
             d['in'] = d['activeIn'] + d['positiveIn']
@@ -708,7 +718,8 @@ class DdlrPmIndicator(CustomIndicator):
             return
         rs = []
         maps = {}
-        qr = tdx_orm.TdxVolPMModel.select().where(tdx_orm.TdxVolPMModel.code == self.klineWin.model.code).order_by(tdx_orm.TdxVolPMModel.day.asc()).dicts()
+        code = self.getSimpleStrCode(self.klineWin.model.code)
+        qr = tdx_orm.TdxVolPMModel.select().where(tdx_orm.TdxVolPMModel.code == code).order_by(tdx_orm.TdxVolPMModel.day.asc()).dicts()
         maps = {}
         for d in qr:
             maps[int(d['day'])] = d
@@ -741,10 +752,11 @@ class HotIndicator(CustomIndicator):
     def setData(self, data):
         super().setData(data)
         model = self.klineWin.model
-        if not model or not model.code or (type(model.code) == str and len(model.code) != 6):
+        code = self.getSimpleStrCode(model.code)
+        if not model or not model.code or (type(code) == str and len(code) != 6):
             self.setCustomData(None)
             return
-        hots = ths_orm.THS_HotZH.select().where(ths_orm.THS_HotZH.code == int(model.code)).order_by(ths_orm.THS_HotZH.day.asc()).dicts()
+        hots = ths_orm.THS_HotZH.select().where(ths_orm.THS_HotZH.code == int(code)).order_by(ths_orm.THS_HotZH.day.asc()).dicts()
         maps = {}
         for d in hots:
             maps[d['day']] = d
@@ -807,7 +819,8 @@ class ThsZsPMIndicator(CustomIndicator):
         if not self.klineWin.model:
             self.setCustomData(None)
             return
-        hots = ths_orm.THS_ZS_ZD.select().where(ths_orm.THS_ZS_ZD.code == self.klineWin.model.code).order_by(ths_orm.THS_ZS_ZD.day.asc()).dicts()
+        code = self.getSimpleStrCode(self.klineWin.model.code)
+        hots = ths_orm.THS_ZS_ZD.select().where(ths_orm.THS_ZS_ZD.code == code).order_by(ths_orm.THS_ZS_ZD.day.asc()).dicts()
         maps = {}
         for d in hots:
             day = d['day'].replace('-', '')
@@ -858,7 +871,8 @@ class TckIndicator(CustomIndicator):
         if not self.klineWin.model:
             self.setCustomData(None)
             return
-        hots = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.code == self.klineWin.model.code).order_by(tck_orm.THS_ZT.day.asc()).dicts()
+        code = self.getSimpleStrCode(self.klineWin.model.code)
+        hots = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.code == code).order_by(tck_orm.THS_ZT.day.asc()).dicts()
         maps = {}
         for d in hots:
             day = d['day'].replace('-', '')

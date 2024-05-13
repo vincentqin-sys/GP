@@ -35,15 +35,14 @@ class ScreenLocker(base_win.BaseWindow):
             return True
         if msg == win32con.WM_SHOWWINDOW:
             if wParam == True:
-                win32gui.SetForegroundWindow(self.hwnd)
                 win32gui.SetFocus(self.hwnd)
+            return True
+        if msg == win32con.WM_LBUTTONDOWN or msg == win32con.WM_LBUTTONUP:
+            win32gui.SetFocus(self.hwnd)
             return True
         if msg == win32con.WM_CHAR:
             self.onChar(wParam)
             return True
-        if msg == win32con.WM_DESTROY:
-            # no quit
-            pass
         return super().winProc(hwnd, msg, wParam, lParam)
     
     def isLocked(self):
@@ -59,6 +58,10 @@ class ScreenLocker(base_win.BaseWindow):
             self.createWindow()
         win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOMOVE)
+        W, H = self.getClientSize()
+        win32api.SetCursorPos((W // 2, H // 2))
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
         self.invalidWindow()
 
     def onDraw(self, hdc):
@@ -81,7 +84,7 @@ class Main:
     LOCK_STATUS_IDX = 1
     LOCK_STATUS_LOCK = 100
     LOCK_STATUS_UNLOCK = 200
-    MAX_IDLE_TIME = 5 * 60
+    MAX_IDLE_TIME = 3 * 60
     
     def __init__(self, locker : ScreenLocker) -> None:
         self.locker = locker

@@ -44,6 +44,8 @@ def getMarkModel(enable):
         {'name': 'mark_3', 'title': '标记绿色', 'enable': enable, 'markValue': 3},
         {'name': 'mark_4', 'title': '标记紫色', 'enable': enable, 'markValue': 4},
         {'name': 'mark_5', 'title': '标记棕色', 'enable': enable, 'markValue': 5},
+        {'title': 'LINE'},
+        {'name': 'mark_6', 'title': '取消记标', 'enable': enable, 'markValue': 0},
     ]
     return model
 
