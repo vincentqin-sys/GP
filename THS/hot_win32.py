@@ -16,7 +16,7 @@ thsFPWindow = ths_win.ThsFuPingWindow()
 hotWindow = hot_win.HotWindow()
 simpleWindow = hot_win_small.SimpleWindow('HOT')
 simpleWindow2 = hot_win_small.SimpleWindow('ZT_GN')
-thsShareMem = ths_win.ThsShareMemory()
+thsShareMem = base_win.ThsShareMemory()
 simpleHotZHWindow = hot_win_small.SimpleHotZHWindow()
 codeBasicWindow = hot_win_small.CodeBasicWindow()
 
@@ -145,6 +145,7 @@ def subprocess_main():
     threading.Thread(target = _workThread, args=(thsWindow, 'hot-win32.json')).start()
     
     sysMarkWin = MarkWin()
+    sysMarkWin.createWindow(thsWindow.topHwnd)
     win32gui.PumpMessages()
     print('Quit Sub Process')
 
@@ -171,20 +172,51 @@ def listen_ThsFuPing_Process():
         print('start a new sub process(FU PING), pid=', p.pid)
         p.join()
 
-class MarkWin:
+class MarkWin(base_win.BaseWindow):
     def __init__(self) -> None:
+        super().__init__()
+        self.css['bgColor'] = 0xc0c0c0
         self.reg()
-    
-    def doHotKey(self, args):
+
+    def createWindow(self, parentWnd, rect = None, style= win32con.WS_POPUP, className='STATIC', title=''):
+        if not rect:
+            CW = 10
+            prc = win32gui.GetWindowRect(parentWnd)
+            rect = (0, prc[1] + 50, CW, prc[3] - prc[1] - 10)
+        super().createWindow(parentWnd, rect, style, className, title)
+        ce = win32gui.GetWindowLong(self.hwnd, win32con.GWL_EXSTYLE)
+        win32gui.SetWindowLong(self.hwnd, win32con.GWL_EXSTYLE, ce | win32con.WS_EX_LAYERED) #  | win32con.WS_EX_TRANSPARENT
+        win32gui.SetLayeredWindowAttributes(self.hwnd, self.css['bgColor'], 80, win32con.LWA_ALPHA)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONDOWN:
+            win32gui.SendMessage(hwnd, win32con.WM_NCLBUTTONDOWN, win32con.HTCAPTION, 0)
+            # no return
+        return super().winProc(hwnd, msg, wParam, lParam)
+
+    def show(self, x = None, y = None):
+        win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
+        prc = win32gui.GetWindowRect(thsWindow.topHwnd)
+        if x == None:
+            x = win32gui.GetCursorPos()[0]
+        if y == None:
+            y = prc[1] + 30
+        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, x, y, 0, 0, win32con.SWP_NOSIZE)
+
+    def hide(self):
+        win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+
+    def doMarkKey(self, args):
         d = thsShareMem.readSelDay()
         thsShareMem.writeMarkDay(d)
-    
+        self.show()
+
     def reg(self):
         hk = system_hotkey.SystemHotkey()
-        hk.register(('control', 'alt', 'm'), callback = self.doHotKey, overwrite = True)
+        hk.register(('control', 'alt', 'm'), callback = self.doMarkKey, overwrite = True)
 
 if __name__ == '__main__':
-    tsm = ths_win.ThsShareMemory(True)
+    tsm = base_win.ThsShareMemory(True)
     tsm.open()
     # listen ths fu ping
     #p = Process(target = listen_ThsFuPing_Process, daemon = False, name='hot_win32.py')

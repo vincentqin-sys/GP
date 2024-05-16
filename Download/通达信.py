@@ -316,11 +316,15 @@ class TdxDownloader:
             self.killProcess()
         pyautogui.hotkey('win', 'd')
         self.startProcess()
-        self.login()
-        self.openDownloadDialog()
-        self.startDownloadForDay()
-        self.startDownloadForTimeMinute()
+        try:
+            self.login()
+            self.openDownloadDialog()
+            self.startDownloadForDay()
+            self.startDownloadForTimeMinute()
+        except:
+            return False
         self.killProcess()
+        return True
 
 def unlockScreen():
     try:
@@ -328,6 +332,8 @@ def unlockScreen():
         buf = shm.buf.cast('i')
         buf[0] = win32api.GetTickCount() + 60 * 1000 * 60
         buf[1] = 200
+        buf.release()
+        shm.close()
         time.sleep(10)
     except Exception as e:
         #import traceback
@@ -335,21 +341,24 @@ def unlockScreen():
         pass
 
 def work():
+    unlockScreen()
+    time.sleep(10)
     tm = datetime.datetime.now()
     ss = tm.strftime('%Y-%m-%d %H:%M')
     print('\033[32m' + ss + '\033[0m')
     # 下载
     tdx = TdxDownloader()
-    tdx.run()
-    # 计算成交量排名
-    t = TdxVolPMTools()
-    t.calcVolOrder_Top100()
-    t.calcSHSZVol()
-    #计算两市行情信息
-    t = TdxLSTools()
-    t.calcInfo()
+    flag = tdx.run()
+    if flag:
+        # 计算成交量排名
+        t = TdxVolPMTools()
+        t.calcVolOrder_Top100()
+        t.calcSHSZVol()
+        #计算两市行情信息
+        t = TdxLSTools()
+        t.calcInfo()
     print('\n\n')
-    return True
+    return flag
 
 def getDesktopGUILock():
     LOCK_NAME = 'D:/__Desktop_GUI_Lock__'
@@ -440,7 +449,4 @@ def autoMain():
 
 if __name__ == '__main__':
     #work() # run one time
-    time.sleep(20)
-    unlockScreen()
-    time.sleep(100)
     autoMain()

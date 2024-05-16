@@ -3,26 +3,31 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import tdx_orm, ths_orm
+from db import tdx_orm, ths_orm, tck_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import ths_win
 from Common import base_win, timeline, kline
-import ddlr_detail
+import ddlr_detail, mark_utils
 
 thsWin = ths_win.ThsWindow.ins()
 
-class VolPMWindow(base_win.BaseWindow):
+MARK_KIND = 'vol-lb'
+
+class VolLBWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, 20, '1fr')
         dw = win32api.GetSystemMetrics (win32con.SM_CXFULLSCREEN)
-        self.colsNum = 5
+        self.colsNum = 3
         cols = ('1fr ' * self.colsNum).strip().split(' ')
         self.layout = base_win.GridLayout(rows, cols, (5, 10))
         self.listWins = []
         self.daysLabels = []
         self.checkBox = None
+        self.dfs = {}
+        self.lastDay = 0
+        self.codeNames = {}
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -36,11 +41,17 @@ class VolPMWindow(base_win.BaseWindow):
         self.layout.setContent(0, 0, absLayout)
         def formateFloat(colName, val, rowData):
             return f'{val :.02f}'
-        headers = [#{'title': '', 'width': 40, 'name': '#idx' },
-                   {'title': '代码', 'width': 70, 'name': 'code' },
-                   {'title': '股票名称', 'width': 0, 'stretch': 1, 'name': 'name' },
+        def formateFloat1(colName, val, rowData):
+            return f'{val :.01f}'
+        def formateZF(colName, val, rowData):
+            return f'{val :.02f}%'
+        headers = [{'title': '', 'width': 40, 'name': '#idx' },
+                   {'title': 'M', 'width': 20, 'name': 'markColor', 'render': mark_utils.markColorRender, 'sortable':True },
+                   {'title': '股票名称', 'width': 80, 'name': 'name', 'render': mark_utils.markRender},
+                   {'title': '行业', 'width': 0, 'name': 'hy', 'stretch': 1, 'render_': mark_utils.markRender, 'sortable':True},
                    {'title': '成交额', 'width': 70, 'name': 'amount', 'sortable':True, 'formater': formateFloat},
-                   {'title': '排名', 'width': 50, 'name': 'pm', 'sortable':True },
+                   {'title': '量比', 'width': 60, 'name': 'lb', 'sortable':True , 'formater': formateFloat1},
+                   {'title': '涨幅', 'width': 70, 'name': 'zf', 'sortable':True , 'formater': formateZF}
                    ]
         for i in range(len(self.layout.templateColumns)):
             win = base_win.TableWindow()
@@ -48,7 +59,8 @@ class VolPMWindow(base_win.BaseWindow):
             win.headers = headers
             self.layout.setContent(2, i, win)
             self.listWins.append(win)
-            lw = win32gui.CreateWindow('STATIC', '', win32con.WS_VISIBLE|win32con.WS_CHILD, 0, 0, 1, 1, self.hwnd, None, None, None)
+            lw = base_win.Label()
+            lw.createWindow(self.hwnd, (0, 0, 1, 1))
             self.daysLabels.append(lw)
             self.layout.setContent(1, i, lw)
             win.addListener(self.onDbClick, i)
@@ -67,9 +79,9 @@ class VolPMWindow(base_win.BaseWindow):
             return
         wdata = win.sortData or win.data
         code = wdata[win.selRow]['code']
-        model = [{'title': '关联选中'}]
+        model = mark_utils.getMarkModel(True)
         menu = base_win.PopupMenuHelper.create(self.hwnd, model)
-        menu.addListener(self.onMenuItemSelect, (tabIdx, code))
+        menu.addListener(self.onMenuItemSelect, (tabIdx, code, wdata[win.selRow]))
         x, y = win32gui.GetCursorPos()
         menu.show(x, y)
 
@@ -83,14 +95,12 @@ class VolPMWindow(base_win.BaseWindow):
     def onMenuItemSelect(self, evt, args):
         if evt.name != 'Select':
             return
-        tabIdx, code = args
-        for i, win in enumerate(self.listWins):
-            if i == tabIdx:
-                continue
-            idx = self.findIdx(win, code)
-            win.selRow = idx
-            win.showRow(idx)
-            win.invalidWindow()
+        tabIdx, code, rowData = args
+        win = self.listWins[tabIdx]
+        keys = {'kind' : MARK_KIND, 'code' : code, 'day': rowData['day']}
+        mark_utils.saveOneMark(keys, evt.item['markColor'], name = rowData['name'])
+        rowData['markColor'] = evt.item['markColor']
+        win.invalidWindow()
 
     def onDbClick(self, evt, idx):
         if evt.name != 'DbClick' and evt.name != 'RowEnter':
@@ -124,19 +134,78 @@ class VolPMWindow(base_win.BaseWindow):
             return
         self.updateDay(evt.day)
 
+    def loadOneCode(self, code, maxDay, dayNum, rs, names):
+        if code in self.dfs:
+            df = self.dfs[code]
+        else:
+            df = self.dfs[code] = datafile.DataFile(code, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
+        idx = df.getItemIdx(maxDay)
+        if idx < 0 or idx < dayNum * 2:
+            return
+        name = names.get(code, None)
+        for i in range(dayNum):
+            cur = df.data[idx - i]
+            pre = df.data[idx - 1 - i]
+
+            lb = cur.amount / pre.amount
+            a = cur.amount / 100000000 # 亿元
+            if a < 3.5 or lb < 1.5: # 量比1.5以上, 成交额3.5亿以上
+                continue
+            item = {}
+            item['code'] = code
+            if name:
+                item.update(name)
+            item['zf'] = (cur.close - pre.close) / pre.close * 100 # zhang fu
+            item['lb'] = lb
+            item['amount'] = a
+            item['day'] = f'{cur.day // 10000}-{cur.day // 100 % 100 :02d}-{cur.day % 100 :02d}'
+            if cur.day not in rs:
+                rs[cur.day] = []
+            rs[cur.day].append(item)
+
+    def loadAll(self, day):
+        if not self.codeNames:
+            ns = ths_orm.THS_GNTC.select(ths_orm.THS_GNTC.code, ths_orm.THS_GNTC.name, ths_orm.THS_GNTC.hy).tuples()
+            for n in ns:
+                self.codeNames[n[0]] = {'name': n[1], 'hy': n[2]}
+        days = datafile.DataFileUtils.calcDays(20230101)
+        codes = list(self.dfs.keys()) or datafile.DataFileUtils.listAllCodes()
+        if days[-1] != self.lastDay:
+            self.dfs.clear()
+            self.lastDay = days[-1]
+        for i in range(1, len(days)):
+            if days[i] == day:
+                break
+            if days[i] > day:
+                day = days[i - 1]
+                break
+        if day > days[-1]:
+            day = days[-1]
+        rs = {}
+        for c in codes:
+            self.loadOneCode(c, day, self.colsNum, rs, self.codeNames)
+        daysOrder = list(rs.keys())
+        daysOrder.sort(reverse = True)
+        daysOrder = daysOrder[0 : self.colsNum]
+        for i, d in enumerate(daysOrder):
+            cday = f'{d :d}'
+            datas = rs[d]
+            mark_utils.mergeMarks(datas, MARK_KIND, True)
+            self.listWins[i].setData(datas)
+            self.listWins[i].invalidWindow()
+            sday = cday[0 : 4] + '-' + cday[4 : 6] + '-' + cday[6 : ]
+            self.daysLabels[i].setText(sday)
+
     def updateDay(self, day):
         if type(day) == str:
             day = int(day.replace('-', ''))
-        q = tdx_orm.TdxVolPMModel.select(tdx_orm.TdxVolPMModel.day).distinct().where(tdx_orm.TdxVolPMModel.day <= day).order_by(tdx_orm.TdxVolPMModel.day.desc()).limit(self.colsNum).tuples()
-        for i, d in enumerate(q):
-            cday = d[0]
-            ds = tdx_orm.TdxVolPMModel.select().where(tdx_orm.TdxVolPMModel.day == cday)
-            datas = [d.__data__ for d in ds]
-            self.listWins[i].setData(datas)
+        for i in range(self.colsNum):
+            self.listWins[i].setData(None)
             self.listWins[i].invalidWindow()
-            cday = str(cday)
-            sday = cday[0 : 4] + '-' + cday[4 : 6] + '-' + cday[6 : ]
-            win32gui.SetWindowText(self.daysLabels[i], sday)
+            self.daysLabels[i].setText(None)
+
+        base_win.ThreadPool.start()
+        base_win.ThreadPool.addTask('TOP_VOL_LB', self.loadAll, day)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:
@@ -147,12 +216,7 @@ class VolPMWindow(base_win.BaseWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
     
 if __name__ == '__main__':
-    tab = base_win.TableWindow()
-    tab.createWindow(None, (0, 0, 400, 100), win32con.WS_OVERLAPPEDWINDOW)
-    tab.headers = [{'title': '', 'width': 40, 'name': '#idx' },
-                   {'title': '股票名称', 'width': 0, 'stretch': 1, 'name': 'name' },
-                   {'title': '净流入', 'width': 70, 'name': 'total' },
-                   {'title': '流入', 'width': 70, 'name': 'in'},
-                   {'title': '流出', 'width': 70, 'name': 'out'}]
+    tab = VolLBWindow()
+    tab.createWindow(None, (0, 0, 1500, 700), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(tab.hwnd, win32con.SW_SHOW)
     win32gui.PumpMessages()

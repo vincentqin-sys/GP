@@ -1,7 +1,6 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os
 from multiprocessing import Process
-from multiprocessing import shared_memory # python 3.8+
 from PIL import Image # pip install pillow
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
@@ -9,6 +8,7 @@ from THS import number_ocr
 from Common import base_win 
 
 class ThsWindow(base_win.BaseWindow):
+    _ins = None
 
     def __init__(self) -> None:
         super().__init__()
@@ -17,6 +17,12 @@ class ThsWindow(base_win.BaseWindow):
         self.level2CodeHwnd = None
         self.selDayHwnd = None
         self.ocr = number_ocr.NumberOCR()
+
+    @classmethod
+    def ins(clazz):
+        if not clazz._ins:
+            clazz._ins = ThsWindow()
+        return clazz._ins
 
     def getPageName(self):
         if not self.topHwnd:
@@ -204,140 +210,3 @@ class ThsSmallF10Window:
         if not hwnd:
             return
         win32gui.SetWindowPos(hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
-
-class ThsShareMemory:
-    POS_CODE = 0
-    POS_SEL_DAY = 1
-    POS_MARK_DAY = 2
-
-    _thread = None
-
-    def __init__(self, create : bool = False, name = 'Ths-Share-window-Memory') -> None:
-        self.create = create
-        self.listeners = []
-        self.shm = None
-        self._name = name
-
-    @classmethod
-    def instance(cls):
-        ins = getattr(cls, '_ins_', None)
-        if not ins:
-            ins = ThsShareMemory()
-            setattr(cls, '_ins_', ins)
-        return ins
-
-    # func = function(code, day)
-    def addListener(self, name, func):
-        if not name or not func:
-            return
-        for lt in self.listeners:
-            if lt['name'] == name:
-                return
-        self.listeners.append({'name' : name, 'func' : func})
-
-    def notifyListener(self, curCode, curDay):
-        for ls in self.listeners:
-            func = ls['func']
-            func(curCode, curDay)
-
-    def onListenThread(self):
-        curDay, curCode = 0, 0
-        while True:
-            time.sleep(0.5)
-            day = self.readSelDay()
-            code = self.readCode()
-            if day == 0 or code == 0:
-                continue
-            if day != curDay or code != curCode:
-                curDay = day
-                curCode = code
-                self.notifyListener(curCode, curDay)
-
-    def open(self):
-        if self.shm:
-            return
-        try:
-            if self.create:
-                SZ = 512
-                self.shm = shared_memory.SharedMemory(self._name, True, size = SZ)
-                buf = self.shm.buf.cast('i')
-                for i in range(SZ // 4):
-                    buf[i] = 0
-            else:
-                self.shm = shared_memory.SharedMemory(self._name, False)
-            if not ThsShareMemory._thread:
-                ThsShareMemory._thread = threading.Thread(target = self.onListenThread, daemon = True)
-                ThsShareMemory._thread.start()
-        except Exception as e:
-            print('ths_win.ThsShareMemory.open exception: ', e)
-
-    def writeCode(self, code):
-        if not self.shm:
-            return
-        try:
-            code = int(code)
-        except:
-            return
-        buf = self.shm.buf.cast('i')
-        buf[self.POS_CODE] = code
-
-    # return int
-    def readCode(self):
-        if not self.shm:
-            return
-        buf = self.shm.buf.cast('i')
-        code = buf[0]
-        return code
-    
-    def writeSelDay(self, day):
-        self._writeDay(day, self.POS_SEL_DAY)
-
-    # return int
-    def readSelDay(self):
-        return self._readDay(self.POS_SEL_DAY)
-    
-    def writeMarkDay(self, day):
-        self._writeDay(day, self.POS_MARK_DAY)
-        
-    # return int
-    def readMarkDay(self):
-        return self._readDay(self.POS_MARK_DAY)
-    
-    def _writeDay(self, day, pos):
-        if not day or not self.shm:
-            return
-        if type(day) == str:
-            day = day.replace('-', '')
-            day = int(day)
-        buf = self.shm.buf.cast('i')
-        buf[pos] = day
-
-    def _readDay(self, pos):
-        if not self.shm:
-            return 0
-        buf = self.shm.buf.cast('i')
-        day = buf[pos]
-        return day
-
-    def writeIntData(self, data, pos):
-        if not self.shm:
-            return
-        buf = self.shm.buf.cast('i')
-        buf[pos] = data
-
-    def readIntData(self, pos):
-        if not self.shm:
-            return 0
-        buf = self.shm.buf.cast('i')
-        data = buf[pos]
-        return data
-
-    def close(self):
-        if not self.shm:
-            return
-        self.shm.close()
-
-    def unlink(self):
-        if not self.shm:
-            return
-        self.shm.unlink()

@@ -1,6 +1,7 @@
 import win32gui, win32con , win32api, win32ui, win32gui_struct, win32clipboard # pip install pywin32
 import threading, time, datetime, sys, os, copy, calendar, functools
 import pyperclip # pip install pyperclip
+from multiprocessing import shared_memory # python 3.8+
 
 class Listener:
     class Event:
@@ -942,7 +943,9 @@ class TableWindow(BaseWindow):
         if colName == '#idx':
             return row + 1
         if row >= 0 and row < len(datas):
-            return datas[row].get(colName, None)
+            if isinstance(datas[row], dict):
+                return datas[row].get(colName, None)
+            return getattr(datas[row], colName, None)
         return None
 
     def getColumnWidth(self, colIdx, colName):
@@ -1209,7 +1212,7 @@ class TableWindow(BaseWindow):
                     return header['sorter'](hdn, rowData.get(hdn, None), rowData, self.data, state == 'ASC')
                 self.sortData = sorted(self.data, key = keyn, reverse = reverse)
             else:
-                self.sortData = sorted(self.data, key = lambda d: d.get(header['name'], ''), reverse = reverse)
+                self.sortData = sorted(self.data, key = lambda d: d.get(header['name'], '') if isinstance(d, dict) else getattr(d, header['name'], None), reverse = reverse)
         else:
             self.sortData = None
 
@@ -2840,6 +2843,150 @@ class ComboBox(Editor):
                 return True
             # no return
         return super().winProc(hwnd, msg, wParam, lParam)
+
+class ThsShareMemory:
+    POS_CODE = 0
+    POS_SEL_DAY = 1
+    POS_MARK_DAY = 2
+
+    _thread = None
+
+    def __init__(self, create : bool = False, name = 'Ths-Share-window-Memory') -> None:
+        self.create = create
+        self.listeners = []
+        self.shm = None
+        self._name = name
+
+    @classmethod
+    def instance(cls):
+        ins = getattr(cls, '_ins_', None)
+        if not ins:
+            ins = ThsShareMemory()
+            setattr(cls, '_ins_', ins)
+        return ins
+
+    # func = function(code, day)
+    def addListener(self, name, func):
+        if not name or not func:
+            return
+        for lt in self.listeners:
+            if lt['name'] == name:
+                return
+        self.listeners.append({'name' : name, 'func' : func})
+
+    def notifyListener(self, curCode, curDay):
+        for ls in self.listeners:
+            func = ls['func']
+            func(curCode, curDay)
+
+    def onListenThread(self):
+        curDay, curCode = 0, 0
+        while True:
+            time.sleep(0.5)
+            day = self.readSelDay()
+            code = self.readCode()
+            if day == 0 or code == 0:
+                continue
+            if day != curDay or code != curCode:
+                curDay = day
+                curCode = code
+                self.notifyListener(curCode, curDay)
+
+    def open(self):
+        if self.shm:
+            return
+        try:
+            if self.create:
+                SZ = 512
+                self.shm = shared_memory.SharedMemory(self._name, True, size = SZ)
+                buf = self.shm.buf.cast('i')
+                for i in range(SZ // 4):
+                    buf[i] = 0
+                buf.release()
+            else:
+                self.shm = shared_memory.SharedMemory(self._name, False)
+            if not ThsShareMemory._thread:
+                ThsShareMemory._thread = threading.Thread(target = self.onListenThread, daemon = True)
+                ThsShareMemory._thread.start()
+        except Exception as e:
+            print('ths_win.ThsShareMemory.open exception: ', e)
+
+    def writeCode(self, code):
+        if not self.shm:
+            return
+        try:
+            code = int(code)
+        except:
+            return
+        buf = self.shm.buf.cast('i')
+        buf[self.POS_CODE] = code
+        buf.release()
+
+    # return int
+    def readCode(self):
+        if not self.shm:
+            return
+        buf = self.shm.buf.cast('i')
+        code = buf[0]
+        buf.release()
+        return code
+    
+    def writeSelDay(self, day):
+        self._writeDay(day, self.POS_SEL_DAY)
+
+    # return int
+    def readSelDay(self):
+        return self._readDay(self.POS_SEL_DAY)
+    
+    def writeMarkDay(self, day):
+        self._writeDay(day, self.POS_MARK_DAY)
+        
+    # return int
+    def readMarkDay(self):
+        return self._readDay(self.POS_MARK_DAY)
+    
+    def _writeDay(self, day, pos):
+        if not day or not self.shm:
+            return
+        if type(day) == str:
+            day = day.replace('-', '')
+            day = int(day)
+        buf = self.shm.buf.cast('i')
+        buf[pos] = day
+        buf.release()
+
+    def _readDay(self, pos):
+        if not self.shm:
+            return 0
+        buf = self.shm.buf.cast('i')
+        day = buf[pos]
+        buf.release()
+        return day
+
+    def writeIntData(self, data, pos):
+        if not self.shm:
+            return
+        buf = self.shm.buf.cast('i')
+        buf[pos] = data
+        buf.release()
+
+    def readIntData(self, pos):
+        if not self.shm:
+            return 0
+        buf = self.shm.buf.cast('i')
+        data = buf[pos]
+        buf.release()
+        return data
+
+    def close(self):
+        if not self.shm:
+            return
+        self.shm.close()
+
+    def unlink(self):
+        if not self.shm:
+            return
+        self.shm.unlink()
 
 def testGridLayout():
     class TestMain(BaseWindow):

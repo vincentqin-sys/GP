@@ -3,7 +3,7 @@ import win32gui, win32con, sys, os, win32api
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
 import ddlr_detail, top_scqx, ddlr_struct, top_zs, top_zt
-import top_vol_pm, top_cls_bk, top_hots_tcgn
+import top_vol_pm, top_cls_bk, top_hots, top_vol_lb
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -14,14 +14,15 @@ class FuPanMgrWindow(base_win.BaseWindow):
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
-        gpInfos = [{'name': 'KPL', 'title': '市场情绪'},
-            #{'name': 'DDLR_STRUCT', 'title': '大单流入'},
-            {'name': 'VOL_PM', 'title': '成交额排名'},
-            {'name': 'ZT', 'title': '涨停'},
-            {'name': 'THS_ZS', 'title': '指数'},
-            {'name': 'HOTS', 'title': '热度'},
-            #{'name': 'TCGN', 'title': '题材梳理'},
-            {'name': 'CLS_BK', 'title': '财联社板块'},
+        gpInfos = [{'name': 'KPL', 'title': '市场情绪', 'class': top_scqx.KPL_MgrWindow},
+            #{'name': 'DDLR_STRUCT', 'title': '大单流入',  'class': ddlr_struct.DddlrStructWindow},
+            {'name': 'VOL_PM', 'title': '成交额排名',  'class': top_vol_pm.VolPMWindow},
+            {'name': 'VOL_LB', 'title': '量比',  'class': top_vol_lb.VolLBWindow},
+            #{'name': 'ZT', 'title': '涨停',  'class': top_zt.ZT_Window},
+            {'name': 'THS_ZS', 'title': '指数',  'class': top_zs.ZSWindow},
+            {'name': 'HOTS', 'title': '热度',  'class': top_hots.Hots_Window},
+            #{'name': 'TCGN', 'title': '题材梳理',  'class': tcgn2.TCGN_Window},
+            {'name': 'CLS_BK', 'title': '财联社板块',  'class': top_cls_bk.ClsBkWindow},
             ]
         gp = base_win.GroupButton(gpInfos)
         gp.setSelGroup(0)
@@ -31,37 +32,10 @@ class FuPanMgrWindow(base_win.BaseWindow):
         gpLy.setContent(0, 0, gp)
         self.layout.setContent(0, 0, gpLy)
 
-        kplWin = top_scqx.KPL_MgrWindow()
-        kplWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.cardLayout.addContent(kplWin)
-
-        #ddlrWin = ddlr_struct.DddlrStructWindow()
-        #ddlrWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        #self.cardLayout.addContent(ddlrWin)
-
-        volPmWin = top_vol_pm.VolPMWindow()
-        volPmWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.cardLayout.addContent(volPmWin)
-
-        tckWin = top_zt.TCK_Window()
-        tckWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.cardLayout.addContent(tckWin)
-
-        #tcgnWin = tcgn2.TCGN_Window()
-        #tcgnWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        #self.cardLayout.addContent(tcgnWin)
-
-        zsWin = top_zs.ZSWindow()
-        zsWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.cardLayout.addContent(zsWin)
-
-        hotsWin = top_hots_tcgn.Hots_Window()
-        hotsWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.cardLayout.addContent(hotsWin)
-
-        clsbkWin = top_cls_bk.ClsBkWindow()
-        clsbkWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.cardLayout.addContent(clsbkWin)
+        for info in gpInfos:
+            win = info['class']()
+            win.createWindow(self.hwnd, (0, 0, 1, 1))
+            self.cardLayout.addContent(win)
 
         self.cardLayout.showCardByIdx(0)
         self.layout.setContent(1, 0, self.cardLayout)

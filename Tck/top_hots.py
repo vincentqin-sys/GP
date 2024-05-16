@@ -3,10 +3,10 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import ths_orm
+from db import ths_orm, tck_orm
 from THS import ths_win, hot_utils
 from Common import base_win, ext_win
-import db.tck_orm as tck_orm, kline_utils, cache
+import kline_utils, cache
 
 class Hots_Window(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -24,6 +24,7 @@ class Hots_Window(base_win.BaseWindow):
         self.searchData = None
         self.searchText = ''
         self.inputTips = []
+        self.ztReasons = {}
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -40,12 +41,24 @@ class Hots_Window(base_win.BaseWindow):
             if rowData.get('ths_mark_3', 0) == 1:
                 color = 0x0000dd
             self.drawer.drawText(hdc, value, rect, color, align = win32con.DT_VCENTER | win32con.DT_SINGLELINE | win32con.DT_LEFT)
+        def renderZtReason(win, hdc, row, col, colName, value, rowData, rect):
+            if not value:
+                self.findZtReason(rowData)
+                value = rowData[colName]
+            self.drawer.use(hdc, self.drawer.getFont(fontSize = 12))
+            self.drawer.drawText(hdc, value, rect, align = win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER)
+
         headers = [ {'title': '', 'width': 40, 'name': '#idx','textAlign': win32con.DT_SINGLELINE | win32con.DT_CENTER | win32con.DT_VCENTER },
-                   {'title': '日期', 'width': 100, 'name': 'day', 'sortable':True , 'fontSize' : 14},
-                   {'title': '名称', 'width': 80, 'name': 'name', 'sortable':True , 'fontSize' : 14, 'render__': render},
-                   {'title': '代码', 'width': 80, 'name': 'code', 'sortable':True , 'fontSize' : 14},
+                   #{'title': '日期', 'width': 100, 'name': 'day', 'sortable':False , 'fontSize' : 14},
+                   {'title': '名称', 'width': 80, 'name': 'name', 'sortable':False , 'fontSize' : 14},
+                   #{'title': '代码', 'width': 80, 'name': 'code', 'sortable':True , 'fontSize' : 14},
                    {'title': '热度', 'width': 80, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 14, 'sorter': sortHot},
-                   {'title': '板块', 'width': 250, 'name': 'hy', 'sortable':True , 'fontSize' : 14,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
+                   {'title': '板块', 'width': 150, 'name': 'hy', 'sortable':True , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
+                   {'title': '', 'width': 15, 'name':'xx-no-1'},
+                   {'title': '同花顺', 'width': 180, 'name': 'ths_ztReason', 'sortable':True , 'render': renderZtReason, 'fontSize' : 12,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
+                   {'title': '', 'width': 15, 'name':'xx-no-1'},
+                   {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'sortable':True , 'render': renderZtReason, 'fontSize' : 12,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
+                   {'title': '', 'width': 15, 'name':'xx-no-1'},
                    {'title': '分时图', 'width': 250, 'name': 'code', 'render': cache.renderTimeline},
                    {'title': '题材概念', 'width': 0, 'name': 'gn', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
@@ -70,10 +83,9 @@ class Hots_Window(base_win.BaseWindow):
             if q and (q not in self.inputTips):
                 self.inputTips.append(q)
         self.editorWin.addNamedListener('PressEnter', onPressEnter, None)
-        self.editorWin.addNamedListener('DbClick', self.onDbClickEditor, None)
         self.tableWin.addListener(self.onDbClick, None)
 
-    def onDbClickEditor(self, evt, args):
+    def initTips(self):
         model = []
         for s in self.inputTips:
             model.append({'title': s})
@@ -143,6 +155,41 @@ class Hots_Window(base_win.BaseWindow):
                     m['gn'] = m['gn'].replace('【', '').replace('】', '').replace(';', '  ')
                 item.update(m)
         self.hotsData = rs
+        for d in rs:
+            base_win.ThreadPool.addTimerTask(d['code'], 0, self.loadZtReason, d)
+
+    def findZtReason(self, rowData):
+        code = rowData['code']
+        day = rowData['day']
+        rs = self.ztReasons[code]
+        for d in rs['ths_ztReason']:
+            if d['day'] <= day:
+                rowData['ths_ztReason'] = d['ztReason']
+                break
+        for d in rs['cls_ztReason']:
+            if d['day'] <= day:
+                rowData['cls_ztReason'] = d['ztReason']
+                break
+
+    def loadZtReason(self, rowData):
+        code = rowData['code']
+        if code in self.ztReasons:
+            rs = self.ztReasons[code]
+        else:
+            rs = self.ztReasons[code] = {'load_time' : 0, 'ths_ztReason': [], 'cls_ztReason': []}
+        diff = time.time() - rs['load_time']
+        if diff <= 30 * 60:
+            self.findZtReason(rowData)
+            return
+        rs['load_time'] = time.time()
+        thsQr = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.code == code).order_by(tck_orm.THS_ZT.day.desc()).dicts()
+        clsQr = tck_orm.CLS_ZT.select().where(tck_orm.CLS_ZT.code == code).order_by(tck_orm.CLS_ZT.day.desc()).dicts()
+        for d in thsQr:
+            rs['ths_ztReason'].append(d)
+        for d in clsQr:
+            rs['cls_ztReason'].append(d)
+        # find
+        self.findZtReason(rowData)
 
     def doSearch(self, search : str):
         self.searchText = search
@@ -196,8 +243,8 @@ class Hots_Window(base_win.BaseWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
     
 if __name__ == '__main__':
-    ls = 'ddd    cc    mm'.strip()
-    print(ls)
-    ls = ls.split('+')
-    print(ls)
-    pass
+    base_win.ThreadPool.start()
+    win = Hots_Window()
+    win.createWindow(None, (0, 100, 1500, 700), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
+    win.layout.resize(0, 0, *win.getClientSize())
+    win32gui.PumpMessages()

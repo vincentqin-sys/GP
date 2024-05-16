@@ -209,7 +209,7 @@ class KLineIndicator(Indicator):
         self.drawBackground(hdc, pens, hbrs)
         self.drawKLines(hdc, pens, hbrs)
         self.drawMarkDay(self.markDay, hdc, pens, hbrs)
-        sm = ths_win.ThsShareMemory.instance()
+        sm = base_win.ThsShareMemory.instance()
         if sm.readMarkDay() != 0:
             self.drawMarkDay(sm.readMarkDay(), hdc, pens, hbrs)
         self.drawMA(hdc, 5)
@@ -1377,7 +1377,15 @@ class KLineWindow(base_win.BaseWindow):
         self.drawer.use(hdc, self.drawer.getFont(fontSize = 18))
         rc = (5, y, 100, y + 30)
         self.drawer.drawText(hdc, title, rc, color = 0x00dddd, align = win32con.DT_LEFT)
-        
+
+        if self.selIdx > 0 and self.model and self.selIdx < len(self.model.data):
+            cur = self.model.data[self.selIdx]
+            pre = self.model.data[self.selIdx - 1]
+            lb = cur.amount / pre.amount # 量比
+            rc = (0, 0, cf.width, 20)
+            self.drawer.use(hdc, self.drawer.getFont(fontSize = 14))
+            self.drawer.drawText(hdc, f'量比={lb :.1f}', rc, color = 0x00dddd, align = win32con.DT_RIGHT)
+
     def drawMouse(self, hdc, pens):
         if not self.mouseXY:
             return

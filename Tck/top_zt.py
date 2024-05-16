@@ -8,8 +8,7 @@ from THS import ths_win
 from Common import base_win, ext_win
 from db import tck_orm
 
-thsWin = ths_win.ThsWindow()
-thsWin.init()
+thsWin = ths_win.ThsWindow.ins()
 
 class PageInfo:
     pages = []
@@ -81,7 +80,7 @@ class PageInfo:
                 tabWin.setSortHeader(self.sortHeader['header'], self.sortHeader['state'])
         tabWin.invalidWindow()
 
-class TCK_Window(base_win.BaseWindow):
+class ZT_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
@@ -203,7 +202,7 @@ class TCK_Window(base_win.BaseWindow):
                 PageInfo.save(self)
                 
         self.tableWin.addNamedListener('ContextMenu', onTabMenu)
-        sm = ths_win.ThsShareMemory.instance()
+        sm = base_win.ThsShareMemory.instance()
         sm.open()
         sm.addListener('ListenSync_TCK', self.onAutoSync)
 

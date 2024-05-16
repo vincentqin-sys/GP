@@ -3,6 +3,7 @@ import win32gui, win32con, win32api, win32event
 import threading, time, datetime, sys, os
 from multiprocessing import Process
 from multiprocessing import shared_memory # python 3.8+
+import ctypes
 import system_hotkey
 
 import base_win
@@ -92,6 +93,24 @@ class Main:
         self.shm = None
         self._name = 'PY_Screen_Locker'
         self.lastInputTime = 0
+        self.kbHook = None
+        callbackType = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_void_p))
+        self._c_HookProc = callbackType(self._hookKeyboardProc)
+
+
+    def _hookKeyboardProc(self, nCode, wParam, lParam):
+        if nCode == win32con.HC_ACTION and (wParam == win32con.WM_SYSKEYDOWN or wParam == win32con.WM_SYSKEYUP):
+            pass
+        ctypes.windll.user32.CallNextHookEx(self.kbHook, nCode, wParam, lParam)
+
+    def hookKeyboard(self, install : bool):
+        if install:
+            self.kbHook = ctypes.windll.user32.SetWindowsHookExA(win32con.WH_KEYBOARD, self._c_HookProc, ctypes.windll.kernel32.GetModuleHandleA(None), 0)
+            print('keyboardHK=', self.kbHook)
+        else:
+            if self.kbHook:
+                ctypes.windll.user32.UnhookWindowsHookEx(self.kbHook)
+            self.kbHook = None
 
     def start(self):
         SZ = 128

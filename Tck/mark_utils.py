@@ -39,13 +39,13 @@ def mergeMarks(datas : list, kind, enableDays : bool):
 
 def getMarkModel(enable):
     model = [
-        {'name': 'mark_1', 'title': '标记红色', 'enable': enable, 'markValue': 1},
-        {'name': 'mark_2', 'title': '标记蓝色', 'enable': enable, 'markValue': 2},
-        {'name': 'mark_3', 'title': '标记绿色', 'enable': enable, 'markValue': 3},
-        {'name': 'mark_4', 'title': '标记紫色', 'enable': enable, 'markValue': 4},
-        {'name': 'mark_5', 'title': '标记棕色', 'enable': enable, 'markValue': 5},
+        {'name': 'mark_1', 'title': '标记红色', 'enable': enable, 'markColor': 1},
+        {'name': 'mark_2', 'title': '标记蓝色', 'enable': enable, 'markColor': 2},
+        {'name': 'mark_3', 'title': '标记绿色', 'enable': enable, 'markColor': 3},
+        {'name': 'mark_4', 'title': '标记紫色', 'enable': enable, 'markColor': 4},
+        {'name': 'mark_5', 'title': '标记棕色', 'enable': enable, 'markColor': 5},
         {'title': 'LINE'},
-        {'name': 'mark_6', 'title': '取消记标', 'enable': enable, 'markValue': 0},
+        {'name': 'mark_6', 'title': '取消记标', 'enable': enable, 'markColor': 0},
     ]
     return model
 
@@ -80,3 +80,29 @@ def markColorRender(win, hdc, row, col, colName, value, rowData, rect):
     x += (w - SZ) // 2
     y += (h - SZ) // 2
     win.drawer.fillRect(hdc, (x, y, x + SZ, y + SZ), color)
+
+# keys = {'kind' : xx, 'code': xx, 'day': xx, ....}
+def saveOneMark( keyVals, markColor, **kwargs):
+    mps = {}
+    mps.update(keyVals)
+    mps['markColor'] = markColor
+    cnd = None
+    for k in keyVals:
+        cndx = getattr(tck_orm.Mark, k) == keyVals[k]
+        if not cnd: cnd = cndx
+        else: cnd = cnd & cndx
+    obj = tck_orm.Mark.get_or_none(cnd)
+    if kwargs:
+        mps.update(kwargs)
+    if not obj:
+        if markColor == 0:
+            return None
+        return tck_orm.Mark.create(**mps)
+    else:
+        if markColor == 0: # delete
+            obj.delete()
+            return None
+        else:
+            obj.update(mps)
+            obj.save()
+            return obj
