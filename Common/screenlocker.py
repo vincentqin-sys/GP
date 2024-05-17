@@ -75,9 +75,9 @@ class ScreenLocker(base_win.BaseWindow):
         focusColor = 0x66B2FF if win32gui.GetFocus() == self.hwnd else 0x303030
         self.drawer.drawLine(hdc, rc[0], rc[3], rc[2], rc[3], color = focusColor)
             
-        txt = '*' * len(self.keys)
-        self.drawer.use(hdc, self.drawer.getFont(fontSize = 20))
-        self.drawer.drawText(hdc, txt, rc, 0x0C95CD, align = win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+        #txt = '*' * len(self.keys)
+        #self.drawer.use(hdc, self.drawer.getFont(fontSize = 20))
+        #self.drawer.drawText(hdc, txt, rc, 0x0C95CD, align = win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
 
 class Main:

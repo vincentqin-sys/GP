@@ -14,7 +14,8 @@ class FuPanMgrWindow(base_win.BaseWindow):
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
-        gpInfos = [{'name': 'KPL', 'title': '市场情绪', 'class': top_scqx.KPL_MgrWindow},
+        gpInfos = [
+            #{'name': 'KPL', 'title': '市场情绪', 'class': top_scqx.KPL_MgrWindow},
             #{'name': 'DDLR_STRUCT', 'title': '大单流入',  'class': ddlr_struct.DddlrStructWindow},
             {'name': 'VOL_PM', 'title': '成交额排名',  'class': top_vol_pm.VolPMWindow},
             {'name': 'VOL_LB', 'title': '量比',  'class': top_vol_lb.VolLBWindow},

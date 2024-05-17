@@ -134,6 +134,15 @@ function bindMouseOver() {
     
 }
 
+function initPlatePage() {
+    let lh = window.location.href;
+    let TAG = 'https://www.cls.cn/plate?code=';
+    let code = lh.substring(TAG.length);
+    let href = 'https://www.cls.cn/stock?code=' + code;
+    let obj = $(' <a style="margin-left: 50px; color:#c03030; " href="' + href +'" target="_blank" >  查看K线、分时图 </a>');
+    obj.insertAfter('.stock-detail > span:eq(1)');
+}
+
 
 let url = window.location.href;
 if (url == 'https://www.cls.cn/finance') {
@@ -141,7 +150,5 @@ if (url == 'https://www.cls.cn/finance') {
         //initFinacePage();
     }, 3000);
 } else if (url.indexOf('https://www.cls.cn/plate?code=') >= 0) {
-    setTimeout(() => {
-        //initFinacePage();
-    }, 3000);
+    initPlatePage();
 }

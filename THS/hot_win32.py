@@ -180,9 +180,7 @@ class MarkWin(base_win.BaseWindow):
 
     def createWindow(self, parentWnd, rect = None, style= win32con.WS_POPUP, className='STATIC', title=''):
         if not rect:
-            CW = 10
-            prc = win32gui.GetWindowRect(parentWnd)
-            rect = (0, prc[1] + 50, CW, prc[3] - prc[1] - 10)
+            rect = (0,0, 1, 1)
         super().createWindow(parentWnd, rect, style, className, title)
         ce = win32gui.GetWindowLong(self.hwnd, win32con.GWL_EXSTYLE)
         win32gui.SetWindowLong(self.hwnd, win32con.GWL_EXSTYLE, ce | win32con.WS_EX_LAYERED) #  | win32con.WS_EX_TRANSPARENT
@@ -201,7 +199,10 @@ class MarkWin(base_win.BaseWindow):
             x = win32gui.GetCursorPos()[0]
         if y == None:
             y = prc[1] + 30
-        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, x, y, 0, 0, win32con.SWP_NOSIZE)
+        w = 8
+        h = prc[3] - y - 30
+        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, x, y, w, h, 0)
+        #print(win32gui.GetWindowRect(self.hwnd))
 
     def hide(self):
         win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)

@@ -16,7 +16,7 @@ class Hots_Window(base_win.BaseWindow):
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = ext_win.EditTableWindow()
         self.tableWin.css['selBgColor'] = 0xEAD6D6
-        self.editorWin = base_win.Editor()
+        self.editorWin = base_win.ComboBox()
         self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.datePicker = base_win.DatePicker()
@@ -24,7 +24,7 @@ class Hots_Window(base_win.BaseWindow):
         self.searchData = None
         self.searchText = ''
         self.inputTips = []
-        self.ztReasons = {}
+        self.thsClsInfos = {}
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -60,7 +60,7 @@ class Hots_Window(base_win.BaseWindow):
                    {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'sortable':True , 'render': renderZtReason, 'fontSize' : 12,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    {'title': '', 'width': 15, 'name':'xx-no-1'},
                    {'title': '分时图', 'width': 250, 'name': 'code', 'render': cache.renderTimeline},
-                   {'title': '题材概念', 'width': 0, 'name': 'gn', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
+                   {'title': '详情', 'width': 0, 'name': '_detail_', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
         self.editorWin.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -78,31 +78,32 @@ class Hots_Window(base_win.BaseWindow):
 
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
         def onPressEnter(evt, args):
-            q = evt.text.strip()
+            q = self.editorWin.getText().strip()
+            if q and q not in self.inputTips:
+                self.inputTips.insert(0, q)
+            self.initTips()
             self.onQuery()
-            if q and (q not in self.inputTips):
-                self.inputTips.append(q)
         self.editorWin.addNamedListener('PressEnter', onPressEnter, None)
         self.tableWin.addListener(self.onDbClick, None)
+        self.initTips()
 
     def initTips(self):
-        model = []
-        for s in self.inputTips:
-            model.append({'title': s})
-        model.append({'title': 'LINE'})
-        for s in tck_orm.TCK_CiTiao.select():
-            model.append({'title': s.name})
-        if len(model) == 1:
-            return
-
-        def onSelMenu(evt, args):
-            self.editorWin.setText(evt.item['title'])
-            self.editorWin.invalidWindow()
-            self.onQuery()
-        menu = base_win.PopupMenuHelper.create(self.editorWin.hwnd, model)
-        menu.addNamedListener('Select', onSelMenu)
-        menu.minItemWidth = self.editorWin.getClientSize()[0]
-        menu.show()
+        model = [
+            {'title': '飞行汽车 | 低空经济'},
+            {'title': '地产'},
+            {'title': '化工 | 化纤 '},
+            {'title': '合成生物'},
+            {'title': 'LINE'},
+        ]
+        for q in self.inputTips:
+            finded = False
+            for m in model:
+                if q.strip() == m['title']:
+                    finded = True
+                    break
+            if not finded:
+                model.append({'title': q})
+        self.editorWin.setPopupTip(model)
 
     def onQuery(self):
         queryText = self.editorWin.text
@@ -161,22 +162,25 @@ class Hots_Window(base_win.BaseWindow):
     def findZtReason(self, rowData):
         code = rowData['code']
         day = rowData['day']
-        rs = self.ztReasons[code]
-        for d in rs['ths_ztReason']:
+        rs = self.thsClsInfos[code]
+        for d in rs['ths_objs']:
             if d['day'] <= day:
                 rowData['ths_ztReason'] = d['ztReason']
                 break
-        for d in rs['cls_ztReason']:
+        for d in rs['cls_objs']:
             if d['day'] <= day:
                 rowData['cls_ztReason'] = d['ztReason']
+                rowData['_detail_'] = d['detail']
                 break
+        if not rowData.get('_detail_', None) :
+            rowData['_detail_'] = rowData.get('gn', None)
 
     def loadZtReason(self, rowData):
         code = rowData['code']
-        if code in self.ztReasons:
-            rs = self.ztReasons[code]
+        if code in self.thsClsInfos:
+            rs = self.thsClsInfos[code]
         else:
-            rs = self.ztReasons[code] = {'load_time' : 0, 'ths_ztReason': [], 'cls_ztReason': []}
+            rs = self.thsClsInfos[code] = {'load_time' : 0, 'ths_objs': [], 'cls_objs': []}
         diff = time.time() - rs['load_time']
         if diff <= 30 * 60:
             self.findZtReason(rowData)
@@ -185,9 +189,9 @@ class Hots_Window(base_win.BaseWindow):
         thsQr = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.code == code).order_by(tck_orm.THS_ZT.day.desc()).dicts()
         clsQr = tck_orm.CLS_ZT.select().where(tck_orm.CLS_ZT.code == code).order_by(tck_orm.CLS_ZT.day.desc()).dicts()
         for d in thsQr:
-            rs['ths_ztReason'].append(d)
+            rs['ths_objs'].append(d)
         for d in clsQr:
-            rs['cls_ztReason'].append(d)
+            rs['cls_objs'].append(d)
         # find
         self.findZtReason(rowData)
 

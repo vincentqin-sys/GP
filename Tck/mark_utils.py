@@ -72,17 +72,22 @@ def sortMarkColor(colName, val, rowData, allDatas, asc):
 def markColorRender(win, hdc, row, col, colName, value, rowData, rect):
     if value == None:
         return
-    color = markColor2RgbColor(value)
+    color = markColor2RgbColor(abs(value))
     if color == None:
         return
     x, y, w, h = rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1]
     SZ = 10
     x += (w - SZ) // 2
     y += (h - SZ) // 2
-    win.drawer.fillRect(hdc, (x, y, x + SZ, y + SZ), color)
+    if value > 0:
+        win.drawer.fillRect(hdc, (x, y, x + SZ, y + SZ), color)
+    else:
+        win.drawer.drawRect(hdc, (x, y, x + SZ, y + SZ), color)
 
 # keys = {'kind' : xx, 'code': xx, 'day': xx, ....}
 def saveOneMark( keyVals, markColor, **kwargs):
+    if markColor < 0:
+        return
     mps = {}
     mps.update(keyVals)
     mps['markColor'] = markColor
