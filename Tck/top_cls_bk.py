@@ -64,7 +64,7 @@ class CodesTableModel:
     
     def __init__(self, bkInfo) -> None:
         self.headers = [{'name': '#idx', 'width': 40, 'title': ''},
-                        {'name': 'markColor', 'title': 'M', 'width' : 40, 'sortable' :True, 'render' : mark_utils.markColorRender, 'sorter': mark_utils.sortMarkColor},
+                        {'name': 'markColor', 'title': 'M', 'width' : 30, 'sortable' :True, 'render' : mark_utils.markColorRender, 'sorter': mark_utils.sortMarkColor},
                         {'name': 'secu_name', 'title': '名称', 'width' : 80, 'render' : mark_utils.markRender},
                         {'name': 'zhHotOrder', 'title': '热度',  'width':80, 'sortable' :True, 'sorter': self.sortZhHot},
                         #{'name': 'change', 'title': '涨幅', 'width': 80, 'sortable' :True, 'render': cache.renderZF, 'sorter': self.sorter},
@@ -216,7 +216,7 @@ class ClsBkWindow(base_win.BaseWindow):
             rowData = self.tableWin.getData()[selRow]
             obj = tck_orm.Mark.get_or_create(code = rowData['secu_code'], kind = 'cls-bk')[0]
             obj.name = rowData['secu_name']
-            obj.markColor = evt.item['markValue']
+            obj.markColor = evt.item['markColor']
             obj.save()
             rowData['markColor'] = obj.markColor
             self.tableWin.invalidWindow()
@@ -248,9 +248,7 @@ class ClsBkWindow(base_win.BaseWindow):
 
     def initTip(self):
         model = [
-            {'title': '航运  cls80139'},
-            {'title': '家电  cls80051'},
-            
+            {'title': '玻璃基板 cls82520'},
             {'title': 'LINE'},
             {'title': '合成生物  cls82475'},
             {'title': '细胞治疗  cls82519'},
@@ -260,6 +258,8 @@ class ClsBkWindow(base_win.BaseWindow):
             {'title': 'LINE'},
             {'title': '黄金概念  cls81377'},
             {'title': '有色金属概念  cls82406'},
+            #{'title': '航运  cls80139'},
+            #{'title': '家电  cls80051'},
             #{'title': '智能驾驶  cls80233'},
             #{'title': '高速连接器  cls82502'},
         ]

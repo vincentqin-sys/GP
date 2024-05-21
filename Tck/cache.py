@@ -187,6 +187,10 @@ class TimelineRender:
         drawer.drawText(hdc, f'{mzf :.2f}%', rc, self.getPriceColor(self.maxPrice), win32con.DT_RIGHT | win32con.DT_TOP)
         rc = [rect[2] - ZFW, rect[3] - 12, rect[2], rect[3]]
         drawer.drawText(hdc, f'{szf :.2f}%', rc, self.getPriceColor(self.minPrice), win32con.DT_RIGHT | win32con.DT_BOTTOM)
+        # zf
+        zf = (da[-1]['price'] - self.data['pre']) / self.data['pre'] * 100
+        rc = [rect[2] - ZFW, rect[1] + (rect[3] - rect[1]) // 2 - 5 , rect[2], rect[3]]
+        drawer.drawText(hdc, f'{zf :.2f}%', rc, 0xFF3399, win32con.DT_RIGHT | win32con.DT_TOP)
 
 # 分时图
 def renderTimeline(win : base_win.TableWindow, hdc, row, col, colName, value, rowData, rect):

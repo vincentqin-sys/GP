@@ -6,7 +6,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm, tck_orm
 from THS import ths_win, hot_utils
 from Common import base_win, ext_win
-import kline_utils, cache
+import kline_utils, cache, mark_utils
 
 class Hots_Window(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -50,9 +50,10 @@ class Hots_Window(base_win.BaseWindow):
 
         headers = [ {'title': '', 'width': 40, 'name': '#idx','textAlign': win32con.DT_SINGLELINE | win32con.DT_CENTER | win32con.DT_VCENTER },
                    #{'title': '日期', 'width': 100, 'name': 'day', 'sortable':False , 'fontSize' : 14},
-                   {'title': '名称', 'width': 80, 'name': 'name', 'sortable':False , 'fontSize' : 14},
+                   {'title': 'M', 'width': 30, 'name': 'markColor', 'sortable':True , 'render': mark_utils.markColorRender, 'sorter': mark_utils.sortMarkColor },
+                   {'title': '名称', 'width': 80, 'name': 'name', 'sortable':False , 'fontSize' : 14, 'render': mark_utils.markRender},
                    #{'title': '代码', 'width': 80, 'name': 'code', 'sortable':True , 'fontSize' : 14},
-                   {'title': '热度', 'width': 80, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 14, 'sorter': sortHot},
+                   {'title': '热度', 'width': 60, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 14, 'sorter': sortHot},
                    {'title': '板块', 'width': 150, 'name': 'hy', 'sortable':True , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    {'title': '', 'width': 15, 'name':'xx-no-1'},
                    {'title': '同花顺', 'width': 180, 'name': 'ths_ztReason', 'sortable':True , 'render': renderZtReason, 'fontSize' : 12,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
@@ -85,10 +86,12 @@ class Hots_Window(base_win.BaseWindow):
             self.onQuery()
         self.editorWin.addNamedListener('PressEnter', onPressEnter, None)
         self.tableWin.addListener(self.onDbClick, None)
+        self.tableWin.addNamedListener('ContextMenu', self.onContextMenu)
         self.initTips()
 
     def initTips(self):
         model = [
+            {'title': '玻璃基板'},
             {'title': '地产'},
             {'title': '飞行汽车 | 低空经济'},
             {'title': '化工 | 化纤 '},
@@ -111,7 +114,22 @@ class Hots_Window(base_win.BaseWindow):
         self.tableWin.invalidWindow()
         self.doSearch(queryText)
         self.tableWin.setData(self.searchData)
+        if self.searchData:
+            mark_utils.mergeMarks(self.searchData, 'hots', False)
         self.tableWin.invalidWindow()
+
+    def onContextMenu(self, evt, args):
+        row = self.tableWin.selRow
+        rowData = self.tableWin.getData()[row] if row >= 0 else None
+        model = mark_utils.getMarkModel(row >= 0)
+        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        def onMenuItem(evt, rd):
+            mark_utils.saveOneMark({'kind': 'hots', 'code': rowData['code']}, evt.item['markColor'])
+            rd['markColor'] = evt.item['markColor']
+            self.tableWin.invalidWindow()
+        menu.addNamedListener('Select', onMenuItem, rowData)
+        x, y = win32gui.GetCursorPos()
+        menu.show(x, y)
 
     def onDbClick(self, evt, args):
         if evt.name != 'RowEnter' and evt.name != 'DbClick':

@@ -36,8 +36,8 @@ class DataFile:
             code = f'{code :06d}'
         self.code = code
         self.dataType = dataType
-        paths = self._getPathByCode(self.code, flag)
-        self.data = self._loadDataFiles(paths)
+        path = self._getPathByCode(self.code, flag)
+        self.data = self._loadDataFile(path)
         self.name = ''
 
     @staticmethod
@@ -45,7 +45,8 @@ class DataFile:
         name = os.path.basename(filePath)
         code = name[2 : 8]
         dataType = DataFile.DT_DAY if name[-4 : ] == '.day' else DataFile.DT_MINLINE
-        datafile = DataFile(code, dataType, False)
+        datafile = DataFile('000000', dataType, DataFile.FLAG_ALL)
+        datafile.code = code
         datafile.data = datafile._loadDataFile(filePath)
         return datafile
 
@@ -85,50 +86,20 @@ class DataFile:
             return None
         return self.data[idx]
 
-    def _getByFlag(self, arr, flag):
-        if flag == self.FLAG_ALL:
-            return arr
-        if flag == self.FLAG_NEWEST:
-            return arr[-1]
-        if flag == self.FLAG_OLDEST:
-            return arr[0]
-        raise Exception('Error flag, flag=', flag)
-
     def _getPathByCode(self, code, flag):
         tag = 'sh' if code[0] == '6' or code[0] == '8' or code[0] == '9' else 'sz'
-        bp = os.path.join(VIPDOC_BASE_PATH, tag)
-        fs = os.listdir(bp)
-        fs = sorted(fs)
-        rt = []
-        if self.dataType == self.DT_DAY:
-            rt = sorted([f for f in fs if 'lday-' in f])
-            rt.append('lday')
-            rt = self._getByFlag(rt, flag)
-            rt = [os.path.join(bp, r, tag + code + '.day') for r in rt]
+        if self.dataType == DataFile.DT_DAY:
+            bp = os.path.join(VIPDOC_BASE_PATH, '__lday', f'{tag}{code}.day')
         else:
-            rt = [f for f in fs if 'minline-' in f]
-            rt.append('minline')
-            rt = self._getByFlag(rt, flag)
-            rt = [os.path.join(bp, r, tag + code + '.lc1') for r in rt]
-        rs = [r for r in rt if os.path.exists(r)]
-        return rs
-
-    def _loadDataFiles(self, paths):
-        rt = None
-        for p in paths:
-            data = self._loadDataFile(p)
-            if not rt:
-                rt = data
-                continue
-            lastDay = rt[-1].day
-            for d in data:
-                if d.day > lastDay:
-                    rt.append(d)
-        return rt
+            bp = os.path.join(VIPDOC_BASE_PATH, '__minline', f'{tag}{code}.lc1')
+        #if os.path.exists(bp):
+        return bp
 
     def _loadDataFile(self, path):
         def T(fv): return int(fv * 100 + 0.5)
         rs = []
+        if not os.path.exists(path):
+            return rs
         f = open(path, 'rb')
         while f.readable():
             bs = f.read(32)
@@ -287,30 +258,73 @@ class DataFileUtils:
             if df.data[i].day > fromDay:
                 days.append(df.data[i].day)
         return days
-    
-    @staticmethod
-    def getLDayDirs():
-        allDirs = []
-        for tag in ('sh', 'sz'):
-            sh = os.path.join(VIPDOC_BASE_PATH, tag)
-            for ld in os.listdir(sh):
-                if 'lday' in ld:
-                    allDirs.append(os.path.join(sh, ld))
-        allDirs.sort()
-        return allDirs
-    
-    @staticmethod
-    def getMinlineDirs():
-        allDirs = []
-        for tag in ('sh', 'sz'):
-            sh = os.path.join(VIPDOC_BASE_PATH, tag)
-            for ld in os.listdir(sh):
-                if 'minline' in ld:
-                    allDirs.append(os.path.join(sh, ld))
-        allDirs.sort()
-        return allDirs
+
+class DataFileLoader:
+    def __init__(self) -> None:
+        pass
+
+    def _loadDataFile(self, path):
+        def T(fv): return fv # int(fv * 100 + 0.5)
+        rs = []
+        if not os.path.exists(path):
+            return rs
+        dataType = DataFile.DT_DAY if 'lday' in path else DataFile.DT_MINLINE
+        f = open(path, 'rb')
+        while f.readable():
+            bs = f.read(32)
+            if len(bs) != 32:
+                break
+            if dataType == DataFile.DT_DAY:
+                item = struct.unpack('5lf2l', bs)
+                item = ItemData(*item[0 : -1])
+            else:
+                item = struct.unpack('2H5f2l', bs)
+                d0 = item[0]
+                y = (int(d0 / 2048) + 2004)
+                m = int((d0 % 2048 ) / 100)
+                r = (d0 % 2048) % 100
+                d0 = y * 10000 + m * 100 + r
+                d1 = (item[1] // 60) * 100 + (item[1] % 60)
+                item = ItemData(d0, d1, T(item[2]), T(item[3]), T(item[4]), T(item[5]), item[6], item[7])
+                #item._time = item[1]
+            rs.append(item)
+        f.close()
+        # check minute line number
+        if dataType == DataFile.DT_MINLINE and (len(rs) % 240) != 0:
+            raise Exception('Minute Line number error:', len(rs))
+        return rs
+
+    def mergeAll(self):
+        pass
+
+    def mergeDayFile(self, code):
+        tag = 'sh' if code[0] == '6' or code[0] == '8' or code[0] == '9' else 'sz'
+        ph = os.path.join(VIPDOC_BASE_PATH, tag, 'lday', f'{tag}{code}.day')
+        src = DataFile.loadFromFile(ph)
+        if not src.data:
+            return
+        dst = DataFile(code, DataFile.DT_DAY, DataFile.FLAG_ALL)
+        ph = os.path.join(VIPDOC_BASE_PATH, '__lday', f'{tag}{code}')
+        f = open(ph, 'ab')
+        lastDay = 0
+        if dst.data:
+            lastDay = dst.data[-1].day
+        arr = bytearray(32)
+        for d in src.data:
+            if d.day > lastDay:
+                struct.pack_into('l5f2l', arr, 0, d.day, d.open / 100, d.high / 100, d.low / 100, d.close / 100, d.amount, d.vol, 0)
+                f.write(arr)
+        f.close()
+
+
+    def mergeTimelineFile(self, code):
+        pass
+
+    def mergeAllDayFiles(self):
+        pass
 
 if __name__ == '__main__':
-    DataFileUtils.getLDayDirs()
+    ld = DataFileLoader()
+    ld.mergeDayFile('999999')
     pass
     

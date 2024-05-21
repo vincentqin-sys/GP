@@ -394,6 +394,7 @@ class SimpleTimelineModel:
         self.volRange = None
         self.amountRange = None
         self.data = []
+        self.localData = None
 
     def _calcCodePre(self, idx, lines):
         if idx == 0:
@@ -436,7 +437,7 @@ class SimpleTimelineModel:
                 day = days[-1]
             self.day = day
             if day not in days:
-                return
+                return False
             isLast = days[-1] == day
             lines = his5datas['line']
             ONE_DAY_LINES = 241
@@ -454,6 +455,8 @@ class SimpleTimelineModel:
         except Exception as e:
             traceback.print_exc()
             print('[SimpleTimelineModel.loadCode] fail', code)
+            return False
+        return True
 
     # 最新一天的指数分时
     def _loadCode_Ths_Newest(self, code):
@@ -475,6 +478,33 @@ class SimpleTimelineModel:
             traceback.print_exc()
             print('[SimpleTimelineModel.loadCode_ZS] fail', code)
 
+    def loadLocal(self, code, day):
+        if len(code) == 8:
+            code = code[2 : ]
+        if code[0] not in ('0', '3', '6'):
+            return
+        if not self.localData or self.localData.code != code:
+            self.localData = datafile.DataFile(code, datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL)
+        if not self.localData:
+            return
+        if type(day) == str:
+            day = int(day.replace('-', ''))
+        idx = self.localData.getItemIdx(day)
+        if idx < 0:
+            return
+        if idx > 0:
+            self.pre = self.localData.data[idx - 1].close
+        else:
+            self.pre = self.localData.data[idx].open
+        while idx < len(self.localData.data):
+            dt = self.localData.data[idx]
+            if dt.day == day:
+                self.data.append(dt)
+                dt.price = dt.close
+                idx += 1
+            else:
+                break
+
     def load(self, code, day = None):
         if type(code) == int:
             code = f'{code :06d}'
@@ -485,7 +515,8 @@ class SimpleTimelineModel:
             obj = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name.distinct()).where(ths_orm.THS_ZS_ZD.code == code).scalar()
             self.name = obj
         else:
-            self._loadCode_Cls(code, day)
+            if not self._loadCode_Cls(code, day):
+                self.loadLocal(code, day)
             obj = ths_orm.THS_GNTC.select(ths_orm.THS_GNTC.name.distinct()).where(ths_orm.THS_GNTC.code == code).scalar()
             self.name = obj
 
@@ -625,9 +656,8 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         for i, price in enumerate(ps):
             y = self.getYAtPrice(price, H)
             style = win32con.PS_SOLID if i % 2 == 0 else win32con.PS_DOT
-            psWidth = 2 if i == len(ps) - 1 else 1
-            if i == 2: lc = 0x66B2FF
-            else: lc = 0x36332E
+            psWidth = 2 if i == 2 else 1
+            lc = 0x36332E
             self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, lc, style = style, width = psWidth)
             #p1 = f'{price / 100 :.02f}'
             color = 0x0000ff if price >= self.model.pre else 0x00ff00
@@ -639,6 +669,7 @@ class SimpleTimelineWindow(base_win.BaseWindow):
             self.drawer.drawText(hdc, p2, rc, color, align = win32con.DT_LEFT)
         y = H - self.paddings[3] + 1
         self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, 0x36332E, style = style, width = 1)
+
         # draw vol lines
         am = self.model.getAmountRange()
         y = H - self.paddings[3] - self.volHeight

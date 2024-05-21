@@ -320,7 +320,7 @@ class TdxDownloader:
             self.login()
             self.openDownloadDialog()
             self.startDownloadForDay()
-            #self.startDownloadForTimeMinute()
+            self.startDownloadForTimeMinute()
         except:
             return False
         self.killProcess()
@@ -447,6 +447,9 @@ def autoMain():
             lastDay = today.day
         releaseDesktopGUILock(lock)
 
+def mergeTimeline():
+    pass
+
 if __name__ == '__main__':
-    #work() # run one time
-    autoMain()
+    work() # run one time
+    #autoMain()

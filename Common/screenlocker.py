@@ -67,13 +67,30 @@ class ScreenLocker(base_win.BaseWindow):
 
     def onDraw(self, hdc):
         W, H = self.getClientSize()
-        CW, CH = 250, 40
-        x = (W - CW) // 2
-        y = (H - CH) // 2
-        rc = (x, y, x + CW, y + CH)
+        #CW, CH = 250, 40
+        #x = (W - CW) // 2
+        #y = (H - CH) // 2
+        #rc = (x, y, x + CW, y + CH)
         #self.drawer.fillRect(hdc, rc, 0x202020)
         focusColor = 0x66B2FF if win32gui.GetFocus() == self.hwnd else 0x303030
-        self.drawer.drawLine(hdc, rc[0], rc[3], rc[2], rc[3], color = focusColor)
+        #self.drawer.drawLine(hdc, rc[0], rc[3], rc[2], rc[3], color = focusColor)
+
+        # box
+        CW = 40
+        x = (W - CW) // 2
+        y = (H - CW) // 2
+        rc = (x, y, x + CW, y + CW)
+        self.drawer.fillRect(hdc, rc, focusColor)
+
+        CW2 = CW // 4
+        x = (W - CW2) // 2
+        y = (H - CW) // 2
+        self.drawer.fillRect(hdc, (x, y, x + CW2, y + CW), self.css['bgColor'])
+
+        x = (W - CW) // 2
+        y = (H - CW2) // 2
+        self.drawer.fillRect(hdc, (x, y, x + CW, y + CW2), self.css['bgColor'])
+
             
         #txt = '*' * len(self.keys)
         #self.drawer.use(hdc, self.drawer.getFont(fontSize = 20))
@@ -183,7 +200,7 @@ if __name__ == '__main__':
     main = Main(locker)
     main.start()
 
-    #locker.lock()
+    locker.lock()
     win32gui.PumpMessages()
 
     # 生成无cmd窗口的exe程序
