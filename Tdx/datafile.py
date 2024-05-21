@@ -288,6 +288,9 @@ class DataFileLoader:
 
     def mergeAll(self):
         codes = DataFileUtils.listAllCodes()
+        codes.append('999999')
+        codes.append('399001')
+        codes.append('399006')
         for c in codes:
             self.mergeDayFile(c)
             self.mergeMinlineFile(c)
@@ -373,9 +376,12 @@ class DataFileLoader:
 
 if __name__ == '__main__':
     ld = DataFileLoader()
-    #ld.mergeDayFile('999999')
+    ld.mergeDayFile('999999')
+    ld.mergeDayFile('399001')
+    ld.mergeDayFile('399006')
     #ld.mergeMinlineFile('600000')
     #ld.chunkDayFile('999999', 20231205, 20231206)
     #ld.mergeAll()
+    #df = DataFile('999999', DataFile.DT_DAY, DataFile.FLAG_ALL)
     pass
     
