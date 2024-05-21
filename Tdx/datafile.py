@@ -26,7 +26,6 @@ class ItemData:
 
 class DataFile:
     DT_DAY, DT_MINLINE = 1, 2
-    FROM_DAY = 20230101 # 仅计算由此开始的日期数据
     FLAG_NEWEST, FLAG_OLDEST, FLAG_ALL = -1, -2, -3 # 最新、最早、全部
 
     # @param dataType = DT_DAY  |  DT_MINLINE
@@ -36,7 +35,7 @@ class DataFile:
             code = f'{code :06d}'
         self.code = code
         self.dataType = dataType
-        path = self._getPathByCode(self.code, flag)
+        path = self.getPath()
         self.data = self._loadDataFile(path)
         self.name = ''
 
@@ -86,7 +85,8 @@ class DataFile:
             return None
         return self.data[idx]
 
-    def _getPathByCode(self, code, flag):
+    def getPath(self):
+        code = self.code
         tag = 'sh' if code[0] == '6' or code[0] == '8' or code[0] == '9' else 'sz'
         if self.dataType == DataFile.DT_DAY:
             bp = os.path.join(VIPDOC_BASE_PATH, '__lday', f'{tag}{code}.day')
@@ -96,7 +96,7 @@ class DataFile:
         return bp
 
     def _loadDataFile(self, path):
-        def T(fv): return int(fv * 100 + 0.5)
+        def T(fv): return  fv # int(fv * 100 + 0.5)
         rs = []
         if not os.path.exists(path):
             return rs
@@ -106,20 +106,12 @@ class DataFile:
             if len(bs) != 32:
                 break
             if self.dataType == self.DT_DAY:
-                item = struct.unpack('5lf2l', bs)
+                item = struct.unpack('l5f2l', bs)
                 item = ItemData(*item[0 : -1])
             else:
-                item = struct.unpack('2H5f2l', bs)
-                d0 = item[0]
-                y = (int(d0 / 2048) + 2004)
-                m = int((d0 % 2048 ) / 100)
-                r = (d0 % 2048) % 100
-                d0 = y * 10000 + m * 100 + r
-                d1 = (item[1] // 60) * 100 + (item[1] % 60)
-                item = ItemData(d0, d1, T(item[2]), T(item[3]), T(item[4]), T(item[5]), item[6], item[7])
-                #item._time = item[1]
-            if item.day >= self.FROM_DAY:
-                rs.append(item)
+                item = struct.unpack('2l5fl', bs)
+                item = ItemData(*item)
+            rs.append(item)
         f.close()
         # check minute line number
         if self.dataType == self.DT_MINLINE and (len(rs) % 240) != 0:
@@ -263,7 +255,7 @@ class DataFileLoader:
     def __init__(self) -> None:
         pass
 
-    def _loadDataFile(self, path):
+    def _loadTdxDataFile(self, path):
         def T(fv): return fv # int(fv * 100 + 0.5)
         rs = []
         if not os.path.exists(path):
@@ -295,36 +287,95 @@ class DataFileLoader:
         return rs
 
     def mergeAll(self):
-        pass
+        codes = DataFileUtils.listAllCodes()
+        for c in codes:
+            self.mergeDayFile(c)
+            self.mergeMinlineFile(c)
 
     def mergeDayFile(self, code):
         tag = 'sh' if code[0] == '6' or code[0] == '8' or code[0] == '9' else 'sz'
         ph = os.path.join(VIPDOC_BASE_PATH, tag, 'lday', f'{tag}{code}.day')
-        src = DataFile.loadFromFile(ph)
-        if not src.data:
+        src = self._loadTdxDataFile(ph)
+        if not src:
             return
+        pph = os.path.join(VIPDOC_BASE_PATH, '__lday')
+        if not os.path.exists(pph):
+            os.mkdir(pph)
         dst = DataFile(code, DataFile.DT_DAY, DataFile.FLAG_ALL)
-        ph = os.path.join(VIPDOC_BASE_PATH, '__lday', f'{tag}{code}')
+        ph = os.path.join(pph, f'{tag}{code}.day')
         f = open(ph, 'ab')
         lastDay = 0
         if dst.data:
             lastDay = dst.data[-1].day
         arr = bytearray(32)
-        for d in src.data:
+        for d in src:
             if d.day > lastDay:
                 struct.pack_into('l5f2l', arr, 0, d.day, d.open / 100, d.high / 100, d.low / 100, d.close / 100, d.amount, d.vol, 0)
                 f.write(arr)
         f.close()
 
+    def mergeMinlineFile(self, code):
+        tag = 'sh' if code[0] == '6' or code[0] == '8' or code[0] == '9' else 'sz'
+        ph = os.path.join(VIPDOC_BASE_PATH, tag, 'minline', f'{tag}{code}.lc1')
+        src = self._loadTdxDataFile(ph)
+        if not src:
+            return
+        pph = os.path.join(VIPDOC_BASE_PATH, '__minline')
+        if not os.path.exists(pph):
+            os.mkdir(pph)
+        dst = DataFile(code, DataFile.DT_MINLINE, DataFile.FLAG_ALL)
+        ph = os.path.join(pph, f'{tag}{code}.lc1')
+        f = open(ph, 'ab')
+        lastDay = 0
+        if dst.data:
+            lastDay = dst.data[-1].day
+        arr = bytearray(32)
+        for d in src:
+            if d.day > lastDay:
+                struct.pack_into('2l5fl', arr, 0, d.day, d.time, d.open, d.high, d.low, d.close, d.amount, d.vol)
+                f.write(arr)
+        f.close()
 
-    def mergeTimelineFile(self, code):
-        pass
+    # only save data from [fromDay, endDay]
+    def chunkDayFile(self, code, fromDay, endDay):
+        df = DataFile(code, DataFile.DT_DAY, DataFile.FLAG_ALL)
+        if not df.data:
+            return
+        minDay = df.data[0].day
+        maxDay = df.data[-1].day
+        if minDay >= fromDay and maxDay <= endDay:
+            return
+        f = open(df.getPath(), 'wb')
+        arr = bytearray(32)
+        for d in df.data:
+            if d.day >= fromDay and d.day <= endDay:
+                struct.pack_into('l5f2l', arr, 0, d.day, d.open, d.high, d.low, d.close, d.amount, d.vol, 0)
+                f.write(arr)
+        f.close()
 
-    def mergeAllDayFiles(self):
-        pass
+    # only save data from [fromDay, endDay]
+    def chunkMinlineFile(self, code, fromDay, endDay):
+        df = DataFile(code, DataFile.DT_MINLINE, DataFile.FLAG_ALL)
+        if not df.data:
+            return
+        minDay = df.data[0].day
+        maxDay = df.data[-1].day
+        if minDay >= fromDay and maxDay <= endDay:
+            return
+        f = open(df.getPath(), 'wb')
+        arr = bytearray(32)
+        for d in df.data:
+            if d.day >= fromDay and d.day <= endDay:
+                struct.pack_into('2l5fl', arr, 0, d.day, d.time, d.open, d.high, d.low, d.close, d.amount, d.vol)
+                f.write(arr)
+        f.close()
+                
 
 if __name__ == '__main__':
     ld = DataFileLoader()
-    ld.mergeDayFile('999999')
+    #ld.mergeDayFile('999999')
+    #ld.mergeMinlineFile('600000')
+    #ld.chunkDayFile('999999', 20231205, 20231206)
+    #ld.mergeAll()
     pass
     

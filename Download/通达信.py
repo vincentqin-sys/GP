@@ -223,31 +223,21 @@ class TdxDownloader:
         time.sleep(10)
 
     def getStartDayForDay(self):
-        dirs = datafile.DataFileUtils.getLDayDirs()
-        maxday = None
-        for d in dirs:
-            d = os.path.basename(d)
-            if '-' not in d:
-                continue
-            lday = d.split('-')[-1]
-            if not maxday or maxday < lday:
-                maxday = lday
-        dt = datetime.datetime.strptime(maxday, '%Y%m%d')
-        dt = dt + datetime.timedelta(days = 1)
-        return dt    
+        maxday = 20240101
+        df = datafile.DataFile('999999', datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
+        if df.data:
+            maxday = df.data[-1].day
+        dt = datetime.datetime.strptime(str(maxday), '%Y%m%d')
+        #dt = dt + datetime.timedelta(days = 1)
+        return dt
     
     def getStartDayForTimemimute(self):
-        dirs = datafile.DataFileUtils.getMinlineDirs()
-        maxday = None
-        for d in dirs:
-            d = os.path.basename(d)
-            if '-' not in d:
-                continue
-            lday = d.split('-')[-1]
-            if not maxday or maxday < lday:
-                maxday = lday
-        dt = datetime.datetime.strptime(maxday, '%Y%m%d')
-        dt = dt + datetime.timedelta(days = 1)
+        maxday = 20240101
+        df = datafile.DataFile('999999', datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL)
+        if df.data:
+            maxday = df.data[-1].day
+        dt = datetime.datetime.strptime(str(maxday), '%Y%m%d')
+        #dt = dt + datetime.timedelta(days = 1)
         return dt
     
     def startDownloadForDay(self):
@@ -322,6 +312,8 @@ class TdxDownloader:
             self.startDownloadForDay()
             self.startDownloadForTimeMinute()
         except:
+            import traceback
+            traceback.print_exc()
             return False
         self.killProcess()
         return True
@@ -357,6 +349,8 @@ def work():
         #计算两市行情信息
         t = TdxLSTools()
         t.calcInfo()
+        ld = datafile.DataFileLoader()
+        ld.mergeAll()
     print('\n\n')
     return flag
 
