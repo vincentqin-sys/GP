@@ -99,13 +99,44 @@ class TimelineRender:
         return int(y)
     
     def getLineColor(self):
-        color = self.getPriceColor(self.maxPrice) or self.getPriceColor(self.minPrice)
-        return color
+        if self.isZTPrice(self.maxPrice):
+            return self.getPriceColor(self.maxPrice)
+        if self.isDTPrice(self.minPrice):
+            return self.getPriceColor(self.minPrice)
+        if 'dataArr' in self.data:
+            last = self.data['dataArr'][-1]
+            color = self.getPriceColor(last['price'])
+            return color
+        return 0x000000
+    
+    def isZTPrice(self, price):
+        # check is zt
+        code = self.data['code']
+        zf = 0.1
+        if code[0] == '3' or code[0 : 3] == '688':
+            zf = 0.20
+        pre = self.data['pre']
+        ztPrice = int(int(pre * 100 + 0.5) * (1 + zf) + 0.5)
+        if int(price * 100 + 0.5) >= ztPrice:
+            return True
+        return False
+    
+    def isDTPrice(self, price):
+        code = self.data['code']
+        zf = 0.1
+        if code[0] == '3' or code[0 : 3] == '688':
+            zf = 0.20
+        pre = self.data['pre']
+        dtPrice = int(int(pre * 100 + 0.5) * (1 - zf) + 0.5)
+        if int(price * 100 + 0.5) <= dtPrice:
+            return True
+        return False
 
     def getPriceColor(self, price):
         color = 0x0
         GREEN = 0xA3C252
         RED = 0x2204de
+
         # check is zt
         code = self.data['code']
         zf = 0.1

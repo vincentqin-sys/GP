@@ -320,7 +320,7 @@ class TdxDownloader:
             self.login()
             self.openDownloadDialog()
             self.startDownloadForDay()
-            self.startDownloadForTimeMinute()
+            #self.startDownloadForTimeMinute()
         except:
             return False
         self.killProcess()

@@ -567,6 +567,23 @@ class THS_ZTCardView(KPLCardView):
         win32gui.DrawText(hdc, line, len(line), rc2, win32con.DT_LEFT | win32con.DT_WORDBREAK)
         win32gui.DrawText(hdc, day, len(day), rect, win32con.DT_LEFT)
 
+class Cls_ZTCardView(KPLCardView):
+    def __init__(self, hwnd):
+        super().__init__(hwnd)
+        self.ormClazz = tck_orm.CLS_ZT
+        self.emptyLine = '\n\n无财联社涨停信息'
+        self.fontSize = 12
+        self.ROW_HEIGHT = 32
+
+    def drawLine(self, hdc, kpl, rect):
+        day = kpl['day']
+        day = day[4 : 6] + '.' + day[6 : ]
+        line = kpl['ztReason']
+        rc2 = (rect[0] + 35, rect[1], rect[2], rect[3])
+        win32gui.DrawText(hdc, line, len(line), rc2, win32con.DT_LEFT | win32con.DT_WORDBREAK)
+        win32gui.DrawText(hdc, day, len(day), rect, win32con.DT_LEFT)
+
+
 class SimpleWindow(CardWindow):
     # type_ is 'HOT' | 'ZT_GN'
     def __init__(self, type_) -> None:
@@ -587,8 +604,8 @@ class SimpleWindow(CardWindow):
         if self.type_ == 'HOT':
             self.addCardView(HotCardView(self.hwnd))
         elif self.type_ == 'ZT_GN':
-            self.addCardView(KPLCardView(self.hwnd))
             self.addCardView(THS_ZTCardView(self.hwnd))
+            self.addCardView(Cls_ZTCardView(self.hwnd))
         self.zsCardView = ZSCardView(self.hwnd)
 
     def changeCardView(self):

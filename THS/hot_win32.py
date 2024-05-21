@@ -212,9 +212,13 @@ class MarkWin(base_win.BaseWindow):
         thsShareMem.writeMarkDay(d)
         self.show()
 
+    def doNoMarkKey(self, args):
+        self.hide()
+
     def reg(self):
         hk = system_hotkey.SystemHotkey()
         hk.register(('control', 'alt', 'm'), callback = self.doMarkKey, overwrite = True)
+        hk.register(('control', 'alt', 'n'), callback = self.doNoMarkKey, overwrite = True)
 
 if __name__ == '__main__':
     tsm = base_win.ThsShareMemory(True)

@@ -95,6 +95,7 @@ def unlockScreen():
         buf[0] = win32api.GetTickCount() + 60 * 60 * 1000
         buf[1] = 200
         time.sleep(10)
+        buf.release()
     except Exception as e:
         #import traceback
         #traceback.print_exc()
