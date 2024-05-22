@@ -20,7 +20,7 @@ def openInCurWindow_Code(parent : base_win.BaseWindow, data):
     win.addIndicator(kline.TckIndicator())
     dw = win32api.GetSystemMetrics (win32con.SM_CXSCREEN)
     dh = win32api.GetSystemMetrics (win32con.SM_CYSCREEN) - 35
-    W, H = 1250, min(750, dh)
+    W, H = int(dw * 0.8), int(dh * 0.8)
     x = (dw - W) // 2
     y = (dh - H) // 2
     win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
@@ -37,7 +37,7 @@ def openInCurWindow_ZS(parent : base_win.BaseWindow, data):
     win.addIndicator(kline.ThsZsPMIndicator({}))
     dw = win32api.GetSystemMetrics (win32con.SM_CXSCREEN)
     dh = win32api.GetSystemMetrics (win32con.SM_CYSCREEN) - 35
-    W, H = 1250, min(750, dh)
+    W, H = int(dw * 0.8), int(dh * 0.8)
     x = (dw - W) // 2
     y = (dh - H) // 2
     win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)

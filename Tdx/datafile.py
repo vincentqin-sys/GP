@@ -30,13 +30,15 @@ class DataFile:
 
     # @param dataType = DT_DAY  |  DT_MINLINE
     # @param flag = FLAG_NEWEST | FLAG_OLDEST | FLAG_ALL
-    def __init__(self, code, dataType, flag):
+    def __init__(self, code, dataType, flag = -3):
         if type(code) == int:
             code = f'{code :06d}'
         self.code = code
         self.dataType = dataType
         path = self.getPath()
         self.data = self._loadDataFile(path)
+        self.days = []
+        self.calcDays()
         self.name = ''
 
     @staticmethod
@@ -117,6 +119,16 @@ class DataFile:
         if self.dataType == self.DT_MINLINE and (len(rs) % 240) != 0:
             raise Exception('Minute Line number error:', len(rs))
         return rs
+
+    def calcDays(self):
+        self.days.clear()
+        if not self.data:
+            return
+        for d in self.data:
+            if not self.days:
+                self.days.append(d.day)
+            elif self.days[-1] != d.day:
+                self.days.append(d.day)
 
     # 分时均线
     def calcAvgPriceOfDay(self, day):
@@ -372,16 +384,27 @@ class DataFileLoader:
                 struct.pack_into('2l5fl', arr, 0, d.day, d.time, d.open, d.high, d.low, d.close, d.amount, d.vol)
                 f.write(arr)
         f.close()
-                
+
+    def chunkAll(self, fromDay, endDay):
+        codes = DataFileUtils.listAllCodes()
+        codes.append('999999')
+        codes.append('399001')
+        codes.append('399006')
+        for c in codes:
+            self.chunkDayFile(c, fromDay, endDay)
+            self.chunkMinlineFile(c, fromDay, endDay)
 
 if __name__ == '__main__':
     ld = DataFileLoader()
-    ld.mergeDayFile('999999')
-    ld.mergeDayFile('399001')
-    ld.mergeDayFile('399006')
-    #ld.mergeMinlineFile('600000')
-    #ld.chunkDayFile('999999', 20231205, 20231206)
+    #ld.mergeDayFile('999999')
+    df = DataFile('999999', DataFile.DT_DAY)
+    df.calcDays()
     #ld.mergeAll()
-    #df = DataFile('999999', DataFile.DT_DAY, DataFile.FLAG_ALL)
+    #df = DataFile('999999', DataFile.DT_MINLINE, DataFile.FLAG_ALL)
+    #ld.chunkAll(20240301, 20240430)
+    rs = ld._loadTdxDataFile(r'D:\Program Files\new_tdx2\vipdoc\sz\minline\sz000001.lc1')
+    df = DataFile('000000', DataFile.DT_MINLINE)
+    df.data = rs
+    df.calcDays()
     pass
     

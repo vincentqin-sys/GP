@@ -58,7 +58,7 @@ class EditTableWindow(base_win.TableWindow):
         col = self.editor.col
         hd = self.headers[col]
         rowData = self.data[row]
-        cellVal = rowData[hd['name']]
+        #cellVal = rowData[hd['name']]
         #if cellVal == self.editor.text:
         #    return
         txt = self.editor.text.strip() if self.trimText else self.editor.text
