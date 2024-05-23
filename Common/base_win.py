@@ -1,3 +1,4 @@
+from win32.lib.win32con import WS_CHILD, WS_POPUP
 import win32gui, win32con , win32api, win32ui, win32gui_struct, win32clipboard # pip install pywin32
 import threading, time, datetime, sys, os, copy, calendar, functools
 import pyperclip # pip install pyperclip
@@ -1674,12 +1675,13 @@ class PopupMenu(PopupWindow):
                 self.drawer.drawLine(hdc, rc[0], rc[1], rc[2], rc[1], 0x999999, width = 1)
             else:
                 color = self.css['textColor'] if m.get('enable', True) else self.css['disableTextColor']
-                bk = rc[1]
-                rc[1] += (self.rowHeight - 14) // 2
-                self.drawer.drawText(hdc, title, rc, color, win32con.DT_LEFT)
-                rc[1] = bk
+                if m.get('render', None):
+                    render = m['render']
+                    render(self, hdc, rc[ : ], m)
+                else:
+                    self.drawer.drawText(hdc, title, rc, color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_WORDBREAK)
             rc[1] = rc[3]
-
+    
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_MOUSEMOVE:
             y = (lParam >> 16) & 0xffff
