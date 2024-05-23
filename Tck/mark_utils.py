@@ -33,9 +33,16 @@ def mergeMarks(datas : list, kind, enableDays : bool):
         marks[k] = d
     for d in datas:
         k = _buildKey(d, kind, enableDays)
-        if k in marks:
-            d['markColor'] = marks[k]['markColor']
-            d['markText'] = marks[k]['markText']
+        if k not in marks:
+            continue
+        # check is mark end
+        mk = marks[k]
+        if mk['endDay'] and d.get('day', None) and d['day'] >= mk['endDay']:
+            continue
+        d['markColor'] = mk['markColor']
+        d['markText'] = mk['markText']
+
+MARK_END_VAL = -9999
 
 def getMarkModel(enable):
     model = [
@@ -46,6 +53,7 @@ def getMarkModel(enable):
         {'name': 'mark_5', 'title': '标记棕色', 'enable': enable, 'markColor': 5},
         {'title': 'LINE'},
         {'name': 'mark_6', 'title': '取消记标', 'enable': enable, 'markColor': 0},
+        {'name': 'mark_end', 'title': '终止标记', 'enable': enable, 'markColor': MARK_END_VAL}
     ]
     return model
 
@@ -85,27 +93,37 @@ def markColorRender(win, hdc, row, col, colName, value, rowData, rect):
         win.drawer.drawRect(hdc, (x, y, x + SZ, y + SZ), color)
 
 # keys = {'kind' : xx, 'code': xx, 'day': xx, ....}
-def saveOneMark( keyVals, markColor, **kwargs):
-    if markColor < 0:
+# kwargs: endDay = ... (only used for mark end day)
+def saveOneMarkColor( keyVals, markColor, **kwargs):
+    if markColor < 0 and markColor != MARK_END_VAL:
         return
-    mps = {}
-    mps.update(keyVals)
-    mps['markColor'] = markColor
     cnd = None
     for k in keyVals:
         cndx = getattr(tck_orm.Mark, k) == keyVals[k]
         if not cnd: cnd = cndx
         else: cnd = cnd & cndx
+    cnd = cnd & (tck_orm.Mark.markColor > 0)
+
+    # save end mark day
+    if markColor == MARK_END_VAL:
+        cnd = cnd & (tck_orm.Mark.endDay.is_null(True) | tck_orm.Mark.endDay < kwargs['endDay'])
+        obj = tck_orm.Mark.get_or_none(cnd)
+        if obj:
+            obj.endDay = kwargs['endDay']
+            obj.save()
+        return
+    
+    mps = {}
+    mps.update(keyVals)
+    mps['markColor'] = markColor
     obj = tck_orm.Mark.get_or_none(cnd)
-    if kwargs:
-        mps.update(kwargs)
     if not obj:
         if markColor == 0:
             return None
         return tck_orm.Mark.create(**mps)
     else:
         if markColor == 0: # delete
-            obj.delete()
+            obj.delete_instance()
             return None
         else:
             obj.update(mps)

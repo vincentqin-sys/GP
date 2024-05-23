@@ -124,7 +124,7 @@ class Hots_Window(base_win.BaseWindow):
         model = mark_utils.getMarkModel(row >= 0)
         menu = base_win.PopupMenuHelper.create(self.hwnd, model)
         def onMenuItem(evt, rd):
-            mark_utils.saveOneMark({'kind': 'hots', 'code': rowData['code']}, evt.item['markColor'])
+            mark_utils.saveOneMarkColor({'kind': 'hots', 'code': rowData['code']}, evt.item['markColor'], endDay = rowData['day'])
             rd['markColor'] = evt.item['markColor']
             self.tableWin.invalidWindow()
         menu.addNamedListener('Select', onMenuItem, rowData)

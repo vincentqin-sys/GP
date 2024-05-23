@@ -1038,9 +1038,9 @@ class KLineWindow(base_win.BaseWindow):
 
     def _mergeItem(self, dest, item):
         if hasattr(item, 'high'):
-            dest.high = max(getattr(dest, 'high', 0), dest.high)
+            dest.high = max(getattr(dest, 'high', 0), item.high)
         if hasattr(item, 'low'):
-            dest.low = min(getattr(dest, 'low', 99999999), dest.low)
+            dest.low = min(getattr(dest, 'low', 99999999), item.low)
         if hasattr(item, 'close'):
             dest.close = item.close
         if hasattr(item, 'amount'):
@@ -1060,53 +1060,27 @@ class KLineWindow(base_win.BaseWindow):
         it.days = 1
         return it
 
-    def _sumItem(self, item):
-        #item.rate = getattr(item, 'rate', 0) / item.days
-        #item.vol = getattr(item, 'vol', 0) // item.days
-        #item.amount = getattr(item, 'amount', 0) // item.days
-        pass
-
     def initWeekModelData(self, ds):
         rs = []
-        i = 0
         cur = None
-        while i < len(ds):
-            if cur == None:
-                cur = self._copyItem(ds[i])
+        for item in ds:
+            dd = datetime.date(item.day // 10000, item.day // 100 % 100, item.day % 100)
+            if cur == None or dd.weekday() == 0:
+                cur = self._copyItem(item)
                 rs.append(cur)
-                i += 1
             else:
-                item = ds[i]
-                dd = datetime.date(item.day // 10000, item.day // 100 % 100, item.day % 100)
-                if dd.weekday() == 0:
-                    self._sumItem(cur)
-                    cur = None
-                else:
-                    self._mergeItem(cur, item)
-                    i += 1
-        if cur: self._sumItem(cur)
+                self._mergeItem(cur, item)
         return rs
 
     def initMonthModelData(self, ds):
         rs = []
-        i = 0
         cur = None
-        curMonth = 0
-        while i < len(ds):
-            if cur == None:
-                cur = self._copyItem(ds[i])
+        for item in ds:
+            if cur == None or item.day // 100 != cur.day // 100:
+                cur = self._copyItem(item)
                 rs.append(cur)
-                curMonth = cur.day // 100
-                i += 1
             else:
-                item = ds[i]
-                if item.day // 100 != curMonth:
-                    self._sumItem(cur)
-                    cur = None
-                else:
-                    self._mergeItem(cur, item)
-                    i += 1
-        if cur: self._sumItem(cur)
+                self._mergeItem(cur, item)
         return rs
 
     # dateType = 'day' 'week'  'month'
@@ -1596,7 +1570,7 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.codeList = codes
 
 if __name__ == '__main__':
-    sm = ths_win.ThsShareMemory.instance()
+    sm = base_win.ThsShareMemory.instance()
     sm.open()
     win = KLineCodeWindow()
     win.addIndicator('rate amount')
@@ -1605,5 +1579,5 @@ if __name__ == '__main__':
     win.addIndicator(TckIndicator()) # {'height' : 50}
     rect = (0, 0, 1250, 600)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('cls82475')
+    win.changeCode('002085') # cls82475
     win32gui.PumpMessages()

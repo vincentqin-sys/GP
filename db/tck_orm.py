@@ -99,6 +99,7 @@ class Mark(pw.Model):
     name = pw.CharField(null = True)
     markColor = pw.IntegerField(default = 0)
     markText = pw.CharField(null = True)
+    endDay = pw.CharField(null = True) # YYYY-MM-DD
 
     class Meta:
         database = db_tck

@@ -98,7 +98,7 @@ class VolLBWindow(base_win.BaseWindow):
         tabIdx, code, rowData = args
         win = self.listWins[tabIdx]
         keys = {'kind' : MARK_KIND, 'code' : code, 'day': rowData['day']}
-        mark_utils.saveOneMark(keys, evt.item['markColor'], name = rowData['name'])
+        mark_utils.saveOneMarkColor(keys, evt.item['markColor'], name = rowData['name'])
         rowData['markColor'] = evt.item['markColor']
         win.invalidWindow()
 
