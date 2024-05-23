@@ -621,6 +621,19 @@ class SimpleTimelineWindow(base_win.BaseWindow):
             return ow - self.paddings[2]
         return int(minuteIdx * p) + self.paddings[0]
 
+    def getPriceAtY(self, y, h):
+        sy = self.paddings[1]
+        ey = h - self.paddings[3] - self.volHeight - self.volSpace
+        if y <= sy or y >= ey:
+            return None
+        H = ey - sy
+        y -= sy
+        pr = self.model.getPriceRange()
+        if not pr or pr[0] == pr[1]:
+            return None
+        p = pr[1] - (y / H) * (pr[1] - pr[0])
+        return p
+
     def getMinuteIdxAtX(self, x, w):
         if x < self.paddings[0]:
             x = self.paddings[0]
@@ -690,7 +703,7 @@ class SimpleTimelineWindow(base_win.BaseWindow):
             rc = (x - 20, H - self.paddings[3], x + 20, H - self.paddings[3] + 20)
         # draw space
         ey = H - self.paddings[3] - self.volHeight
-        rc = (self.paddings[0], ey - self.volSpace, W - self.paddings[2], ey)
+        rc = (self.paddings[0], ey - self.volSpace + 1, W - self.paddings[2], ey - 1)
         self.drawer.fillRect(hdc, rc, self.drawer.darkness(self.css['bgColor']))
 
     def drawMouse(self, hdc):
@@ -701,6 +714,7 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         idx = self.getMinuteIdxAtX(x, W)
         if idx < 0:
             return
+        # vertical line
         x = self.getXAtMinuteIdx(idx, W)
         self.drawer.drawLine(hdc, x, self.paddings[1], x, H - self.paddings[3], 0x905090, style = win32con.PS_DOT)
         md = self.model.data[idx]
@@ -708,6 +722,16 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         ty = H - self.paddings[3] + 5
         rc = (x - 50, ty, x + 50, H)
         self.drawer.drawText(hdc, tips, rc, 0xf06050)
+        # horizontal line
+        price = self.getPriceAtY(y, H)
+        if not price:
+            return
+        zf = (price - self.model.pre) / self.model.pre * 100
+        self.drawer.drawLine(hdc, self.paddings[0], y, W - self.paddings[2], y, 0x905090, style = win32con.PS_DOT)
+        rc = (W - self.paddings[2] + 2, y - 10, W, y + 10)
+        self.drawer.fillRect(hdc, rc, self.css['bgColor'])
+        self.drawer.drawText(hdc, f'{zf :.2f}%', rc, 0xf06050, win32con.DT_VCENTER | win32con.DT_SINGLELINE | win32con.DT_LEFT)
+
 
     def drawMinites(self, hdc):
         if not self.model.data:
@@ -776,5 +800,5 @@ if __name__ == '__main__':
     win.createWindow(None, (100, 100, 1200, 600), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
     #win.load('002085', None)
-    win.load('cls82437') # cls82437 sh000001
+    win.load('sh000001') # cls82437 sh000001
     win32gui.PumpMessages()
