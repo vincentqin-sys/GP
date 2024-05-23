@@ -116,6 +116,8 @@ def saveOneMarkColor( keyVals, markColor, **kwargs):
     mps = {}
     mps.update(keyVals)
     mps['markColor'] = markColor
+    if 'name' in kwargs:
+        mps['name'] = kwargs['name']
     obj = tck_orm.Mark.get_or_none(cnd)
     if not obj:
         if markColor == 0:

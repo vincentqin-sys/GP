@@ -1324,7 +1324,7 @@ class TableWindow(BaseWindow):
         for i in range(0, colNum):
             self.drawColumnHead(hdc, i)
 
-# listeners : ClickSelect = {src, group, groupIdx}
+# listeners : Select = {src, group, groupIdx}
 class GroupButton(BaseWindow):
     def __init__(self, groups) -> None:
         super().__init__()
@@ -1356,7 +1356,7 @@ class GroupButton(BaseWindow):
         if self.selGroupIdx == idx:
             return
         self.selGroupIdx = idx
-        self.notifyListener(self.Event('ClickSelect', self, group = self.groups[idx], groupIdx = idx))
+        self.notifyListener(self.Event('Select', self, group = self.groups[idx], groupIdx = idx))
         win32gui.InvalidateRect(self.hwnd, None, True)
 
     def winProc(self, hwnd, msg, wParam, lParam):

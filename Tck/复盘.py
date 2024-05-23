@@ -28,7 +28,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
         gp = base_win.GroupButton(gpInfos)
         gp.setSelGroup(0)
         gp.createWindow(self.hwnd, (0, 0, 80 * len(gpInfos), 30))
-        gp.addListener(self.changeGroup, 'GroupButton')
+        gp.addNamedListener('Select', self.changeGroup)
         gpLy = base_win.AbsLayout()
         gpLy.setContent(0, 0, gp)
         self.layout.setContent(0, 0, gpLy)
@@ -42,8 +42,6 @@ class FuPanMgrWindow(base_win.BaseWindow):
         self.layout.setContent(1, 0, self.cardLayout)
 
     def changeGroup(self, evt, args):
-        if evt.name != 'ClickSelect':
-            return
         idx = evt.groupIdx
         self.cardLayout.showCardByIdx(idx)
 
