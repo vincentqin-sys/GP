@@ -99,7 +99,7 @@ class ConfirmDialog(Dialog):
         self.notifyListener(self.Event(evtName, self))
 
 # listeners : SelectColor = color
-class PopupColorWindow(base_win.PopupWindow):
+class PopupColorWindow(base_win.NoActivePopupWindow):
     COL_NUM = 13
     ROW_NUM = 9
     CELL_SIZE = 20
@@ -125,6 +125,7 @@ class PopupColorWindow(base_win.PopupWindow):
                 sy = r * self.CELL_SIZE
                 rc = (sx + 1, sy + 1, sx + self.CELL_SIZE, sy + self.CELL_SIZE)
                 self.drawer.fillRect(hdc, rc, self.getColor(r, c))
+        self.drawer.drawRect(hdc, (0, 0, *self.getClientSize()), self.css['bgColor'])
 
     def createWindow(self, parentWnd, rect = None, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
         W = self.CELL_SIZE * self.COL_NUM

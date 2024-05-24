@@ -1,8 +1,8 @@
-from win32.lib.win32con import WS_CHILD, WS_POPUP
 import win32gui, win32con , win32api, win32ui, win32gui_struct, win32clipboard # pip install pywin32
 import threading, time, datetime, sys, os, copy, calendar, functools
 import pyperclip # pip install pyperclip
 from multiprocessing import shared_memory # python 3.8+
+import ctypes
 
 class Listener:
     class Event:
@@ -1513,7 +1513,6 @@ class PopupWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.ownerHwnd = None
-        self.css['enableBorder'] = True
         self.css['borderColor'] = 0xaaaaaa
         self.destroyOnHide = True
 
@@ -1540,6 +1539,12 @@ class PopupWindow(BaseWindow):
         win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
         win32gui.SetActiveWindow(self.hwnd)
 
+    def move(self, x, y):
+        win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+
+    def resize(self, w, h):
+        win32gui.SetWindowPos(self.hwnd, 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE)
+
     def hide(self):
         win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
         if self.destroyOnHide and self.hwnd:
@@ -1555,8 +1560,63 @@ class PopupWindow(BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
+class NoActivePopupWindow(BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.ownerHwnd = None
+        self.css['borderColor'] = 0xaaaaaa
+        self.destroyOnHide = True
+        self.hook = None
+        self.user32 = ctypes.windll.user32
+
+    # x, y is screen pos
+    def show(self, x, y):
+        win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE)
+        win32gui.ShowWindow(self.hwnd, win32con.SW_SHOWNOACTIVATE)
+        self.msgLoop()
+
+    def move(self, x, y):
+        win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE)
+
+    def resize(self, w, h):
+        win32gui.SetWindowPos(self.hwnd, 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE | win32con.SWP_NOACTIVATE)
+
+    def msgLoop(self):
+        msg = ctypes.wintypes.MSG()
+        ref = ctypes.byref(msg)
+        while self.hwnd and win32gui.IsWindowVisible(self.hwnd):
+            br = self.user32.GetMessageA(ref, 0, 0, 0)
+            if not br:
+                break
+            if msg.message == win32con.WM_LBUTTONDOWN or msg.message == win32con.WM_RBUTTONDOWN or msg.message == win32con.WM_MBUTTONDOWN:
+                xy = win32gui.GetCursorPos()
+                rc = win32gui.GetWindowRect(self.hwnd)
+                if not win32gui.PtInRect(rc, xy):
+                    self.hide()
+                    break
+            self.user32.TranslateMessage(ref)
+            self.user32.DispatchMessageA(ref)
+
+    def hide(self):
+        win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+        if self.destroyOnHide and self.hwnd:
+            hwnd = self.hwnd
+            self.hwnd = None
+            win32gui.DestroyWindow(hwnd)
+
+    def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
+        super().createWindow(parentWnd, rect, style, className, title)
+        self.ownerHwnd = parentWnd
+        st = win32gui.GetWindowLong(self.hwnd, win32con.GWL_EXSTYLE)
+        win32gui.SetWindowLong(self.hwnd, win32con.GWL_EXSTYLE, st | win32con.WS_EX_NOACTIVATE)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_MOUSEACTIVATE:
+            return win32con.MA_NOACTIVATE
+        return super().winProc(hwnd, msg, wParam, lParam)
+
 # listeners : Select = {src, item, model}
-class PopupMenu(PopupWindow):
+class PopupMenu(NoActivePopupWindow):
     def __init__(self) -> None:
         super().__init__()
         self.css['bgColor'] = 0xf0f0f0
@@ -1582,7 +1642,15 @@ class PopupMenu(PopupWindow):
             return
         self.selIdx = -1
         w, h = self.calcSize()
-        win32gui.SetWindowPos(self.hwnd, 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE)
+        if self.ownerHwnd:
+            ownerRect = win32gui.GetWindowRect(self.ownerHwnd)
+        else:
+            ownerRect = (0, 0, 0, 0)
+        if x == None:
+            x = ownerRect[0]
+        if y == None:
+            y = ownerRect[3]
+        self.resize(w, h)
         super().show(x, y)
     
     def calcSize(self):
@@ -1592,7 +1660,8 @@ class PopupMenu(PopupWindow):
         hdc = win32gui.GetDC(self.hwnd)
         self.drawer.use(hdc, self.getDefFont())
         # calc max height
-        for i in range(self.startIdx, min(self.startIdx + self.VISIBLE_MAX_ITEM, len(self.model))):
+        si = max(self.startIdx, 0)
+        for i in range(si, min(si + self.VISIBLE_MAX_ITEM, len(self.model))):
             m = self.model[i]
             title = m.get('title', '')
             h += self.SEPRATOR_HEIGHT if title == 'LINE' else self.rowHeight
@@ -1635,7 +1704,7 @@ class PopupMenu(PopupWindow):
                 return
         self.startIdx = idx
         w, h = self.calcSize()
-        win32gui.SetWindowPos(self.hwnd, 0, 0, 0, w, h, win32con.SWP_NOZORDER | win32con.SWP_NOMOVE)
+        self.resize(w, h)
         self.invalidWindow()
 
     def drawArrow(self, hdc):
@@ -1719,7 +1788,7 @@ class PopupMenuHelper:
         return menu
 
 # listeners :  Select = {src, day: int, sday: YYYY-MM-DD}
-class DatePopupWindow(PopupWindow):
+class DatePopupWindow(NoActivePopupWindow):
     TOP_HEADER_HEIGHT = 40
     PADDING = 10
 
@@ -1738,7 +1807,7 @@ class DatePopupWindow(PopupWindow):
         self.preBtnRect = (W - BTN_W * 2 - 15, 10, W - BTN_W - 15, 30)
 
     # x, y is screen pos
-    def show(self, x = None, y = None):
+    def show(self, x, y):
         super().show(x, y)
         self.setSelDay(self.curSelDay)
 
@@ -1913,7 +1982,8 @@ class DatePicker(BaseWindow):
             if win32gui.IsWindowVisible(self.popWin.hwnd):
                 self.popWin.hide()
             else:
-                self.popWin.show()
+                rc = win32gui.GetWindowRect(self.hwnd)
+                self.popWin.show(rc[0], rc[3])
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
