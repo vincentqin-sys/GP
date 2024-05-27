@@ -144,8 +144,9 @@ def subprocess_main():
     hotWindow.addListener(onListen, 'ListenHotWindow')
     threading.Thread(target = _workThread, args=(thsWindow, 'hot-win32.json')).start()
     
-    sysMarkWin = MarkWin()
-    sysMarkWin.createWindow(thsWindow.topHwnd)
+    mm = MarkMain()
+    mm.createWindow(thsWindow.topHwnd, (0, 0, 1, 1), win32con.WS_POPUP)
+    mm.reg()
     win32gui.PumpMessages()
     print('Quit Sub Process')
 
@@ -173,10 +174,10 @@ def listen_ThsFuPing_Process():
         p.join()
 
 class MarkWin(base_win.BaseWindow):
-    def __init__(self) -> None:
+    def __init__(self, isMain) -> None:
         super().__init__()
         self.css['bgColor'] = 0xc0c0c0
-        self.reg()
+        self.isMain = isMain
 
     def createWindow(self, parentWnd, rect = None, style= win32con.WS_POPUP, className='STATIC', title=''):
         if not rect:
@@ -186,10 +187,19 @@ class MarkWin(base_win.BaseWindow):
         win32gui.SetWindowLong(self.hwnd, win32con.GWL_EXSTYLE, ce | win32con.WS_EX_LAYERED) #  | win32con.WS_EX_TRANSPARENT
         win32gui.SetLayeredWindowAttributes(self.hwnd, self.css['bgColor'], 80, win32con.LWA_ALPHA)
 
+    def onDraw(self, hdc):
+        if self.isMain:
+            w, h = self.getClientSize()
+            rc = (0, 0, w, 40)
+            self.drawer.fillRect(hdc, rc, 0x1D66CD)
+
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONDOWN:
             win32gui.SendMessage(hwnd, win32con.WM_NCLBUTTONDOWN, win32con.HTCAPTION, 0)
             # no return
+        if msg == win32con.WM_NCLBUTTONDBLCLK or msg == win32con.WM_LBUTTONDBLCLK:
+            self.hide()
+            return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
     def show(self, x = None, y = None):
@@ -199,26 +209,56 @@ class MarkWin(base_win.BaseWindow):
             x = win32gui.GetCursorPos()[0]
         if y == None:
             y = prc[1] + 30
-        w = 8
+        W = 5
         h = prc[3] - y - 30
-        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, x, y, w, h, 0)
+        win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, x, y, W, h, 0)
         #print(win32gui.GetWindowRect(self.hwnd))
 
     def hide(self):
         win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+        win32gui.DestroyWindow(self.hwnd)
 
-    def doMarkKey(self, args):
-        d = thsShareMem.readSelDay()
-        thsShareMem.writeMarkDay(d)
-        self.show()
+class MarkMain(base_win.BaseWindow):
+    MSG_M = win32con.WM_USER + 100
+    MSG_N = win32con.WM_USER + 101
 
-    def doNoMarkKey(self, args):
-        self.hide()
+    def __init__(self) -> None:
+        super().__init__()
+        self.subWins = []
+        self.mainWin = None
+
+    def doMarkKey_1(self, msg):
+        win32gui.PostMessage(self.hwnd, self.MSG_M, None, None)
+        
+    def doMarkKey_2(self, msg):
+        win32gui.PostMessage(self.hwnd, self.MSG_N, None, None)
 
     def reg(self):
         hk = system_hotkey.SystemHotkey()
-        hk.register(('control', 'alt', 'm'), callback = self.doMarkKey, overwrite = True)
-        hk.register(('control', 'alt', 'n'), callback = self.doNoMarkKey, overwrite = True)
+        hk.register(('control', 'alt', 'm'), callback = self.doMarkKey_1, overwrite = True)
+        hk.register(('control', 'alt', 'n'), callback = self.doMarkKey_2, overwrite = True)
+
+    def onMarkMain(self):
+        d = thsShareMem.readSelDay()
+        thsShareMem.writeMarkDay(d)
+        if self.mainWin and win32gui.IsWindow(self.mainWin.hwnd):
+            self.mainWin.show()
+            return
+        self.mainWin = MarkWin(True)
+        self.mainWin.createWindow(thsWindow.topHwnd)
+        self.mainWin.show()
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == self.MSG_M:
+            self.onMarkMain()
+            return True
+        if msg == self.MSG_N:
+            win = MarkWin(False)
+            win.createWindow(thsWindow.topHwnd)
+            win.show()
+            self.subWins.append(win)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
 
 if __name__ == '__main__':
     tsm = base_win.ThsShareMemory(True)

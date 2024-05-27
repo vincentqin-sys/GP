@@ -143,12 +143,38 @@ function initPlatePage() {
     obj.insertAfter('.stock-detail > span:eq(1)');
 }
 
+function initFinacePage_ZT_Num() {
+    let trs = $('table.watch-table tr');
+    let num = 0;
+    let tds = trs.eq(0).find('th');
+    let zfCol = -1;
+    for (let i = 0; i < tds.length; i++) {
+        if (tds.eq(i).text().trim() == '涨跌幅') {
+            zfCol = i;
+            break;
+        }
+    }
+    if (zfCol < 0) {
+        console.log('未找到列：<涨跌幅>');
+        return;
+    }
+    for (let i = 1; i < trs.length; i++) {
+        let tds = trs.eq(i).find('td');
+        let zf = tds.eq(zfCol).text();
+        zf = zf.replace('%', '').replace('+', '');
+        zf = parseFloat(zf);
+        if (zf > 8) {
+            num ++;
+        }
+    }
+}
 
 let url = window.location.href;
 if (url == 'https://www.cls.cn/finance') {
     setTimeout(() => {
         //initFinacePage();
     }, 3000);
+    initFinacePage_ZT_Num();
 } else if (url.indexOf('https://www.cls.cn/plate?code=') >= 0) {
     initPlatePage();
 }

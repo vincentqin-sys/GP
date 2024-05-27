@@ -21,11 +21,12 @@ function _doHook(response) {
 		return;
 	}
 	if (url.indexOf('https://x-quote.cls.cn/quote/index/up_down_analysis') >= 0) {
-		loadZTInfo(response);
+		//loadZTInfo(response);
+		adjustZTInfo(response);
 		return;
 	}
 	if (url.indexOf('https://x-quote.cls.cn/quote/stock/emotion_options') >= 0) {
-        loadDegree(response);
+        //loadDegree(response);
     }
 }
 
@@ -72,7 +73,22 @@ function loadZTInfo(response) {
 		}
 	}
 	console.log(rs);
-	sendToServer('http://localhost:8071/save-CLS-ZT', rs);
+	//sendToServer('http://localhost:8071/save-CLS-ZT', rs);
+}
+
+function adjustZTInfo(response) {
+	let body = response.response;
+	let json = JSON.parse(body);
+	console.log(json);
+	let rs = [];
+	for (i in json.data) {
+		let item = json.data[i];
+		if (item.is_st != 0)
+			continue
+		rs.push(item);
+	}
+	json.data = rs;
+	response.response = JSON.stringify(json);
 }
 
 function sendToServer(url, data) {

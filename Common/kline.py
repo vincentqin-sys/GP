@@ -1110,12 +1110,25 @@ class KLineWindow(base_win.BaseWindow):
         self.invalidWindow()
 
     def onContextMenu(self, x, y):
+        selDay = 0
+        if self.selIdx >= 0:
+            selDay = self.model.data[self.selIdx].day
+            if isinstance(selDay, str):
+                selDay = selDay.replace('-', '')
+                selDay = int(selDay)
         mm = [{'title': '日线', 'name': 'day', 'enable': 'day' != self.dateType}, 
               {'title': '周线', 'name': 'week', 'enable': 'week' != self.dateType}, 
-              {'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType}]
+              {'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType},
+              {'title': 'LINE'},
+              {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0},
+              ]
         menu = base_win.PopupMenuHelper.create(self.hwnd, mm)
         def onMM(evt, args):
-            self.changeDateModel(evt.item['name'])
+            name = evt.item['name']
+            if name in ('day', 'week', 'month'):
+                self.changeDateModel(name)
+            elif name == 'mark-day':
+                base_win.ThsShareMemory.instance().writeMarkDay(selDay)
         menu.addNamedListener('Select', onMM)
         menu.show(* win32gui.GetCursorPos())
 

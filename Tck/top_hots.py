@@ -91,12 +91,13 @@ class Hots_Window(base_win.BaseWindow):
 
     def initTips(self):
         model = [
-            {'title': '玻璃基板'},
+            {'title': '电力 | 电网'},
             {'title': '地产'},
+            {'title': 'LINE'},
+            {'title': '玻璃基板'},
             {'title': '飞行汽车 | 低空经济'},
             {'title': '化工 | 化纤 '},
             {'title': '合成生物'},
-            {'title': 'LINE'},
         ]
         for q in self.inputTips:
             finded = False
