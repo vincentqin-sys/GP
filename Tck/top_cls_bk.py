@@ -64,8 +64,8 @@ class CodesTableModel:
     
     def __init__(self, bkInfo) -> None:
         self.headers = [{'name': '#idx', 'width': 40, 'title': ''},
-                        {'name': 'markColor', 'title': 'M', 'width' : 30, 'sortable' :True, 'render' : mark_utils.markColorRender, 'sorter': mark_utils.sortMarkColor},
-                        {'name': 'secu_name', 'title': '名称', 'width' : 80, 'render' : mark_utils.markRender},
+                        {'name': 'markColor', 'title': 'M', 'width' : 30, 'sortable' :True, 'render' : mark_utils.markColorBoxRender, 'sorter': mark_utils.sortMarkColor},
+                        {'name': 'secu_name', 'title': '名称', 'width' : 80, 'render' : mark_utils.markColorTextRender},
                         {'name': 'zhHotOrder', 'title': '热度',  'width':80, 'sortable' :True, 'sorter': self.sortZhHot},
                         #{'name': 'change', 'title': '涨幅', 'width': 80, 'sortable' :True, 'render': cache.renderZF, 'sorter': self.sorter},
                         {'name': 'head_num', 'title': '领涨', 'width': 50, 'sortable' :True, 'sorter': self.sorter },

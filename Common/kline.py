@@ -1386,7 +1386,7 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.SelectObject(hdc, wp)
         win32gui.MoveToEx(hdc, self.LEFT_MARGIN, y)
         win32gui.LineTo(hdc, w, y)
-        win32gui.MoveToEx(hdc, x, 0)
+        win32gui.MoveToEx(hdc, x, self.klineIndicator.getMargins(1))
         win32gui.LineTo(hdc, x, h)
         win32gui.DeleteObject(wp)
 

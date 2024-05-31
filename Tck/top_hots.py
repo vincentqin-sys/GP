@@ -50,8 +50,8 @@ class Hots_Window(base_win.BaseWindow):
 
         headers = [ {'title': '', 'width': 40, 'name': '#idx','textAlign': win32con.DT_SINGLELINE | win32con.DT_CENTER | win32con.DT_VCENTER },
                    #{'title': '日期', 'width': 100, 'name': 'day', 'sortable':False , 'fontSize' : 14},
-                   {'title': 'M', 'width': 30, 'name': 'markColor', 'sortable':True , 'render': mark_utils.markColorRender, 'sorter': mark_utils.sortMarkColor },
-                   {'title': '名称', 'width': 80, 'name': 'name', 'sortable':False , 'fontSize' : 14, 'render': mark_utils.markRender},
+                   {'title': 'M', 'width': 30, 'name': 'markColor', 'sortable':True , 'render': mark_utils.markColorBoxRender, 'sorter': mark_utils.sortMarkColor },
+                   {'title': '名称', 'width': 80, 'name': 'name', 'sortable':False , 'fontSize' : 14, 'render': mark_utils.markColorTextRender},
                    #{'title': '代码', 'width': 80, 'name': 'code', 'sortable':True , 'fontSize' : 14},
                    {'title': '热度', 'width': 60, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 14, 'sorter': sortHot},
                    {'title': '板块', 'width': 150, 'name': 'hy', 'sortable':True , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
@@ -91,8 +91,10 @@ class Hots_Window(base_win.BaseWindow):
 
     def initTips(self):
         model = [
+            {'title': '光刻机 | 光刻胶'},
             {'title': '电力 | 电网'},
             {'title': '地产'},
+            {'title': '光伏'},
             {'title': 'LINE'},
             {'title': '玻璃基板'},
             {'title': '飞行汽车 | 低空经济'},

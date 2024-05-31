@@ -80,7 +80,7 @@ def markColor2RgbColor(markColor):
         return CS[markColor - 1]
     return None
 
-def markRender(win, hdc, row, col, colName, value, rowData, rect):
+def markColorTextRender(win, hdc, row, col, colName, value, rowData, rect):
     color = win.css['textColor']
     mc = rowData.get('markColor', None)
     color = markColor2RgbColor(mc) or color
@@ -92,7 +92,7 @@ def sortMarkColor(colName, val, rowData, allDatas, asc):
         return 9999999 if asc else 0
     return val
 
-def markColorRender(win, hdc, row, col, colName, value, rowData, rect):
+def markColorBoxRender(win, hdc, row, col, colName, value, rowData, rect):
     if value == None:
         return
     color = markColor2RgbColor(abs(value))

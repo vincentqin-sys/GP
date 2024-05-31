@@ -46,9 +46,9 @@ class VolLBWindow(base_win.BaseWindow):
         def formateZF(colName, val, rowData):
             return f'{val :.02f}%'
         headers = [{'title': '', 'width': 40, 'name': '#idx' },
-                   {'title': 'M', 'width': 20, 'name': 'markColor', 'render': mark_utils.markColorRender, 'sortable':True },
-                   {'title': '股票名称', 'width': 80, 'name': 'name', 'render': mark_utils.markRender},
-                   {'title': '行业', 'width': 0, 'name': 'hy', 'stretch': 1, 'render_': mark_utils.markRender, 'sortable':True},
+                   {'title': 'M', 'width': 20, 'name': 'markColor', 'render': mark_utils.markColorBoxRender, 'sortable':True },
+                   {'title': '股票名称', 'width': 80, 'name': 'name', 'render': mark_utils.markColorTextRender},
+                   {'title': '行业', 'width': 0, 'name': 'hy', 'stretch': 1, 'render_': mark_utils.markColorTextRender, 'sortable':True},
                    {'title': '成交额', 'width': 70, 'name': 'amount', 'sortable':True, 'formater': formateFloat},
                    {'title': '量比', 'width': 60, 'name': 'lb', 'sortable':True , 'formater': formateFloat1},
                    {'title': '涨幅', 'width': 70, 'name': 'zf', 'sortable':True , 'formater': formateZF}

@@ -74,7 +74,7 @@ class ZSWindow(base_win.BaseWindow):
         
         headers = [{'title': '', 'width': 30, 'name': '#idx' },
                    {'title': '代码', 'width': 60, 'name': 'code'},
-                   {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True, 'render': mark_utils.markRender },
+                   {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True, 'render': mark_utils.markColorTextRender },
                    {'title': '成交额', 'width': 60, 'name': 'money', 'formater': formateMoney , 'sortable':True },
                    {'title': '涨幅', 'width': 60, 'name': 'zdf', 'formater': formateRate, 'sortable':True },
                    {'title': '50亿排名', 'width': 70, 'name': 'zdf_50PM', 'sorter': sortPM, 'sortable':True },
