@@ -190,7 +190,7 @@ class MarkWin(base_win.BaseWindow):
     def onDraw(self, hdc):
         if self.isMain:
             w, h = self.getClientSize()
-            rc = (0, 0, w, 40)
+            rc = (0, 0, w, 200)
             self.drawer.fillRect(hdc, rc, 0x1D66CD)
 
     def winProc(self, hwnd, msg, wParam, lParam):

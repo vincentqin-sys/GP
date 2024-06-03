@@ -8,7 +8,7 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import ths_win
 from Common import base_win, timeline, kline
-from Tck import zs_fupan, kline_utils, mark_utils
+from Tck import kline_utils, mark_utils, top_diary
 
 MIN_MONEY = 20
 
@@ -34,30 +34,12 @@ class ZSWindow(base_win.BaseWindow):
         self.checkBox_THS.createWindow(self.hwnd, (0, 0, 150, 30))
         self.checkBox_Only = base_win.CheckBox({'title': '仅显示标记指数'})
         self.checkBox_Only.createWindow(self.hwnd, (0, 0, 150, 30))
-        rjBtn = base_win.Button({'title': '复盘日记'})
-        rjBtn.createWindow(self.hwnd, (0, 0, 80, 30))
         absLayout = base_win.AbsLayout()
         absLayout.setContent(0, 0, self.datePicker)
         absLayout.setContent(230, 0, self.checkBox_THS)
         absLayout.setContent(400, 0, self.checkBox_Only)
-        absLayout.setContent(600, 0, rjBtn)
         self.layout.setContent(0, 0, absLayout)
-        def onRjClick(evt, args):
-            fpWin = zs_fupan.DailyFuPanWindow()
-            p = self.hwnd
-            while True:
-                pp = win32gui.GetParent(p)
-                if pp: p = pp
-                else:break
-            rc = win32gui.GetWindowRect(p)
-            pw, ph = rc[2] - rc[0], rc[3] - rc[1]
-            wcw = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
-            CW = int(wcw * 0.9)
-            fpWin.createWindow(self.hwnd, (rc[0] + (pw - CW) // 2, rc[1], CW, ph), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION, title='复盘日记') # WS_OVERLAPPEDWINDOW
-            win32gui.ShowWindow(fpWin.hwnd, win32con.SW_SHOW)
-            
-        rjBtn.addNamedListener('Click', onRjClick)
-        
+
         def formateRate(colName, val, rowData):
             return f'{val :.02f}%'
         def formateMoney(colName, val, rowData):

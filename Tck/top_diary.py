@@ -8,7 +8,7 @@ from Common import base_win, sheet
 from Tck import kline_utils
 from db import ths_orm as ths_orm
 
-class DailyFuPanWindow(base_win.BaseWindow):
+class DailyWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.css['paddings'] = (0, 0, 0, 0)
@@ -171,7 +171,8 @@ class DailyFuPanWindow(base_win.BaseWindow):
         pp = base_win.DatePopupWindow()
         pp.addNamedListener('Select', onPeekDay)
         pp.createWindow(evt.src.hwnd)
-        pp.show()
+        rc = win32gui.GetWindowRect(evt.src.hwnd)
+        pp.show(rc[0], rc[3])
 
     def onDeleteDay(self, evt, args):
         selRow = self.tableWin.selRow
@@ -217,7 +218,7 @@ class DailyFuPanWindow(base_win.BaseWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
     
 if __name__ == '__main__':
-    win = DailyFuPanWindow()
+    win = DailyWindow()
     win.createWindow(None, (0, 0, 1200, 600), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
     win32gui.PumpMessages()
