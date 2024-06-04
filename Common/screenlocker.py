@@ -98,7 +98,7 @@ class ScreenLocker(base_win.BaseWindow):
 
 
 class Main:
-    SKIP_TIME_IDX = 0
+    SKIP_IDLE_TIME_IDX = 0
     LOCK_STATUS_IDX = 1
     LOCK_STATUS_LOCK = 100
     LOCK_STATUS_UNLOCK = 200
@@ -183,12 +183,11 @@ class Main:
                 self.lastInputTime = win32api.GetTickCount()
                 continue
 
-            skipTime = self.readIntData(self.SKIP_TIME_IDX)
+            skipTime = self.readIntData(self.SKIP_IDLE_TIME_IDX)
             if win32api.GetTickCount() <= skipTime:
                 now = datetime.datetime.now()
-                if now.hour >= 3 and now.hour <= 4:
-                    # reset skip time
-                    self.writeIntData(self.SKIP_TIME_IDX, 0)
+                if now.hour >= 6 and now.hour < 18: # 工作时间不进入
+                    self.writeIntData(self.SKIP_IDLE_TIME_IDX, 0)
                 continue
 
             idleTime = self.getIdleTime()
