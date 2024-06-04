@@ -185,6 +185,10 @@ class Main:
 
             skipTime = self.readIntData(self.SKIP_TIME_IDX)
             if win32api.GetTickCount() <= skipTime:
+                now = datetime.datetime.now()
+                if now.hour >= 3 and now.hour <= 4:
+                    # reset skip time
+                    self.writeIntData(self.SKIP_TIME_IDX, 0)
                 continue
 
             idleTime = self.getIdleTime()

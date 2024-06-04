@@ -342,6 +342,9 @@ def work():
     tdx = TdxDownloader()
     flag = tdx.run()
     if flag:
+        tm = datetime.datetime.now()
+        ss = tm.strftime('%Y-%m-%d %H:%M')
+        print('download end ', ss)
         # 计算成交量排名
         t = TdxVolPMTools()
         t.calcVolOrder_Top100()
@@ -415,5 +418,5 @@ def mergeTimeline():
     pass
 
 if __name__ == '__main__':
-    work() # run one time
-    #autoMain()
+    #work() # run one time
+    autoMain()
