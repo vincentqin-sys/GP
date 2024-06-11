@@ -72,7 +72,7 @@ class ScreenLocker(base_win.BaseWindow):
         #y = (H - CH) // 2
         #rc = (x, y, x + CW, y + CH)
         #self.drawer.fillRect(hdc, rc, 0x202020)
-        focusColor = 0x66B2FF if win32gui.GetFocus() == self.hwnd else 0x303030
+        #focusColor = 0x202020 if win32gui.GetFocus() == self.hwnd else 0x303030 # 0x66B2FF
         #self.drawer.drawLine(hdc, rc[0], rc[3], rc[2], rc[3], color = focusColor)
 
         # box
@@ -80,7 +80,11 @@ class ScreenLocker(base_win.BaseWindow):
         x = (W - CW) // 2
         y = (H - CW) // 2
         rc = (x, y, x + CW, y + CW)
-        self.drawer.fillRect(hdc, rc, focusColor)
+        color = 0x202020
+        if win32gui.GetFocus() == self.hwnd:
+            self.drawer.fillRect(hdc, rc, color)
+        else:
+            self.drawer.drawCycle(hdc, rc, color)
 
         CW2 = CW // 4
         x = (W - CW2) // 2

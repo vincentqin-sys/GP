@@ -153,14 +153,14 @@ class THS_ZS(pw.Model):
 class THS_ZS_ZD(pw.Model):
     day = pw.CharField() # YYYY-MM-DD
     code = pw.CharField() #指数代码
-    name = pw.CharField() #指数名称
-    close = pw.FloatField()
-    open = pw.FloatField()
-    high = pw.FloatField()
-    rate = pw.FloatField()
-    money = pw.FloatField() #亿(元)
-    vol = pw.FloatField() # 亿(股)
-    zdf = pw.FloatField() #涨跌幅
+    name = pw.CharField(null = True) #指数名称
+    close = pw.FloatField(default = 0)
+    open = pw.FloatField(default = 0)
+    high = pw.FloatField(default = 0)
+    rate = pw.FloatField(default = 0)
+    money = pw.FloatField(default = 0) #亿(元)
+    vol = pw.FloatField(default = 0) # 亿(股)
+    zdf = pw.FloatField(default = 0) #涨跌幅
     zdf_50PM = pw.IntegerField(default = 0) # 50亿以上排名
     zdf_PM = pw.IntegerField(default = 0) # 全部排名
     markColor = pw.IntegerField(null = True, column_name = 'mark_1') # 标记 1

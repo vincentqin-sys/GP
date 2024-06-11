@@ -167,6 +167,7 @@ function initFinacePage_ZT_Num() {
             num ++;
         }
     }
+    $('.event-querydate-box').append($('<span style="padding-left: 30px; color:red;" >实际涨停：' + num + '</span>'));
 }
 
 let url = window.location.href;
