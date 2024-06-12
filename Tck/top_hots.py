@@ -91,7 +91,7 @@ class Hots_Window(base_win.BaseWindow):
 
     def initTips(self):
         model = [
-            {'title': '光刻机 | 光刻胶'},
+            {'title': '光刻机 | 光刻胶 | 半导体 | 芯片'},
             {'title': '电力 | 电网'},
             {'title': '地产'},
             {'title': '光伏'},

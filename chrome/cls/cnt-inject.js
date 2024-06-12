@@ -174,8 +174,19 @@ let url = window.location.href;
 if (url == 'https://www.cls.cn/finance') {
     setTimeout(() => {
         //initFinacePage();
-    }, 3000);
-    initFinacePage_ZT_Num();
+        initFinacePage_ZT_Num();
+    }, 1500);
 } else if (url.indexOf('https://www.cls.cn/plate?code=') >= 0) {
     initPlatePage();
 }
+
+/*
+window.addEventListener("message", function(e)
+{
+    let data = e.data;
+    console.log('get message:', e.data);
+    if (data['cmd'] == 'ZT-INFO') {
+        window['zt-info'] = data.data;
+    }
+}, false);
+*/

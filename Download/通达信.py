@@ -346,15 +346,17 @@ def work():
         ss = tm.strftime('%Y-%m-%d %H:%M')
         print('download end ', ss)
         # 计算成交量排名
+        print('calc vol info')
         t = TdxVolPMTools()
         t.calcVolOrder_Top100()
         t.calcSHSZVol()
         #计算两市行情信息
         t = TdxLSTools()
         t.calcInfo()
+        print('merge mimute time line data')
         ld = datafile.DataFileLoader()
         ld.mergeAll()
-    print('\n\n')
+    print('---------------------\n\n')
     return flag
 
 def getDesktopGUILock():

@@ -44,6 +44,11 @@ def calcAllHotZHAndSave():
         zhDatas = [THS_HotZH(**d) for d in rowDatas]
         THS_HotZH.bulk_create(zhDatas, 50)
 
+def calcHotZHAndSave(day):
+    rowDatas = calcHotZHOnDay(day)
+    zhDatas = [THS_HotZH(**d) for d in rowDatas]
+    THS_HotZH.bulk_create(zhDatas, 50)
+
 def getNameByCode(code):
     if type(code) == int:
         code = f'{code :06d}'
@@ -65,9 +70,28 @@ def calcHotZHOnLastDay():
     day = getLastTradeDay()
     return calcHotZHOnDay(day)
 
+def loadFromFile():
+    import json
+    f = open('D:/download/a.json', 'r', encoding='utf-8')
+    js = json.loads(f.read())
+    for one in js:
+        rs = []
+        day = int(one['hotDay'].replace('-', ''))
+        hotTime = int(one['hotTime'].replace(':', ''))
+        for d in one['hotInfo']:
+            d['day'] = day
+            d['time'] = hotTime
+            d['code'] = int(d['code'])
+            del d['name']
+            rs.append(THS_Hot(**d))
+        THS_Hot.bulk_create(rs, 100)
+
+
 if __name__ == '__main__':
-    getLastTradeDay()
+    #getLastTradeDay()
     #calcAllHotZHAndSave()
+    #loadFromFile()
+    calcHotZHAndSave(20240611)
     
     print(os.getcwd())
     # 计算最热的30个股的综合排名

@@ -123,6 +123,12 @@ def saveZS():
         print(f"Save ZS, no data ")
     return {"status": "OK"}
 
+def saveZSFromFile():
+    f = open('D:/download/b.json', 'r', encoding = 'utf-8')
+    js = json.loads(f.read())
+    for item in js:
+        ths_orm.THS_ZS_ZD.create(**item)
+
 def startup(app : Flask):
     print('[hot-server]功能: 启动服务, 保存同花顺热点; 保持Chrome始终都启动了。')
     #p = Process(target = sub_process, daemon = True)

@@ -459,12 +459,19 @@ class SimpleTimelineModel:
         return True
 
     # 最新一天的指数分时
-    def _loadCode_Ths_Newest(self, code):
+    def loadCode_Ths_Newest(self, code, day):
         self.code = code
+        self.data.clear()
         try:
+            if type(day) == 'str':
+                day = day.replace('-', '')
+                day = int(day)
             hx = henxin.HexinUrl()
             data = hx.loadUrlData( hx.getFenShiUrl(code))
             lastDay = int(data['date'])
+            self.name = data['name']
+            if day and day != lastDay:
+                return False
             self.day = lastDay
             self.pre = int(data['pre'] * 100 + 0.5)
             for d in data['dataArr']:
@@ -474,9 +481,11 @@ class SimpleTimelineModel:
                 ts.vol = int(d['vol'])
                 ts.amount = int(d['money'])
                 self.data.append(ts)
+            return True
         except Exception as e:
             traceback.print_exc()
             print('[SimpleTimelineModel.loadCode_ZS] fail', code)
+        return False
 
     def loadLocal(self, code, day):
         if len(code) == 8:
@@ -510,13 +519,13 @@ class SimpleTimelineModel:
             code = f'{code :06d}'
         if not code:
             return
-        if code[0] == '8':
-            self._loadCode_Ths_Newest(code)
-            obj = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name.distinct()).where(ths_orm.THS_ZS_ZD.code == code).scalar()
-            self.name = obj
+        if code[0] in ('0', '3', '6', '8'):
+            if not self.loadCode_Ths_Newest(code, day):
+                self.localData(code, day)
         else:
             if not self._loadCode_Cls(code, day):
                 self.loadLocal(code, day)
+            #obj = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name.distinct()).where(ths_orm.THS_ZS_ZD.code == code).scalar()
             obj = ths_orm.THS_GNTC.select(ths_orm.THS_GNTC.name.distinct()).where(ths_orm.THS_GNTC.code == code).scalar()
             self.name = obj
 

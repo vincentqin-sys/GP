@@ -801,7 +801,12 @@ class DayIndicator(CustomIndicator):
         if selDay == int(data['__day']):
             win32gui.FillRect(hdc, rc, hbrs['light_dark'])
         day = self.customData[idx]['day']
-        day = day[4 : 6] + '-' + day[6 : 8]
+        hday = day[4 : 6] + '-' + day[6 : 8]
+        today = datetime.date.today()
+        if today.year != int(day[0 : 4]):
+            day = day[2: 4] + '-' + hday
+        else:
+            day = hday
         win32gui.SetTextColor(hdc, 0xcccccc)
         win32gui.DrawText(hdc, day, -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 

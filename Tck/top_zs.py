@@ -10,7 +10,7 @@ from THS import ths_win
 from Common import base_win, timeline, kline
 from Tck import kline_utils, mark_utils, top_diary
 
-MIN_MONEY = 20
+MIN_MONEY = 0
 
 class ZSWindow(base_win.BaseWindow):
     def __init__(self) -> None:

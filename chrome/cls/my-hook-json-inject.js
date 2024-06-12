@@ -89,6 +89,8 @@ function adjustZTInfo(response) {
 	}
 	json.data = rs;
 	response.response = JSON.stringify(json);
+	//window.postMessage({cmd: 'ZT-INFO', data: rs}, '*');
+	window['zt-info'] = rs;
 }
 
 function sendToServer(url, data) {
