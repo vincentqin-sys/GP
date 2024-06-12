@@ -521,7 +521,7 @@ class SimpleTimelineModel:
             return
         if code[0] in ('0', '3', '6', '8'):
             if not self.loadCode_Ths_Newest(code, day):
-                self.localData(code, day)
+                self.loadLocal(code, day)
         else:
             if not self._loadCode_Cls(code, day):
                 self.loadLocal(code, day)
