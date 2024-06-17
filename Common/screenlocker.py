@@ -147,6 +147,7 @@ class Main:
         hk.register(('alt', 'l'), callback = self.doHotKey, overwrite = True)
 
     def doHotKey(self, args):
+        self.reset()
         if self.locker.isLocked():
             self.locker.unlock()
         else:
@@ -164,6 +165,12 @@ class Main:
         buf = self.shm.buf.cast('i')
         data = buf[pos]
         return data
+    
+    def reset(self):
+        if not self.shm:
+            return
+        self.writeIntData(self.LOCK_STATUS_IDX, 0)
+        self.writeIntData(self.SKIP_IDLE_TIME_IDX, 0)
     
     # seconds
     def getIdleTime(self):
@@ -188,11 +195,13 @@ class Main:
                 continue
 
             skipTime = self.readIntData(self.SKIP_IDLE_TIME_IDX)
-            if win32api.GetTickCount() <= skipTime:
-                now = datetime.datetime.now()
-                if now.hour >= 6 and now.hour < 18: # 工作时间不进入
+            now = datetime.datetime.now()
+            if now.hour >= 6 and now.hour < 18: # 工作时间不进入
+                if skipTime > 0:
                     self.writeIntData(self.SKIP_IDLE_TIME_IDX, 0)
-                continue
+            else:
+                if win32api.GetTickCount() <= skipTime:
+                    continue
 
             idleTime = self.getIdleTime()
             #print('idleTime = ', idleTime)

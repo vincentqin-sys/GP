@@ -97,8 +97,8 @@ def unlockScreen():
         time.sleep(10)
         buf.release()
     except Exception as e:
-        #import traceback
-        #traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         pass
 
 def runOneTime():

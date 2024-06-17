@@ -1,4 +1,4 @@
-import sys, os, pyautogui, win32gui, win32con, time, datetime
+import sys, os, pyautogui, win32gui, win32con, time, datetime, traceback
 import io, psutil, subprocess, win32process, win32event, win32api, winerror
 from pywinauto.controls.common_controls import DateTimePickerWrapper # pip install pywinauto
 import peewee as pw
@@ -312,7 +312,6 @@ class TdxDownloader:
             self.startDownloadForDay()
             self.startDownloadForTimeMinute()
         except:
-            import traceback
             traceback.print_exc()
             return False
         self.killProcess()
@@ -328,9 +327,17 @@ def unlockScreen():
         shm.close()
         time.sleep(10)
     except Exception as e:
-        #import traceback
-        #traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         pass
+
+def tryWork():
+    try:
+        return work()
+    except Exception as e:
+        traceback.print_exc()
+    return False
+
 
 def work():
     unlockScreen()
@@ -396,6 +403,7 @@ def getMaxDay(paths):
 def autoMain():
     os.system('') # fix win10 下console 颜色不生效
     lastDay = 0
+    tryDays = {}
     while True:
         today = datetime.datetime.now()
         if today.weekday() >= 5: #周六周日
@@ -405,20 +413,30 @@ def autoMain():
             time.sleep(60 * 60)
             continue
         ts = f"{today.hour:02d}:{today.minute:02d}"
-        if ts < '21:05':
+        if ts < '21:05' or ts > '22:30':
             time.sleep(3 * 60)
             continue
         lock = getDesktopGUILock()
         if not lock:
             time.sleep(3 * 60)
             continue
-        if work(): #checkUserNoInputTime() and
+        sday = today.strftime('%Y-%m-%d')
+        if sday in tryDays:
+            tryDays[sday] += 1
+        else:
+            tryDays[sday] = 1
+        if tryDays[sday] <= 3 and work(): #checkUserNoInputTime() and
             lastDay = today.day
         releaseDesktopGUILock(lock)
+        time.sleep(10 * 60)
+        
 
 def mergeTimeline():
     pass
 
 if __name__ == '__main__':
-    #work() # run one time
-    autoMain()
+    print(sys.argv)
+    if 'one' in sys.argv:
+        work() # run one time
+    else:
+        autoMain()
