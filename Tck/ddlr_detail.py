@@ -7,7 +7,8 @@ from db import ths_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import ths_win
-from Common import base_win, timeline
+from Common import base_win
+from Tck import timeline
 
 class TableWindow(base_win.BaseWindow):
     def __init__(self) -> None:

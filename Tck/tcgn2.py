@@ -3,12 +3,11 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import ths_orm
+from db import ths_orm, tck_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import ths_win
-from Common import base_win, timeline, kline, sheet, dialog, table, ext_win
-import ddlr_detail, db.tck_orm as tck_orm
+from Common import base_win, sheet, dialog, table, ext_win
 
 thsWin = ths_win.ThsWindow()
 thsWin.init()

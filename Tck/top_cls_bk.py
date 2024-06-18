@@ -6,8 +6,8 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import tck_orm
 from Download import cls
 from THS import hot_utils
-from Common import base_win, ext_win, timeline
-import kline_utils, cache, mark_utils
+from Common import base_win, ext_win
+import kline_utils, cache, mark_utils, timeline
 
 # code = 'cls00000'
 def loadBkInfo(code : str):

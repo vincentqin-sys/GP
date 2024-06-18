@@ -9,7 +9,7 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import hot_utils
 import ddlr_detail, db.tck_orm as tck_orm
-from Common import base_win, kline
+from Common import base_win
 
 class KPL_Window(base_win.BaseWindow):
     def __init__(self) -> None:

@@ -5,8 +5,8 @@ import os, sys, requests
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr
-from Common import base_win, timeline, kline
-from Tck import ddlr_detail
+from Common import base_win
+from Tck import ddlr_detail, timeline, kline
 from THS import ths_win
 
 def openInCurWindow_Code(parent : base_win.BaseWindow, data):

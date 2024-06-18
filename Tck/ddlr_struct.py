@@ -7,8 +7,8 @@ from db import ths_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import ths_win
-from Common import base_win, timeline, kline
-import ddlr_detail, kline_utils
+from Common import base_win
+import ddlr_detail, kline_utils, kline
 
 thsWin = ths_win.ThsWindow()
 thsWin.init()

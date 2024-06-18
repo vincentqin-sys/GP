@@ -7,8 +7,8 @@ from db import ths_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import ths_win
-from Common import base_win, timeline, kline
-from Tck import kline_utils, mark_utils, top_diary
+from Common import base_win
+from Tck import kline, kline_utils, mark_utils, timeline, top_diary
 
 MIN_MONEY = 0
 
