@@ -436,8 +436,7 @@ def mergeTimeline():
     pass
 
 if __name__ == '__main__':
-    print(sys.argv)
-    if 'one' in sys.argv:
+    if 'debug' in sys.argv:
         work() # run one time
     else:
         autoMain()

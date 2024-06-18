@@ -191,5 +191,7 @@ def main():
 
 
 if __name__ == '__main__':
-    #runOneTime()
-    main()
+    if 'debug' in sys.argv:
+        runOneTime()
+    else:
+        main()
