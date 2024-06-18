@@ -38,3 +38,4 @@ build
 *.lnk
 THS/*.json
 *.spec
+.vscode

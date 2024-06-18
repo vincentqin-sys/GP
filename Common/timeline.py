@@ -741,7 +741,6 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         self.drawer.fillRect(hdc, rc, self.css['bgColor'])
         self.drawer.drawText(hdc, f'{zf :.2f}%', rc, 0xf06050, win32con.DT_VCENTER | win32con.DT_SINGLELINE | win32con.DT_LEFT)
 
-
     def drawMinites(self, hdc):
         if not self.model.data:
             return

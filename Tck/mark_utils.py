@@ -60,11 +60,11 @@ def getMarkModel(enable):
     model = [
         {'name': 'mark_1', 'title': '标记紫色', 'enable': enable, 'markColor': 1, 'render': _markMenuItemRender},
         {'name': 'mark_2', 'title': '标记蓝色', 'enable': enable, 'markColor': 2, 'render': _markMenuItemRender},
-        {'name': 'mark_3', 'title': '标记青色', 'enable': enable, 'markColor': 3, 'render': _markMenuItemRender},
         {'name': 'mark_3', 'title': '标记绿色', 'enable': enable, 'markColor': 4, 'render': _markMenuItemRender},
-        {'name': 'mark_5', 'title': '标记黄色', 'enable': enable, 'markColor': 5, 'render': _markMenuItemRender},
         {'name': 'mark_5', 'title': '标记橙色', 'enable': enable, 'markColor': 6, 'render': _markMenuItemRender},
         {'name': 'mark_4', 'title': '标记红色', 'enable': enable, 'markColor': 7, 'render': _markMenuItemRender},
+        {'name': 'mark_5', 'title': '标记黄色', 'enable': enable, 'markColor': 5, 'render': _markMenuItemRender},
+        {'name': 'mark_3', 'title': '标记青色', 'enable': enable, 'markColor': 3, 'render': _markMenuItemRender},
         {'title': 'LINE'},
         {'name': 'mark_6', 'title': '取消记标', 'enable': enable, 'markColor': 0},
         {'name': 'mark_end', 'title': '终止标记', 'enable': enable, 'markColor': MARK_END_VAL}

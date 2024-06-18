@@ -148,7 +148,7 @@ class TimelineRender:
             return 0xdd0000
         dtPrice = int(int(pre * 100 + 0.5) * (1 - zf) + 0.5)
         if int(price * 100 + 0.5) <= dtPrice:
-            return 0x00dddd
+            return 0x009999
         if price > self.data['pre']:
             color = RED
         elif price < self.data['pre']:
