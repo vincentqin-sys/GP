@@ -320,8 +320,9 @@ class TdxDownloader:
 def unlockScreen():
     try:
         shm = shared_memory.SharedMemory('PY_Screen_Locker', False)
-        buf = shm.buf.cast('i')
-        buf[0] = win32api.GetTickCount() + 60 * 1000 * 60
+        buf = shm.buf.cast('q')
+        ts = win32api.GetTickCount() + 60 * 1000 * 60
+        buf[0] = ts
         buf[1] = 200
         buf.release()
         shm.close()

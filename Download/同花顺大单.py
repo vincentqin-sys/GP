@@ -91,7 +91,7 @@ def checkLoadFinised():
 def unlockScreen():
     try:
         shm = shared_memory.SharedMemory('PY_Screen_Locker', False)
-        buf = shm.buf.cast('i')
+        buf = shm.buf.cast('q')
         buf[0] = win32api.GetTickCount() + 60 * 60 * 1000
         buf[1] = 200
         time.sleep(10)
