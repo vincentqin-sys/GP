@@ -279,6 +279,20 @@ class HexinUrl(Henxin):
         url = 'http://d.10jqka.com.cn/v6/line/'+ sh + '_' + code + '/01/last1800.js'
         url = self._getUrlWithParam(url)
         return url
+    
+    # 周线 url
+    def getKLineUrl_Week(self, code):
+        sh = self.getCodeSH(code)
+        url = 'http://d.10jqka.com.cn/v6/line/'+ sh + '_' + code + '/11/last1800.js'
+        url = self._getUrlWithParam(url)
+        return url
+    
+    # 月线 url
+    def getKLineUrl_Month(self, code):
+        sh = self.getCodeSH(code)
+        url = 'http://d.10jqka.com.cn/v6/line/'+ sh + '_' + code + '/21/last1800.js'
+        url = self._getUrlWithParam(url)
+        return url
 
     # @return today:  {name:xx, data: HexinUrl.ItemData}
     #         kline:  {'name': xx, 'today': today,  'data': [HexinUrl.ItemData, ...]}

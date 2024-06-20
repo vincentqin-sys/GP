@@ -57,6 +57,8 @@ class ScreenLocker(base_win.BaseWindow):
     def lock(self):
         if not win32gui.IsWindow(self.hwnd):
             self.createWindow()
+        if win32gui.IsWindowVisible(self.hwnd):
+            return
         win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOMOVE)
         W, H = self.getClientSize()
@@ -114,6 +116,7 @@ class Main:
         self.shm = None
         self._name = 'PY_Screen_Locker'
         self.lastInputTime = 0
+        self.lastOffMonitorTime = 0 # 黑屏时间
 
     def start(self):
         SZ = 128
@@ -160,10 +163,25 @@ class Main:
         lit = max(lit, self.lastInputTime)
         idleTime = (win32api.GetTickCount() - lit) // 1000 # seconds
         return idleTime
+    
+    # seconds
+    def getOffMonitorTime(self):
+        diff = win32api.GetTickCount() - self.lastOffMonitorTime
+        diff = diff // 1000
+        return diff
+    
+    def offMonitor(self):
+        self.lastOffMonitorTime = win32api.GetTickCount()
+        POWER_OFF = 2 # -1: 开机  1:省电  2:关闭
+        win32gui.PostMessage(win32con.HWND_BROADCAST, win32con.WM_SYSCOMMAND, win32con.SC_MONITORPOWER, POWER_OFF)
 
     def loop(self):
         while True:
             time.sleep(1)
+
+            idleTime = self.getIdleTime()
+            if (idleTime >= 5 * 60) and (self.getOffMonitorTime() >= 10 * 60):
+                self.offMonitor()
 
             status = self.readIntData(self.LOCK_STATUS_IDX)
             if status != 0:
@@ -185,7 +203,6 @@ class Main:
                 if win32api.GetTickCount() <= skipTime:
                     continue
 
-            idleTime = self.getIdleTime()
             #print('idleTime = ', idleTime)
             if idleTime >= self.MAX_IDLE_TIME:
                 self.locker.lock()

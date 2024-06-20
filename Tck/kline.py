@@ -7,7 +7,6 @@ from db import ths_orm, tdx_orm, tck_orm
 from Tdx import datafile
 from Download import henxin, cls
 from Common import base_win, ext_win
-from THS import ths_win
 
 class KLineModel_Tdx(datafile.DataFile):
     def __init__(self, code):
@@ -143,10 +142,106 @@ class Indicator:
             fromIdx = max(fromIdx - 1, 0)
         return (fromIdx, endIdx)
 
+class RefZSKDrawer:
+    def __init__(self) -> None:
+        self.model = None # 关联指数
+        self.code = None
+        self.zsCode = None
+        self.newData = None
+        self.valueRange = None
+
+    def updateData(self, code):
+        if not code or self.code == code:
+            return
+        if code[0 : 2] in ('sh', 'sz'):
+            code = code[2 : ]
+        self.code = code
+        self.model = None
+        if code[0] not in ('3', '0', '6'):
+            return
+        gntc = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == code)
+        if not gntc or not gntc.hy:
+            return
+        hys = gntc.hy.split('-')
+        zs = ths_orm.THS_ZS.get_or_none(ths_orm.THS_ZS.name == hys[1])
+        if not zs:
+            return
+        if zs.code == self.zsCode:
+            return
+        self.zsCode = zs.code
+        self.model = KLineModel_Ths(self.zsCode)
+        self.model.loadDataFile()
+        self.model.calcZhangFu()
+
+    def drawKLineItem(self, hdc, pens, hbrs, idx, cx, itemWidth, getYAtValue):
+        if not self.newData:
+            return
+        if idx < 0 or idx >= len(self.newData):
+            return
+        bx = cx - itemWidth // 2
+        ex = bx + itemWidth
+        data = self.newData[idx]
+        rect = [bx, getYAtValue(data.open), ex, getYAtValue(data.close)]
+        if rect[1] == rect[3]:
+            rect[1] -=1
+        if 'ref-zs-color' not in pens:
+            pens['ref-zs-color'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xFFCCCC)
+        if 'ref-zs-color' not in hbrs:
+            hbrs['ref-zs-color'] = win32gui.CreateSolidBrush(0xFFCCCC)
+        win32gui.SelectObject(hdc, pens['ref-zs-color'])
+        win32gui.MoveToEx(hdc, cx, getYAtValue(data.low))
+        win32gui.LineTo(hdc, cx, getYAtValue(min(data.open, data.close)))
+        win32gui.MoveToEx(hdc, cx, getYAtValue(max(data.open, data.close)))
+        win32gui.LineTo(hdc, cx, getYAtValue(data.high))
+        if data.close >= data.open:
+            nullHbr = win32gui.GetStockObject(win32con.NULL_BRUSH)
+            win32gui.SelectObject(hdc, nullHbr)
+            win32gui.Rectangle(hdc, *rect)
+        else:
+            win32gui.FillRect(hdc, tuple(rect), hbrs['ref-zs-color'])
+
+    def calcPercentPrice(self, data, fromIdx, endIdx, startDay):
+        self.newData = []
+        self.valueRange = None
+        if not self.model:
+            return
+        sidx = self.model.getItemIdx(startDay)
+        p = self.model.data[sidx].open / data[fromIdx].open
+        maxVal, minVal = 0, 9999999
+        for i in range(fromIdx, endIdx):
+            di = i - fromIdx + sidx
+            it = henxin.HexinUrl.ItemData()
+            cur = self.model.data[di]
+            it.open = cur.open / p
+            it.close = cur.close / p
+            it.low = cur.low / p
+            it.high = cur.high / p
+            self.newData.append(it)
+            
+            maxVal = max(maxVal, it.high)
+            minVal = min(minVal, it.low)
+        self.valueRange = (minVal, maxVal)
+
+    def getZhangFu(self, day):
+        if not self.model:
+            return None
+        item = self.model.getItemData(day)
+        if not item:
+            return None
+        if hasattr(item, 'zhangFu'):
+            return item.zhangFu
+        return None
+
 class KLineIndicator(Indicator):
     def __init__(self, config) -> None:
         super().__init__(config)
         self.markDay = None
+        self.refZSDrawer = RefZSKDrawer()
+
+    def setData(self, data):
+        super().setData(data)
+        if data:
+            self.refZSDrawer.updateData(self.klineWin.model.code)
 
     def setMarkDay(self, day):
         if not day:
@@ -168,6 +263,20 @@ class KLineIndicator(Indicator):
             else:
                 maxVal = max(maxVal, d.high)
                 minVal = min(minVal, d.low)
+            if getattr(d, 'MA5', None): 
+                minVal = min(minVal, d.MA5)
+                maxVal = max(maxVal, d.MA5)
+            if getattr(d, 'MA10', None): 
+                minVal = min(minVal, d.MA10)
+                maxVal = max(maxVal, d.MA10)
+        self.refZSDrawer.calcPercentPrice(self.data, fromIdx, endIdx, self.klineWin.model.data[fromIdx].day)
+        # merge ref zs value range
+        if self.refZSDrawer.valueRange:
+            vr = self.refZSDrawer.valueRange
+            if minVal > vr[0]: minVal = vr[0]
+            if maxVal < vr[1]: maxVal = vr[1]
+        # merge ma5 ma10
+        
         self.valueRange = (minVal, maxVal)
 
     def getValueAtY(self, y):
@@ -207,11 +316,11 @@ class KLineIndicator(Indicator):
         if not self.visibleRange:
             return
         self.drawBackground(hdc, pens, hbrs)
-        self.drawKLines(hdc, pens, hbrs)
         self.drawMarkDay(self.markDay, hdc, pens, hbrs)
         sm = base_win.ThsShareMemory.instance()
         if sm.readMarkDay() != 0:
             self.drawMarkDay(sm.readMarkDay(), hdc, pens, hbrs)
+        self.drawKLines(hdc, pens, hbrs)
         self.drawMA(hdc, 5)
         self.drawMA(hdc, 10)
     
@@ -228,11 +337,8 @@ class KLineIndicator(Indicator):
         ex = x + self.getItemWidth() // 2 + self.getItemSpace()
         rc = (sx, 0, ex, self.height)
         pen = win32gui.GetStockObject(win32con.NULL_PEN)
-        #px = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0xcccccc)
         win32gui.SelectObject(hdc, pen)
         win32gui.FillRect(hdc, rc, hbrs['drak'])
-        # redraw kline item
-        self.drawKLineItem(idx, hdc, pens, hbrs, hbrs['drak'])
 
     def drawKLineItem(self, idx, hdc, pens, hbrs, fillHbr):
         data = self.data[idx]
@@ -243,12 +349,16 @@ class KLineIndicator(Indicator):
         if rect[1] == rect[3]:
             rect[1] -=1
         color = self.getColor(idx, data)
+
         win32gui.SelectObject(hdc, pens[color])
         win32gui.MoveToEx(hdc, cx, self.getYAtValue(data.low))
+        win32gui.LineTo(hdc, cx, self.getYAtValue(min(data.open, data.close)))
+        win32gui.MoveToEx(hdc, cx, self.getYAtValue(max(data.open, data.close)))
         win32gui.LineTo(hdc, cx, self.getYAtValue(data.high))
         if data.close >= data.open:
-            #nullHbr = win32gui.GetStockObject(win32con.NULL_BRUSH)
-            win32gui.SelectObject(hdc, fillHbr)
+            nullHbr = win32gui.GetStockObject(win32con.NULL_BRUSH)
+            win32gui.SelectObject(hdc, nullHbr)
+            #win32gui.SelectObject(hdc, fillHbr)
             win32gui.Rectangle(hdc, *rect)
         else:
             win32gui.FillRect(hdc, tuple(rect), hbrs[color])
@@ -257,6 +367,8 @@ class KLineIndicator(Indicator):
         if not self.visibleRange:
             return
         for idx in range(*self.visibleRange):
+            cx = self.getCenterX(idx)
+            self.refZSDrawer.drawKLineItem(hdc, pens, hbrs, idx - self.visibleRange[0], cx, self.getItemWidth(), self.getYAtValue)
             self.drawKLineItem(idx, hdc, pens, hbrs, hbrs['black'])
 
     def drawBackground(self, hdc, pens, hbrs):
@@ -1376,7 +1488,13 @@ class KLineWindow(base_win.BaseWindow):
             lb = cur.amount / pre.amount # 量比
             rc = (0, 0, cf.width, 20)
             self.drawer.use(hdc, self.drawer.getFont(fontSize = 14))
-            self.drawer.drawText(hdc, f'量比={lb :.1f}', rc, color = 0x00dddd, align = win32con.DT_RIGHT)
+            zf = cf.refZSDrawer.getZhangFu(cur.day)
+            if zf is None:
+                zf = '--'
+            else:
+                zf = f'{zf :+.02f}%'
+            title = f'指数({zf}) 同比({lb :.1f})'
+            self.drawer.drawText(hdc, title, rc, color = 0x00dddd, align = win32con.DT_RIGHT)
 
     def drawMouse(self, hdc, pens):
         if not self.mouseXY:
@@ -1511,6 +1629,8 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.codeWin = CodeWindow()
         self.codeList = None
         self.code = None
+        self.idxCodeList = 0
+        self.idxCodeWin = None
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title = ''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -1524,11 +1644,15 @@ class KLineCodeWindow(base_win.BaseWindow):
         btn = base_win.Button({'title': '<<', 'name': 'LEFT'})
         btn.createWindow(self.hwnd, (0, 0, 40, 30))
         btn.addNamedListener('Click', self.onLeftRight)
-        rightLayout.setContent(10, 300, btn)
+        rightLayout.setContent(0, 300, btn)
         btn = base_win.Button({'title': '>>', 'name': 'RIGHT'})
         btn.createWindow(self.hwnd, (0, 0, 40, 30))
         btn.addNamedListener('Click', self.onLeftRight)
         rightLayout.setContent(110, 300, btn)
+        self.idxCodeWin = base_win.Label()
+        self.idxCodeWin.createWindow(self.hwnd, (0, 0, 70, 30))
+        self.idxCodeWin.css['textAlign'] |= win32con.DT_CENTER
+        rightLayout.setContent(40, 300, self.idxCodeWin)
         self.layout.setContent(0, 1, rightLayout)
         self.layout.resize(0, 0, *self.getClientSize())
 
@@ -1581,11 +1705,22 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.klineWin.setModel(model)
         self.klineWin.makeVisible(-1)
         self.klineWin.invalidWindow()
+        self.updateCodeIdx()
+    
+    def updateCodeIdx(self):
+        if not self.codeList:
+            self.idxCodeWin.setText('')
+            return
+        idx = self._findIdx()
+        if idx >= 0:
+            self.idxCodeWin.setText(f'{idx + 1} / {len(self.codeList)}')
 
     # codes = [ str, str, ... ]  |  [ int, int, ... ]
     #         [ {'code':xxx, }, ... ]  | [ {'secu_code':xxx, }, ... ]
     def setCodeList(self, codes):
         self.codeList = codes
+        self.idxCodeList = 0
+        self.updateCodeIdx()
 
 if __name__ == '__main__':
     sm = base_win.ThsShareMemory.instance()
@@ -1595,7 +1730,7 @@ if __name__ == '__main__':
     win.addIndicator(DayIndicator({'height': 20}))
     win.addIndicator(HotIndicator()) # {'height' : 50}
     win.addIndicator(TckIndicator()) # {'height' : 50}
-    rect = (0, 0, 1250, 600)
+    rect = (0, 0, 1550, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('002085') # cls82475
+    win.changeCode('002085') # cls82475 002085 603390 002085 002869
     win32gui.PumpMessages()

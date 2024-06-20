@@ -1416,6 +1416,7 @@ class Label(BaseWindow):
     def __init__(self, text = None) -> None:
         super().__init__()
         self.text = text
+        self.css['textAlign'] = win32con.DT_SINGLELINE | win32con.DT_VCENTER # win32con.DT_LEFT (0)
     
     def setText(self, text):
         if text == None:
@@ -1431,7 +1432,7 @@ class Label(BaseWindow):
         TH = 14
         rc = (0, 0,  w, h)
         rc = (0, (h - TH) // 2,  w, h - (h - TH) // 2)
-        self.drawer.drawText(hdc, self.text, rc, self.css['textColor'], win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
+        self.drawer.drawText(hdc, self.text, rc, self.css['textColor'], self.css['textAlign'])
 
 # listeners : Checked = {src, info}
 class CheckBox(BaseWindow):
