@@ -209,8 +209,9 @@ class MarkWin(base_win.BaseWindow):
             x = win32gui.GetCursorPos()[0]
         if y == None:
             y = prc[1] + 30
-        W = 5
+        W = 10
         h = prc[3] - y - 30
+        x -= W // 2
         win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, x, y, W, h, 0)
         #print(win32gui.GetWindowRect(self.hwnd))
 

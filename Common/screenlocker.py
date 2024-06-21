@@ -180,8 +180,8 @@ class Main:
             time.sleep(1)
 
             idleTime = self.getIdleTime()
-            if (idleTime >= 5 * 60) and (self.getOffMonitorTime() >= 10 * 60):
-                self.offMonitor()
+            #if (idleTime >= 5 * 60) and (self.getOffMonitorTime() >= 10 * 60):
+            #    self.offMonitor()
 
             status = self.readIntData(self.LOCK_STATUS_IDX)
             if status != 0:
