@@ -16,6 +16,8 @@ class CacheManager(base_win.Listener):
         now = datetime.datetime.now()
         cc : datetime.datetime = data['_load_time']
         scc = cc.strftime('%H:%M')
+        if cc.date() != now.date():
+            return True
         if scc > '15:00':
             return False
         delta : datetime.timedelta = now - cc

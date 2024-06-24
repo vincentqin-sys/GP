@@ -988,7 +988,7 @@ class HotIndicator(CustomIndicator):
         if selDay == int(data['__day']):
             win32gui.FillRect(hdc, rc, hbrs['light_dark'])
         if data['zhHotOrder']:
-            win32gui.DrawText(hdc, str(data['zhHotOrder']) + '°', -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+            win32gui.DrawText(hdc, str(data['zhHotOrder']), -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
 class DayIndicator(CustomIndicator):
     def __init__(self, config = None) -> None:
@@ -1113,6 +1113,49 @@ class TckIndicator(CustomIndicator):
         win32gui.SetTextColor(hdc, 0xcccccc)
         rc = (x + 3, 3, x + iw - 3, self.height)
         win32gui.DrawText(hdc, cdata['ztReason'], -1, rc, win32con.DT_CENTER | win32con.DT_WORDBREAK) #  | win32con.DT_VCENTER | win32con.DT_SINGLELINE
+
+class ScqxIndicator(CustomIndicator):
+    def __init__(self, config = None) -> None:
+        config = config or {}
+        if 'height' not in config:
+            config['height'] = 30
+        super().__init__(config)
+        if 'title' not in self.config:
+            self.config['title'] = '[市场情绪]'
+
+    def setData(self, data):
+        super().setData(data)
+        if not self.klineWin.model:
+            self.setCustomData(None)
+            return
+        hots = tck_orm.CLS_SCQX.select().dicts()
+        maps = {}
+        for d in hots:
+            day = d['day'].replace('-', '')
+            maps[int(day)] = d
+        rs = []
+        for d in data:
+            fd = maps.get(d.day, None)
+            if not fd:
+                fd = {'day': d.day, 'zhqd': ''}
+            rs.append(fd)
+        self.setCustomData(rs)
+
+    def drawItem(self, idx, hdc, pens, hbrs, x):
+        iw = self.config['itemWidth']
+        cdata = self.customData[idx]
+        selIdx = self.klineWin.selIdx
+        selData = self.data[selIdx] if selIdx >= 0 and selIdx < len(self.data) else None
+        selDay = int(selData.day) if selData else 0
+        rc = (x + 1, 1, x + iw, self.height)
+        if selDay == int(cdata['__day']):
+            win32gui.FillRect(hdc, rc, hbrs['light_dark'])
+        win32gui.SetTextColor(hdc, 0xcccccc)
+        rc = (x + 3, 3, x + iw - 3, self.height)
+        # °
+        if cdata['zhqd']:
+            win32gui.DrawText(hdc, str(cdata['zhqd']) + '°', -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+
 
 class KLineSelTipWindow(base_win.BaseWindow):
     def __init__(self, klineWin) -> None:
@@ -1763,6 +1806,7 @@ if __name__ == '__main__':
     win = KLineCodeWindow()
     win.addIndicator('rate amount')
     win.addIndicator(DayIndicator({'height': 20}))
+    win.addIndicator(ScqxIndicator())
     win.addIndicator(HotIndicator()) # {'height' : 50}
     win.addIndicator(TckIndicator()) # {'height' : 50}
     rect = (0, 0, 1550, 750)
