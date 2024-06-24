@@ -3019,7 +3019,7 @@ class ThsShareMemory:
         return self._readDay(self.POS_MARK_DAY)
     
     def _writeDay(self, day, pos):
-        if not day or not self.shm:
+        if not self.shm:
             return
         if type(day) == str:
             day = day.replace('-', '')

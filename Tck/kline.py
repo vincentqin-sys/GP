@@ -1156,7 +1156,6 @@ class ScqxIndicator(CustomIndicator):
         if cdata['zhqd']:
             win32gui.DrawText(hdc, str(cdata['zhqd']) + '°', -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
-
 class KLineSelTipWindow(base_win.BaseWindow):
     def __init__(self, klineWin) -> None:
         super().__init__()
@@ -1321,6 +1320,7 @@ class KLineWindow(base_win.BaseWindow):
               {'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType},
               {'title': 'LINE'},
               {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0},
+              {'title': '取消标记日期', 'name': 'cancel-mark-day', 'enable': selDay > 0},
               ]
         menu = base_win.PopupMenuHelper.create(self.hwnd, mm)
         def onMM(evt, args):
@@ -1329,6 +1329,10 @@ class KLineWindow(base_win.BaseWindow):
                 self.changeDateType(name)
             elif name == 'mark-day':
                 base_win.ThsShareMemory.instance().writeMarkDay(selDay)
+                self.invalidWindow()
+            elif name == 'cancel-mark-day':
+                base_win.ThsShareMemory.instance().writeMarkDay(0)
+                self.invalidWindow()
         menu.addNamedListener('Select', onMM)
         menu.show(* win32gui.GetCursorPos())
 
@@ -1811,5 +1815,5 @@ if __name__ == '__main__':
     win.addIndicator(TckIndicator()) # {'height' : 50}
     rect = (0, 0, 1550, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('002766') # cls82475 002085 603390 002085 002869
+    win.changeCode('002055') # cls82475 002085 603390 002085 002869
     win32gui.PumpMessages()
