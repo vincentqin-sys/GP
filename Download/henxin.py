@@ -228,6 +228,10 @@ class HexinUrl(Henxin):
     class ItemData(object):
         def __init__(self):
             super().__init__()
+            
+        def __repr__(self) -> str:
+            s = '<HexinUrl.ItemData> ' + str(self.__dict__)
+            return s
 
     def __init__(self) -> None:
         super().__init__()
@@ -434,36 +438,6 @@ class ThsDataFile(datafile.DataFile):
             self.data = rs['data']
             self.name = rs['name']
             
-    def getItemIdx(self, day):
-        if not self.data:
-            return -1
-        if type(day) == str:
-            day = day.replace('-', '')
-            day = int(day)
-        left, right = 0, len(self.data) - 1
-        idx = -1
-        while left <= right:
-            mid = (left + right) // 2
-            d = self.data[mid]
-            if d.day == day:
-                idx = mid
-                break
-            elif day > d.day:
-                left = mid + 1
-            else:
-                right = mid - 1
-        if idx == -1:
-            return -1
-        if self.dataType == self.DT_DAY:
-            return idx
-        t = self.data[idx].day
-        while idx > 0:
-            if self.data[idx - 1].day == t:
-                idx -= 1
-            else:
-                break
-        return idx
-
 if __name__ == '__main__':
     hx = HexinUrl()
     hx.copy('AwMp0DU6YrbvwS5CE1sd7MFgksyoeJf-0Q3b_zXiW0LYRy2yvUgnCuHca35G')

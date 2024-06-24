@@ -12,9 +12,6 @@ class KLineModel_Tdx(datafile.DataFile):
     def __init__(self, code):
         super().__init__(code, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
 
-    def setDataRange(fromIdx, endIdx):
-        pass
-
 class KLineModel_Ths(henxin.ThsDataFile):
     def __init__(self, code) -> None:
         super().__init__(code, datafile.DataFile.DT_DAY)
@@ -22,6 +19,98 @@ class KLineModel_Ths(henxin.ThsDataFile):
 class KLineModel_Cls(cls.ClsDataFile):
     def __init__(self, code) -> None:
         super().__init__(code, datafile.DataFile.DT_DAY)        
+
+class KLineModel_DateType(datafile.DataFile):
+    # typeName is 'ths' | 'cls'
+    def __init__(self, code, typeName = None):
+        #super().__init__(code, datafile.DataFile.DT_DAY, 0) # no call
+        if type(code) == int:
+            code = f'{code :06d}'
+        if not typeName:
+            typeName = 'ths' if code[0] == '8' else 'cls'
+        self.code = code
+        self.typeName = typeName
+        self.dateType = 'day' # 'week' | 'month'
+        self.dateTypeDatas = {}
+
+    def loadDataFile(self):
+        if self.typeName.lower() == 'ths':
+            model = KLineModel_Ths(self.code)
+        else:
+            model = KLineModel_Cls(self.code)
+        model.loadDataFile()
+        self.__dict__.update(model.__dict__)
+        self.dateTypeDatas['day'] = self.data
+
+    # 'day' | 'week' | 'month'
+    def changeDateType(self, dateType):
+        if self.dateType == dateType:
+            return
+        self.dateType = dateType
+        if dateType not in self.dateTypeDatas:
+            dayData = self.dateTypeDatas['day']
+            if dateType == 'week':
+                self.dateTypeDatas['week'] = self.initWeekModelData(dayData)
+            elif dateType == 'month':
+                self.dateTypeDatas['month'] = self.initMonthModelData(dayData)
+            self.data = self.dateTypeDatas[dateType]
+            self.calcMA(5)
+            self.calcMA(10)
+            self.calcZhangFu()
+        else:
+            self.data = self.dateTypeDatas[dateType]
+
+    def _mergeItem(self, dest, item):
+        if hasattr(item, 'day'):
+            dest.day = item.day
+        if hasattr(item, 'high'):
+            dest.high = max(getattr(dest, 'high', 0), item.high)
+        if hasattr(item, 'low'):
+            dest.low = min(getattr(dest, 'low', 99999999), item.low)
+        if hasattr(item, 'close'):
+            dest.close = item.close
+        if hasattr(item, 'amount'):
+            dest.amount = getattr(dest, 'amount', 0) + item.amount
+        if hasattr(item, 'vol'):
+            dest.vol = getattr(dest, 'vol', 0) + item.vol
+        if hasattr(item, 'rate'):
+            dest.rate = getattr(dest, 'rate', 0) + item.rate
+        dest.days += 1
+
+    def _copyItem(self, item):
+        it = copy.copy(item)
+        EX = ('MA5', 'MA10', 'zhangFu', 'lbs', 'zdt', 'tdb')
+        for k in EX:
+            if hasattr(it, k):
+                delattr(it, k)
+        it.days = 1
+        return it
+
+    def initWeekModelData(self, ds):
+        rs = []
+        cur = None
+        week = None
+        for item in ds:
+            dd = datetime.date(item.day // 10000, item.day // 100 % 100, item.day % 100)
+            w = dd.isocalendar().week
+            if cur == None or week != w:
+                week = w
+                cur = self._copyItem(item)
+                rs.append(cur)
+            else:
+                self._mergeItem(cur, item)
+        return rs
+
+    def initMonthModelData(self, ds):
+        rs = []
+        cur = None
+        for item in ds:
+            if cur == None or item.day // 100 != cur.day // 100:
+                cur = self._copyItem(item)
+                rs.append(cur)
+            else:
+                self._mergeItem(cur, item)
+        return rs
 
 # 指标 Vol, Amount, Rate等
 class Indicator:
@@ -55,6 +144,9 @@ class Indicator:
         self.data = data
         self.valueRange = None
         self.visibleRange = None
+
+    def changeDateType(self, dateType):
+        pass
 
     def calcValueRange(self, fromIdx, endIdx):
         pass
@@ -169,9 +261,12 @@ class RefZSKDrawer:
         if zs.code == self.zsCode:
             return
         self.zsCode = zs.code
-        self.model = KLineModel_Ths(self.zsCode)
+        self.model = KLineModel_DateType(self.zsCode)
         self.model.loadDataFile()
         self.model.calcZhangFu()
+
+    def changeDateType(self, dateType):
+        self.model.changeDateType(dateType)
 
     def drawKLineItem(self, hdc, pens, hbrs, idx, cx, itemWidth, getYAtValue):
         if not self.newData:
@@ -242,6 +337,9 @@ class KLineIndicator(Indicator):
         super().setData(data)
         if data:
             self.refZSDrawer.updateData(self.klineWin.model.code)
+
+    def changeDateType(self, dateType):
+        self.refZSDrawer.changeDateType(dateType)
 
     def setMarkDay(self, day):
         if not day:
@@ -889,7 +987,8 @@ class HotIndicator(CustomIndicator):
         rc = (x + 1, 1, x + WW, self.height)
         if selDay == int(data['__day']):
             win32gui.FillRect(hdc, rc, hbrs['light_dark'])
-        win32gui.DrawText(hdc, str(data['zhHotOrder']), -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+        if data['zhHotOrder']:
+            win32gui.DrawText(hdc, str(data['zhHotOrder']) + '°', -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
 class DayIndicator(CustomIndicator):
     def __init__(self, config = None) -> None:
@@ -1126,11 +1225,10 @@ class KLineWindow(base_win.BaseWindow):
         idt = self.indicators[idx]
         return [idt.x, idt.y, idt.width, idt.height]
 
-    def setModel(self, model):
+    def setModel(self, model : KLineModel_DateType):
         self.selIdx = -1
         self.dateType = 'day'
         self.model = model
-        self.models = {}
         self.hygn = None
         if not model:
             for idt in self.indicators:
@@ -1151,75 +1249,17 @@ class KLineWindow(base_win.BaseWindow):
             self.model.gn = gntcObj.gn.replace('【', '').replace('】', '').split(';')
         for idt in self.indicators:
             idt.setData(self.model.data)
-        self.models['day'] = self.model
-
-    def _mergeItem(self, dest, item):
-        if hasattr(item, 'high'):
-            dest.high = max(getattr(dest, 'high', 0), item.high)
-        if hasattr(item, 'low'):
-            dest.low = min(getattr(dest, 'low', 99999999), item.low)
-        if hasattr(item, 'close'):
-            dest.close = item.close
-        if hasattr(item, 'amount'):
-            dest.amount = getattr(dest, 'amount', 0) + item.amount
-        if hasattr(item, 'vol'):
-            dest.vol = getattr(dest, 'vol', 0) + item.vol
-        if hasattr(item, 'rate'):
-            dest.rate = getattr(dest, 'rate', 0) + item.rate
-        dest.days += 1
-
-    def _copyItem(self, item):
-        it = copy.copy(item)
-        EX = ('MA5', 'MA10', 'zhangFu', 'lbs', 'zdt', 'tdb')
-        for k in EX:
-            if hasattr(it, k):
-                delattr(it, k)
-        it.days = 1
-        return it
-
-    def initWeekModelData(self, ds):
-        rs = []
-        cur = None
-        for item in ds:
-            dd = datetime.date(item.day // 10000, item.day // 100 % 100, item.day % 100)
-            if cur == None or dd.weekday() == 0:
-                cur = self._copyItem(item)
-                rs.append(cur)
-            else:
-                self._mergeItem(cur, item)
-        return rs
-
-    def initMonthModelData(self, ds):
-        rs = []
-        cur = None
-        for item in ds:
-            if cur == None or item.day // 100 != cur.day // 100:
-                cur = self._copyItem(item)
-                rs.append(cur)
-            else:
-                self._mergeItem(cur, item)
-        return rs
 
     # dateType = 'day' 'week'  'month'
-    def changeDateModel(self, dateType):
+    def changeDateType(self, dateType):
         if self.dateType == dateType:
             return
         self.dateType = dateType
-        if dateType not in self.models:
-            md = copy.copy(self.models['day'])
-            if dateType == 'week':
-                md.data = self.initWeekModelData(md.data)
-            elif dateType == 'month':
-                md.data = self.initMonthModelData(md.data)
-            md.calcMA(5)
-            md.calcMA(10)
-            md.calcZhangFu()
-            self.models[dateType] = md
-        else:
-            md = self.models[dateType]
-        self.model = md
+        self.model.changeDateType(dateType)
+        md = self.model
         for idt in self.indicators:
             idt.setData(md.data)
+            idt.changeDateType(dateType)
         self.makeVisible(-1)
         self.selIdx = len(md.data) - 1
         x = self.klineIndicator.getCenterX(self.selIdx)
@@ -1243,7 +1283,7 @@ class KLineWindow(base_win.BaseWindow):
         def onMM(evt, args):
             name = evt.item['name']
             if name in ('day', 'week', 'month'):
-                self.changeDateModel(name)
+                self.changeDateType(name)
             elif name == 'mark-day':
                 base_win.ThsShareMemory.instance().writeMarkDay(selDay)
         menu.addNamedListener('Select', onMM)
@@ -1359,7 +1399,7 @@ class KLineWindow(base_win.BaseWindow):
         elif keyCode == 28:
             ks = ('day', 'week', 'month')
             idx = (ks.index(self.dateType) + 1) % len(ks)
-            self.changeDateModel(ks[idx])
+            self.changeDateType(ks[idx])
 
     def makeVisible(self, idx):
         self.calcIndicatorsRect()
@@ -1695,12 +1735,7 @@ class KLineCodeWindow(base_win.BaseWindow):
     def changeCode(self, code):
         self.code = code
         self.codeWin.changeCode(code)
-        if type(code) == int:
-            code = f'{code :06d}'
-        if code[0] == '8':
-            model = KLineModel_Ths(code)
-        else:
-            model = KLineModel_Cls(code)
+        model = KLineModel_DateType(code)
         model.loadDataFile()
         self.klineWin.setModel(model)
         self.klineWin.makeVisible(-1)
@@ -1732,5 +1767,5 @@ if __name__ == '__main__':
     win.addIndicator(TckIndicator()) # {'height' : 50}
     rect = (0, 0, 1550, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('002085') # cls82475 002085 603390 002085 002869
+    win.changeCode('002766') # cls82475 002085 603390 002085 002869
     win32gui.PumpMessages()
