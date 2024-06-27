@@ -11,6 +11,7 @@ base_win.ThreadPool.start()
 class CacheManager(base_win.Listener):
     def __init__(self) -> None:
         self.cache = {}
+        self.wins = []
 
     def _needUpdate(self, data):
         now = datetime.datetime.now()
@@ -38,6 +39,39 @@ class CacheManager(base_win.Listener):
             return None
         return data
     
+    def _getCode(self, data):
+        if not data:
+            return None
+        if 'code' in data:
+            c = data['code']
+        elif 'secu_code' in data:
+            c = data['secu_code']
+        if isinstance(c, int):
+            c = f'{c :06d}'
+        return c
+    
+    def onVisibleRangeChanged(self, evt, args):
+        win = evt.src
+        vr = win.getVisibleRange()
+        ds = win.getData()
+        if not vr or not ds:
+            return
+        curDatas = ds[vr[0] : vr[1]]
+        codes = [self._getCode(d) for d in curDatas]
+
+        base_win.ThreadPool._thread.lock.acquire()
+        tasks = base_win.ThreadPool._thread.tasks
+        for i in range(len(tasks) - 1, -1, -1):
+            if tasks[i]['task_id'] not in codes:
+                tasks.pop(i)
+        base_win.ThreadPool._thread.lock.release()
+
+    def adjustDownloadList(self, win : base_win.TableWindow):
+        wid = id(win)
+        if wid not in self.wins:
+            self.wins.append(wid)
+            win.addNamedListener('VisibleRangeChanged', self.onVisibleRangeChanged)
+
     def download(self, code, win):
         base_win.ThreadPool.addTask(code, self._download, code, win)
 
@@ -203,6 +237,7 @@ def renderTimeline(win : base_win.TableWindow, hdc, row, col, colName, value, ro
         code = rowData['code']
     else:
         return
+    _cache.adjustDownloadList(win)
     data = _cache.getData(code, win)
     if not data:
         return

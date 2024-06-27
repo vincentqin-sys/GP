@@ -1,4 +1,4 @@
-import os, sys, functools, copy, datetime
+import os, sys, functools, copy, datetime, json
 import win32gui, win32con
 import requests, peewee as pw
 
@@ -280,9 +280,9 @@ class RefZSKDrawer:
         if rect[1] == rect[3]:
             rect[1] -=1
         if 'ref-zs-color' not in pens:
-            pens['ref-zs-color'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xFFCCCC)
+            pens['ref-zs-color'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xE19800)
         if 'ref-zs-color' not in hbrs:
-            hbrs['ref-zs-color'] = win32gui.CreateSolidBrush(0xFFCCCC)
+            hbrs['ref-zs-color'] = win32gui.CreateSolidBrush(0xE19800)
         win32gui.SelectObject(hdc, pens['ref-zs-color'])
         win32gui.MoveToEx(hdc, cx, getYAtValue(data.low))
         win32gui.LineTo(hdc, cx, getYAtValue(min(data.open, data.close)))
@@ -332,6 +332,7 @@ class KLineIndicator(Indicator):
         super().__init__(config)
         self.markDay = None
         self.refZSDrawer = RefZSKDrawer()
+        self.visibleRefZS = True
 
     def setData(self, data):
         super().setData(data)
@@ -466,7 +467,8 @@ class KLineIndicator(Indicator):
             return
         for idx in range(*self.visibleRange):
             cx = self.getCenterX(idx)
-            self.refZSDrawer.drawKLineItem(hdc, pens, hbrs, idx - self.visibleRange[0], cx, self.getItemWidth(), self.getYAtValue)
+            if self.visibleRefZS:
+                self.refZSDrawer.drawKLineItem(hdc, pens, hbrs, idx - self.visibleRange[0], cx, self.getItemWidth(), self.getYAtValue)
             self.drawKLineItem(idx, hdc, pens, hbrs, hbrs['black'])
 
     def drawBackground(self, hdc, pens, hbrs):
@@ -1190,6 +1192,156 @@ class KLineSelTipWindow(base_win.BaseWindow):
             return win32con.HTCAPTION
         return super().winProc(hwnd, msg, wParam, lParam)
 
+class DrawLineManager:
+    def __init__(self, klineWin) -> None:
+        self.klineWin : KLineWindow = klineWin
+        self.reset()
+
+    def reset(self):
+        self.code = None
+        self.lines = []
+        self.isDrawing = False
+        self.curLine = None
+
+    def load(self, code):
+        self.reset()
+        self.code = code
+        q = tck_orm.DrawLine.select().where(tck_orm.DrawLine.code == code)
+        for row in q:
+            row.line = json.loads(row.line)
+            self.lines.append(row)
+
+    def begin(self, dateType, kind):
+        self.isDrawing = True
+        self.curLine = tck_orm.DrawLine(code = self.code, dateType = dateType, kind = kind)
+        print('begin ', self.isDrawing, self.curLine.__data__)
+
+    def isValidLine(self, line):
+        return line.info and ('startX' in line.info) and ('endX' in line.info)
+
+    def end(self):
+        if not self.isDrawing:
+            return
+        self.isDrawing = False
+        if self.isValidLine(self.curLine):
+            ln = self.curLine.info
+            self.curLine.info = json.dumps(ln)
+            self.curLine.save()
+            self.curLine.info = ln
+            self.lines.append(self.curLine)
+        self.curLine = None
+    
+    def cancel(self):
+        self.isDrawing = False
+        self.curLine = None
+
+    def onDrawText(self, hdc, line):
+        pass
+
+    def onDrawLine(self, hdc, line : tck_orm.DrawLine):
+        if not self.isValidLine(line) or (not self.klineWin.klineIndicator.visibleRange):
+            return
+        sidx = self.klineWin.model.getItemIdx(line.info['startX'])
+        eidx = self.klineWin.model.getItemIdx(line.info['endX'])
+        vr = self.klineWin.klineIndicator.visibleRange
+        if sidx < 0 or eidx < 0 or sidx < vr[0] or sidx >= vr[1] or eidx < vr[0] or eidx >= vr[1]:
+            return
+        sx = self.klineWin.klineIndicator.getCenterX(sidx)
+        ex = self.klineWin.klineIndicator.getCenterX(eidx)
+        sy = self.klineWin.klineIndicator.getValueAtY(line.info['startY'])
+        ey = self.klineWin.klineIndicator.getValueAtY(line.info['endY'])
+        drawer = self.klineWin.drawer
+        drawer.drawLine(hdc, sx, sy, ex, ey, 0xc03030)
+    
+    def onDraw(self, hdc):
+        dateType = self.klineWin.dateType
+        for line in self.lines:
+            if line.kind == 'text':
+                if line.dateType == dateType:
+                    self.onDrawText(hdc, line)
+            elif line.kind == 'line':
+                if line.dateType == dateType:
+                    self.onDrawLine(hdc, line)
+        if self.isDrawing and self.isValidLine(self.curLine):
+            self.onDrawLine(hdc, self.curLine)
+
+    def onLButtonDown(self, x, y):
+        if not self.curLine or not self.isDrawing:
+            return
+        print('onLButtonDown ', self.isDrawing, self.curLine.__data__)
+        it = self.klineWin.klineIndicator
+        if self.curLine.kind == 'line':
+            idx = it.getIdxAtX(x)
+            if idx < 0:
+                self.cancel()
+                return
+            data = self.klineWin.model.data[idx]
+            self.curLine.day = str(data.day)
+            price = it.getValueAtY(y)
+            self.curLine.info = {'startX': data.day, 'startY': price['value']}
+
+    def onLButtonUp(self, x, y):
+        if not self.curLine or not self.isDrawing:
+            return
+        print('onLButtonUp ', self.isDrawing, self.curLine.__data__)
+        it = self.klineWin.klineIndicator
+        if self.curLine.kind == 'line':
+            if not self.isStartDrawLine():
+                self.cancel()
+                return
+            idx = it.getIdxAtX(x)
+            if idx >= 0:
+                data = self.klineWin.model.data[idx]
+                self.curLine.day = str(data.day)
+                price = it.getValueAtY(y)
+                self.curLine.info = {'endX': data.day, 'endY': price['value']}
+            self.end()
+            self.klineWin.invalidWindow()
+
+    def isStartDrawLine(self):
+        if not self.isDrawing:
+            return False
+        if (not self.curLine) or (not isinstance(self.curLine.info, dict)):
+            return False
+        return 'startX' in self.curLine.info
+
+    def onMouseMove(self, x, y):
+        print('onMouseMove ', self.isDrawing, self.curLine.__data__)
+        if not self.isStartDrawLine():
+            return
+        it = self.klineWin.klineIndicator
+        if self.curLine.kind == 'line':
+            if not self.isStartDrawLine():
+                return
+            idx = it.getIdxAtX(x)
+            if idx >= 0:
+                data = self.klineWin.model.data[idx]
+                self.curLine.day = str(data.day)
+                price = it.getValueAtY(y)
+                self.curLine.info = {'endX': data.day, 'endY': price['value']}
+            self.klineWin.invalidWindow()
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if not self.isDrawing:
+            return False
+        if msg == win32con.WM_LBUTTONDOWN:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            self.onLButtonDown(x, y)
+            return True
+        if msg == win32con.WM_LBUTTONDOWN:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            self.onLButtonUp(x, y)
+            return True
+        if msg == win32con.WM_MOUSEMOVE:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            self.onMouseMove(x, y)
+            return True
+        if msg >= win32con.WM_MOUSEFIRST and msg <= win32con.WM_MOUSELAST:
+            return True
+        if msg >= win32con.WM_KEYFIRST and msg <= win32con.WM_IME_KEYLAST:
+            return True
+        return False
+
 class KLineWindow(base_win.BaseWindow):
     LEFT_MARGIN, RIGHT_MARGIN = 0, 70
 
@@ -1209,6 +1361,7 @@ class KLineWindow(base_win.BaseWindow):
         idt.init(self)
         self.indicators.append(idt)
         self.klineIndicator = idt
+        self.lineMgr = DrawLineManager(self)
 
     def addIndicator(self, indicator : Indicator):
         indicator.init(self)
@@ -1291,6 +1444,7 @@ class KLineWindow(base_win.BaseWindow):
             self.model.gn = gntcObj.gn.replace('【', '').replace('】', '').split(';')
         for idt in self.indicators:
             idt.setData(self.model.data)
+        #self.lineMgr.load(model.code)
 
     # dateType = 'day' 'week'  'month'
     def changeDateType(self, dateType):
@@ -1315,12 +1469,16 @@ class KLineWindow(base_win.BaseWindow):
             if isinstance(selDay, str):
                 selDay = selDay.replace('-', '')
                 selDay = int(selDay)
+        ck = self.klineIndicator.visibleRefZS
         mm = [{'title': '日线', 'name': 'day', 'enable': 'day' != self.dateType}, 
               {'title': '周线', 'name': 'week', 'enable': 'week' != self.dateType}, 
               {'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType},
               {'title': 'LINE'},
               {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0},
               {'title': '取消标记日期', 'name': 'cancel-mark-day', 'enable': selDay > 0},
+              {'title': '显示板块指数', 'name': 'show-ref-zs', 'checked': ck},
+              {'title': 'LINE'},
+              {'title': '画线', 'name': 'draw-line'},
               ]
         menu = base_win.PopupMenuHelper.create(self.hwnd, mm)
         def onMM(evt, args):
@@ -1333,6 +1491,11 @@ class KLineWindow(base_win.BaseWindow):
             elif name == 'cancel-mark-day':
                 base_win.ThsShareMemory.instance().writeMarkDay(0)
                 self.invalidWindow()
+            elif name == 'show-ref-zs':
+                self.klineIndicator.visibleRefZS = evt.item['checked']
+                self.invalidWindow()
+            elif name == 'draw-line':
+                self.lineMgr.begin(self.dateType, 'line')
         menu.addNamedListener('Select', onMM)
         menu.show(* win32gui.GetCursorPos())
 
@@ -1351,6 +1514,8 @@ class KLineWindow(base_win.BaseWindow):
     
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
+        #if self.lineMgr.winProc(hwnd, msg, wParam, lParam):
+        #    return True
         if msg == win32con.WM_SIZE:
             self.makeVisible(self.selIdx)
             return True
@@ -1583,6 +1748,8 @@ class KLineWindow(base_win.BaseWindow):
             title = f'指数({zf}) 同比({lb :.1f})'
             self.drawer.drawText(hdc, title, rc, color = 0x00dddd, align = win32con.DT_RIGHT)
 
+        self.lineMgr.onDraw(hdc)
+
     def drawMouse(self, hdc, pens):
         if not self.mouseXY:
             return
@@ -1663,7 +1830,7 @@ class CodeWindow(ext_win.CellRenderWindow):
         return cell
 
     def init(self):
-        RH = 25
+        RH = 20
         self.addRow({'height': 25, 'margin': 20, 'name': 'code'}, self.getCodeCell)
         self.addRow({'height': 25, 'margin': 5, 'name': 'name'}, self.getCodeCell)
         KEYS = ('涨幅', '委比', '流通市值', '总市值', '市盈率_静', '市盈率_TTM')
@@ -1705,6 +1872,41 @@ class CodeWindow(ext_win.CellRenderWindow):
         else:
             base_win.ThreadPool.addTask(scode, self.loadCodeBasic, scode)
 
+class SelectTipWin(ext_win.CellRenderWindow):
+    def __init__(self, line : KLineWindow) -> None:
+        super().__init__((80, '1fr'), 5)
+        self.data = None
+        line.addNamedListener('selIdx.changed', self.onSelIdxChanged)
+        
+        RH = 25
+        self.addRow({'height': 15, 'margin': 5, 'name': 't'}, {'text': '--------------------', 'span': 2, 'textAlign': win32con.DT_CENTER, 'color': 0x505050})
+        self.addRow({'height': RH, 'margin': 5, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc}, self.getCell)
+        self.addRow({'height': RH, 'margin': 5, 'name': 'vol'},{'text': '成交额', 'color': 0xcccccc},  self.getCell)
+        self.addRow({'height': RH, 'margin': 5, 'name': 'rate'}, {'text': '换手率', 'color': 0xcccccc}, self.getCell)
+
+    def onSelIdxChanged(self, evt, args):
+        self.data = evt.data
+        self.invalidWindow()
+
+    def getCell(self, rowInfo, idx):
+        cell = {'text': '', 'color': 0xcccccc, 'textAlign': win32con.DT_LEFT, 'fontSize': 15}
+        if self.data is None:
+            return
+        if rowInfo['name'] == 'zhangFu':
+            zf = getattr(self.data, 'zhangFu', None)
+            if zf is not None:
+                cell['text'] = f'{zf :.02f}%'
+                cell['color'] = 0x0000ff if zf >= 0 else 0x00ff00
+        elif rowInfo['name'] == 'vol':
+            money = getattr(self.data, 'amount', None)
+            if money:
+                cell['text'] = f'{money / 100000000 :.02f} 亿'
+        elif rowInfo['name'] == 'rate':
+            rate = getattr(self.data, 'rate', None)
+            if rate:
+                cell['text'] = f'{rate :.02f}%'
+        return cell
+
 class KLineCodeWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -1721,25 +1923,34 @@ class KLineCodeWindow(base_win.BaseWindow):
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title = ''):
         super().createWindow(parentWnd, rect, style, className, title)
-        self.layout = base_win.GridLayout(('100%', ), ('1fr', 150), (5, 5))
+        RIGHT_WIDTH = 150
+        self.layout = base_win.GridLayout(('100%', ), ('1fr', RIGHT_WIDTH), (5, 5))
+        self.klineWin.showSelTip = False
         self.klineWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.layout.setContent(0, 0, self.klineWin)
-        self.codeWin.createWindow(self.hwnd, (0, 0, 150, 280))
 
         rightLayout = base_win.AbsLayout()
+        self.codeWin.createWindow(self.hwnd, (0, 0, RIGHT_WIDTH, 225))
         rightLayout.setContent(0, 0, self.codeWin)
+        y = 225
+        tipWin = SelectTipWin(self.klineWin)
+        tipWin.createWindow(self.hwnd, (0, 0, RIGHT_WIDTH, 110))
+        rightLayout.setContent(0, y, tipWin)
+
+        y = 350
         btn = base_win.Button({'title': '<<', 'name': 'LEFT'})
         btn.createWindow(self.hwnd, (0, 0, 40, 30))
         btn.addNamedListener('Click', self.onLeftRight)
-        rightLayout.setContent(0, 300, btn)
+        rightLayout.setContent(0, y, btn)
         btn = base_win.Button({'title': '>>', 'name': 'RIGHT'})
         btn.createWindow(self.hwnd, (0, 0, 40, 30))
         btn.addNamedListener('Click', self.onLeftRight)
-        rightLayout.setContent(110, 300, btn)
+        rightLayout.setContent(110, y, btn)
         self.idxCodeWin = base_win.Label()
         self.idxCodeWin.createWindow(self.hwnd, (0, 0, 70, 30))
         self.idxCodeWin.css['textAlign'] |= win32con.DT_CENTER
-        rightLayout.setContent(40, 300, self.idxCodeWin)
+        rightLayout.setContent(40, y, self.idxCodeWin)
+
         self.layout.setContent(0, 1, rightLayout)
         self.layout.resize(0, 0, *self.getClientSize())
 
@@ -1763,10 +1974,12 @@ class KLineCodeWindow(base_win.BaseWindow):
             return
         idx = self._findIdx()
         if evt.info['name'] == 'LEFT':
-            if idx == 0: return
+            if idx == 0:
+                idx = len(self.codeList)
             idx -= 1
         else:
-            if idx == len(self.codeList) - 1: return
+            if idx == len(self.codeList) - 1:
+                idx = -1
             idx += 1
         cur = self.codeList[idx]
         self.changeCode(self._getCode(cur))

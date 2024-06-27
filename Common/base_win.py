@@ -163,14 +163,18 @@ class Thread:
             threadName = f'Thread-{Thread._num}'
         self.name = threadName
         self.thread = threading.Thread(target = Thread._run, args=(self,), name=threadName, daemon = True)
+        self.lock = threading.Lock()
 
     def addTask(self, taskId, fun, *args):
+        self.lock.acquire()
         for tk in self.tasks:
             if tk['task_id'] == taskId:
+                self.lock.release()
                 return
         task = {'func': fun, 'args': args, 'task_id': taskId}
         self.tasks.append(task)
         self.event.set()
+        self.lock.release()
 
     def start(self):
         if not self.started:
@@ -180,6 +184,18 @@ class Thread:
     def stop(self):
         self.stoped = True
     
+    def removeTask(self, taskId):
+        self.lock.acquire()
+        e = False
+        for i in range(len(self.tasks)):
+            tk = self.tasks[i]
+            if tk['task_id'] == taskId:
+                self.tasks.pop(i)
+                e = True
+                break
+        self.lock.release()
+        return e
+
     @staticmethod
     def _run(self):
         while not self.stoped:
@@ -187,10 +203,12 @@ class Thread:
                 self.event.wait()
                 self.event.clear()
             else:
+                self.lock.acquire()
                 task = self.tasks[0]
+                self.tasks.pop(0)
+                self.lock.release()
                 func = task['func']
                 func( *task['args'] )
-                self.tasks.pop(0)
 
 class TimerThread:
     _num = 0
@@ -203,33 +221,41 @@ class TimerThread:
             threadName = f"TimerThread-{TimerThread._num}"
         self.name = threadName
         self.thread = threading.Thread(target = TimerThread._run, name = threadName, args=(self,), daemon = True)
+        self.lock = threading.Lock()
 
     # param delay : float seconds
     def addTimerTask(self, taskId, delay, func, *args):
+        self.lock.acquire()
         for tk in self.tasks:
             if tk['task_id'] == taskId:
+                self.lock.release()
                 return
         tsk = {'func': func, 'args': args, 'delay': time.time() + delay, 'task_id': taskId}
         self.tasks.append(tsk)
+        self.lock.release()
 
     # param intervalTime : float seconds
     def addIntervalTask(self, taskId, intervalTime, func, *args):
+        self.lock.acquire()
         for tk in self.tasks:
             if tk['task_id'] == taskId:
+                self.lock.release()
                 return
         tsk = {'func': func, 'args': args, 'interval': intervalTime, 'delay': time.time() + intervalTime, 'task_id': taskId}
         self.tasks.append(tsk)
+        self.lock.release()
 
     def removeTask(self, taskId):
+        self.lock.acquire()
         idx = -1
         for i, tk in enumerate(self.tasks):
             if tk['task_id'] == taskId:
                 idx = i
                 break
-        if idx < 0:
-            return False
-        self.tasks.pop(idx)
-        return True
+        if idx >= 0:
+            self.tasks.pop(idx)
+        self.lock.release()
+        return idx >= 0
 
     def start(self):
         if not self.started:
@@ -278,12 +304,20 @@ class ThreadPool:
         ThreadPool._thread.addTask(taskId, func, *args)
 
     @staticmethod
+    def removeTask(taskId):
+        ThreadPool._thread.removeTask(taskId)
+
+    @staticmethod
     def addTimerTask(taskId, delay, func, *args):
         ThreadPool._timerThread.addTimerTask(taskId, delay, func, *args)
 
     @staticmethod
     def addIntervalTask(taskId, intervalTime, func, *args):
         ThreadPool._timerThread.addIntervalTask(taskId, intervalTime, func, *args)
+
+    @staticmethod
+    def removeTimerTask(taskId):
+        ThreadPool._timerThread.removeTask(taskId)
 
 class Drawer:
     _instance = None
@@ -1015,6 +1049,9 @@ class TableWindow(BaseWindow):
             return self.headHeight + (row - vr[0]) * self.rowHeight
         return -1 # not visible
     
+    def _notifyVisibleRangeChanged(self, old = None):
+        self.notifyListener(self.Event('VisibleRangeChanged', self, visibleRange = self.getVisibleRange(), old = old))
+
     def setData(self, data):
         if self.data == data:
             return
@@ -1025,6 +1062,7 @@ class TableWindow(BaseWindow):
         self.startRow = 0
         self.selRow = -1
         self.selCol = -1
+        self._notifyVisibleRangeChanged()
 
     def setFilterData(self, data):
         if self.sortData == data:
@@ -1036,13 +1074,17 @@ class TableWindow(BaseWindow):
         self.startRow = 0
         self.selRow = -1
         self.selCol = -1
+        self._notifyVisibleRangeChanged()
 
     # delta > 0 : up scroll
     # delta < 0 : down scroll
     def scroll(self, delta):
+        sr = self.startRow
         if delta >= 0:
             self.startRow = max(self.startRow - delta, 0)
             self.invalidWindow()
+            if self.startRow != sr:
+                self._notifyVisibleRangeChanged()
             return
         delta = -delta
         vr = self.getVisibleRange()
@@ -1054,6 +1096,8 @@ class TableWindow(BaseWindow):
         delta = min(delta, mx)
         self.startRow += delta
         self.invalidWindow()
+        if sr != self.startRow:
+            self._notifyVisibleRangeChanged()
     
     def showRow(self, row):
         rg = self.getVisibleRange()
@@ -1216,6 +1260,7 @@ class TableWindow(BaseWindow):
                 self.sortData = sorted(self.data, key = lambda d: d.get(header['name'], '') if isinstance(d, dict) else getattr(d, header['name'], None), reverse = reverse)
         else:
             self.sortData = None
+        self._notifyVisibleRangeChanged()
 
     # get row idx, -2: in header, -3: in tail, -1: in empty rows
     def getRowAtY(self, y):
@@ -1306,6 +1351,9 @@ class TableWindow(BaseWindow):
                 dx = self.getData()
                 self.notifyListener(self.Event('DbClick', self, x = x, y = y, row = row, data = dx[row], model = dx))
             return True
+        if msg == win32con.WM_SIZE:
+            self._notifyVisibleRangeChanged()
+            # go through, no return
         return super().winProc(hwnd, msg, wParam, lParam)
 
 
@@ -1749,8 +1797,28 @@ class PopupMenu(NoActivePopupWindow):
                     render = m['render']
                     render(self, hdc, rc[ : ], m)
                 else:
+                    checked = m.get('checked', None)
+                    if checked == False or checked == True:
+                        self.drawCheckBox(hdc, m, rc)
                     self.drawer.drawText(hdc, title, rc, color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_WORDBREAK)
             rc[1] = rc[3]
+    
+    def drawCheckBox(self, hdc, item, rowRect):
+        checked = item.get('checked', None)
+        if not isinstance(checked, bool):
+            return
+        box = [0, rowRect[1], self.LEFT_RIGHT_PADDING, rowRect[3]]
+        BOX_IN = 6
+        x = ((box[2] - box[0]) - BOX_IN) // 2
+        y = ((box[3] - box[1]) - BOX_IN) // 2
+        boxIn = [box[0] + x, box[1] + y, box[0] + x + BOX_IN, box[1] + y + BOX_IN]
+        BOX_OUT = 12
+        x = ((box[2] - box[0]) - BOX_OUT) // 2
+        y = ((box[3] - box[1]) - BOX_OUT) // 2
+        boxOut = [box[0] + x, box[1] + y, box[0] + x + BOX_OUT, box[1] + y + BOX_OUT]
+        self.drawer.drawRect(hdc, boxOut, 0x606060)
+        if checked:
+            self.drawer.fillRect(hdc, boxIn, 0x338833)
     
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_MOUSEMOVE:
@@ -1764,8 +1832,11 @@ class PopupMenu(NoActivePopupWindow):
             y = (lParam >> 16) & 0xffff
             idx = self.getItemIdxAt(y)
             self.hide()
-            if idx >= 0 and self.model[idx].get('title', '') != 'LINE' and self.model[idx].get('enable', True):
-                self.notifyListener(self.Event('Select', self, item = self.model[idx], model = self.model))
+            item = self.model[idx]
+            if idx >= 0 and item.get('title', '') != 'LINE' and item.get('enable', True):
+                if item.get('checked', None) != None:
+                    item['checked'] = not item['checked']
+                self.notifyListener(self.Event('Select', self, item = item, model = self.model))
             return True
         if msg == win32con.WM_MOUSEWHEEL:
             delta = (wParam >> 16) & 0xffff
@@ -1778,7 +1849,7 @@ class PopupMenu(NoActivePopupWindow):
 
 class PopupMenuHelper:
     # x, y is screen position
-    # model = [{'title': xx, 'enable' : True(is default) | False}, ...]  title:必选项 = LINE | ...., enable: 可选项
+    # model = [{'title': xx, 'enable' : True(is default) | False, checked:None(not checkable)|True|False } ...]  title:必选项 = LINE | ...., enable: 可选项
     # listener = function(evtName, evtInfo, args)
     # return PopupMenu object
     @staticmethod

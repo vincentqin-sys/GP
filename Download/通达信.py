@@ -436,6 +436,9 @@ def mergeTimeline():
     pass
 
 if __name__ == '__main__':
+    #t = TdxLSTools()
+    #t.calcInfo()
+    
     if 'debug' in sys.argv:
         work() # run one time
     else:

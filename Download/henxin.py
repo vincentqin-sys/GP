@@ -256,7 +256,9 @@ class HexinUrl(Henxin):
             return '17'
         if code[0] == '0' or code[0] == '3':
             return '33'
-        raise Exception('[HexinUrl.getCodeSH] unknow url for code :', code)
+        #raise Exception('[HexinUrl.getCodeSH] unknow url for code :', code)
+        print('[HexinUrl.getCodeSH] unknow url for code :', code)
+        return None
     
     def _getUrlWithParam(self, url):
         param = self.update()
@@ -266,6 +268,8 @@ class HexinUrl(Henxin):
     # 分时线 url
     def getFenShiUrl(self, code):
         sh = self.getCodeSH(code)
+        if not sh:
+            return None
         url = 'http://d.10jqka.com.cn/v6/time/' + sh + '_' + code + '/last.js'
         url = self._getUrlWithParam(url)
         return url
@@ -273,6 +277,8 @@ class HexinUrl(Henxin):
     # 今日-日线 url
     def getTodayKLineUrl(self, code):
         sh = self.getCodeSH(code)
+        if not sh:
+            return None
         url = 'http://d.10jqka.com.cn/v6/line/'+ sh + '_' + code + '/01/today.js'
         url = self._getUrlWithParam(url)
         return url
@@ -280,6 +286,8 @@ class HexinUrl(Henxin):
     # 日线 url
     def getKLineUrl(self, code):
         sh = self.getCodeSH(code)
+        if not sh:
+            return None
         url = 'http://d.10jqka.com.cn/v6/line/'+ sh + '_' + code + '/01/last1800.js'
         url = self._getUrlWithParam(url)
         return url
@@ -287,6 +295,8 @@ class HexinUrl(Henxin):
     # 周线 url
     def getKLineUrl_Week(self, code):
         sh = self.getCodeSH(code)
+        if not sh:
+            return None
         url = 'http://d.10jqka.com.cn/v6/line/'+ sh + '_' + code + '/11/last1800.js'
         url = self._getUrlWithParam(url)
         return url
@@ -294,6 +304,8 @@ class HexinUrl(Henxin):
     # 月线 url
     def getKLineUrl_Month(self, code):
         sh = self.getCodeSH(code)
+        if not sh:
+            return None
         url = 'http://d.10jqka.com.cn/v6/line/'+ sh + '_' + code + '/21/last1800.js'
         url = self._getUrlWithParam(url)
         return url
@@ -302,6 +314,8 @@ class HexinUrl(Henxin):
     #         kline:  {'name': xx, 'today': today,  'data': [HexinUrl.ItemData, ...]}
     #         fenshi: {name:xx, pre:xx, date:xxx, data: str;str;..., }  data: 时间，价格，成交额（元），分时均价，成交量（手）;
     def loadUrlData(self, url):
+        if not url:
+            return None
         resp = self.session.get(url)
         if resp.status_code != 200:
             print('[HexinUrl.loadUrlData] Error:', resp)
@@ -323,6 +337,8 @@ class HexinUrl(Henxin):
     def loadKLineData(self, code):
         url = self.getKLineUrl(code)
         klineRs = self.loadUrlData(url)
+        if not klineRs:
+            return None
         data = klineRs['data']
         url = self.getTodayKLineUrl(code)
         todayRs = self.loadUrlData(url)

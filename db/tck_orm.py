@@ -105,4 +105,15 @@ class Mark(pw.Model):
         database = db_tck
         table_name = '标记'
 
-db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN, TCK_CiTiao, DailyFuPan, Mark])
+class DrawLine(pw.Model):
+    code = pw.CharField()
+    dateType = pw.CharField()
+    day = pw.CharField()
+    kind = pw.CharField()
+    info = pw.CharField(null = True)
+    
+    class Meta:
+        database = db_tck
+        table_name = '画线'
+
+db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN, TCK_CiTiao, DailyFuPan, Mark, DrawLine])
