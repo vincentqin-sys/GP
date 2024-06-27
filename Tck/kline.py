@@ -1152,11 +1152,15 @@ class ScqxIndicator(CustomIndicator):
         rc = (x + 1, 1, x + iw, self.height)
         if selDay == int(cdata['__day']):
             win32gui.FillRect(hdc, rc, hbrs['light_dark'])
-        win32gui.SetTextColor(hdc, 0xcccccc)
         rc = (x + 3, 3, x + iw - 3, self.height)
-        # °
         if cdata['zhqd']:
-            win32gui.DrawText(hdc, str(cdata['zhqd']) + '°', -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+            val = cdata['zhqd']
+            color = 0xcccccc
+            if val >= 60: color = 0x0000FF
+            elif val >= 40: color = 0x1D77FF
+            else: color = 0x00ff00 #0x24E7C8
+            win32gui.SetTextColor(hdc, color)
+            win32gui.DrawText(hdc, str(val) + '°', -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
 class KLineSelTipWindow(base_win.BaseWindow):
     def __init__(self, klineWin) -> None:
@@ -1208,22 +1212,30 @@ class DrawLineManager:
         self.code = code
         q = tck_orm.DrawLine.select().where(tck_orm.DrawLine.code == code)
         for row in q:
-            row.line = json.loads(row.line)
+            row.info = json.loads(row.info)
             self.lines.append(row)
 
     def begin(self, dateType, kind):
         self.isDrawing = True
         self.curLine = tck_orm.DrawLine(code = self.code, dateType = dateType, kind = kind)
-        print('begin ', self.isDrawing, self.curLine.__data__)
 
     def isValidLine(self, line):
         return line.info and ('startX' in line.info) and ('endX' in line.info)
+    
+    def isValideText(self, line):
+        return line.info and ('text' in line.info)
 
     def end(self):
         if not self.isDrawing:
             return
         self.isDrawing = False
-        if self.isValidLine(self.curLine):
+        if self.curLine.kind == 'line' and self.isValidLine(self.curLine):
+            ln = self.curLine.info
+            self.curLine.info = json.dumps(ln)
+            self.curLine.save()
+            self.curLine.info = ln
+            self.lines.append(self.curLine)
+        elif self.curLine.kind == 'text' and self.isValideText(self.curLine):
             ln = self.curLine.info
             self.curLine.info = json.dumps(ln)
             self.curLine.save()
@@ -1236,22 +1248,29 @@ class DrawLineManager:
         self.curLine = None
 
     def onDrawText(self, hdc, line):
-        pass
+        if not self.isValideText(line) or (not self.klineWin.klineIndicator.visibleRange):
+            return
+        sidx = self.klineWin.model.getItemIdx(int(line.info['startX']))
+        vr = self.klineWin.klineIndicator.visibleRange
+        if sidx < 0 or sidx < vr[0] or sidx >= vr[1]:
+            return
+        sx = self.klineWin.klineIndicator.getCenterX(sidx) + self.klineWin.klineIndicator.x
+
 
     def onDrawLine(self, hdc, line : tck_orm.DrawLine):
         if not self.isValidLine(line) or (not self.klineWin.klineIndicator.visibleRange):
             return
-        sidx = self.klineWin.model.getItemIdx(line.info['startX'])
-        eidx = self.klineWin.model.getItemIdx(line.info['endX'])
+        sidx = self.klineWin.model.getItemIdx(int(line.info['startX']))
+        eidx = self.klineWin.model.getItemIdx(int(line.info['endX']))
         vr = self.klineWin.klineIndicator.visibleRange
         if sidx < 0 or eidx < 0 or sidx < vr[0] or sidx >= vr[1] or eidx < vr[0] or eidx >= vr[1]:
             return
-        sx = self.klineWin.klineIndicator.getCenterX(sidx)
-        ex = self.klineWin.klineIndicator.getCenterX(eidx)
-        sy = self.klineWin.klineIndicator.getValueAtY(line.info['startY'])
-        ey = self.klineWin.klineIndicator.getValueAtY(line.info['endY'])
+        sx = self.klineWin.klineIndicator.getCenterX(sidx) + self.klineWin.klineIndicator.x
+        ex = self.klineWin.klineIndicator.getCenterX(eidx) + self.klineWin.klineIndicator.x
+        sy = self.klineWin.klineIndicator.getYAtValue(line.info['startY']) + self.klineWin.klineIndicator.y
+        ey = self.klineWin.klineIndicator.getYAtValue(line.info['endY']) + self.klineWin.klineIndicator.y
         drawer = self.klineWin.drawer
-        drawer.drawLine(hdc, sx, sy, ex, ey, 0xc03030)
+        drawer.drawLine(hdc, sx, sy, ex, ey, 0x30f030, width = 1)
     
     def onDraw(self, hdc):
         dateType = self.klineWin.dateType
@@ -1268,7 +1287,7 @@ class DrawLineManager:
     def onLButtonDown(self, x, y):
         if not self.curLine or not self.isDrawing:
             return
-        print('onLButtonDown ', self.isDrawing, self.curLine.__data__)
+        #print('onLButtonDown ', self.isDrawing, self.curLine.__data__)
         it = self.klineWin.klineIndicator
         if self.curLine.kind == 'line':
             idx = it.getIdxAtX(x)
@@ -1281,9 +1300,9 @@ class DrawLineManager:
             self.curLine.info = {'startX': data.day, 'startY': price['value']}
 
     def onLButtonUp(self, x, y):
-        if not self.curLine or not self.isDrawing:
+        #print('onLButtonUp ', self.isDrawing, self.curLine.__data__)
+        if (not self.curLine) or (not self.isDrawing):
             return
-        print('onLButtonUp ', self.isDrawing, self.curLine.__data__)
         it = self.klineWin.klineIndicator
         if self.curLine.kind == 'line':
             if not self.isStartDrawLine():
@@ -1292,9 +1311,8 @@ class DrawLineManager:
             idx = it.getIdxAtX(x)
             if idx >= 0:
                 data = self.klineWin.model.data[idx]
-                self.curLine.day = str(data.day)
                 price = it.getValueAtY(y)
-                self.curLine.info = {'endX': data.day, 'endY': price['value']}
+                self.curLine.info.update({'endX': data.day, 'endY': price['value']})
             self.end()
             self.klineWin.invalidWindow()
 
@@ -1306,9 +1324,9 @@ class DrawLineManager:
         return 'startX' in self.curLine.info
 
     def onMouseMove(self, x, y):
-        print('onMouseMove ', self.isDrawing, self.curLine.__data__)
         if not self.isStartDrawLine():
             return
+        #print('onMouseMove ', self.isDrawing, self.curLine.__data__)
         it = self.klineWin.klineIndicator
         if self.curLine.kind == 'line':
             if not self.isStartDrawLine():
@@ -1318,7 +1336,7 @@ class DrawLineManager:
                 data = self.klineWin.model.data[idx]
                 self.curLine.day = str(data.day)
                 price = it.getValueAtY(y)
-                self.curLine.info = {'endX': data.day, 'endY': price['value']}
+                self.curLine.info.update({'endX': data.day, 'endY': price['value']})
             self.klineWin.invalidWindow()
 
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -1326,14 +1344,20 @@ class DrawLineManager:
             return False
         if msg == win32con.WM_LBUTTONDOWN:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            x -= self.klineWin.klineIndicator.x
+            y -= self.klineWin.klineIndicator.y
             self.onLButtonDown(x, y)
             return True
-        if msg == win32con.WM_LBUTTONDOWN:
+        if msg == win32con.WM_LBUTTONUP:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            x -= self.klineWin.klineIndicator.x
+            y -= self.klineWin.klineIndicator.y
             self.onLButtonUp(x, y)
             return True
         if msg == win32con.WM_MOUSEMOVE:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            x -= self.klineWin.klineIndicator.x
+            y -= self.klineWin.klineIndicator.y
             self.onMouseMove(x, y)
             return True
         if msg >= win32con.WM_MOUSEFIRST and msg <= win32con.WM_MOUSELAST:
@@ -1444,7 +1468,7 @@ class KLineWindow(base_win.BaseWindow):
             self.model.gn = gntcObj.gn.replace('【', '').replace('】', '').split(';')
         for idt in self.indicators:
             idt.setData(self.model.data)
-        #self.lineMgr.load(model.code)
+        self.lineMgr.load(model.code)
 
     # dateType = 'day' 'week'  'month'
     def changeDateType(self, dateType):
@@ -1514,8 +1538,8 @@ class KLineWindow(base_win.BaseWindow):
     
     # @return True: 已处理事件,  False:未处理事件
     def winProc(self, hwnd, msg, wParam, lParam):
-        #if self.lineMgr.winProc(hwnd, msg, wParam, lParam):
-        #    return True
+        if self.lineMgr.winProc(hwnd, msg, wParam, lParam):
+            return True
         if msg == win32con.WM_SIZE:
             self.makeVisible(self.selIdx)
             return True

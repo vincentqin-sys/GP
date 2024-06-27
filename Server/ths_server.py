@@ -99,8 +99,9 @@ def downloadOneDay(day):
             tck_orm.THS_ZT.create(**it)
             insertNum += 1
             continue
-        if obj.ztTime != it['ztTime'] or obj.status != it['status'] or obj.ztReason != it['ztReason']:
-            obj.ztTime = it['ztTime']
+        if obj.status != it['status'] or obj.ztReason != it['ztReason']:
+            #print('old:', obj.status, obj.ztReason)
+            #print('new:', it['status'], it['ztReason'])
             if it['status']:
                 obj.status = it['status']
             if it['ztReason']:
@@ -127,8 +128,8 @@ def acceptDay(day):
         return False
     return True
 
-def autoLoadHistory():
-    fromDay = datetime.date(2023, 3, 1)
+def autoLoadHistory(fromDay = 20230301):
+    fromDay = datetime.date(fromDay // 10000, fromDay // 100 % 100, fromDay % 100)
     one = datetime.timedelta(days = 1)
     today = datetime.date.today()
     while fromDay <= today:
@@ -144,7 +145,7 @@ def run():
             time.sleep(5 * 60)
             continue
         curTime = now.strftime('%H:%M')
-        if curTime < '09:30' or curTime > '16:00':
+        if curTime < '09:30' or curTime > '16:30':
             time.sleep(5 * 60)
             continue
         try:
@@ -199,6 +200,6 @@ def queryAllCodeZD(day):
     print(txt)
 
 if __name__ == '__main__':
-    #autoLoadHistory()
+    autoLoadHistory(20240626)
     #downloadOneDay(20240409)
-    queryAllCodeZD(0)
+    #queryAllCodeZD(0)
