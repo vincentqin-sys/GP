@@ -24,7 +24,7 @@ def openInCurWindow_Code(parent : base_win.BaseWindow, data):
     W, H = int(dw * 0.8), int(dh * 0.8)
     x = (dw - W) // 2
     y = (dh - H) // 2
-    win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+    win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION)
     win.changeCode(data['code'])
     win.klineWin.setMarkDay(data['day'])
     win.klineWin.addListener(openKlineMinutes_Simple, win)
@@ -41,7 +41,7 @@ def openInCurWindow_ZS(parent : base_win.BaseWindow, data):
     W, H = int(dw * 0.8), int(dh * 0.8)
     x = (dw - W) // 2
     y = (dh - H) // 2
-    win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+    win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION)
     win.changeCode(data['code'])
     win.klineWin.setMarkDay(data['day'])
     win.klineWin.addListener(openKlineMinutes_Simple, win)
@@ -60,7 +60,7 @@ def openKlineMinutes_DDLR(evt, parent : base_win.BaseWindow):
         return
     win = ddlr_detail.DDLR_MinuteMgrWindow()
     rc = win32gui.GetWindowRect(parent.hwnd)
-    win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+    win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION)
     day = evt.data.day
     win.updateCodeDay(evt.code, day)
 
@@ -69,7 +69,12 @@ def openKlineMinutes_Simple(evt, parent : base_win.BaseWindow):
         return
     win = timeline.SimpleTimelineWindow()
     rc = win32gui.GetWindowRect(parent.hwnd)
-    rc2 = (rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1])
+    #rc2 = (rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1])
+    SW = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+    SH = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+    w, h = max(800, int(SW * 0.6)), 600
+    x, y = (SW - w) // 2, (SH - h) // 2
+    rc2 = (x, y, w, h)
     win.createWindow(parent.hwnd, rc2, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
     day = evt.data.day
     win.load(evt.code, day)

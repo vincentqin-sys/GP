@@ -115,20 +115,26 @@ class CellRenderWindow(base_win.BaseWindow):
         self.rows = []
 
     # rowInfo = { height: int | function(cell object), 
-    #             bgColor: None | int | function(cell object), 
-    #             margin: 0 | int, top margin
+    #             bgColor: None | int | function(cell object),
+    #             margin: None | int | (top, bottom) margin
     #           }
     # cell = { text: str | function(cell object),
-    #          paddings:(l, t, r, b) 可选,
+    #          paddings: None | (l, t, r, b)
     #          span: int (default is 1) 跨列数
     #          bgColor: None | int | function(cell object), 
     #          color: None | int | function(cell object),
     #          textAlign: int | None,
-    #          fontSize: int | None, fontWeight: int | None }
+    #          fontSize: int | None, 
+    #          fontWeight: int | None 
+    #          render: None | function(rowInfo, cell, win, hdc, rect)
+    #       }
     # cell = function(rowInfo, cellIdx)
     def addRow(self, rowInfo, *cells):
         self.rows.append({'rowInfo': rowInfo, 'cells': cells})
 
+    def insertRow(self, insertIdx, rowInfo, *cells):
+        self.rows.insert(insertIdx, {'rowInfo': rowInfo, 'cells': cells})
+    
     def getColWidth(self, col, span, colsWidth):
         if span <= 0:
             return 0
@@ -157,7 +163,7 @@ class CellRenderWindow(base_win.BaseWindow):
             span = cell.get('span', 1)
             cw = self.getColWidth(colIdx, span, colsWidth)
             rc2 = [sx, sy, sx + cw, sy + rowInfo['height']]
-            self.drawCell(hdc, rc2, cell)
+            self.drawCell(hdc, rc2, cell, i, rowInfo)
             sx += cw + self.colsGaps
             colIdx += span
 
@@ -170,14 +176,17 @@ class CellRenderWindow(base_win.BaseWindow):
         for row in self.rows:
             sx = self.paddings[0]
             rowInfo = row['rowInfo']
-            sy += rowInfo.get('margin', 0)
+            margin = rowInfo.get('margin', 0)
+            if isinstance(margin, int):
+                margin = (margin, margin)
+            sy += margin[0]
             rc = (sx, sy, W - self.paddings[2], sy + rowInfo['height'])
             self._drawRow(hdc, rc, rowInfo)
             cells = row['cells']
             self._drawCells(hdc, cells, colsWidth, sx, sy, rowInfo)
-            sy += rowInfo['height']
+            sy += rowInfo['height'] + margin[1]
 
-    def drawCell(self, hdc, rect, cell):
+    def drawCell(self, hdc, rect, cell, cellIdx, rowInfo):
         if not cell:
             return
         if 'bgColor' in cell and type(cell['bgColor']) == int:
@@ -199,7 +208,10 @@ class CellRenderWindow(base_win.BaseWindow):
             txt = text
         elif callable(text):
             txt = text(cell)
-        self.drawer.drawText(hdc, txt, rect, color = color, align=align)
+        self.drawer.drawText(hdc, txt, rect, color = color, align = align)
+        render = cell.get('render', None)
+        if callable(render):
+            render(rowInfo, cell, self, hdc, rect)
 
     def _parseTemplate(self, template, wh, gap):
         num = len(template)

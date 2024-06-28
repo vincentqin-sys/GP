@@ -1848,18 +1848,27 @@ class CodeWindow(ext_win.CellRenderWindow):
         if rowInfo['name'] == 'code':
             code = self.data.get('code', None)
             cell['text'] = code
-        else:
+        elif rowInfo['name'] == 'name':
             name = self.data.get('name', None)
             cell['text'] = name
+        elif rowInfo['name'] == 'refZSName':
+            cell['fontSize'] = 14
+            cell['fontWeight'] = 800
+            cell['color'] = 0xa0a0a0
+            cell['text'] = '【' + self.data.get('refZSName', '') + '】'
         return cell
 
     def init(self):
         RH = 20
-        self.addRow({'height': 25, 'margin': 20, 'name': 'code'}, self.getCodeCell)
-        self.addRow({'height': 25, 'margin': 5, 'name': 'name'}, self.getCodeCell)
-        KEYS = ('涨幅', '委比', '流通市值', '总市值', '市盈率_静', '市盈率_TTM')
+        self.addRow({'height': 25, 'margin': 0, 'name': 'refZSName'}, self.getCodeCell)
+        self.addRow({'height': 25, 'margin': 0, 'name': 'code'}, self.getCodeCell)
+        self.addRow({'height': 25, 'margin': 0, 'name': 'name'}, self.getCodeCell)
+        KEYS = ('涨幅', '委比', 'Line', '流通市值', '总市值', 'Line', '市盈率_静', '市盈率_TTM')
         for k in KEYS:
-            self.addRow({'height': RH, 'margin': 5, 'name': k}, {'text': k, 'color': 0xcccccc}, self.getCell)
+            if k == 'Line':
+                self.addRow({'height': 1, 'margin': 0, 'name': 'split-line'}, {'color': 0xa0a0a0, 'bgColor': 0x606060, 'span': 2})
+            else:
+                self.addRow({'height': RH, 'margin': 5, 'name': k}, {'text': k, 'color': 0xcccccc}, self.getCell)
 
     def loadZS(self, code):
         name = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name).where(ths_orm.THS_ZS_ZD.code == code).scalar()
@@ -1874,6 +1883,15 @@ class CodeWindow(ext_win.CellRenderWindow):
         data = url.loadBasic(code)
         data['code'] = code
         self.cacheData[code] = data
+        if code[0] in ('0', '3', '6'):
+            bk = ths_orm.THS_GNTC.get_or_none(code = code)
+            if bk:
+                bks = str(bk.hy).split('-')
+                bkName = bks[1].strip()
+                data['refZSName'] = bkName
+                zsObj = ths_orm.THS_ZS.get_or_none(name = bkName)
+                if zsObj:
+                    data['refZSCode'] = zsObj.code
         self._useCacheData(code)
 
     def _useCacheData(self, code):
@@ -1903,7 +1921,7 @@ class SelectTipWin(ext_win.CellRenderWindow):
         line.addNamedListener('selIdx.changed', self.onSelIdxChanged)
         
         RH = 25
-        self.addRow({'height': 15, 'margin': 5, 'name': 't'}, {'text': '--------------------', 'span': 2, 'textAlign': win32con.DT_CENTER, 'color': 0x505050})
+        #self.addRow({'height': 2, 'margin': 5, 'name': 't', 'bgColor': 0x505050}, {'span': 2})
         self.addRow({'height': RH, 'margin': 5, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc}, self.getCell)
         self.addRow({'height': RH, 'margin': 5, 'name': 'vol'},{'text': '成交额', 'color': 0xcccccc},  self.getCell)
         self.addRow({'height': RH, 'margin': 5, 'name': 'rate'}, {'text': '换手率', 'color': 0xcccccc}, self.getCell)
@@ -1953,27 +1971,27 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.klineWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.layout.setContent(0, 0, self.klineWin)
 
-        rightLayout = base_win.AbsLayout()
-        self.codeWin.createWindow(self.hwnd, (0, 0, RIGHT_WIDTH, 225))
-        rightLayout.setContent(0, 0, self.codeWin)
-        y = 225
+        rightLayout = base_win.FlowLayout()
+        self.codeWin.createWindow(self.hwnd, (0, 0, RIGHT_WIDTH, 260))
+        rightLayout.addContent(self.codeWin, {'margins': (0, 5, 0, 5)})
         tipWin = SelectTipWin(self.klineWin)
         tipWin.createWindow(self.hwnd, (0, 0, RIGHT_WIDTH, 110))
-        rightLayout.setContent(0, y, tipWin)
+        rightLayout.addContent(tipWin, {'margins': (0, 10, 0, 5)})
 
-        y = 350
         btn = base_win.Button({'title': '<<', 'name': 'LEFT'})
         btn.createWindow(self.hwnd, (0, 0, 40, 30))
         btn.addNamedListener('Click', self.onLeftRight)
-        rightLayout.setContent(0, y, btn)
-        btn = base_win.Button({'title': '>>', 'name': 'RIGHT'})
-        btn.createWindow(self.hwnd, (0, 0, 40, 30))
-        btn.addNamedListener('Click', self.onLeftRight)
-        rightLayout.setContent(110, y, btn)
+        rightLayout.addContent(btn, {'margins': (0, 20, 0, 10)})
+        
         self.idxCodeWin = base_win.Label()
         self.idxCodeWin.createWindow(self.hwnd, (0, 0, 70, 30))
         self.idxCodeWin.css['textAlign'] |= win32con.DT_CENTER
-        rightLayout.setContent(40, y, self.idxCodeWin)
+        rightLayout.addContent(self.idxCodeWin, {'margins': (0, 20, 0, 10)})
+
+        btn = base_win.Button({'title': '>>', 'name': 'RIGHT'})
+        btn.createWindow(self.hwnd, (0, 0, 40, 30))
+        btn.addNamedListener('Click', self.onLeftRight)
+        rightLayout.addContent(btn, {'margins': (0, 20, 0, 10)})
 
         self.layout.setContent(0, 1, rightLayout)
         self.layout.resize(0, 0, *self.getClientSize())

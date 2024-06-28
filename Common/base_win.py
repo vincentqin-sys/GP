@@ -859,14 +859,13 @@ class Cardayout(Layout):
                 break
 
 class FlowLayout(Layout):
-    def __init__(self, horItemSpace = 20, lineHeight = 25) -> None:
+    def __init__(self, horItemSpace = 0) -> None:
         super().__init__()
         self.horItemSpace = horItemSpace
-        self.lineHeight = lineHeight
         self.winsInfo = []
 
-    # win = BaseWindow, HWND
-    # style = { valign: 'top' | 'center', 'bottom' (default is 'center')
+    # win = BaseWindow, HWND, Layout(must set Layout.rect's width & height )
+    # style = { valign: 'top' | 'center' | 'bottom' (default is 'center')
     #           margins: None | (l, t, r, b)
     #         }
     def addContent(self, win, style = None):
@@ -875,29 +874,61 @@ class FlowLayout(Layout):
             defStyle.update(style)
         if win:
             self.winsInfo.append({'win': win, 'style': defStyle})
+        if not defStyle['margins']:
+            defStyle['margins'] = (0, 0, 0, 0)
+
+    def _calcY(self, winInfo, sy, lineHeight):
+        dy = 0
+        style = winInfo['style']
+        margins = style['margins']
+        lineHeight -= margins[1] + margins[3]
+        if style['valign'].strip() == 'center':
+            dy = (lineHeight - winInfo['h']) // 2
+        elif style['valign'].strip() == 'top':
+            dy = 0
+        elif style['valign'].strip() == 'bottom':
+            dy = lineHeight - winInfo['h']
+        dy += margins[1]
+        winInfo['y'] = sy + dy
 
     def resize(self, x, y, width, height):
         super().resize(x, y, width, height)
         sx = sy = 0
+        # calc lineNo and sx
+        lineNo = 0
         for it in self.winsInfo:
             style = it['style']
-            margins = style['margins'] or (0, 0, 0, 0)
+            margins = style['margins']
             w, h = self._getWinSize(it)
+            it['w'] = w
+            it['h'] = h
             if sx + w + margins[0] > width:
-                sy +=  self.lineHeight
+                #sy +=  self.lineHeight
+                lineNo += 1
                 sx = 0
-            dy = 0
-            if style['valign'].strip() == 'center':
-                dy = (self.lineHeight - h) // 2
-            elif style['valign'].strip() == 'top':
-                dy = 0
-            elif style['valign'].strip() == 'bottom':
-                dy = self.lineHeight - h
-            self.adjustContentPositon(sx + margins[0], sy + dy, it)
+            it['lineNo'] = lineNo
+            it['x'] = sx + margins[0]
             sx += w + self.horItemSpace + margins[0] + margins[2]
+        # calc line height, & y
+        rows = []
+        for i in range(len(self.winsInfo) + 1):
+            it = self.winsInfo[i] if i < len(self.winsInfo) else None
+            if rows and (it is None or rows[0]['lineNo'] != it['lineNo']):
+                lv = map(lambda x : x['h'] + x['style']['margins'][1] + x['style']['margins'][3], rows)
+                lineHeight  = max(lv)
+                for r in rows:
+                    self._calcY(r, sy, lineHeight)
+                rows.clear()
+                sy += lineHeight
+            rows.append(it)
+        # adjust x, y
+        for it in self.winsInfo:
+            self.adjustContentPositon(x + it['x'], y + it['y'], it)
 
     def _getWinSize(self, winInfo):
         win = winInfo['win']
+        if isinstance(win, Layout):
+            return win.rect[2], win.rect[3]
         if isinstance(win, BaseWindow):
             hwnd = win.hwnd
         elif type(win) == int:
