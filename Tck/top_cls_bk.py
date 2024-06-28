@@ -164,22 +164,22 @@ class ClsBkWindow(base_win.BaseWindow):
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
 
-        flowLayout = base_win.FlowLayout(lineHeight = 30)
+        flowLayout = base_win.FlowLayout(horItemSpace = 20)
         self.editorWin.createWindow(self.hwnd, (0, 0, 200, 25))
-        flowLayout.addContent(self.editorWin, style = {'margins': (200, 0, 0, 0)})
+        flowLayout.addContent(self.editorWin, style = {'margins': (200, 5, 0, 0)})
         btn = base_win.Button({'title': '指数K线'})
         btn.createWindow(self.hwnd, (0, 0, 80, 25))
-        flowLayout.addContent(btn)
+        flowLayout.addContent(btn, {'margins': (0, 5, 0, 0)})
         btn.addNamedListener('Click', self.onShowKLine)
         btn = base_win.Button({'title': '指数分时'})
         btn.createWindow(self.hwnd, (0, 0, 80, 25))
-        flowLayout.addContent(btn)
+        flowLayout.addContent(btn, {'margins': (0, 5, 0, 0)})
         btn.addNamedListener('Click', self.onShowFS)
         self.industryCheckBox.createWindow(self.hwnd, (0, 0, 150, 25))
-        flowLayout.addContent(self.industryCheckBox)
+        flowLayout.addContent(self.industryCheckBox, {'margins': (0, 5, 0, 0)})
         self.industryCheckBox.addNamedListener('Checked', self.industryChecked)
         self.checkBox.createWindow(self.hwnd, (0, 0, 150, 25))
-        flowLayout.addContent(self.checkBox)
+        flowLayout.addContent(self.checkBox, {'margins': (0, 5, 0, 0)})
 
         self.tableWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.tableWin.rowHeight = 50
