@@ -1073,7 +1073,7 @@ class ThsZsPMIndicator(CustomIndicator):
             rc = (x, sy, x + iw, sy + 16)
             win32gui.DrawText(hdc, f"{cdata['zdf_PM'] :<3d}", -1, rc, win32con.DT_CENTER) 
 
-class TckIndicator(CustomIndicator):
+class ThsZT_Indicator(CustomIndicator):
     def __init__(self, config = None) -> None:
         config = config or {}
         if 'height' not in config:
@@ -1082,7 +1082,7 @@ class TckIndicator(CustomIndicator):
             config['itemWidth'] = 160
         super().__init__(config)
         if 'title' not in self.config:
-            self.config['title'] = '[题材]'
+            self.config['title'] = '[同花顺涨停]'
 
     def setData(self, data):
         super().setData(data)
@@ -1091,6 +1091,49 @@ class TckIndicator(CustomIndicator):
             return
         code = self.getSimpleStrCode(self.klineWin.model.code)
         hots = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.code == code).order_by(tck_orm.THS_ZT.day.asc()).dicts()
+        maps = {}
+        for d in hots:
+            day = d['day'].replace('-', '')
+            maps[int(day)] = d
+        rs = []
+        for d in data:
+            fd = maps.get(d.day, None)
+            if not fd:
+                fd = {'day': d.day, 'ztReason': ''}
+            rs.append(fd)
+        self.setCustomData(rs)
+
+    def drawItem(self, idx, hdc, pens, hbrs, x):
+        iw = self.config['itemWidth']
+        cdata = self.customData[idx]
+        selIdx = self.klineWin.selIdx
+        selData = self.data[selIdx] if selIdx >= 0 and selIdx < len(self.data) else None
+        selDay = int(selData.day) if selData else 0
+        rc = (x + 1, 1, x + iw, self.height)
+        if selDay == int(cdata['__day']):
+            win32gui.FillRect(hdc, rc, hbrs['light_dark'])
+        win32gui.SetTextColor(hdc, 0xcccccc)
+        rc = (x + 3, 3, x + iw - 3, self.height)
+        win32gui.DrawText(hdc, cdata['ztReason'], -1, rc, win32con.DT_CENTER | win32con.DT_WORDBREAK) #  | win32con.DT_VCENTER | win32con.DT_SINGLELINE
+
+class ClsZT_Indicator(CustomIndicator):
+    def __init__(self, config = None) -> None:
+        config = config or {}
+        if 'height' not in config:
+            config['height'] = 30
+        if 'itemWidth' not in config:
+            config['itemWidth'] = 160
+        super().__init__(config)
+        if 'title' not in self.config:
+            self.config['title'] = '[财联社涨停]'
+
+    def setData(self, data):
+        super().setData(data)
+        if not self.klineWin.model:
+            self.setCustomData(None)
+            return
+        code = self.getSimpleStrCode(self.klineWin.model.code)
+        hots = tck_orm.CLS_ZT.select().where(tck_orm.CLS_ZT.code == code).order_by(tck_orm.CLS_ZT.day.asc()).dicts()
         maps = {}
         for d in hots:
             day = d['day'].replace('-', '')
@@ -1925,16 +1968,19 @@ class SelectTipWin(ext_win.CellRenderWindow):
     def __init__(self, line : KLineWindow) -> None:
         super().__init__((70, '1fr'), 5)
         self.data = None
+        self.klineWin : KLineWindow = None
         line.addNamedListener('selIdx.changed', self.onSelIdxChanged)
         
         RH = 25
         #self.addRow({'height': 2, 'margin': 5, 'name': 't', 'bgColor': 0x505050}, {'span': 2})
-        self.addRow({'height': RH, 'margin': 5, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc}, self.getCell)
-        self.addRow({'height': RH, 'margin': 5, 'name': 'vol'},{'text': '成交额', 'color': 0xcccccc},  self.getCell)
-        self.addRow({'height': RH, 'margin': 5, 'name': 'rate'}, {'text': '换手率', 'color': 0xcccccc}, self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc}, self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSZhangFu'}, {'text': '指数', 'color': 0xcccccc}, self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'vol'},{'text': '成交额', 'color': 0xcccccc},  self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'rate'}, {'text': '换手率', 'color': 0xcccccc}, self.getCell)
 
     def onSelIdxChanged(self, evt, args):
         self.data = evt.data
+        self.klineWin = evt.src
         self.invalidWindow()
 
     def getCell(self, rowInfo, idx):
@@ -1954,6 +2000,12 @@ class SelectTipWin(ext_win.CellRenderWindow):
             rate = getattr(self.data, 'rate', None)
             if rate:
                 cell['text'] = f'{int(rate)} %'
+        elif rowInfo['name'] == 'refZSZhangFu' and self.klineWin:
+            day = self.data.day
+            zf = self.klineWin.klineIndicator.refZSDrawer.getZhangFu(day)
+            if zf is not None:
+                cell['text'] = f'{zf :.02f}%'
+                cell['color'] = 0x0000ff if zf >= 0 else 0x00ff00
         return cell
 
 class KLineCodeWindow(base_win.BaseWindow):
@@ -2077,7 +2129,8 @@ if __name__ == '__main__':
     win.addIndicator(DayIndicator({'height': 20}))
     win.addIndicator(ScqxIndicator())
     win.addIndicator(HotIndicator()) # {'height' : 50}
-    win.addIndicator(TckIndicator()) # {'height' : 50}
+    win.addIndicator(ThsZT_Indicator()) # {'height' : 50}
+    win.addIndicator(ClsZT_Indicator()) # {'height' : 50}
     rect = (0, 0, 1550, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     win.changeCode('002055') # cls82475 002085 603390 002085 002869
