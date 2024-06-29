@@ -7,8 +7,7 @@ from db import ths_orm
 from THS import ths_win
 from Common import base_win, ext_win
 from db import tck_orm
-
-thsWin = ths_win.ThsWindow.ins()
+import kline_utils, conf
 
 class PageInfo:
     pages = []
@@ -143,10 +142,10 @@ class ZT_Window(base_win.BaseWindow):
         btn.addListener(self.onRefresh)
         self.layout.setContent(0, 0, btn)
         self.layout.setContent(0, 1, self.editorWin)
-        btn = base_win.Button({'title': '加入词条'})
-        btn.createWindow(self.hwnd, (0, 0, 1, 1))
-        btn.addNamedListener('Click', self.onAddCiTiao)
-        self.layout.setContent(0, 2, btn)
+        #btn = base_win.Button({'title': '加入词条'})
+        #btn.createWindow(self.hwnd, (0, 0, 1, 1))
+        #btn.addNamedListener('Click', self.onAddCiTiao)
+        #self.layout.setContent(0, 2, btn)
         self.layout.setContent(0, 4, self.checkBox)
         self.layout.setContent(0, 5, self.autoSyncCheckBox)
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
@@ -163,10 +162,11 @@ class ZT_Window(base_win.BaseWindow):
             hasSel = self.tableWin.selRow >= 0
             model = [ {'title': '标记重点', 'name':'BJZD', 'enable': hasSel},
                       {'title': '仅搜索当前选中的个股', 'name':'CUR_CODE', 'enable': hasSel},
-                      {'title': '转到当前选中的日期', 'name':'CUR_DAY', 'enable': hasSel},
+                      #{'title': '转到当前选中的日期', 'name':'CUR_DAY', 'enable': hasSel},
                       {'title': 'LINE'},
-                      {'title': '前进', 'name':'PREV', 'enable': PageInfo.canPrev()},
-                      {'title': '后退', 'name':'BACK', 'enable': PageInfo.canBack()},
+                      {'title': '加自选', 'name':'JZX', 'enable': hasSel}
+                      #{'title': '前进', 'name':'PREV', 'enable': PageInfo.canPrev()},
+                      #{'title': '后退', 'name':'BACK', 'enable': PageInfo.canBack()},
                     ]
             menu = base_win.PopupMenuHelper.create(self.hwnd, model)
             menu.addNamedListener('Select', onTabMenuSelect, self.tableWin.selRow)
@@ -200,6 +200,10 @@ class ZT_Window(base_win.BaseWindow):
                 self.editorWin.invalidWindow()
                 self.onQuery(day)
                 PageInfo.save(self)
+            elif item['name'] == 'JZX':
+                datas = self.tableWin.getData()
+                data = datas[selRow]
+                tck_orm.MySelCode.create(code = data['code'], name = data['name'])
                 
         self.tableWin.addNamedListener('ContextMenu', onTabMenu)
         sm = base_win.ThsShareMemory.instance()
@@ -219,10 +223,11 @@ class ZT_Window(base_win.BaseWindow):
         for s in self.inputTips:
             model.append({'title': s})
         model.append({'title': 'LINE'})
-        for s in tck_orm.TCK_CiTiao.select():
-            model.append({'title': s.name})
-        if len(model) == 1:
-            return
+        model.extend(conf.top_zt_tips)
+        #for s in tck_orm.TCK_CiTiao.select():
+        #    model.append({'title': s.name})
+        #if len(model) == 1:
+        #    return
 
         def onSelMenu(evt, args):
             self.editorWin.setText(evt.item['title'])
@@ -270,18 +275,6 @@ class ZT_Window(base_win.BaseWindow):
         self.tableWin.setData(self.tckSearchData)
         self.tableWin.invalidWindow()
     
-    def openInThsWindow(self, data):
-        if not thsWin.topHwnd or not win32gui.IsWindow(thsWin.topHwnd):
-            thsWin.topHwnd = None
-            thsWin.init()
-        if not thsWin.topHwnd:
-            return
-        win32gui.SetForegroundWindow(thsWin.topHwnd)
-        time.sleep(0.5)
-        pyautogui.typewrite(data['code'], 0.1)
-        time.sleep(0.2)
-        pyautogui.press('enter')
-        
     def onDbClick(self, evt, args):
         if evt.name != 'RowEnter' and evt.name != 'DbClick':
             return
@@ -289,14 +282,11 @@ class ZT_Window(base_win.BaseWindow):
         if not data:
             return
         if self.checkBox.isChecked():
-            self.openInThsWindow(data)
+            kline_utils.openInThsWindow(data)
         else:
-            self.openInCurWindow(data)
+            win = kline_utils.openInCurWindow_Code(self, data)
+            win.setCodeList(self.tableWin.getData(), self.tableWin.selRow)
         
-    def openInCurWindow(self, data):
-        import kline_utils
-        kline_utils.openInCurWindow_Code(self, data)
-
     def loadAllData(self):
         if self.tckData != None:
             return

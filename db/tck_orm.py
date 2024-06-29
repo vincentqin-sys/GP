@@ -116,5 +116,14 @@ class DrawLine(pw.Model):
         database = db_tck
         table_name = '画线'
 
+# 自选股
+class MySelCode(pw.Model):
+    code = pw.CharField()
+    name = pw.CharField()
+    class Meta:
+        database = db_tck
+        table_name = '自选股'
+
 #db_tck.drop_tables([DrawLine])
-db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN, TCK_CiTiao, DailyFuPan, Mark, DrawLine])
+db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN, 
+                      TCK_CiTiao, DailyFuPan, Mark, DrawLine, MySelCode])

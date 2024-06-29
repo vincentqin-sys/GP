@@ -1960,7 +1960,7 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.codeWin = CodeWindow()
         self.codeList = None
         self.code = None
-        self.idxCodeList = 0
+        self.idxCodeList = -1
         self.idxCodeWin = None
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title = ''):
@@ -2014,7 +2014,7 @@ class KLineCodeWindow(base_win.BaseWindow):
     def onLeftRight(self, evt, args):
         if not self.codeList or not self.code:
             return
-        idx = self._findIdx()
+        idx = self.idxCodeList
         if evt.info['name'] == 'LEFT':
             if idx == 0:
                 idx = len(self.codeList)
@@ -2023,6 +2023,7 @@ class KLineCodeWindow(base_win.BaseWindow):
             if idx == len(self.codeList) - 1:
                 idx = -1
             idx += 1
+        self.idxCodeList = idx
         cur = self.codeList[idx]
         self.changeCode(self._getCode(cur))
 
@@ -2042,22 +2043,24 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.klineWin.setModel(model)
         self.klineWin.makeVisible(-1)
         self.klineWin.invalidWindow()
-        self.updateCodeIdx()
+        self.updateCodeIdxView()
     
-    def updateCodeIdx(self):
+    def updateCodeIdxView(self):
         if not self.codeList:
             self.idxCodeWin.setText('')
             return
-        idx = self._findIdx()
+        idx = self.idxCodeList
         if idx >= 0:
             self.idxCodeWin.setText(f'{idx + 1} / {len(self.codeList)}')
 
     # codes = [ str, str, ... ]  |  [ int, int, ... ]
     #         [ {'code':xxx, }, ... ]  | [ {'secu_code':xxx, }, ... ]
-    def setCodeList(self, codes):
+    def setCodeList(self, codes, curIdx = -1):
         self.codeList = codes
-        self.idxCodeList = 0
-        self.updateCodeIdx()
+        if curIdx < 0:
+            curIdx = self._findIdx()
+        self.idxCodeList = curIdx
+        self.updateCodeIdxView()
 
 if __name__ == '__main__':
     sm = base_win.ThsShareMemory.instance()

@@ -88,6 +88,8 @@ class CacheManager(base_win.Listener):
     def _download(self, code, win):
         hx = henxin.HexinUrl()
         ds = hx.loadUrlData( hx.getFenShiUrl(code) )
+        if not ds:
+            return
         ds['code'] = code
         zf = self._calcZF(ds)
         render = TimelineRender()
