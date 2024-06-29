@@ -1813,7 +1813,7 @@ class KLineWindow(base_win.BaseWindow):
 
 class CodeWindow(ext_win.CellRenderWindow):
     def __init__(self) -> None:
-        super().__init__((80, '1fr'), 5)
+        super().__init__((70, '1fr'), 5)
         self.curCode = None
         self.data = None
         self.cacheData = {}
@@ -1916,7 +1916,7 @@ class CodeWindow(ext_win.CellRenderWindow):
 
 class SelectTipWin(ext_win.CellRenderWindow):
     def __init__(self, line : KLineWindow) -> None:
-        super().__init__((80, '1fr'), 5)
+        super().__init__((70, '1fr'), 5)
         self.data = None
         line.addNamedListener('selIdx.changed', self.onSelIdxChanged)
         
@@ -1942,11 +1942,11 @@ class SelectTipWin(ext_win.CellRenderWindow):
         elif rowInfo['name'] == 'vol':
             money = getattr(self.data, 'amount', None)
             if money:
-                cell['text'] = f'{money / 100000000 :.02f} 亿'
+                cell['text'] = f'{money / 100000000 :.01f} 亿'
         elif rowInfo['name'] == 'rate':
             rate = getattr(self.data, 'rate', None)
             if rate:
-                cell['text'] = f'{rate :.02f}%'
+                cell['text'] = f'{int(rate)} %'
         return cell
 
 class KLineCodeWindow(base_win.BaseWindow):
