@@ -9,7 +9,7 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import ths_win
 from Common import base_win
-import ddlr_detail
+import ddlr_detail, kline_utils
 
 thsWin = ths_win.ThsWindow.ins()
 
@@ -24,6 +24,7 @@ class VolPMWindow(base_win.BaseWindow):
         self.listWins = []
         self.daysLabels = []
         self.checkBox = None
+        self.tableWin = None
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -45,6 +46,7 @@ class VolPMWindow(base_win.BaseWindow):
                    ]
         for i in range(len(self.layout.templateColumns)):
             win = base_win.TableWindow()
+            self.tableWin = win
             win.createWindow(self.hwnd, (0, 0, 1, 1))
             win.headers = headers
             self.layout.setContent(2, i, win)
@@ -100,26 +102,11 @@ class VolPMWindow(base_win.BaseWindow):
         if not data:
             return
         if self.checkBox.isChecked():
-            self.openInThsWindow(data)
+            kline_utils.openInThsWindow(data)
         else:
-            self.openInCurWindow(data)
-
-    def openInThsWindow(self, data):
-        if not thsWin.topHwnd or not win32gui.IsWindow(thsWin.topHwnd):
-            thsWin.topHwnd = None
-            thsWin.init()
-        if not thsWin.topHwnd:
-            return
-        win32gui.SetForegroundWindow(thsWin.topHwnd)
-        time.sleep(0.5)
-        pyautogui.typewrite(data['code'], 0.1)
-        time.sleep(0.2)
-        pyautogui.press('enter')
+            win = kline_utils.openInCurWindow_Code(self, data)
+            win.setCodeList(self.tableWin.data)
         
-    def openInCurWindow(self, data):
-        import kline_utils
-        kline_utils.openInCurWindow_Code(self, data)
-
     def onSelDayChanged(self, evt, args):
         if evt.name != 'Select':
             return

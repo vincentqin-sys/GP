@@ -2036,7 +2036,7 @@ class DatePopupWindow(NoActivePopupWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-# listeners :  Select = {src, day: int}
+# listeners :  Select = {src, day: int, sday: YYYY-MM-DD }
 class DatePicker(BaseWindow):
     def __init__(self) -> None:
         super().__init__()

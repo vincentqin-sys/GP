@@ -1503,6 +1503,7 @@ class KLineWindow(base_win.BaseWindow):
               {'title': '显示板块指数', 'name': 'show-ref-zs', 'checked': ck},
               {'title': 'LINE'},
               {'title': '画线', 'name': 'draw-line'},
+              {'title': '加自选', 'name':'JZX'}
               ]
         menu = base_win.PopupMenuHelper.create(self.hwnd, mm)
         def onMM(evt, args):
@@ -1520,6 +1521,12 @@ class KLineWindow(base_win.BaseWindow):
                 self.invalidWindow()
             elif name == 'draw-line':
                 self.lineMgr.begin(self.dateType, 'line')
+            elif name == 'JZX':
+                if not self.model.name:
+                    obj = ths_orm.THS_GNTC.get_or_none(code = self.model.code)
+                    if obj:
+                        self.model.name = obj.name
+                tck_orm.MySelCode.get_or_create(code = self.model.code, name = self.model.name)
         menu.addNamedListener('Select', onMM)
         menu.show(* win32gui.GetCursorPos())
 

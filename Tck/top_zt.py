@@ -83,7 +83,7 @@ class ZT_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (60, 300, 80, 40, 150, 120, '1fr')
+        self.cols = (60, 300, 120, 40, 150, 120, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = ext_win.EditTableWindow()
         self.editorWin = base_win.Editor()
@@ -142,10 +142,13 @@ class ZT_Window(base_win.BaseWindow):
         btn.addListener(self.onRefresh)
         self.layout.setContent(0, 0, btn)
         self.layout.setContent(0, 1, self.editorWin)
-        #btn = base_win.Button({'title': '加入词条'})
-        #btn.createWindow(self.hwnd, (0, 0, 1, 1))
-        #btn.addNamedListener('Click', self.onAddCiTiao)
-        #self.layout.setContent(0, 2, btn)
+        dp = base_win.DatePicker()
+        dp.createWindow(self.hwnd, (0, 0, 1, 1))
+        def onPickDate(evt, args):
+            self.editorWin.setText(evt.sday)
+            self.onQuery(evt.sday)
+        dp.addNamedListener('Select', onPickDate)
+        self.layout.setContent(0, 2, dp)
         self.layout.setContent(0, 4, self.checkBox)
         self.layout.setContent(0, 5, self.autoSyncCheckBox)
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
@@ -164,7 +167,6 @@ class ZT_Window(base_win.BaseWindow):
                       {'title': '仅搜索当前选中的个股', 'name':'CUR_CODE', 'enable': hasSel},
                       #{'title': '转到当前选中的日期', 'name':'CUR_DAY', 'enable': hasSel},
                       {'title': 'LINE'},
-                      {'title': '加自选', 'name':'JZX', 'enable': hasSel}
                       #{'title': '前进', 'name':'PREV', 'enable': PageInfo.canPrev()},
                       #{'title': '后退', 'name':'BACK', 'enable': PageInfo.canBack()},
                     ]
@@ -200,11 +202,7 @@ class ZT_Window(base_win.BaseWindow):
                 self.editorWin.invalidWindow()
                 self.onQuery(day)
                 PageInfo.save(self)
-            elif item['name'] == 'JZX':
-                datas = self.tableWin.getData()
-                data = datas[selRow]
-                tck_orm.MySelCode.create(code = data['code'], name = data['name'])
-                
+            
         self.tableWin.addNamedListener('ContextMenu', onTabMenu)
         sm = base_win.ThsShareMemory.instance()
         sm.open()
