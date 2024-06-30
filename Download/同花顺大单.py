@@ -44,6 +44,7 @@ def autoLoadTop200Data():
     thsWin = ths_dd_win.THS_Window()
     ddWin = ths_dd_win.THS_DDWindow()
     successTimes, lxFailTimes = 0, 0
+    total = 0
     try:
         fd.open()
         time.sleep(10)
