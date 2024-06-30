@@ -6,7 +6,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm, tdx_orm, tck_orm
 from Tdx import datafile
 from Download import henxin, cls
-from Common import base_win, ext_win
+from Common import base_win, ext_win, dialog
 
 class KLineModel_Tdx(datafile.DataFile):
     def __init__(self, code):
@@ -1298,7 +1298,11 @@ class DrawLineManager:
         if sidx < 0 or sidx < vr[0] or sidx >= vr[1]:
             return
         sx = self.klineWin.klineIndicator.getCenterX(sidx) + self.klineWin.klineIndicator.x
-
+        sy = self.klineWin.klineIndicator.getYAtValue(line.info['startY']) + self.klineWin.klineIndicator.y
+        text = line.info.get('text', '')
+        rc = (sx, sy, sx + 200, sy + 100)
+        drawer = self.klineWin.drawer
+        drawer.drawText(hdc, text, rc, color = 0x404040, align = win32con.DT_LEFT)
 
     def onDrawLine(self, hdc, line : tck_orm.DrawLine):
         if not self.isValidLine(line) or (not self.klineWin.klineIndicator.visibleRange):
@@ -1314,6 +1318,19 @@ class DrawLineManager:
         ey = self.klineWin.klineIndicator.getYAtValue(line.info['endY']) + self.klineWin.klineIndicator.y
         drawer = self.klineWin.drawer
         drawer.drawLine(hdc, sx, sy, ex, ey, 0x30f030, width = 1)
+
+        if sx == ex and sy == ey:
+            return
+        if sx != ex: 
+            return
+        # draw vertical line arrow
+        d = 1 if ey < sy else -1
+        for n in range(4):
+            for dx in range(-n, n + 1):
+                x = sx + dx
+                y = ey + n * d
+                if x > 0 and y > 0:
+                    win32gui.SetPixel(hdc, x, y, 0x30f030)
     
     def onDraw(self, hdc):
         dateType = self.klineWin.dateType
@@ -1341,6 +1358,13 @@ class DrawLineManager:
             self.curLine.day = str(data.day)
             price = it.getValueAtY(y)
             self.curLine.info = {'startX': data.day, 'startY': price['value']}
+    
+    def onInputEnd(self, evt, args):
+        if evt.ok:
+            self.curLine.info['text'] = evt.text
+            self.end()
+        else:
+            self.cancel()
 
     def onLButtonUp(self, x, y):
         #print('onLButtonUp ', self.isDrawing, self.curLine.__data__)
@@ -1358,6 +1382,20 @@ class DrawLineManager:
                 self.curLine.info.update({'endX': data.day, 'endY': price['value']})
             self.end()
             self.klineWin.invalidWindow()
+        elif self.curLine.kind == 'text':
+            idx = it.getIdxAtX(x)
+            if idx < 0:
+                self.cancel()
+                return
+            data = self.klineWin.model.data[idx]
+            self.curLine.day = str(data.day)
+            price = it.getValueAtY(y)
+            self.curLine.info = {'startX': data.day, 'startY': price['value']}
+            dlg = dialog.MultiInputDialog()
+            dlg.createWindow(self.klineWin.hwnd, (0, 0, 250, 150), style = win32con.WS_POPUP)
+            dlg.addNamedListener('InputEnd', self.onInputEnd)
+            dlg.show(* win32gui.GetCursorPos())
+            print('lbtnUP:', self.curLine.info)
 
     def isStartDrawLine(self):
         if not self.isDrawing:
@@ -1541,11 +1579,14 @@ class KLineWindow(base_win.BaseWindow):
               {'title': '周线', 'name': 'week', 'enable': 'week' != self.dateType}, 
               {'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType},
               {'title': 'LINE'},
-              {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0},
-              {'title': '取消标记日期', 'name': 'cancel-mark-day', 'enable': selDay > 0},
               {'title': '显示板块指数', 'name': 'show-ref-zs', 'checked': ck},
               {'title': 'LINE'},
-              {'title': '画线', 'name': 'draw-line'},
+              {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0},
+              {'title': '取消标记日期', 'name': 'cancel-mark-day', 'enable': selDay > 0},
+              {'title': 'LINE'},
+              {'title': '画线(直线)', 'name': 'draw-line'},
+              {'title': '画线(文本)', 'name': 'draw-text'},
+              {'title': 'LINE'},
               {'title': '加自选', 'name':'JZX'}
               ]
         menu = base_win.PopupMenuHelper.create(self.hwnd, mm)
@@ -1564,6 +1605,8 @@ class KLineWindow(base_win.BaseWindow):
                 self.invalidWindow()
             elif name == 'draw-line':
                 self.lineMgr.begin(self.dateType, 'line')
+            elif name == 'draw-text':
+                self.lineMgr.begin(self.dateType, 'text')
             elif name == 'JZX':
                 if not self.model.name:
                     obj = ths_orm.THS_GNTC.get_or_none(code = self.model.code)

@@ -6,7 +6,7 @@ class Dialog(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
 
-    def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CHILD | win32con.WS_CAPTION | win32con.WS_SYSMENU, className='STATIC', title='I-Dialog'):
+    def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CAPTION | win32con.WS_SYSMENU, className='STATIC', title='I-Dialog'):
         super().createWindow(parentWnd, rect, style, className, title)
 
     def showCenter(self):
@@ -20,6 +20,10 @@ class Dialog(base_win.BaseWindow):
         h = rc[3] - rc[1] - (src[3] - src[1])
         x = rc[0] + w // 2
         y = rc[1] + h // 2
+        self.show(x, y)
+
+    # screen x, screen y
+    def show(self, x, y):
         win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
         win32gui.SetActiveWindow(self.hwnd)
@@ -31,7 +35,7 @@ class Dialog(base_win.BaseWindow):
         #win32gui.CloseWindow(self.hwnd)
         win32gui.DestroyWindow(self.hwnd)
 
-# listeners : InputEnd = {src, text}
+# listeners : InputEnd = {src, text, ok = True | False}
 class InputDialog(Dialog):
     def __init__(self) -> None:
         super().__init__()
@@ -45,7 +49,7 @@ class InputDialog(Dialog):
     def getText(self):
         return self.editor.text
 
-    def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CHILD | win32con.WS_CAPTION | win32con.WS_SYSMENU, className='STATIC', title='I-InputDialog'):
+    def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CAPTION | win32con.WS_SYSMENU, className='STATIC', title='Input'): # win32con.WS_CHILD | 
         super().createWindow(parentWnd, rect, style, className, title)
         w, h = self.getClientSize()
         self.editor.createWindow(self.hwnd, (10, 0, w - 20, h))
@@ -64,7 +68,38 @@ class InputDialog(Dialog):
     def onPressEnter(self, event, args):
         if event.name == 'PressEnter':
             self.close()
-            self.notifyListener(self.Event('InputEnd', self, text = self.getText()))
+            self.notifyListener(self.Event('InputEnd', self, text = self.getText(), ok = True))
+
+# listeners : InputEnd = {src, text, ok: True | False}
+class MultiInputDialog(Dialog):
+    def __init__(self) -> None:
+        super().__init__()
+        self.css['bgColor'] = 0x404040
+        self.css['paddings'] = (5, 5, 5, 5)
+        self.layout = base_win.GridLayout(('1fr', 30), ('1fr', 50, 50), (5, 10))
+        self.editor = base_win.MutiEditor()
+
+    def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CAPTION | win32con.WS_SYSMENU, className='STATIC', title='Input'):
+        super().createWindow(parentWnd, rect, style, className, title)
+        self.editor.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.layout.setContent(0, 0, self.editor, {'horExpand': -1})
+        okBtn = base_win.Button({'title': 'OK', 'name': 'ok'})
+        okBtn.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.layout.setContent(1, 1, okBtn)
+        cancelBtn = base_win.Button({'title': 'Cancel', 'name': 'cancel'})
+        cancelBtn.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.layout.setContent(1, 2, cancelBtn)
+        pds = self.css['paddings']
+        w, h = self.getClientSize()
+        self.layout.resize(pds[0], pds[1], w - pds[0] - pds[2], h - pds[1] - pds[3])
+
+        def onBtn(evt, args):
+            self.close()
+            ok = evt.info['name'] == 'ok'
+            evt = self.Event('InputEnd', self, text = self.editor.getText(), ok = ok)
+            self.notifyListener(evt)
+        okBtn.addNamedListener('Click', onBtn)
+        cancelBtn.addNamedListener('Click', onBtn)
 
 # listeners: OK = {src(is dialog)}
 #            Cancel = {src(is dialog)}
@@ -74,7 +109,7 @@ class ConfirmDialog(Dialog):
         super().__init__()
         self.info = info
 
-    def createWindow(self, parentWnd, rect = (0, 0, 300, 150), style = win32con.WS_POPUP | win32con.WS_CHILD | win32con.WS_CAPTION, className='STATIC', title='I-ConfirmDialog'):
+    def createWindow(self, parentWnd, rect = (0, 0, 300, 150), style = win32con.WS_POPUP | win32con.WS_CAPTION, className='STATIC', title='I-ConfirmDialog'):
         super().createWindow(parentWnd, rect, style, className, title)
         w, h = self.getClientSize()
         layout = base_win.GridLayout(('1fr', 25), ('1fr', 60, 60), (10, 20))
@@ -144,12 +179,15 @@ class PopupColorWindow(base_win.NoActivePopupWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
 
 if __name__ == '__main__':
-    cw = PopupColorWindow()
-    cw.createWindow(None, (100, 100, 0, 0)) # , win32con.WS_OVERLAPPEDWINDOW
+    #cw = PopupColorWindow()
+    #cw.createWindow(None, (100, 100, 0, 0)) # , win32con.WS_OVERLAPPEDWINDOW
     
     #cw = ConfirmDialog("确认删除吗？")
     #cw.createWindow(None)
     #cw.showCenter()
+
+    cw = MultiInputDialog()
+    cw.createWindow(None, (0, 0, 300, 150), style = win32con.WS_POPUP)
 
     win32gui.ShowWindow(cw.hwnd, win32con.SW_SHOW)
     win32gui.PumpMessages()

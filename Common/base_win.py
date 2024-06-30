@@ -2509,7 +2509,9 @@ class MutiEditor(BaseEditor):
         txt = ''
         for ln in self.lines:
             txt += ln['text'] + '\n'
-        return txt
+        if not txt:
+            return txt
+        return txt[0 : -1]
 
     def getLineAttr(self, row, attrName):
         if row >= len(self.lines):
