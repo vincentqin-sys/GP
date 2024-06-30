@@ -2016,8 +2016,8 @@ class SelectTipWin(ext_win.CellRenderWindow):
         
         RH = 25
         #self.addRow({'height': 2, 'margin': 5, 'name': 't', 'bgColor': 0x505050}, {'span': 2})
+        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSZhangFu'}, {'text': '指数', 'color': 0x808080}, self.getCell)
         self.addRow({'height': RH, 'margin': 0, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc}, self.getCell)
-        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSZhangFu'}, {'text': '指数', 'color': 0xcccccc}, self.getCell)
         self.addRow({'height': RH, 'margin': 0, 'name': 'vol'},{'text': '成交额', 'color': 0xcccccc},  self.getCell)
         self.addRow({'height': RH, 'margin': 0, 'name': 'rate'}, {'text': '换手率', 'color': 0xcccccc}, self.getCell)
 
@@ -2048,7 +2048,7 @@ class SelectTipWin(ext_win.CellRenderWindow):
             zf = self.klineWin.klineIndicator.refZSDrawer.getZhangFu(day)
             if zf is not None:
                 cell['text'] = f'{zf :.02f}%'
-                cell['color'] = 0x0000ff if zf >= 0 else 0x00ff00
+                cell['color'] = 0x808080
         return cell
 
 class KLineCodeWindow(base_win.BaseWindow):
