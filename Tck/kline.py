@@ -1587,6 +1587,7 @@ class KLineWindow(base_win.BaseWindow):
               {'title': '画线(直线)', 'name': 'draw-line'},
               {'title': '画线(文本)', 'name': 'draw-text'},
               {'title': 'LINE'},
+              {'title': '涨停原因', 'name':'zt-reason', 'enable': selDay > 0},
               {'title': '加自选', 'name':'JZX'}
               ]
         menu = base_win.PopupMenuHelper.create(self.hwnd, mm)
@@ -1613,6 +1614,10 @@ class KLineWindow(base_win.BaseWindow):
                     if obj:
                         self.model.name = obj.name
                 tck_orm.MySelCode.get_or_create(code = self.model.code, name = self.model.name)
+            elif name == 'zt-reason':
+                base_win.ThsShareMemory.instance().writeMarkDay(selDay)
+                evt = self.Event('zt-reason', self, code = self.model.code, day = selDay)
+                self.notifyListener(evt)
         menu.addNamedListener('Select', onMM)
         menu.show(* win32gui.GetCursorPos())
 
@@ -2064,38 +2069,60 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.code = None
         self.idxCodeList = -1
         self.idxCodeWin = None
+        self.refZtReasonDetailWin = None
+        self.refZtReasonWin = None
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title = ''):
         super().createWindow(parentWnd, rect, style, className, title)
-        RIGHT_WIDTH = 150
-        self.layout = base_win.GridLayout(('100%', ), ('1fr', RIGHT_WIDTH), (5, 5))
+        DETAIL_WIDTH = 150
+        REF_GN_WIDTH = 100
+        self.layout = base_win.GridLayout(('100%', ), ('1fr', DETAIL_WIDTH, REF_GN_WIDTH), (5, 5))
         self.klineWin.showSelTip = False
         self.klineWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.klineWin.addNamedListener('zt-reason', self.ztReason)
         self.layout.setContent(0, 0, self.klineWin)
 
         rightLayout = base_win.FlowLayout()
-        self.codeWin.createWindow(self.hwnd, (0, 0, RIGHT_WIDTH, 260))
+        self.codeWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 260))
         rightLayout.addContent(self.codeWin, {'margins': (0, 5, 0, 5)})
         tipWin = SelectTipWin(self.klineWin)
-        tipWin.createWindow(self.hwnd, (0, 0, RIGHT_WIDTH, 110))
+        tipWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 110))
         rightLayout.addContent(tipWin, {'margins': (0, 10, 0, 5)})
 
         btn = base_win.Button({'title': '<<', 'name': 'LEFT'})
         btn.createWindow(self.hwnd, (0, 0, 40, 30))
         btn.addNamedListener('Click', self.onLeftRight)
-        rightLayout.addContent(btn, {'margins': (0, 20, 0, 10)})
+        rightLayout.addContent(btn, {'margins': (0, 10, 0, 0)})
         
         self.idxCodeWin = base_win.Label()
         self.idxCodeWin.createWindow(self.hwnd, (0, 0, 70, 30))
         self.idxCodeWin.css['textAlign'] |= win32con.DT_CENTER
-        rightLayout.addContent(self.idxCodeWin, {'margins': (0, 20, 0, 10)})
+        rightLayout.addContent(self.idxCodeWin, {'margins': (0, 10, 0, 0)})
 
         btn = base_win.Button({'title': '>>', 'name': 'RIGHT'})
         btn.createWindow(self.hwnd, (0, 0, 40, 30))
         btn.addNamedListener('Click', self.onLeftRight)
-        rightLayout.addContent(btn, {'margins': (0, 20, 0, 10)})
+        rightLayout.addContent(btn, {'margins': (0, 10, 0, 0)})
 
+        self.refZtReasonWin = base_win.TableWindow()
+        self.refZtReasonWin.css['bgColor'] = 0x000000
+        self.refZtReasonWin.css['headerBgColor'] = 0x303030
+        self.refZtReasonWin.css['headerBorderColor'] = None
+        self.refZtReasonWin.css['textColor'] = 0xc0c0c0
+        self.refZtReasonWin.css['cellBorder'] = 0x101010
+        self.refZtReasonWin.css['selBgColor'] = 0x202020
+        self.refZtReasonWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 200))
+        self.refZtReasonWin.headers = [
+            {'name': 'gn', 'title': '涨停原因', 'width': 0, 'stretch': 1}
+        ]
+        rightLayout.addContent(self.refZtReasonWin, {'margins': (0, 15, 0, 0)})
         self.layout.setContent(0, 1, rightLayout)
+
+        self.refZtReasonDetailWin = base_win.TableWindow()
+        self.refZtReasonDetailWin.css['bgColor'] = 0x303030
+        self.refZtReasonDetailWin.css['cellBorder'] = 0x303030
+        self.refZtReasonDetailWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.layout.setContent(0, 2, self.refZtReasonDetailWin)
         self.layout.resize(0, 0, *self.getClientSize())
 
     def _getCode(self, d):
@@ -2163,6 +2190,40 @@ class KLineCodeWindow(base_win.BaseWindow):
             curIdx = self._findIdx()
         self.idxCodeList = curIdx
         self.updateCodeIdxView()
+
+    def ztReason(self, evt, args):
+        hd = self.refZtReasonWin.headers[0]
+        fmt = f'{evt.day // 100 % 100 :02d}-{evt.day % 100 :02d}'
+        hd['title'] = '涨停原因 ' + fmt
+        self.updateGnTable(evt.code, evt.day)
+
+    def updateGnTable(self, code, day):
+        rs = []
+        gns = []
+        gntc = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == code)
+        if gntc and gntc.hy:
+            hys = gntc.hy.split('-')
+            rs.append({'gn': '【' + hys[1] + '】', 'is_bk': True})
+        if type(day) == int:
+            day = f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
+        if len(day) == 8:
+            day = f'{day[0 : 4]}-{day[4 : 6]}-{day[6 : 8]}'
+        ths = tck_orm.THS_ZT.get_or_none(tck_orm.THS_ZT.code == code, tck_orm.THS_ZT.day == day)
+        if ths and ths.ztReason:
+            its = ths.ztReason.split('+')
+            for it in its: 
+                it = it.strip()
+                gns.append(it)
+                rs.append({'gn': it, 'is_bk': False, 'day': day})
+        cls = tck_orm.CLS_ZT.get_or_none(tck_orm.CLS_ZT.code == code, tck_orm.CLS_ZT.day == day)
+        if cls and cls.ztReason:
+            its = cls.ztReason.split('+')
+            for it in its: 
+                it = it.strip()
+                if it not in gns:
+                    rs.append({'gn': it, 'is_bk': False, 'day': day})
+        self.refZtReasonWin.setData(rs)
+        self.refZtReasonWin.invalidWindow()
 
 if __name__ == '__main__':
     sm = base_win.ThsShareMemory.instance()

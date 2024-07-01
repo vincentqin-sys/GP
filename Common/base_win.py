@@ -964,6 +964,7 @@ class TableWindow(BaseWindow):
         self.css['bgColor'] = 0xf0f0f0
         self.css['textColor'] = 0x333333
         self.css['headerBgColor'] = 0xc3c3c3
+        self.css['headerBorderColor'] = 0x888888
         self.css['cellBorder'] = 0xc0c0c0
         self.css['selBgColor'] = 0xf0a0a0
         self.paddings = (2, 0, 2, 0) # cell default paddings
@@ -1188,7 +1189,8 @@ class TableWindow(BaseWindow):
         rc = [0, 0, 0, self.headHeight]
         for i, hd in enumerate(hds):
             rc[2] += self.getColumnWidth(i, hd['name'])
-            self.drawer.drawRect(hdc, rc, 0x888888)
+            if isinstance(self.css['headerBorderColor'], int):
+                self.drawer.drawRect(hdc, rc, self.css['headerBorderColor'])
             if self.sortHeader and self.sortHeader['header'] == hd:
                 self.drawSort(hdc, rc)
             rc2 = rc.copy()
@@ -1668,12 +1670,16 @@ class NoActivePopupWindow(BaseWindow):
             br = self.user32.GetMessageA(ref, 0, 0, 0)
             if not br:
                 break
-            if msg.message == win32con.WM_LBUTTONDOWN or msg.message == win32con.WM_RBUTTONDOWN or msg.message == win32con.WM_MBUTTONDOWN:
+            if msg.message >= win32con.WM_MOUSEFIRST and msg.message <= win32con.WM_MOUSELAST:
                 xy = win32gui.GetCursorPos()
                 rc = win32gui.GetWindowRect(self.hwnd)
-                if not win32gui.PtInRect(rc, xy):
-                    self.hide()
-                    break
+                isIn = win32gui.PtInRect(rc, xy)
+                if not isIn:
+                    if msg.message != win32con.WM_MOUSEMOVE:
+                        self.hide()
+                        break
+                    else:
+                        continue
             self.user32.TranslateMessage(ref)
             self.user32.DispatchMessageA(ref)
 
