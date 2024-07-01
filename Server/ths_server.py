@@ -152,7 +152,7 @@ def run():
             downloadOneDay(now)
         except Exception as e:
             traceback.print_exc()
-        time.sleep(15 * 60)
+        time.sleep(5 * 60)
 
 
 def autoLoadThsZT():
