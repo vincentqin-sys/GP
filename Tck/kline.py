@@ -330,7 +330,7 @@ class RefZSKDrawer:
 class KLineIndicator(Indicator):
     def __init__(self, config) -> None:
         super().__init__(config)
-        self.markDay = None
+        self.markDays = {} # int items
         self.refZSDrawer = RefZSKDrawer()
         self.visibleRefZS = True
 
@@ -342,14 +342,24 @@ class KLineIndicator(Indicator):
     def changeDateType(self, dateType):
         self.refZSDrawer.changeDateType(dateType)
 
-    def setMarkDay(self, day):
-        if not day:
-            self.markDay = None
+    def clearMarkDay(self):
+        self.markDays.clear()
+
+    def setMarkDay(self, day, tip = None):
+        if type(day) == str:
+            day = int(day.replace('-', ''))
+        if type(day) != int:
             return
-        if type(day) == int:
-            self.markDay = day
-        elif type(day) == str:
-            self.markDay = int(day.replace('-', ''))
+        if day not in self.markDays:
+            self.markDays[day] = {'day': day, 'tip': tip}
+        else:
+            self.markDays[day]['tip'] = tip
+
+    def removeMarkDay(self, day):
+        if type(day) == str:
+            day = int(day.replace('-', ''))
+        if type(day) == int and day in self.markDays:
+            self.markDays.pop(day)
 
     def calcValueRange(self, fromIdx, endIdx):
         self.valueRange = None
@@ -415,7 +425,8 @@ class KLineIndicator(Indicator):
         if not self.visibleRange:
             return
         self.drawBackground(hdc, pens, hbrs)
-        self.drawMarkDay(self.markDay, hdc, pens, hbrs)
+        for mk in self.markDays:
+            self.drawMarkDay(mk, hdc, pens, hbrs)
         sm = base_win.ThsShareMemory.instance()
         if sm.readMarkDay() != 0:
             self.drawMarkDay(sm.readMarkDay(), hdc, pens, hbrs)
@@ -426,6 +437,7 @@ class KLineIndicator(Indicator):
     def drawMarkDay(self, markDay, hdc, pens, hbrs):
         if not markDay or not self.klineWin.model or not self.visibleRange:
             return
+        
         idx = self.klineWin.model.getItemIdx(markDay)
         if idx < 0:
             return
@@ -438,6 +450,15 @@ class KLineIndicator(Indicator):
         pen = win32gui.GetStockObject(win32con.NULL_PEN)
         win32gui.SelectObject(hdc, pen)
         win32gui.FillRect(hdc, rc, hbrs['drak'])
+        # draw tip
+        if markDay not in self.markDays:
+            return
+        md = self.markDays[markDay]
+        if not md['tip']:
+            return
+        rc = (sx - 30, self.height - 35, ex + 30, self.height)
+        drawer : base_win.Drawer = self.klineWin.drawer
+        drawer.drawText(hdc, md['tip'], rc, color = 0x404040, align = win32con.DT_CENTER | win32con.DT_WORDBREAK | win32con.DT_VCENTER)
 
     def drawKLineItem(self, idx, hdc, pens, hbrs, fillHbr):
         data = self.data[idx]
@@ -1485,8 +1506,11 @@ class KLineWindow(base_win.BaseWindow):
             idt.init(self)
         self.calcIndicatorsRect()
 
-    def setMarkDay(self, day):
-        self.klineIndicator.setMarkDay(day)
+    def setMarkDay(self, day, tip = None):
+        self.klineIndicator.setMarkDay(day, tip)
+
+    def removeMarkDay(self, day):
+        self.klineIndicator.removeMarkDay(day)
 
     def calcIndicatorsRect(self):
         if not self.hwnd:
@@ -1575,14 +1599,14 @@ class KLineWindow(base_win.BaseWindow):
                 selDay = selDay.replace('-', '')
                 selDay = int(selDay)
         ck = self.klineIndicator.visibleRefZS
-        mm = [{'title': '日线', 'name': 'day', 'enable': 'day' != self.dateType}, 
-              {'title': '周线', 'name': 'week', 'enable': 'week' != self.dateType}, 
-              {'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType},
-              {'title': 'LINE'},
+        mm = [#{'title': '日线', 'name': 'day', 'enable': 'day' != self.dateType}, 
+              #{'title': '周线', 'name': 'week', 'enable': 'week' != self.dateType}, 
+              #{'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType},
+              #{'title': 'LINE'},
               {'title': '显示板块指数', 'name': 'show-ref-zs', 'checked': ck},
               {'title': 'LINE'},
-              {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0},
-              {'title': '取消标记日期', 'name': 'cancel-mark-day', 'enable': selDay > 0},
+              {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0, 'day': selDay},
+              {'title': '取消标记日期', 'name': 'cancel-mark-day', 'enable': selDay > 0, 'day': selDay},
               {'title': 'LINE'},
               {'title': '画线(直线)', 'name': 'draw-line'},
               {'title': '画线(文本)', 'name': 'draw-text'},
@@ -1596,10 +1620,12 @@ class KLineWindow(base_win.BaseWindow):
             if name in ('day', 'week', 'month'):
                 self.changeDateType(name)
             elif name == 'mark-day':
-                base_win.ThsShareMemory.instance().writeMarkDay(selDay)
+                #base_win.ThsShareMemory.instance().writeMarkDay(selDay)
+                self.setMarkDay(selDay)
                 self.invalidWindow()
             elif name == 'cancel-mark-day':
-                base_win.ThsShareMemory.instance().writeMarkDay(0)
+                #base_win.ThsShareMemory.instance().writeMarkDay(0)
+                self.removeMarkDay(selDay)
                 self.invalidWindow()
             elif name == 'show-ref-zs':
                 self.klineIndicator.visibleRefZS = evt.item['checked']
@@ -2075,11 +2101,11 @@ class KLineCodeWindow(base_win.BaseWindow):
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title = ''):
         super().createWindow(parentWnd, rect, style, className, title)
         DETAIL_WIDTH = 150
-        REF_GN_WIDTH = 100
+        REF_GN_WIDTH = 120
         self.layout = base_win.GridLayout(('100%', ), ('1fr', DETAIL_WIDTH, REF_GN_WIDTH), (5, 5))
         self.klineWin.showSelTip = False
         self.klineWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.klineWin.addNamedListener('zt-reason', self.ztReason)
+        self.klineWin.addNamedListener('zt-reason', self.onZtReason)
         self.layout.setContent(0, 0, self.klineWin)
 
         rightLayout = base_win.FlowLayout()
@@ -2105,25 +2131,102 @@ class KLineCodeWindow(base_win.BaseWindow):
         rightLayout.addContent(btn, {'margins': (0, 10, 0, 0)})
 
         self.refZtReasonWin = base_win.TableWindow()
-        self.refZtReasonWin.css['bgColor'] = 0x000000
-        self.refZtReasonWin.css['headerBgColor'] = 0x303030
-        self.refZtReasonWin.css['headerBorderColor'] = None
-        self.refZtReasonWin.css['textColor'] = 0xc0c0c0
+        #self.refZtReasonWin.css['bgColor'] = 0x000000
+        #self.refZtReasonWin.css['headerBgColor'] = 0x303030
+        #self.refZtReasonWin.css['headerBorderColor'] = None
+        #self.refZtReasonWin.css['textColor'] = 0xc0c0c0
         self.refZtReasonWin.css['cellBorder'] = 0x101010
-        self.refZtReasonWin.css['selBgColor'] = 0x202020
+        self.refZtReasonWin.css['selBgColor'] = 0xA0A0A0
         self.refZtReasonWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 200))
         self.refZtReasonWin.headers = [
             {'name': 'gn', 'title': '涨停原因', 'width': 0, 'stretch': 1}
         ]
         rightLayout.addContent(self.refZtReasonWin, {'margins': (0, 15, 0, 0)})
+        self.refZtReasonWin.addListener(self.onSelectZtResason)
         self.layout.setContent(0, 1, rightLayout)
 
         self.refZtReasonDetailWin = base_win.TableWindow()
-        self.refZtReasonDetailWin.css['bgColor'] = 0x303030
-        self.refZtReasonDetailWin.css['cellBorder'] = 0x303030
+        #self.refZtReasonDetailWin.css['bgColor'] = 0x101010
+        self.refZtReasonDetailWin.css['cellBorder'] = 0x101010
+        self.refZtReasonDetailWin.css['selBgColor'] = 0xA0A0A0
+        #self.refZtReasonDetailWin.css['textColor'] = 0xc0c0c0
+        self.refZtReasonDetailWin.headers = [
+            {'name': '#idx',  'width': 20},
+            {'name': 'name', 'title': '关联股票', 'width': 0, 'stretch': 1},
+            {'name': 'num', 'title': 'ZT', 'width': 20}
+        ]
+        self.refZtReasonDetailWin.addListener(self.onSelectZtResasonDetail)
         self.refZtReasonDetailWin.createWindow(self.hwnd, (0, 0, 1, 1))
         self.layout.setContent(0, 2, self.refZtReasonDetailWin)
         self.layout.resize(0, 0, *self.getClientSize())
+
+    def onSelectZtResason(self, evt, args):
+        if evt.name != 'RowEnter' and evt.name != 'DbClick':
+            return
+        rowData = evt.data
+        if rowData['is_bk']:
+            info = self.findInBk(rowData)
+        else:
+            info = self.findInZtReason(rowData)
+        print('[onSelectZtResason]: ', info)
+        self.refZtReasonDetailWin.setData(info)
+        self.refZtReasonDetailWin.invalidWindow()
+
+    def onSelectZtResasonDetail(self, evt, args):
+        if evt.name != 'RowEnter' and evt.name != 'DbClick':
+            return
+        rowData = evt.data
+        self.changeCode(rowData['code'])
+    
+    def findInBk(self, rowData):
+        bkCodes = []
+        bkCodeNames = {}
+        fromDay = rowData['fromDay']
+        key = rowData['name']
+        q = ths_orm.THS_GNTC.select().where(ths_orm.THS_GNTC.hy_2_name == key)
+        KV = ('0', '3', '6')
+        for it in q:
+            if it.code[0] not in KV:
+                continue
+            bkCodes.append(it.code)
+            bkCodeNames[it.code] = it.name
+        i = 0
+        rs = {}
+        while i < len(bkCodes):
+            ei = min(i + 50, len(bkCodes))
+            bc = bkCodes[i : ei]
+            i = ei
+            q = tck_orm.THS_ZT.select(tck_orm.THS_ZT.code, pw.fn.count(tck_orm.THS_ZT.code).alias('cc')).where(tck_orm.THS_ZT.day >= fromDay, tck_orm.THS_ZT.code.in_(bc)).group_by(tck_orm.THS_ZT.code).dicts()
+            for it in q:
+                num = it['cc']
+                c = it['code']
+                if c in rs:
+                    rs[c]['num'] += num
+                else:
+                    rs[c] = {'code': c, 'name': bkCodeNames[c], 'num': num, 'fromDay': fromDay}
+        arr = [rs[k] for k in rs]
+        arr.sort(key = lambda it: it['num'], reverse = True)
+        return arr
+
+    def findInZtReason(self, rowData):
+        fromDay = rowData['fromDay']
+        key = rowData['name']
+        q1 = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.day >= fromDay, tck_orm.THS_ZT.ztReason.contains(key))
+        q2 = tck_orm.CLS_ZT.select().where(tck_orm.CLS_ZT.day >= fromDay, tck_orm.CLS_ZT.ztReason.contains(key))
+        rs = {}
+        for q in (q1, q2):
+            for it in q:
+                if not it.ztReason:
+                    continue
+                rzs = it.ztReason.split('+')
+                if key in rzs:
+                    if it.code in rs:
+                        rs[it.code]['num'] += 1
+                    else:
+                        rs[it.code] = {'code': it.code, 'name': it.name, 'num': 1, 'befDay': fromDay}
+        arr = [rs[k] for k in rs]
+        arr.sort(key = lambda it: it['num'], reverse = True)
+        return arr
 
     def _getCode(self, d):
         if type(d) == dict:
@@ -2155,6 +2258,7 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.idxCodeList = idx
         cur = self.codeList[idx]
         self.changeCode(self._getCode(cur))
+        self.updateCodeIdxView()
 
     # nameOrObj : str = 'rate amount'
     # nameOrObj : Indicator
@@ -2172,7 +2276,6 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.klineWin.setModel(model)
         self.klineWin.makeVisible(-1)
         self.klineWin.invalidWindow()
-        self.updateCodeIdxView()
     
     def updateCodeIdxView(self):
         if not self.codeList:
@@ -2191,37 +2294,43 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.idxCodeList = curIdx
         self.updateCodeIdxView()
 
-    def ztReason(self, evt, args):
+    def onZtReason(self, evt, args):
         hd = self.refZtReasonWin.headers[0]
         fmt = f'{evt.day // 100 % 100 :02d}-{evt.day % 100 :02d}'
         hd['title'] = '涨停原因 ' + fmt
         self.updateGnTable(evt.code, evt.day)
+        self.klineWin.setMarkDay(evt.day, 'ZT')
 
     def updateGnTable(self, code, day):
         rs = []
         gns = []
-        gntc = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == code)
-        if gntc and gntc.hy:
-            hys = gntc.hy.split('-')
-            rs.append({'gn': '【' + hys[1] + '】', 'is_bk': True})
         if type(day) == int:
             day = f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
         if len(day) == 8:
             day = f'{day[0 : 4]}-{day[4 : 6]}-{day[6 : 8]}'
+        fday = datetime.date.fromisoformat(day)
+        fromDay = fday - datetime.timedelta(days = 45) # 仅查找前45天之内的
+        fromDay = fromDay.strftime('%Y-%m-%d')
+        gntc = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == code)
+        self.klineWin.setMarkDay(int(fromDay.replace('-', '')), 'ZT-B')
+
+        if gntc and gntc.hy:
+            hys = gntc.hy.split('-')
+            rs.append({'gn': '【' + hys[1] + '】', 'is_bk': True, 'day': day, 'name': hys[1], 'fromDay': fromDay})
         ths = tck_orm.THS_ZT.get_or_none(tck_orm.THS_ZT.code == code, tck_orm.THS_ZT.day == day)
         if ths and ths.ztReason:
             its = ths.ztReason.split('+')
             for it in its: 
                 it = it.strip()
                 gns.append(it)
-                rs.append({'gn': it, 'is_bk': False, 'day': day})
+                rs.append({'gn': it, 'is_bk': False, 'day': day, 'type': 'ths', 'name': it, 'fromDay': fromDay})
         cls = tck_orm.CLS_ZT.get_or_none(tck_orm.CLS_ZT.code == code, tck_orm.CLS_ZT.day == day)
         if cls and cls.ztReason:
             its = cls.ztReason.split('+')
             for it in its: 
                 it = it.strip()
                 if it not in gns:
-                    rs.append({'gn': it, 'is_bk': False, 'day': day})
+                    rs.append({'gn': it, 'is_bk': False, 'day': day, 'type': 'cls', 'name': it, 'fromDay': fromDay})
         self.refZtReasonWin.setData(rs)
         self.refZtReasonWin.invalidWindow()
 

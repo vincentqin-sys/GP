@@ -62,16 +62,21 @@ class THS_HYDB(pw.Model):
         database = db_f10
         table_name = '行业对比'
 
-
+db_gntc = pw.SqliteDatabase(f'{path}GP/db/THS_GNTC.db')
 # 同花顺--概念题材
 class THS_GNTC(pw.Model):
     code = pw.CharField() #股票代码
     name = pw.CharField() #股票名称
     gn = pw.CharField(null=True) # 常规概念，每概概念之间用;分隔
+    gn_code = pw.CharField(null=True) # 常规概念对应的代码;分隔
     hy = pw.CharField(null=True) # 行业
+    hy_2_name = pw.CharField(null=True) # 二级行业名称
+    hy_2_code = pw.CharField(null=True) # 二级行业代码
+    hy_3_name = pw.CharField(null=True) # 三级行业名称
+    hy_3_code = pw.CharField(null=True) # 三级行业代码
 
     class Meta:
-        database = db_f10
+        database = db_gntc
         table_name = '概念题材'
 
 #查询指字的股票代码的详细信息 
@@ -169,12 +174,12 @@ class THS_ZS_ZD(pw.Model):
         database = db_thszs
         table_name = '同花顺指数涨跌信息'
 
-db_f10.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_GNTC, THS_Newest])
+db_f10.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_Newest])
 db_hot.create_tables([THS_Hot, THS_HotZH])
 db_ddlr.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS, THS_ZS_ZD])
+db_gntc.create_tables([THS_GNTC])
 
 
 if __name__ == '__main__':
-    # move db
     pass

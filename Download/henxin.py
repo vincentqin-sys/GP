@@ -388,6 +388,8 @@ class HexinUrl(Henxin):
         keys = ['day', 'open', 'high', 'low', 'close', 'vol', 'amount', 'rate']; # vol: 单位股, amount:单位元
         rs = []
         for m, d in enumerate(ds):
+            if not d:
+                continue
             obj = HexinUrl.ItemData()
             row = d.split(',')
             #if m == len(ds) - 1: 
