@@ -2221,9 +2221,14 @@ class KLineCodeWindow(base_win.BaseWindow):
                 rzs = it.ztReason.split('+')
                 if key in rzs:
                     if it.code in rs:
-                        rs[it.code]['num'] += 1
+                        item = rs[it.code]
+                        if it.day not in item['days']:
+                            item['num'] += 1
+                            item['days'].add(it.day)
                     else:
-                        rs[it.code] = {'code': it.code, 'name': it.name, 'num': 1, 'befDay': fromDay}
+                        ds = set()
+                        ds.add(it.day)
+                        rs[it.code] = {'code': it.code, 'name': it.name, 'num': 1, 'fromDay': fromDay, 'days': ds}
         arr = [rs[k] for k in rs]
         arr.sort(key = lambda it: it['num'], reverse = True)
         return arr
