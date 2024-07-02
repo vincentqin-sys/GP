@@ -303,14 +303,20 @@ class RefZSKDrawer:
         sidx = self.model.getItemIdx(startDay)
         p = self.model.data[sidx].open / data[fromIdx].open
         maxVal, minVal = 0, 9999999
+        last = None
         for i in range(fromIdx, endIdx):
             di = i - fromIdx + sidx
             it = henxin.HexinUrl.ItemData()
-            cur = self.model.data[di]
-            it.open = cur.open / p
-            it.close = cur.close / p
-            it.low = cur.low / p
-            it.high = cur.high / p
+            if di < len(self.model.data):
+                cur = self.model.data[di]
+                it.open = cur.open / p
+                it.close = cur.close / p
+                it.low = cur.low / p
+                it.high = cur.high / p
+                last = cur
+            else:
+                cur = last # only for fix bug
+                it.open = it.close = it.low = it.high = cur.open / p
             self.newData.append(it)
             
             maxVal = max(maxVal, it.high)
@@ -2168,7 +2174,7 @@ class KLineCodeWindow(base_win.BaseWindow):
             info = self.findInBk(rowData)
         else:
             info = self.findInZtReason(rowData)
-        print('[onSelectZtResason]: ', info)
+        #print('[onSelectZtResason]: ', info)
         self.refZtReasonDetailWin.setData(info)
         self.refZtReasonDetailWin.invalidWindow()
 

@@ -340,11 +340,12 @@ class HexinUrl(Henxin):
         if not klineRs:
             return None
         data = klineRs['data']
+        last = data[-1]
         url = self.getTodayKLineUrl(code)
         todayRs = self.loadUrlData(url)
-        if data and todayRs['data'] and data[-1].day == todayRs['data'].day:
+        if data and todayRs and todayRs['data'] and data[-1].day == todayRs['data'].day:
             data.pop(-1)
-        if todayRs['data']:
+        if todayRs and todayRs['data']:
             data.append(todayRs['data'])
         return klineRs
     
@@ -353,7 +354,8 @@ class HexinUrl(Henxin):
         for k in js:
             js = js[k]
             break
-        
+        if js['open'] == 0:
+            return None
         item = HexinUrl.ItemData()
         if js['1']:
             setattr(item, 'day', int(js['1']))
