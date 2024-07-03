@@ -301,6 +301,8 @@ class RefZSKDrawer:
         if not self.model:
             return
         sidx = self.model.getItemIdx(startDay)
+        if sidx < 0:
+            return None
         p = self.model.data[sidx].open / data[fromIdx].open
         maxVal, minVal = 0, 9999999
         last = None
@@ -2323,7 +2325,13 @@ class KLineCodeWindow(base_win.BaseWindow):
         fromDay = fday - datetime.timedelta(days = 45) # 仅查找前45天之内的
         fromDay = fromDay.strftime('%Y-%m-%d')
         gntc = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == code)
-        self.klineWin.setMarkDay(int(fromDay.replace('-', '')), 'ZT-B')
+        markDay = int(fromDay.replace('-', ''))
+        ds = self.klineWin.model.data
+        for i in range(len(ds) - 1, -1, -1):
+            if ds[i].day <= markDay:
+                markDay = ds[i].day
+                break
+        self.klineWin.setMarkDay(markDay, 'ZT-B')
 
         if gntc and gntc.hy:
             hys = gntc.hy.split('-')

@@ -1,8 +1,8 @@
-import datetime, time, random, requests, re, json, os, sys
+import datetime, time, random, requests, re, json, os, sys, struct
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
-from Tdx import datafile
+from Tdx.datafile import DataFile
 
 class Base64:
     def __init__(self):
@@ -221,6 +221,40 @@ class Henxin:
         buf = self.base64.decode(param)
         self.decodeBuffer(buf)
 
+class ThsZsCache:
+    def __init__(self) -> None:
+        self.codes = {}
+        pass
+    
+    # item = struct.unpack('l5f2l', bs)
+    #('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股 始终设为0)
+    # res = {name:xx, data:[], today: }
+    def save(self, code, res):
+        df = DataFile(code, DataFile.DT_DAY, DataFile.FLAG_NEWEST)
+        rdata = res['data']
+        fromIdx = 0
+        if df.data:
+            existsDay = df.days[-1]
+            for i in range(len(rdata) - 1, -1, -1):
+                if rdata[i].day == existsDay:
+                    fromIdx = i + 1
+                    break
+        if fromIdx >= len(rdata):
+            return
+        f = open(df.getPath(), 'ab')
+        arr = bytearray(32)
+        while fromIdx < len(rdata):
+            d = rdata[fromIdx]
+            struct.pack_into('l5f2l', arr, 0, d.day, d.open / 100, d.high / 100, d.low / 100, d.close / 100, d.amount, 0, 0)
+            f.write(arr)
+            fromIdx += 1
+        f.close()
+
+_cache = ThsZsCache()
+def saveZsCache(code, res):
+    if not res or not res['data']:
+        return
+    _cache.save(code, res)
 
 class HexinUrl(Henxin):
     session = None
@@ -340,7 +374,13 @@ class HexinUrl(Henxin):
         if not klineRs:
             return None
         data = klineRs['data']
-        last = data[-1]
+        if code[0 : 2] == '88' and '/01/last1800' in url: # 仅保存指数
+            saveZsCache(code, klineRs)
+        if (code[0 : 2] == '88') and (not data):
+            df = DataFile(code, DataFile.DT_DAY)
+            data = df.data
+        if data:
+            last = data[-1]
         url = self.getTodayKLineUrl(code)
         todayRs = self.loadUrlData(url)
         if data and todayRs and todayRs['data'] and data[-1].day == todayRs['data'].day:
@@ -441,7 +481,7 @@ class HexinUrl(Henxin):
             js['dataArr'].append(row)
         return js
 
-class ThsDataFile(datafile.DataFile):
+class ThsDataFile(DataFile):
     def __init__(self, code, dataType):
         #super().__init__(code, datafile.DataFile.DT_DAY, 0)
         if type(code) == int:
@@ -452,7 +492,7 @@ class ThsDataFile(datafile.DataFile):
         self.name = ''
 
     def loadDataFile(self):
-        if self.dataType == datafile.DataFile.DT_DAY:
+        if self.dataType == DataFile.DT_DAY:
             hx = HexinUrl()
             rs = hx.loadKLineData(self.code)
             self.data = rs['data']

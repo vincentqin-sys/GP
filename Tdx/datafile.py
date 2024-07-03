@@ -36,7 +36,12 @@ class DataFile:
         self.code = code
         self.dataType = dataType
         path = self.getPath()
-        self.data = self._loadDataFile(path)
+        if flag == DataFile.FLAG_NEWEST:
+            self.data = self._loadDataFile_Newest(path)
+        elif flag == DataFile.FLAG_OLDEST:
+            self.data = self._loadDataFile_Oldest(path)
+        else:
+            self.data = self._loadDataFile_All(path)
         self.days = []
         self.calcDays()
         self.name = ''
@@ -44,11 +49,14 @@ class DataFile:
     @staticmethod
     def loadFromFile(filePath):
         name = os.path.basename(filePath)
-        code = name[2 : 8]
+        if name[0 : 2] in ('sh', 'sz'):
+            code = name[2 : 8]
+        elif name[0 : 3] == 'ths':
+            code = name[3 : 9]
         dataType = DataFile.DT_DAY if name[-4 : ] == '.day' else DataFile.DT_MINLINE
         datafile = DataFile('000000', dataType, DataFile.FLAG_ALL)
         datafile.code = code
-        datafile.data = datafile._loadDataFile(filePath)
+        datafile.data = datafile._loadDataFile_All(filePath)
         return datafile
 
     def getItemIdx(self, day):
@@ -89,15 +97,20 @@ class DataFile:
 
     def getPath(self):
         code = self.code
-        tag = 'sh' if code[0] == '6' or code[0] == '8' or code[0] == '9' else 'sz'
+        tag = '' 
+        if code[0] == '6' or code[0] == '9': tag = 'sh'
+        elif code[0] == '3' or code[0] == '0': tag = 'sz'
+        elif code[0] == '8': tag = 'ths'
         if self.dataType == DataFile.DT_DAY:
-            bp = os.path.join(VIPDOC_BASE_PATH, '__lday', f'{tag}{code}.day')
+            dm = '__lday' if tag in ('sh', 'sz') else '__ths_lday'
+            bp = os.path.join(VIPDOC_BASE_PATH, dm, f'{tag}{code}.day')
         else:
-            bp = os.path.join(VIPDOC_BASE_PATH, '__minline', f'{tag}{code}.lc1')
+            dm = '__minline' if tag in ('sh', 'sz') else '__ths_minline'
+            bp = os.path.join(VIPDOC_BASE_PATH, dm, f'{tag}{code}.lc1')
         #if os.path.exists(bp):
         return bp
 
-    def _loadDataFile(self, path):
+    def _loadDataFile_All(self, path):
         def T(fv): return  fv # int(fv * 100 + 0.5)
         rs = []
         if not os.path.exists(path):
@@ -118,6 +131,49 @@ class DataFile:
         # check minute line number
         if self.dataType == self.DT_MINLINE and (len(rs) % 240) != 0:
             raise Exception('Minute Line number error:', len(rs))
+        return rs
+    
+    def _loadDataFile_Newest(self, path):
+        def T(fv): return  fv # int(fv * 100 + 0.5)
+        rs = []
+        if not os.path.exists(path):
+            return rs
+        f = open(path, 'rb')
+        filesize = os.path.getsize(path)
+        if filesize == 0:
+            f.close()
+            return rs
+        n = f.seek(-32, 2)
+        bs = f.read(32)
+        if self.dataType == self.DT_DAY:
+            item = struct.unpack('l5f2l', bs)
+            item = ItemData(*item[0 : -1])
+        else:
+            item = struct.unpack('2l5fl', bs)
+            item = ItemData(*item)
+        rs.append(item)
+        f.close()
+        return rs
+    
+    def _loadDataFile_Oldest(self, path):
+        def T(fv): return  fv # int(fv * 100 + 0.5)
+        rs = []
+        if not os.path.exists(path):
+            return rs
+        f = open(path, 'rb')
+        filesize = os.path.getsize(path)
+        if filesize == 0:
+            f.close()
+            return rs
+        bs = f.read(32)
+        if self.dataType == self.DT_DAY:
+            item = struct.unpack('l5f2l', bs)
+            item = ItemData(*item[0 : -1])
+        else:
+            item = struct.unpack('2l5fl', bs)
+            item = ItemData(*item)
+        rs.append(item)
+        f.close()
         return rs
 
     def calcDays(self):
