@@ -225,6 +225,15 @@ class ThsZsCache:
     def __init__(self) -> None:
         self.codes = {}
         pass
+
+    def isLastKLineValid(self, data):
+        now = datetime.datetime.now()
+        day = now.year * 10000 + now.month * 100 + now.day
+        if data.day < day:
+            return True
+        if data.day > day:
+            return False
+        return now.hour >= 16
     
     # item = struct.unpack('l5f2l', bs)
     #('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股 始终设为0)
@@ -232,18 +241,27 @@ class ThsZsCache:
     def save(self, code, res):
         df = DataFile(code, DataFile.DT_DAY, DataFile.FLAG_NEWEST)
         rdata = res['data']
-        fromIdx = 0
+        if not rdata:
+            return
+        fromIdx = -1
+        n = 1  #  skip last one
+        lastData = rdata[-1]
+        if self.isLastKLineValid(lastData):
+            n = 0 # not skip
+        maxLen = len(rdata) - n
         if df.data:
             existsDay = df.days[-1]
-            for i in range(len(rdata) - 1, -1, -1):
+            for i in range(maxLen - 1, -1, -1): 
                 if rdata[i].day == existsDay:
                     fromIdx = i + 1
                     break
-        if fromIdx >= len(rdata):
+        else:
+            fromIdx = 0
+        if fromIdx < 0 or fromIdx >= maxLen:
             return
         f = open(df.getPath(), 'ab')
         arr = bytearray(32)
-        while fromIdx < len(rdata):
+        while fromIdx < maxLen:
             d = rdata[fromIdx]
             struct.pack_into('l5f2l', arr, 0, d.day, d.open / 100, d.high / 100, d.low / 100, d.close / 100, d.amount, 0, 0)
             f.write(arr)

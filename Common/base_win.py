@@ -101,6 +101,7 @@ class BaseWindow(Listener):
                 w -= pds[0] + pds[2]
                 h -= pds[1] + pds[3]
                 self.layout.resize(pds[0], pds[1], w, h)
+            self.invalidWindow()
             return True
         return False
 
@@ -965,6 +966,7 @@ class TableWindow(BaseWindow):
         self.css['textColor'] = 0x333333
         self.css['headerBgColor'] = 0xc3c3c3
         self.css['headerBorderColor'] = 0x888888
+        self.css['headerTextColor'] = 0x333333
         self.css['cellBorder'] = 0xc0c0c0
         self.css['selBgColor'] = 0xf0a0a0
         self.paddings = (2, 0, 2, 0) # cell default paddings
@@ -1196,7 +1198,7 @@ class TableWindow(BaseWindow):
             rc2 = rc.copy()
             rc2[1] = (self.headHeight - 14) // 2
             if 'title' in hd:
-                self.drawer.drawText(hdc, hd['title'], rc2)
+                self.drawer.drawText(hdc, hd['title'], rc2, color = self.css['headerTextColor'])
             rc[0] = rc[2]
         
     def drawCell(self, hdc, row, col, colName, value, rowData, rect):

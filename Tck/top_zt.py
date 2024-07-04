@@ -288,10 +288,13 @@ class ZT_Window(base_win.BaseWindow):
     def loadAllData(self):
         if self.tckData != None:
             return
-        kplQr = tck_orm.KPL_ZT.select().order_by(tck_orm.KPL_ZT.day.desc(), tck_orm.KPL_ZT.id.asc()).dicts()
-        thsQr = tck_orm.THS_ZT.select().dicts()
-        clsQr = tck_orm.CLS_ZT.select().dicts()
-        hotZH = ths_orm.THS_HotZH.select().dicts()
+        today = datetime.date.today()
+        fd = today - datetime.timedelta(days = 60)
+        fromDay = f"{fd.year}-{fd.month :02d}-{fd.day :02d}"
+        kplQr = tck_orm.KPL_ZT.select().where(tck_orm.KPL_ZT.day >= fromDay).order_by(tck_orm.KPL_ZT.day.desc(), tck_orm.KPL_ZT.id.asc()).dicts()
+        thsQr = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.day >= fromDay).dicts()
+        clsQr = tck_orm.CLS_ZT.select().where(tck_orm.CLS_ZT.day >= fromDay).dicts()
+        hotZH = ths_orm.THS_HotZH.select().where(ths_orm.THS_HotZH.day >= int(fromDay.replace('-', ''))).dicts()
         
         allDicts = {}
         ths = []

@@ -1969,8 +1969,10 @@ class CodeWindow(ext_win.CellRenderWindow):
         elif '涨幅' == name: cell['text'] = f'{val :.2f} %'
         else: cell['text'] = str(val)
 
-        if name == '涨幅' or name == '委比' or '市盈率' in name:
+        if name == '涨幅' or name == '委比':
             cell['color'] = 0x0000ff if int(val) >= 0 else 0x00ff00
+        if '市盈率' in name and val < 0:
+            cell['color'] =  0x00ff00
         return cell
     
     def getCodeCell(self, rowInfo, idx):
@@ -2055,7 +2057,8 @@ class SelectTipWin(ext_win.CellRenderWindow):
         
         RH = 25
         #self.addRow({'height': 2, 'margin': 5, 'name': 't', 'bgColor': 0x505050}, {'span': 2})
-        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSZhangFu'}, {'text': '指数', 'color': 0x808080}, self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSCode'}, {'text': '板块指数', 'color': 0x808080}, self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSZhangFu'}, {'text': '指数涨幅', 'color': 0x808080}, self.getCell)
         self.addRow({'height': RH, 'margin': 0, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc}, self.getCell)
         self.addRow({'height': RH, 'margin': 0, 'name': 'vol'},{'text': '成交额', 'color': 0xcccccc},  self.getCell)
         self.addRow({'height': RH, 'margin': 0, 'name': 'rate'}, {'text': '换手率', 'color': 0xcccccc}, self.getCell)
@@ -2088,6 +2091,10 @@ class SelectTipWin(ext_win.CellRenderWindow):
             if zf is not None:
                 cell['text'] = f'{zf :.02f}%'
                 cell['color'] = 0x808080
+        elif rowInfo['name'] == 'refZSCode' and self.klineWin:
+            code = self.klineWin.klineIndicator.refZSDrawer.zsCode
+            cell['text'] = f'{code}'
+            cell['color'] = 0x808080
         return cell
 
 class KLineCodeWindow(base_win.BaseWindow):
@@ -2120,7 +2127,7 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.codeWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 260))
         rightLayout.addContent(self.codeWin, {'margins': (0, 5, 0, 5)})
         tipWin = SelectTipWin(self.klineWin)
-        tipWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 110))
+        tipWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 125))
         rightLayout.addContent(tipWin, {'margins': (0, 10, 0, 5)})
 
         btn = base_win.Button({'title': '<<', 'name': 'LEFT'})
@@ -2139,25 +2146,29 @@ class KLineCodeWindow(base_win.BaseWindow):
         rightLayout.addContent(btn, {'margins': (0, 10, 0, 0)})
 
         self.refZtReasonWin = base_win.TableWindow()
-        #self.refZtReasonWin.css['bgColor'] = 0x000000
+        self.refZtReasonWin.css['bgColor'] = 0x000000
+        self.refZtReasonWin.css['textColor'] = 0xc0c0c0
+        self.refZtReasonWin.css['selBgColor'] = 0x303030
+        self.refZtReasonWin.css['cellBorder'] = 0x101010
         #self.refZtReasonWin.css['headerBgColor'] = 0x303030
         #self.refZtReasonWin.css['headerBorderColor'] = None
-        #self.refZtReasonWin.css['textColor'] = 0xc0c0c0
-        self.refZtReasonWin.css['cellBorder'] = 0x101010
-        self.refZtReasonWin.css['selBgColor'] = 0xA0A0A0
-        self.refZtReasonWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 200))
+        #self.refZtReasonWin.css['cellBorder'] = 0x101010  # A
+        #self.refZtReasonWin.css['selBgColor'] = 0xA0A0A0  # A
+        self.refZtReasonWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 300))
         self.refZtReasonWin.headers = [
-            {'name': 'gn', 'title': '涨停原因', 'width': 0, 'stretch': 1}
+            {'name': 'gn', 'title': '涨停原因', 'width': 0, 'stretch': 1, 'paddings': (15, 0, 0, 0)}
         ]
         rightLayout.addContent(self.refZtReasonWin, {'margins': (0, 15, 0, 0)})
         self.refZtReasonWin.addListener(self.onSelectZtResason)
         self.layout.setContent(0, 1, rightLayout)
 
         self.refZtReasonDetailWin = base_win.TableWindow()
-        #self.refZtReasonDetailWin.css['bgColor'] = 0x101010
+        self.refZtReasonDetailWin.css['bgColor'] = 0x000000
+        self.refZtReasonDetailWin.css['textColor'] = 0xc0c0c0
+        self.refZtReasonDetailWin.css['selBgColor'] = 0x303030
         self.refZtReasonDetailWin.css['cellBorder'] = 0x101010
-        self.refZtReasonDetailWin.css['selBgColor'] = 0xA0A0A0
-        #self.refZtReasonDetailWin.css['textColor'] = 0xc0c0c0
+        #self.refZtReasonDetailWin.css['cellBorder'] = 0x101010  # A
+        #self.refZtReasonDetailWin.css['selBgColor'] = 0xA0A0A0  # A
         self.refZtReasonDetailWin.headers = [
             {'name': '#idx',  'width': 20},
             {'name': 'name', 'title': '关联股票', 'width': 0, 'stretch': 1},
@@ -2272,6 +2283,10 @@ class KLineCodeWindow(base_win.BaseWindow):
         cur = self.codeList[idx]
         self.changeCode(self._getCode(cur))
         self.updateCodeIdxView()
+        self.refZtReasonWin.setData(None)
+        self.refZtReasonDetailWin.setData(None)
+        self.refZtReasonWin.invalidWindow()
+        self.refZtReasonDetailWin.invalidWindow()
 
     # nameOrObj : str = 'rate amount'
     # nameOrObj : Indicator
@@ -2363,7 +2378,7 @@ if __name__ == '__main__':
     win.addIndicator(HotIndicator()) # {'height' : 50}
     win.addIndicator(ThsZT_Indicator()) # {'height' : 50}
     win.addIndicator(ClsZT_Indicator()) # {'height' : 50}
-    rect = (0, 0, 1550, 750)
+    rect = (0, 0, 1920, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     win.changeCode('002055') # cls82475 002085 603390 002085 002869
     win32gui.PumpMessages()
