@@ -148,12 +148,12 @@ db_thszs = pw.SqliteDatabase(f'{path}GP/db/THS_ZS.db')
 class THS_ZS(pw.Model):
     code = pw.CharField() #指数代码
     name = pw.CharField() #指数名称
-    gnhy = pw.CharField() #概念、行业
-    hydj = pw.CharField(null = True, default = None) #行业等级 二级、三级
 
     class Meta:
         database = db_thszs
-        table_name = '同花顺指数'
+        table_name = '同花顺指数_view'
+        primary_key = False
+        # create view 同花顺指数_view (code, name) as select code, name from 同花顺指数涨跌信息 where day = (select max(day) from 同花顺指数涨跌信息)
 
 class THS_ZS_ZD(pw.Model):
     day = pw.CharField() # YYYY-MM-DD
@@ -177,7 +177,7 @@ class THS_ZS_ZD(pw.Model):
 db_f10.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_Newest])
 db_hot.create_tables([THS_Hot, THS_HotZH])
 db_ddlr.create_tables([THS_DDLR])
-db_thszs.create_tables([THS_ZS, THS_ZS_ZD])
+db_thszs.create_tables([THS_ZS_ZD])
 db_gntc.create_tables([THS_GNTC])
 
 

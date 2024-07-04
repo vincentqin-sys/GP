@@ -31,7 +31,7 @@ _lpID = setInterval(function() {
 
 
 """
-import sys
+import sys, peewee as pw
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm
@@ -51,14 +51,14 @@ def modify_hygn(obj : ths_orm.THS_GNTC, zsInfos):
     obj.hy_2_name = hys[1]
     obj.hy_3_name = hys[2]
 
-def run_行业概念():
+def run_个股行业概念():
     def trim(s): return s.replace('【', '').replace('】', '').strip()
 
     f = open('D:/a.txt', 'r', encoding='utf8')
     lines = f.readlines()
     f.close()
     zsInfos = {}
-    qr = ths_orm.THS_ZS.select().dicts()
+    qr = ths_orm.THS_ZS.select()
     for q in qr:
         zsInfos[q.name] = q.code
 
@@ -69,8 +69,6 @@ def run_行业概念():
         code, name, hy, gn = line.split('\t', 3)
         hy = hy.strip()
         gn = gn.strip()
-        if ' ' in gn:
-            gn = gn.replace(' ', '')
         gns = list(map(trim, gn.split(';')))
         gn = ';'.join(gns)
         obj = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == code)
@@ -88,5 +86,4 @@ def run_行业概念():
             obj.save()
             print('insert ', code, name,hy, gn)
 
-    
-
+run_个股行业概念()
