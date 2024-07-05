@@ -233,6 +233,9 @@ class Indicator:
             if endIdx - fromIdx >= num: break
             fromIdx = max(fromIdx - 1, 0)
         return (fromIdx, endIdx)
+    
+    def onMouseClick(self, x, y):
+        pass
 
 class RefZSKDrawer:
     def __init__(self) -> None:
@@ -1188,6 +1191,20 @@ class ClsZT_Indicator(CustomIndicator):
         rc = (x + 3, 3, x + iw - 3, self.height)
         win32gui.DrawText(hdc, cdata['ztReason'], -1, rc, win32con.DT_CENTER | win32con.DT_WORDBREAK) #  | win32con.DT_VCENTER | win32con.DT_SINGLELINE
 
+    def onMouseClick(self, x, y):
+        if not self.visibleRange:
+            return
+        itemWidth = self.config['itemWidth']
+        idx = x // itemWidth
+        # click item idx
+        itemData = self.customData[idx]
+        if not itemData:
+            return
+        detail = itemData.get('detail', '')
+        if not detail:
+            return
+        
+
 class ScqxIndicator(CustomIndicator):
     def __init__(self, config = None) -> None:
         config = config or {}
@@ -1687,6 +1704,10 @@ class KLineWindow(base_win.BaseWindow):
         if msg == win32con.WM_LBUTTONDOWN:
             win32gui.SetFocus(self.hwnd)
             return True
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            self.onMouseClick(x, y)
+            return True
         if msg == win32con.WM_LBUTTONDBLCLK:
             #x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
             si = self.selIdx
@@ -1734,6 +1755,14 @@ class KLineWindow(base_win.BaseWindow):
         self.mouseXY = (x, y)
         self.updateAttr('selIdx', si)
         win32gui.InvalidateRect(self.hwnd, None, True)
+
+    def onMouseClick(self, x, y):
+        for it in self.indicators:
+            isInRect = x >= it.x and y >= it.y and x < it.x + it.width and y < it.y + it.height
+            if isInRect:
+                it.onMouseClick(x - it.x, y - it.y)
+                break
+        pass
 
     def setSelIdx(self, idx):
         if not self.indicators:
