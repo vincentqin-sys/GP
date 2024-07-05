@@ -32,6 +32,7 @@ class KLineModel_DateType(datafile.DataFile):
         self.typeName = typeName
         self.dateType = 'day' # 'week' | 'month'
         self.dateTypeDatas = {}
+        self.data = None
 
     def loadDataFile(self):
         if self.typeName.lower() == 'ths':
@@ -1645,7 +1646,7 @@ class KLineWindow(base_win.BaseWindow):
               #{'title': '周线', 'name': 'week', 'enable': 'week' != self.dateType}, 
               #{'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType},
               #{'title': 'LINE'},
-              {'title': '显示板块指数', 'name': 'show-ref-zs', 'checked': ck},
+              {'title': '显示指数', 'name': 'show-ref-zs', 'checked': ck},
               {'title': 'LINE'},
               {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0, 'day': selDay},
               {'title': '取消标记日期', 'name': 'cancel-mark-day', 'enable': selDay > 0, 'day': selDay},

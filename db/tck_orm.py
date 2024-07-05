@@ -128,7 +128,8 @@ class MySelCode(pw.Model):
 db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN])
 db_tck_def.create_tables([TCK_CiTiao, DailyFuPan, Mark, DrawLine, MySelCode])
 
-def move_table_data(modelClass : pw.Model):
+# move table from a database to another database
+def move_table_data(fromDb, modelClass : pw.Model):
     cols = [] # (field.name, column_name)
     for k in modelClass._meta.columns:
         field = modelClass._meta.columns[k]
@@ -139,7 +140,7 @@ def move_table_data(modelClass : pw.Model):
     # build query select sql
     c = map(lambda x: x[1], cols)
     sql = 'select ' + ', '.join(c) + ' from ' + modelClass._meta.table_name
-    cc = db_tck.cursor()
+    cc = fromDb.cursor()
     cc.execute(sql)
     rs = cc.fetchall()
     for row in rs:
@@ -152,4 +153,4 @@ def move_table_data(modelClass : pw.Model):
     for r in rs:
         print(r.__data__)
 
-#move_table_data(TCK_TCGN)
+#move_table_data(db_tck, TCK_TCGN)
