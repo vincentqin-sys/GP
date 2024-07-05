@@ -25,7 +25,7 @@ def openInCurWindow_Code(parent : base_win.BaseWindow, data):
     W, H = int(dw * 1), int(dh * 0.85)
     x = (dw - W) // 2
     y = (dh - H) // 2
-    win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION)
+    win.createWindow(parent.hwnd, (0, 0, W, H), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION)
     win.changeCode(data['code'])
     win.klineWin.setMarkDay(data['day'])
     win.klineWin.addListener(openKlineMinutes_Simple, win)

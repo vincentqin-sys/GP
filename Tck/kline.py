@@ -435,9 +435,9 @@ class KLineIndicator(Indicator):
         self.drawBackground(hdc, pens, hbrs)
         for mk in self.markDays:
             self.drawMarkDay(mk, hdc, pens, hbrs)
-        sm = base_win.ThsShareMemory.instance()
-        if sm.readMarkDay() != 0:
-            self.drawMarkDay(sm.readMarkDay(), hdc, pens, hbrs)
+        #sm = base_win.ThsShareMemory.instance()
+        #if sm.readMarkDay() != 0:
+        #    self.drawMarkDay(sm.readMarkDay(), hdc, pens, hbrs)
         self.drawKLines(hdc, pens, hbrs)
         self.drawMA(hdc, 5)
         self.drawMA(hdc, 10)
@@ -1707,8 +1707,21 @@ class KLineWindow(base_win.BaseWindow):
             data = self.model.data[attrVal] if attrVal >= 0 else None
             self.notifyListener(self.Event('selIdx.changed', self, selIdx = attrVal, data = data))
             win32gui.InvalidateRect(self.hwnd, None, True)
-        
+    
+    def acceptMouseMove(self, x, y, it : Indicator):
+        isInRect = x >= it.x and y >= it.y and x < it.x + it.width and y < it.y + it.height
+        if not isInRect:
+            return False
+        if isinstance(it, KLineIndicator) or isinstance(it, RateIndicator) or isinstance(it, AmountIndicator):
+            return True
+        return False
+
     def onMouseMove(self, x, y):
+        acc = False
+        for it in self.indicators:
+            acc = acc or self.acceptMouseMove(x, y, it)
+        if not acc:
+            return
         si = self.klineIndicator.getIdxAtX(x)
         if si < 0:
             return
@@ -1717,6 +1730,7 @@ class KLineWindow(base_win.BaseWindow):
             return
         if self.selIdx == si and self.mouseXY and y == self.mouseXY[1]:
             return
+        
         self.mouseXY = (x, y)
         self.updateAttr('selIdx', si)
         win32gui.InvalidateRect(self.hwnd, None, True)
