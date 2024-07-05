@@ -16,8 +16,8 @@ def openInCurWindow_Code(parent : base_win.BaseWindow, data):
     #win.addIndicator(kline.DdlrIndicator( {'height': 100}))
     #win.addIndicator(kline.DdlrIndicator({}, False))
     #win.addIndicator(kline.DdlrPmIndicator())
-    win.addIndicator(kline.ScqxIndicator({'itemWidth': 40}))
-    win.addIndicator(kline.HotIndicator({'itemWidth': 40}))
+    win.addIndicator(kline.ScqxIndicator()) # {'itemWidth': 40}
+    win.addIndicator(kline.HotIndicator()) # {'itemWidth': 40}
     win.addIndicator(kline.ThsZT_Indicator())
     win.addIndicator(kline.ClsZT_Indicator())
     dw = win32api.GetSystemMetrics (win32con.SM_CXSCREEN)

@@ -269,7 +269,8 @@ class RefZSKDrawer:
         self.model.calcZhangFu()
 
     def changeDateType(self, dateType):
-        self.model.changeDateType(dateType)
+        if self.model:
+            self.model.changeDateType(dateType)
 
     def drawKLineItem(self, hdc, pens, hbrs, idx, cx, itemWidth, getYAtValue):
         if not self.newData:

@@ -3,6 +3,7 @@ import sys
 
 path = __file__[0 : __file__.upper().index('GP')]
 db_tck = pw.SqliteDatabase(f'{path}GP/db/TCK.db') # 题材库
+db_tck_def = pw.SqliteDatabase(f'{path}GP/db/TCK_def.db') # 题材库 
 
 class KPL_ZT(pw.Model):
     code = pw.CharField()
@@ -73,7 +74,7 @@ class TCK_TCGN(pw.Model):
     mark = pw.IntegerField(null=True)
 
     class Meta:
-        database = db_tck
+        database = db_tck_def
         table_name = '题材梳理A'
 
 # 题材库-词条
@@ -81,7 +82,7 @@ class TCK_CiTiao(pw.Model):
     name = pw.CharField() # 词条
 
     class Meta:
-        database = db_tck
+        database = db_tck_def
         table_name = '词条'
 
 class DailyFuPan(pw.Model):
@@ -89,7 +90,7 @@ class DailyFuPan(pw.Model):
     info = pw.CharField(null = True) # 复盘信息
     
     class Meta:
-        database = db_tck
+        database = db_tck_def
         table_name = '复盘日记'
 
 class Mark(pw.Model):
@@ -102,7 +103,7 @@ class Mark(pw.Model):
     endDay = pw.CharField(null = True) # YYYY-MM-DD
 
     class Meta:
-        database = db_tck
+        database = db_tck_def
         table_name = '标记'
 
 class DrawLine(pw.Model):
@@ -113,7 +114,7 @@ class DrawLine(pw.Model):
     info = pw.CharField(null = True)
     
     class Meta:
-        database = db_tck
+        database = db_tck_def
         table_name = '画线'
 
 # 自选股
@@ -121,9 +122,34 @@ class MySelCode(pw.Model):
     code = pw.CharField()
     name = pw.CharField()
     class Meta:
-        database = db_tck
+        database = db_tck_def
         table_name = '自选股'
 
-#db_tck.drop_tables([DrawLine])
-db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN, 
-                      TCK_CiTiao, DailyFuPan, Mark, DrawLine, MySelCode])
+db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN])
+db_tck_def.create_tables([TCK_CiTiao, DailyFuPan, Mark, DrawLine, MySelCode])
+
+def move_table_data(modelClass : pw.Model):
+    cols = [] # (field.name, column_name)
+    for k in modelClass._meta.columns:
+        field = modelClass._meta.columns[k]
+        if k == 'id':
+            continue
+        cols.append((k, field.column_name))
+    #print(cols)
+    # build query select sql
+    c = map(lambda x: x[1], cols)
+    sql = 'select ' + ', '.join(c) + ' from ' + modelClass._meta.table_name
+    cc = db_tck.cursor()
+    cc.execute(sql)
+    rs = cc.fetchall()
+    for row in rs:
+        params = {}
+        for i, c in enumerate(cols):
+            params[c[0]] = row[i]
+        print(params)
+        modelClass.create(**params)
+    rs = modelClass.select()
+    for r in rs:
+        print(r.__data__)
+
+#move_table_data(TCK_TCGN)
