@@ -1195,7 +1195,7 @@ class ClsZT_Indicator(CustomIndicator):
         if not self.visibleRange:
             return
         itemWidth = self.config['itemWidth']
-        idx = x // itemWidth
+        idx = x // itemWidth + self.visibleRange[0]
         # click item idx
         itemData = self.customData[idx]
         if not itemData:
@@ -1203,7 +1203,23 @@ class ClsZT_Indicator(CustomIndicator):
         detail = itemData.get('detail', '')
         if not detail:
             return
-        
+        # draw tip
+        hdc = win32gui.GetDC(self.klineWin.hwnd)
+        W, H = int(self.width * 0.8), 70
+        drawer : base_win.Drawer = self.klineWin.drawer
+        sx = (self.width - W) // 2 + self.x
+        sy = self.y - H
+        rc = [sx, sy, sx + W, sy + H]
+        drawer.fillRect(hdc, rc, 0x101010)
+        drawer.drawRect(hdc, rc, 0xa0f0a0)
+        win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
+        drawer.use(hdc, drawer.getFont())
+        rc[0] += 5
+        rc[1] += 3
+        rc[2] -= 5
+        rc[3] -= 3
+        drawer.drawText(hdc, detail, rc, color = 0xd0a0a0, align = win32con.DT_WORDBREAK)
+        win32gui.ReleaseDC(self.klineWin.hwnd, hdc)
 
 class ScqxIndicator(CustomIndicator):
     def __init__(self, config = None) -> None:
