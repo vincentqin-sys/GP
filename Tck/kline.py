@@ -1646,8 +1646,8 @@ class KLineWindow(base_win.BaseWindow):
               #{'title': '周线', 'name': 'week', 'enable': 'week' != self.dateType}, 
               #{'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType},
               #{'title': 'LINE'},
-              {'title': '显示指数', 'name': 'show-ref-zs', 'checked': ck},
-              {'title': '打开指数', 'name': 'open-ref-zs'},
+              {'title': '叠加指数', 'name': 'show-ref-zs', 'checked': ck},
+              {'title': '打开指数', 'name': 'open-ref-zs', 'sub-menu': self.getRefZsModel},
               {'title': 'LINE'},
               {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0, 'day': selDay},
               {'title': '取消标记日期', 'name': 'cancel-mark-day', 'enable': selDay > 0, 'day': selDay},
@@ -1676,7 +1676,9 @@ class KLineWindow(base_win.BaseWindow):
                 self.klineIndicator.visibleRefZS = evt.item['checked']
                 self.invalidWindow()
             elif name == 'open-ref-zs':
-                self.openRefZs(x, y)
+                import kline_utils
+                dt = {'code': evt.item['code'], 'day': None}
+                kline_utils.openInCurWindow_ZS(self, dt)
             elif name == 'draw-line':
                 self.lineMgr.begin(self.dateType, 'line')
             elif name == 'draw-text':
@@ -1694,28 +1696,32 @@ class KLineWindow(base_win.BaseWindow):
         menu.addNamedListener('Select', onMM)
         menu.show(x, y)
 
-    def openRefZs(self, x, y):
+    def getRefZsModel(self, item):
         code = self.model.code
         obj : ths_orm.THS_GNTC = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == code)
         model = []
-        if obj:
-            if obj.hy_2_code: model.append({'title': obj.hy_2_name, 'code': obj.hy_2_code})
-            if obj.hy_3_code: model.append({'title': obj.hy_3_name, 'code': obj.hy_3_code})
-            model.append({'title': 'LINE'})
-            if obj.gn_code:
-                gn_codes = obj.gn_code.split(';')
-                gn_names = obj.gn.split(';')
-                for i in range(len(gn_codes)):
-                    if gn_codes[i].strip():
-                        model.append({'title': gn_names[i], 'code': gn_codes[i].strip()})
-        
+        if not obj:
+            return model
+        if obj.hy_2_code: model.append({'title': obj.hy_2_name, 'code': obj.hy_2_code})
+        if obj.hy_3_code: model.append({'title': obj.hy_3_name, 'code': obj.hy_3_code})
+        model.append({'title': 'LINE'})
+        if not obj.gn_code:
+            return model
+        gn_codes = obj.gn_code.split(';')
+        gn_names = obj.gn.split(';')
+        for i in range(len(gn_codes)):
+            if gn_codes[i].strip():
+                model.append({'title': gn_names[i], 'code': gn_codes[i].strip()})
+        return model
+
+    def openRefZs(self, x, y):
         def onMenu(evt, args):
             import kline_utils
             dt = {'code': evt.item['code'], 'day': None}
             kline_utils.openInCurWindow_ZS(self, dt)
-        menu = base_win.PopupMenu.create(self.hwnd, model)
-        menu.addNamedListener('Select', onMenu)
-        menu.show(x, y)
+        #menu = base_win.PopupMenu.create(self.hwnd, model)
+        #menu.addNamedListener('Select', onMenu)
+        #menu.show(x, y)
         
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''):
         super().createWindow(parentWnd, rect, style, className, title)

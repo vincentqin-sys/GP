@@ -1830,19 +1830,14 @@ class PopupMenu(NoActivePopupWindow):
             pts = [(cx, sy + AH), (cx + AW, sy), (cx - AW, sy)]
             win32gui.Polygon(hdc, pts)
 
-    def drawRightArrow(self, hdc):
-        # TODO
-        if not self.model:
-            return
-        w, h = self.getClientSize()
-        cx = w // 2
-        AW, AH = 4, 4
+    def drawRightArrow(self, hdc, rect):
+        AW, AH = 6, 8
         self.drawer.use(hdc, self.drawer.getBrush(0x333333))
         self.drawer.use(hdc, win32gui.GetStockObject(win32con.NULL_PEN))
-        if self.startIdx > 0:
-            sy = 2
-            pts = [(cx, sy), (cx + AW, AH + sy), (cx - AW, AH + sy)]
-            win32gui.Polygon(hdc, pts)
+        sy = (rect[3] - rect[1] - AH) // 2 + rect[1]
+        sx = rect[2] + (self.LEFT_RIGHT_PADDING - AW) // 2
+        pts = [(sx, sy), (sx + AW, AH // 2 + sy), (sx, AH + sy)]
+        win32gui.Polygon(hdc, pts)
 
     def onDraw(self, hdc):
         super().onDraw(hdc)
@@ -1872,6 +1867,8 @@ class PopupMenu(NoActivePopupWindow):
                     if checked == False or checked == True:
                         self.drawCheckBox(hdc, m, rc)
                     self.drawer.drawText(hdc, title, rc, color, win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_WORDBREAK)
+                    if m.get('sub-menu', None):
+                        self.drawRightArrow(hdc, rc[ : ])
             rc[1] = rc[3]
     
     def drawCheckBox(self, hdc, item, rowRect):
@@ -1902,11 +1899,23 @@ class PopupMenu(NoActivePopupWindow):
         if msg == win32con.WM_LBUTTONUP:
             y = (lParam >> 16) & 0xffff
             idx = self.getItemIdxAt(y)
-            self.hide()
             if idx < 0:
+                self.hide()
                 return True
             item = self.model[idx]
             if idx >= 0 and item.get('title', '') != 'LINE' and item.get('enable', True):
+                if item.get('sub-menu', None):
+                    sub = item['sub-menu']
+                    if callable(sub): sub = sub(item)
+                    for it in sub:
+                        if not it.get('name', None):
+                            it['name'] = item.get('name', None)
+                    self.setModel(sub)
+                    w, h = self.calcSize()
+                    self.resize(w, h)
+                    self.invalidWindow()
+                    return True
+                self.hide()
                 if item.get('checked', None) != None:
                     item['checked'] = not item['checked']
                 self.notifyListener(self.Event('Select', self, item = item, model = self.model))
