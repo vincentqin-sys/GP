@@ -5,6 +5,7 @@ from Common import base_win
 class Dialog(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
+        self.destroyOnHide = True
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CAPTION | win32con.WS_SYSMENU, className='STATIC', title='I-Dialog'):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -34,6 +35,15 @@ class Dialog(base_win.BaseWindow):
     def close(self):
         #win32gui.CloseWindow(self.hwnd)
         win32gui.DestroyWindow(self.hwnd)
+    
+    def onClose(self):
+        pass
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_CLOSE:
+            self.onClose()
+            # go through, no return
+        return super().winProc(hwnd, msg, wParam, lParam)
 
 # listeners : InputEnd = {src, text, ok = True | False}
 class InputDialog(Dialog):
@@ -69,6 +79,9 @@ class InputDialog(Dialog):
         if event.name == 'PressEnter':
             self.close()
             self.notifyListener(self.Event('InputEnd', self, text = self.getText(), ok = True))
+    
+    def onClose(self):
+        self.notifyListener(self.Event('InputEnd', self, text = '', ok = False))
 
 # listeners : InputEnd = {src, text, ok: True | False}
 class MultiInputDialog(Dialog):
@@ -96,13 +109,16 @@ class MultiInputDialog(Dialog):
         def onBtn(evt, args):
             self.close()
             ok = evt.info['name'] == 'ok'
-            evt = self.Event('InputEnd', self, text = self.editor.getText(), ok = ok)
+            txt = self.editor.getText() if ok else ''
+            evt = self.Event('InputEnd', self, text = txt, ok = ok)
             self.notifyListener(evt)
         okBtn.addNamedListener('Click', onBtn)
         cancelBtn.addNamedListener('Click', onBtn)
 
-# listeners: OK = {src(is dialog)}
-#            Cancel = {src(is dialog)}
+    def onClose(self):
+        self.notifyListener(self.Event('InputEnd', self, text = '', ok = False))
+
+# listeners: InputEnd = {src, ok : True | False}
 class ConfirmDialog(Dialog):
     # info : tip msg
     def __init__(self, info : str) -> None:
@@ -124,16 +140,19 @@ class ConfirmDialog(Dialog):
         layout.setContent(1, 1, okBtn)
         layout.setContent(1, 2, calncelBtn)
         layout.resize(10, 10, w - 20, h - 15)
-        okBtn.addListener(self.onListen, 'OK')
-        calncelBtn.addListener(self.onListen, 'Cancel')
+        okBtn.addListener(self.onListen, True)
+        calncelBtn.addListener(self.onListen, False)
 
-    def onListen(self, evt, evtName):
+    def onListen(self, evt, ok):
         if evt.name != 'Click':
             return
         self.close()
-        self.notifyListener(self.Event(evtName, self))
+        self.notifyListener(self.Event('InputEnd', self, ok = ok))
 
-# listeners : SelectColor = color
+    def onClose(self):
+        self.notifyListener(self.Event('InputEnd', self, ok = False))
+
+# listeners : InputEnd = {src, color: int }
 class PopupColorWindow(base_win.NoActivePopupWindow):
     COL_NUM = 13
     ROW_NUM = 9
@@ -151,7 +170,10 @@ class PopupColorWindow(base_win.NoActivePopupWindow):
         return self.getColor(row, col)
 
     def getColor(self, row, col):
-        return self.COLORS[row * self.COL_NUM + col]
+        idx = row * self.COL_NUM + col
+        if idx >= 0 and idx < len(self.COLORS):
+            return self.COLORS[idx]
+        return None
 
     def onDraw(self, hdc):
         for r in range(self.ROW_NUM):
@@ -173,8 +195,8 @@ class PopupColorWindow(base_win.NoActivePopupWindow):
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
             color = self.getColorAtXY(x, y)
             self.hide()
-            if color >= 0:
-                self.notifyListener(self.Event('SelectColor', self, color = color))
+            if color is not None:
+                self.notifyListener(self.Event('InputEnd', self, color = color))
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 

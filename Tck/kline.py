@@ -1321,6 +1321,10 @@ class DrawLineManager:
         for row in q:
             row.info = json.loads(row.info)
             self.lines.append(row)
+    
+    def reload(self):
+        if self.code:
+            self.load(self.code)
 
     def begin(self, dateType, kind):
         self.isDrawing = True
@@ -1385,7 +1389,9 @@ class DrawLineManager:
 
         if sx == ex and sy == ey:
             return
-        if sx != ex: 
+        if sx != ex:
+            rc = (ex - 2, ey - 2, ex + 3, ey + 3)
+            drawer.fillRect(hdc, rc, 0x30f030)
             return
         # draw vertical line arrow
         d = 1 if ey < sy else -1
@@ -1443,6 +1449,7 @@ class DrawLineManager:
             if idx >= 0:
                 data = self.klineWin.model.data[idx]
                 price = it.getValueAtY(y)
+                self.curLine.day = str(data.day)
                 self.curLine.info.update({'endX': data.day, 'endY': price['value']})
             self.end()
             self.klineWin.invalidWindow()
@@ -1459,7 +1466,7 @@ class DrawLineManager:
             dlg.createWindow(self.klineWin.hwnd, (0, 0, 250, 150), style = win32con.WS_POPUP)
             dlg.addNamedListener('InputEnd', self.onInputEnd)
             dlg.show(* win32gui.GetCursorPos())
-            print('lbtnUP:', self.curLine.info)
+            #print('lbtnUP:', self.curLine.info)
 
     def isStartDrawLine(self):
         if not self.isDrawing:
@@ -1654,6 +1661,7 @@ class KLineWindow(base_win.BaseWindow):
               {'title': 'LINE'},
               {'title': '画线(直线)', 'name': 'draw-line'},
               {'title': '画线(文本)', 'name': 'draw-text'},
+              {'title': '删除画线', 'name': 'del-draw-line'},
               {'title': 'LINE'},
               {'title': '涨停原因', 'name':'zt-reason', 'enable': selDay > 0},
               {'title': '加自选', 'name':'JZX'}
@@ -1683,6 +1691,11 @@ class KLineWindow(base_win.BaseWindow):
                 self.lineMgr.begin(self.dateType, 'line')
             elif name == 'draw-text':
                 self.lineMgr.begin(self.dateType, 'text')
+            elif name == 'del-draw-line':
+                #qr = tck_orm.DrawLine.select().where(tck_orm.DrawLine.day == str(selDay))
+                tck_orm.DrawLine.delete().where(tck_orm.DrawLine.day == str(selDay)).execute()
+                self.lineMgr.reload()
+                self.invalidWindow()
             elif name == 'JZX':
                 if not self.model.name:
                     obj = ths_orm.THS_GNTC.get_or_none(code = self.model.code)

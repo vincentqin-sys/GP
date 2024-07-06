@@ -109,7 +109,7 @@ class Mark(pw.Model):
 class DrawLine(pw.Model):
     code = pw.CharField()
     dateType = pw.CharField()
-    day = pw.CharField()
+    day = pw.CharField() # YYYYMMDD
     kind = pw.CharField()
     info = pw.CharField(null = True)
     
