@@ -39,7 +39,7 @@ def openInCurWindow_ZS(parent : base_win.BaseWindow, data):
     win.addIndicator(kline.ThsZsPMIndicator({}))
     dw = win32api.GetSystemMetrics (win32con.SM_CXSCREEN)
     dh = win32api.GetSystemMetrics (win32con.SM_CYSCREEN) - 35
-    W, H = int(dw * 0.8), int(dh * 0.8)
+    W, H = int(dw * 1), int(dh * 0.8)
     x = (dw - W) // 2
     y = (dh - H) // 2
     win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION)

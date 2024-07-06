@@ -27,7 +27,7 @@ class KLineModel_DateType(datafile.DataFile):
         if type(code) == int:
             code = f'{code :06d}'
         if not typeName:
-            typeName = 'ths' if code[0] == '8' else 'cls'
+            typeName = 'ths' if code[0] in ('8', '0', '3', '6') else 'cls'
         self.code = code
         self.typeName = typeName
         self.dateType = 'day' # 'week' | 'month'
@@ -1714,15 +1714,6 @@ class KLineWindow(base_win.BaseWindow):
                 model.append({'title': gn_names[i], 'code': gn_codes[i].strip()})
         return model
 
-    def openRefZs(self, x, y):
-        def onMenu(evt, args):
-            import kline_utils
-            dt = {'code': evt.item['code'], 'day': None}
-            kline_utils.openInCurWindow_ZS(self, dt)
-        #menu = base_win.PopupMenu.create(self.hwnd, model)
-        #menu.addNamedListener('Select', onMenu)
-        #menu.show(x, y)
-        
     def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''):
         super().createWindow(parentWnd, rect, style, className, title)
         self.calcIndicatorsRect()
@@ -2474,5 +2465,5 @@ if __name__ == '__main__':
     win.addIndicator(ClsZT_Indicator()) # {'height' : 50}
     rect = (0, 0, 1920, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('002055') # cls82475 002085 603390 002085 002869
+    win.changeCode('600101') # cls82475 002085 603390 002085 002869  002055
     win32gui.PumpMessages()
