@@ -68,7 +68,7 @@ class DddlrStructWindow(base_win.BaseWindow):
         wdata = win.sortData or win.data
         code = wdata[win.selRow]['code']
         model = [{'title': '关联选中', 'name': 'GLXZ'}]
-        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu = base_win.PopupMenu.create(self.hwnd, model)
         menu.addListener(self.onMenuItemSelect, (tabIdx, code))
         x, y = win32gui.GetCursorPos()
         menu.show(x, y)

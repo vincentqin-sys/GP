@@ -170,7 +170,7 @@ class ZT_Window(base_win.BaseWindow):
                       #{'title': '前进', 'name':'PREV', 'enable': PageInfo.canPrev()},
                       #{'title': '后退', 'name':'BACK', 'enable': PageInfo.canBack()},
                     ]
-            menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+            menu = base_win.PopupMenu.create(self.hwnd, model)
             menu.addNamedListener('Select', onTabMenuSelect, self.tableWin.selRow)
             menu.show(*win32gui.GetCursorPos())
         def onTabMenuSelect(evt, selRow):
@@ -231,7 +231,7 @@ class ZT_Window(base_win.BaseWindow):
             self.editorWin.setText(evt.item['title'])
             self.editorWin.invalidWindow()
             self.onQuery(self.editorWin.getText())
-        menu = base_win.PopupMenuHelper.create(self.editorWin.hwnd, model)
+        menu = base_win.PopupMenu.create(self.editorWin.hwnd, model)
         menu.addNamedListener('Select', onSelMenu)
         menu.minItemWidth = self.editorWin.getClientSize()[0]
         menu.show()

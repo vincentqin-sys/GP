@@ -127,7 +127,7 @@ class DailyWindow(base_win.BaseWindow):
         for code in codes:
             name = cinfos.get(code, '')
             model.append({'name': name, 'code': code, 'title': f'{name} ({code})', 'day': day})
-        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu = base_win.PopupMenu.create(self.hwnd, model)
         def onMenuItem(evt, args):
             item = evt.item
             self.openOneCode(item['code'], item['day'])

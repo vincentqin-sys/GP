@@ -116,7 +116,7 @@ class Hots_Window(base_win.BaseWindow):
         row = self.tableWin.selRow
         rowData = self.tableWin.getData()[row] if row >= 0 else None
         model = mark_utils.getMarkModel(row >= 0)
-        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu = base_win.PopupMenu.create(self.hwnd, model)
         def onMenuItem(evt, rd):
             mark_utils.saveOneMarkColor({'kind': 'hots', 'code': rowData['code']}, evt.item['markColor'], endDay = rowData['day'])
             rd['markColor'] = evt.item['markColor']

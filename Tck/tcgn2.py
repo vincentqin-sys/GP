@@ -116,7 +116,7 @@ class TCGN_Window(base_win.BaseWindow):
         model = [{'title': '新建', 'name': 'Insert'}, 
                  {'title': '更新', 'name': 'Update', 'enable': selRow >= 0},
                  ]
-        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu = base_win.PopupMenu.create(self.hwnd, model)
         menu.addListener(self.onContextMenuItemSelect_1, rd)
         pos = win32gui.GetCursorPos()
         menu.show(*pos)
@@ -148,7 +148,7 @@ class TCGN_Window(base_win.BaseWindow):
                  {'title': 'LINE'},
                  {'title': '标记重点', 'name': 'Mark', 'enable': selRow >= 0 and selRow < len(data)},
                  ]
-        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu = base_win.PopupMenu.create(self.hwnd, model)
         menu.addListener(self.onContextMenuItemSelect)
         pos = win32gui.GetCursorPos()
         menu.show(*pos)

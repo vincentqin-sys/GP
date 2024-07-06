@@ -844,7 +844,7 @@ class SheetWindow(base_win.BaseWindow):
                  {'title': '保存', 'name': 'Save'},
                  ]
 
-        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu = base_win.PopupMenu.create(self.hwnd, model)
         menu.addListener(self.onContextMenuItemSelect, {'x': x, 'y': y})
         menu.show(x, y)
 

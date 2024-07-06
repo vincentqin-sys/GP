@@ -1722,6 +1722,24 @@ class PopupMenu(NoActivePopupWindow):
         self.selIdx = -1
         self.startIdx = 0 # 开始显示的idx
 
+    # x, y is screen position
+    # model = [ {
+    #       title: xx | LINE,
+    #       enable: True(is default) | False,
+    #       checked:None(not checkable) | True | False
+    #       render: function(menu, hdc, rect, menu-item)
+    #       sub-menu: function(menu-item) | a model(list object)
+    #   }, ...
+    # ]
+    # listener = function(evtName, evtInfo, args)
+    # return PopupMenu object
+    @staticmethod
+    def create(parentHwnd, model):
+        menu = PopupMenu()
+        menu.createWindow(parentHwnd, (0, 0, 1, 1), title = 'I-PopupMenu')
+        menu.setModel(model)
+        return menu
+
     def setModel(self, model):
         self.model = model
 
@@ -1795,7 +1813,7 @@ class PopupMenu(NoActivePopupWindow):
         self.resize(w, h)
         self.invalidWindow()
 
-    def drawArrow(self, hdc):
+    def drawUpDownArrow(self, hdc):
         if not self.model:
             return
         w, h = self.getClientSize()
@@ -1812,11 +1830,25 @@ class PopupMenu(NoActivePopupWindow):
             pts = [(cx, sy + AH), (cx + AW, sy), (cx - AW, sy)]
             win32gui.Polygon(hdc, pts)
 
+    def drawRightArrow(self, hdc):
+        # TODO
+        if not self.model:
+            return
+        w, h = self.getClientSize()
+        cx = w // 2
+        AW, AH = 4, 4
+        self.drawer.use(hdc, self.drawer.getBrush(0x333333))
+        self.drawer.use(hdc, win32gui.GetStockObject(win32con.NULL_PEN))
+        if self.startIdx > 0:
+            sy = 2
+            pts = [(cx, sy), (cx + AW, AH + sy), (cx - AW, AH + sy)]
+            win32gui.Polygon(hdc, pts)
+
     def onDraw(self, hdc):
         super().onDraw(hdc)
         if not self.model:
             return
-        self.drawArrow(hdc)
+        self.drawUpDownArrow(hdc)
         w = self.getClientSize()[0]
         sy = 0 if len(self.model) <= self.VISIBLE_MAX_ITEM else self.ARROW_HEIGHT
         rc = [self.LEFT_RIGHT_PADDING, sy, w - self.LEFT_RIGHT_PADDING, sy]
@@ -1871,6 +1903,8 @@ class PopupMenu(NoActivePopupWindow):
             y = (lParam >> 16) & 0xffff
             idx = self.getItemIdxAt(y)
             self.hide()
+            if idx < 0:
+                return True
             item = self.model[idx]
             if idx >= 0 and item.get('title', '') != 'LINE' and item.get('enable', True):
                 if item.get('checked', None) != None:
@@ -1885,18 +1919,6 @@ class PopupMenu(NoActivePopupWindow):
             self.scroll(delta)
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
-
-class PopupMenuHelper:
-    # x, y is screen position
-    # model = [{'title': xx, 'enable' : True(is default) | False, checked:None(not checkable)|True|False } ...]  title:必选项 = LINE | ...., enable: 可选项
-    # listener = function(evtName, evtInfo, args)
-    # return PopupMenu object
-    @staticmethod
-    def create(parentHwnd, model):
-        menu = PopupMenu()
-        menu.createWindow(parentHwnd, (0, 0, 1, 1), title = 'I-PopupMenu')
-        menu.setModel(model)
-        return menu
 
 # listeners :  Select = {src, day: int, sday: YYYY-MM-DD}
 class DatePopupWindow(NoActivePopupWindow):
@@ -2366,7 +2388,7 @@ class Editor(BaseEditor):
             self.invalidWindow()
             newEvt = self.Event('PressEnter', self, text = evt.item['title'], **evt.item)
             self.notifyListener(newEvt)
-        menu = PopupMenuHelper.create(self.hwnd, self.popupTipModel)
+        menu = PopupMenu.create(self.hwnd, self.popupTipModel)
         menu.addNamedListener('Select', onCc)
         rc = win32gui.GetWindowRect(self.hwnd)
         menu.minItemWidth = rc[2] - rc[0]
@@ -3222,7 +3244,7 @@ def testGridLayout():
 
 def testPopMenu():
     def back(e, ei):
-        PopupMenuHelper.show(300, 100, model, menuSel)
+        PopupMenu.show(300, 100, model, menuSel)
 
     def menuSel(en, ei):
         print(en, ei)

@@ -107,7 +107,7 @@ class ZSWindow(base_win.BaseWindow):
                  {'title': '取消颜色标记', 'name': 'MARK_CANCEL', 'enable': win.selRow >= 0},
                  {'title': '取消颜色标记[不限日期]', 'name': 'MARK_CANCEL_NOLIMIT', 'enable': win.selRow >= 0}, 
                  {'title': '筛选标记', 'name': 'MARK_FILTER'}]
-        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu = base_win.PopupMenu.create(self.hwnd, model)
         menu.addListener(self.onMenuItemSelect, (tabIdx, code, rowData))
         x, y = win32gui.GetCursorPos()
         menu.show(x, y)

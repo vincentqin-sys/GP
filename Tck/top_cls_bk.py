@@ -211,7 +211,7 @@ class ClsBkWindow(base_win.BaseWindow):
     def onContextMenu(self, evt, args):
         selRow = self.tableWin.selRow
         model = mark_utils.getMarkModel(selRow >= 0)
-        menu = base_win.PopupMenuHelper.create(self.hwnd, model)
+        menu = base_win.PopupMenu.create(self.hwnd, model)
         def onMM(evt, args):
             rowData = self.tableWin.getData()[selRow]
             obj = tck_orm.Mark.get_or_create(code = rowData['secu_code'], kind = 'cls-bk')[0]
