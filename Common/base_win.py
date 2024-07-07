@@ -1715,7 +1715,7 @@ class PopupMenu(NoActivePopupWindow):
         self.LEFT_RIGHT_PADDING = 20
         self.SEPRATOR_HEIGHT = 2
         self.ARROW_HEIGHT = 10
-        self.VISIBLE_MAX_ITEM = 20 # 最大显示的个数
+        self.VISIBLE_MAX_ITEM = 15 # 最大显示的个数
         self.model = None  # [{title:xx, name:xx }, ...]   title = LINE 表示分隔线
         self.rowHeight = 24
         self.minItemWidth = 150 # 最小宽度

@@ -132,6 +132,16 @@ class CellRenderWindow(base_win.BaseWindow):
     def addRow(self, rowInfo, *cells):
         self.rows.append({'rowInfo': rowInfo, 'cells': cells})
 
+    def getContentHeight(self):
+        h = self.paddings[1] + self.paddings[3]
+        for row in self.rows:
+            rowInfo = row['rowInfo']
+            margin = rowInfo.get('margin', 0)
+            if isinstance(margin, int):
+                margin = (margin, margin)
+            h += margin[0] + rowInfo['height'] + margin[1]
+        return h
+
     def insertRow(self, insertIdx, rowInfo, *cells):
         self.rows.insert(insertIdx, {'rowInfo': rowInfo, 'cells': cells})
     

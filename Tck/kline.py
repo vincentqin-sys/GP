@@ -245,6 +245,7 @@ class RefZSKDrawer:
         self.zsCode = None
         self.newData = None
         self.valueRange = None
+        self.klineWin = None
 
     def updateData(self, code):
         if not code or self.code == code:
@@ -264,8 +265,11 @@ class RefZSKDrawer:
             return
         if zs.code == self.zsCode:
             return
-        self.zsCode = zs.code
-        self.model = KLineModel_DateType(self.zsCode)
+        self.updateRefZsData(zs.code)
+
+    def updateRefZsData(self, zsCode):
+        self.zsCode = zsCode
+        self.model = KLineModel_DateType(zsCode)
         self.model.loadDataFile()
         self.model.calcZhangFu()
 
@@ -303,17 +307,28 @@ class RefZSKDrawer:
     def calcPercentPrice(self, data, fromIdx, endIdx, startDay):
         self.newData = []
         self.valueRange = None
-        if not self.model:
+        if not self.model or not self.model.data:
             return
         sidx = self.model.getItemIdx(startDay)
         if sidx < 0:
-            return None
-        p = self.model.data[sidx].open / data[fromIdx].open
+            nidx = self.klineWin.model.getItemIdx(self.model.data[0].day)
+            if nidx < 0:
+                return
+            p = self.model.data[0].open / data[nidx].open
+            skip = nidx - fromIdx
+            sidx = -skip
+        else:
+            p = self.model.data[sidx].open / data[fromIdx].open
         maxVal, minVal = 0, 9999999
         last = None
         for i in range(fromIdx, endIdx):
-            di = i - fromIdx + sidx
             it = henxin.HexinUrl.ItemData()
+            di = i - fromIdx + sidx
+            if di < 0:
+                first = self.model.data[0]
+                it.open = it.close = it.low = it.high = first.open / p
+                self.newData.append(it)
+                continue
             if di < len(self.model.data):
                 cur = self.model.data[di]
                 it.open = cur.open / p
@@ -346,6 +361,10 @@ class KLineIndicator(Indicator):
         self.markDays = {} # int items
         self.refZSDrawer = RefZSKDrawer()
         self.visibleRefZS = True
+
+    def init(self, klineWin):
+        super().init(klineWin)
+        self.refZSDrawer.klineWin = klineWin
 
     def setData(self, data):
         super().setData(data)
@@ -1653,7 +1672,8 @@ class KLineWindow(base_win.BaseWindow):
               #{'title': '周线', 'name': 'week', 'enable': 'week' != self.dateType}, 
               #{'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType},
               #{'title': 'LINE'},
-              {'title': '叠加指数', 'name': 'show-ref-zs', 'checked': ck},
+              {'title': '显示叠加指数', 'name': 'show-ref-zs', 'checked': ck},
+              {'title': '叠加指数', 'name': 'add-ref-zs', 'sub-menu': self.getRefZsModel},
               {'title': '打开指数', 'name': 'open-ref-zs', 'sub-menu': self.getRefZsModel},
               {'title': 'LINE'},
               {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0, 'day': selDay},
@@ -1687,6 +1707,13 @@ class KLineWindow(base_win.BaseWindow):
                 import kline_utils
                 dt = {'code': evt.item['code'], 'day': None}
                 kline_utils.openInCurWindow_ZS(self, dt)
+            elif name == 'add-ref-zs':
+                code = evt.item['code']
+                refZSDrawer = self.klineIndicator.refZSDrawer
+                refZSDrawer.updateRefZsData(code)
+                refZSDrawer.changeDateType(self.dateType)
+                self.makeVisible(-1)
+                self.invalidWindow()
             elif name == 'draw-line':
                 self.lineMgr.begin(self.dateType, 'line')
             elif name == 'draw-text':
@@ -2092,7 +2119,7 @@ class CodeWindow(ext_win.CellRenderWindow):
 
     def init(self):
         RH = 20
-        self.addRow({'height': 25, 'margin': 0, 'name': 'refZSName'}, self.getCodeCell)
+        #self.addRow({'height': 25, 'margin': 0, 'name': 'refZSName'}, self.getCodeCell)
         self.addRow({'height': 25, 'margin': 0, 'name': 'code'}, self.getCodeCell)
         self.addRow({'height': 25, 'margin': 0, 'name': 'name'}, self.getCodeCell)
         KEYS = ('涨幅', '委比', 'Line', '流通市值', '总市值', 'Line', '市盈率_静', '市盈率_TTM')
@@ -2154,7 +2181,7 @@ class SelectTipWin(ext_win.CellRenderWindow):
         line.addNamedListener('selIdx.changed', self.onSelIdxChanged)
         
         RH = 25
-        #self.addRow({'height': 2, 'margin': 5, 'name': 't', 'bgColor': 0x505050}, {'span': 2})
+        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSName'}, self.getCell)
         self.addRow({'height': RH, 'margin': 0, 'name': 'refZSCode'}, {'text': '板块指数', 'color': 0x808080}, self.getCell)
         self.addRow({'height': RH, 'margin': 0, 'name': 'refZSZhangFu'}, {'text': '指数涨幅', 'color': 0x808080}, self.getCell)
         self.addRow({'height': RH, 'margin': 0, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc}, self.getCell)
@@ -2193,6 +2220,12 @@ class SelectTipWin(ext_win.CellRenderWindow):
             code = self.klineWin.klineIndicator.refZSDrawer.zsCode
             cell['text'] = f'{code}'
             cell['color'] = 0x808080
+        elif rowInfo['name'] == 'refZSName' and self.klineWin:
+            cell['span'] = 2
+            refzs = self.klineWin.klineIndicator.refZSDrawer
+            if refzs and refzs.model and refzs.model.name:
+                cell['text'] = refzs.model.name
+                cell['color'] = 0x808080
         return cell
 
 class KLineCodeWindow(base_win.BaseWindow):
@@ -2222,10 +2255,10 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.layout.setContent(0, 0, self.klineWin)
 
         rightLayout = base_win.FlowLayout()
-        self.codeWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 260))
+        self.codeWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, self.codeWin.getContentHeight()))
         rightLayout.addContent(self.codeWin, {'margins': (0, 5, 0, 5)})
         tipWin = SelectTipWin(self.klineWin)
-        tipWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, 125))
+        tipWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, tipWin.getContentHeight()))
         rightLayout.addContent(tipWin, {'margins': (0, 10, 0, 5)})
 
         btn = base_win.Button({'title': '<<', 'name': 'LEFT'})
@@ -2267,9 +2300,16 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.refZtReasonDetailWin.css['cellBorder'] = 0x101010
         #self.refZtReasonDetailWin.css['cellBorder'] = 0x101010  # A
         #self.refZtReasonDetailWin.css['selBgColor'] = 0xA0A0A0  # A
+        def renderReasonDetail(win, hdc, row, col, colName, value, rowData, rect):
+            if self.code == rowData['code']:
+                color = 0x00dd00
+            else:
+                color = win.css['textColor']
+            self.drawer.drawText(hdc, value, rect, color = color)
+            
         self.refZtReasonDetailWin.headers = [
             {'name': '#idx',  'width': 20},
-            {'name': 'name', 'title': '关联股票', 'width': 0, 'stretch': 1},
+            {'name': 'name', 'title': '关联股票', 'width': 0, 'stretch': 1, 'render': renderReasonDetail},
             {'name': 'num', 'title': 'ZT', 'width': 20}
         ]
         self.refZtReasonDetailWin.addListener(self.onSelectZtResasonDetail)
@@ -2478,5 +2518,5 @@ if __name__ == '__main__':
     win.addIndicator(ClsZT_Indicator()) # {'height' : 50}
     rect = (0, 0, 1920, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('600101') # cls82475 002085 603390 002085 002869  002055
+    win.changeCode('002085') # cls82475 002085 603390 002085 002869  002055
     win32gui.PumpMessages()
