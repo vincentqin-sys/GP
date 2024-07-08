@@ -131,12 +131,12 @@ class Henxin {
 
     init() {
         this.data[0] = this.uiParams.ramdom();
-        this.data[1] = this.uiParams.serverTimeNow();
-        this.data[3] = 1486178765; // strhash(navigator.userAgent)
+        this.data[1] = 1717735760; //this.uiParams.serverTimeNow();
+        this.data[3] = 3539863620; // strhash(navigator.userAgent)
         this.data[4] = 1; // getPlatform
         this.data[5] = 10; // getBrowserIndex
         this.data[6] = 5; // getPluginNum
-        this.data[13] = 2724; // getBrowserFeature
+        this.data[13] = 3748; // getBrowserFeature
 
         this.data[15] = 0;
         this.data[16] = 0;
@@ -188,11 +188,37 @@ class Henxin {
     }
 }
 
-/*
+
 let hx = new Henxin();
 hx.init();
-let rs = hx.update();
+hx.data[0] = 3411707073
+hx.data[1] = 1717735760
+hx.data[2] = 1720415622
+hx.data[3] = 3539863620
+hx.data[4] = 1
+hx.data[5] = 10
+hx.data[6] = 5
+hx.data[7] = 904
+hx.data[8] = 10
+hx.data[9] = 3
+hx.data[10] = 21
+hx.data[11] = 1155
+hx.data[12] = 545
+hx.data[13] = 3748
+hx.data[14] = 0
+hx.data[15] = 0
+hx.data[16] = 52
+hx.data[17] = 3
+
+let n = hx.toBuffer();
+console.log(n.length);
+console.log(n);
+let rs = hx.base64.encode(n);
+
+//let rs = hx.update();
+
 console.log(rs);
+/*
 rs = 'http://d.10jqka.com.cn/v6/line/33_002261/01/today.js?hexin-v=' + rs
 console.log(rs);
 

@@ -87,12 +87,11 @@ class Henxin:
         self.mouseWhell = 0
         self.keyDown = 0
         self.tokenServerTime = 0
-        self.lastUpdateTime = 0
 
     def init(self):
-        self.data[0] = self.ramdom()
+        self.data[0] = 3411707073 #self.ramdom()
         self.data[1] = self.serverTimeNow()
-        self.data[3] = 3539863620 #1486178765; # strhash(navigator.userAgent)
+        self.data[3] = 3539863620 #1486178765; # strhash(navigator.userAgent) # 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         self.data[4] = 1 # getPlatform
         self.data[5] = 10 # getBrowserIndex
         self.data[6] = 5 # getPluginNum
@@ -100,10 +99,8 @@ class Henxin:
         self.data[15] = 0
         self.data[16] = 0
         self.data[17] = 3
-        self.lastUpdateTime = time.time()
 
     def update(self):
-        self.lastUpdateTime = time.time()
         #self.data[1] = self.serverTimeNow()
         self.data[2] = self.timeNow()
         self.data[7] = self.getMouseMove()
@@ -117,7 +114,6 @@ class Henxin:
 
         n = self.toBuffer()
         rs = self.base64.encode(n)
-        # console.log('encode:', rs);
         return rs
 
     def decodeBuffer(self, buf):
@@ -148,51 +144,40 @@ class Henxin:
             p = u[i]
             s += p
             d = s
-            c[d] = l & 0xff
             while True:
+                c[d] = l & 0xff
                 p -= 1
                 if p == 0:
                     break
                 d -= 1
                 l >>= 8
+                #l = l // 258
         return c
 
-    def diffTime(self):
-        return time.time() - self.lastUpdateTime
-
     def getMouseMove(self):
-        if self.diffTime() >= 30:
-            self.mouseMove += int(random.random() * 15)
-            self.mouseMove %= 1300
+        if random.random() * 100 % 2 == 0:
+            self.mouseMove += int(random.random() * 1000 % 15 + 6)
         return self.mouseMove
 
     def getMouseClick(self):
-        if self.diffTime() >= 30:
-            self.mouseClick += int(random.random() * 15)
-        self.mouseClick %= 1200
+        self.mouseClick += 1
         return self.mouseClick
 
     def getMouseWhell(self):
-        if self.diffTime() >= 30:
-            self.mouseWhell += int(random.random() * 15)
-        self.mouseWhell %= 1200
+        if random.random() * 100 % 5 == 0:
+            self.mouseWhell += 1
         return self.mouseWhell
 
     def getKeyDown(self):
-        if self.diffTime() >= 30:
-            self.keyDown += int(random.random() * 10)
-        self.keyDown %= 1200
+        if random.random() * 100 % 5 == 0:
+            self.keyDown += 1
         return self.keyDown
 
     def getClickPosX(self):
-        if self.diffTime() >= 30:
-            return int(random.random() * 1024)
-        return self.data[11]
+        return int(random.random() * 1920)
 
     def getClickPosY(self):
-        if self.diffTime() >= 30:
-            return int(random.random() * 720)
-        return self.data[12]
+        return int(random.random() * 720)
 
     def serverTimeNow(self):
         return self.timeNow() - 13
@@ -395,8 +380,9 @@ class HexinUrl(Henxin):
         if code[0 : 2] == '88' and '/01/last1800' in url: # 仅保存指数
             saveZsCache(code, klineRs)
         if (code[0 : 2] == '88') and (not data):
-            df = DataFile(code, DataFile.DT_DAY)
-            data = df.data
+            #df = DataFile(code, DataFile.DT_DAY)
+            #data = df.data
+            pass
         if data:
             last = data[-1]
         url = self.getTodayKLineUrl(code)
@@ -412,8 +398,6 @@ class HexinUrl(Henxin):
         for k in js:
             js = js[k]
             break
-        if js['open'] == 0:
-            return None
         item = HexinUrl.ItemData()
         if js['1']:
             setattr(item, 'day', int(js['1']))
@@ -517,14 +501,25 @@ class ThsDataFile(DataFile):
             self.name = rs['name']
             
 if __name__ == '__main__':
-    hx = HexinUrl()
-    hx.copy('AwMp0DU6YrbvwS5CE1sd7MFgksyoeJf-0Q3b_zXiW0LYRy2yvUgnCuHca35G')
+    hx = Henxin()
+    hx.copy('A0uAxKHRqXBYdPVN2P5FRNlI2uQw4Fzq2f4jFb1dI4nj_WWaRbDvsunEs1LO')
+    print('---------------A------------------')
+    for i in range(len(hx.data)):
+        print(f'[{i}] = ', hx.data[i])
+        #print(hx.data[i])
+   
+    #n = [    203,    90,    132,    193,    102,    98,    145,    80,    102,    139,    117,    134,    210,    254,    8,    68,    1,    10,    5,    0,    3,    136,    0,    10,    0,    3,    0,    21,    4,    131,    2,    33,    14,    164,    0,    0,    0,    0,    0,    0,    0,    52,    3]
+    #rs = hx.base64.encode(n)
+    #print('encode:', rs)
+
+    s = hx.base64.encode(hx.toBuffer())
+    print(s)
     
-    url = hx.getFenShiUrl('603628')
+    #url = hx.getFenShiUrl('603628')
     #url = hx.getTodayKLineUrl('603628')
     #url = hx.getKLineUrl('603628')
-    rs = hx.loadUrlData(url)
-    print(rs)
+    #rs = hx.loadUrlData(url)
+    #print(rs)
 
 if __name__ == '__main__x':
     # javascript: window.location.href = 'https://s.thsi.cn/js/chameleon/time.1' + (new Date().getTime() / 1200000) + '.js'
