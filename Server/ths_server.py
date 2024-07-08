@@ -20,9 +20,10 @@ def formatZtTime(ds):
     f = f'{sc.tm_hour :02d}:{sc.tm_min :02d}:{sc.tm_sec :02d}'
     return f
 
+# 下载同花顺涨停信息(分页下载)
 # day = YYYYMMDD
 # pageIdx = 1, 2 ....
-def downloadOnePage(day, pageIdx):
+def downloadOnePageZT(day, pageIdx):
     today = datetime.date.today()
     today = today.strftime('%Y%m%d')
     PAGE_SIZE = 50
@@ -71,8 +72,9 @@ def downloadOnePage(day, pageIdx):
     rs = {'total': total, 'day': date, 'curPage':curPage, 'pageCount':pageCount, 'data': ds}
     return rs
 
+# 下载同花顺涨停信息
 # day = int, str, date, datetime
-def downloadOneDay(day):
+def downloadOneDayZT(day):
     datas = {}
     if type(day) == int:
         day = str(day)
@@ -83,10 +85,14 @@ def downloadOneDay(day):
     curPage = 1
     pageCount = 1
     while curPage <= pageCount:
-        rs = downloadOnePage(day, curPage)
+        rs = downloadOnePageZT(day, curPage)
         datas.update(rs['data'])
         pageCount = rs['pageCount']
         curPage += 1
+    return datas
+
+# 保存同花顺涨停信息
+def saveZT(day, datas):
     insertNum, updateNum = 0, 0
     # save to db
     for k in datas:
@@ -112,9 +118,10 @@ def downloadOneDay(day):
         console.write_1(console.YELLOW, f'[ths_zt_downloader] ')
         print(f'{day} insert {insertNum}, update {updateNum}')
 
-def downloadOneDayTry(day):
+def downloadSaveOneDayTry(day):
     try:
-        downloadOneDay(day)
+        datas = downloadOneDayZT(day)
+        saveZT(day, datas)
     except Exception as e:
         pass
 
@@ -134,26 +141,31 @@ def autoLoadHistory(fromDay = 20230301):
     today = datetime.date.today()
     while fromDay <= today:
         if acceptDay(fromDay):
-             downloadOneDayTry(fromDay.year * 10000 + fromDay.month * 100 + fromDay.day)
+             downloadSaveOneDayTry(fromDay.year * 10000 + fromDay.month * 100 + fromDay.day)
         fromDay += one
         time.sleep(2)
 
 def run():
+    download_hygn_infos = {}
+
     while True:
         now = datetime.datetime.now()
+        day = now.strftime('%Y%m%d')
         if not acceptDay(now):
             time.sleep(5 * 60)
             continue
         curTime = now.strftime('%H:%M')
-        if curTime < '09:30' or curTime > '16:30':
-            time.sleep(5 * 60)
-            continue
-        try:
-            downloadOneDay(now)
-        except Exception as e:
-            traceback.print_exc()
-        time.sleep(5 * 60)
+        # 下载同花顺涨停信息
+        if curTime >= '09:30' and curTime < '17:30':
+            downloadSaveOneDayTry(now)
 
+        # 下载个股板块概念信息
+        if curTime >= '15:05':
+            from Download import ths_hygn
+            if day not in download_hygn_infos:
+                ok = ths_hygn.run_个股行业概念()
+                if ok: download_hygn_infos[day] = True
+        time.sleep(5 * 60)
 
 def autoLoadThsZT():
     th = threading.Thread(target = run)
@@ -184,23 +196,7 @@ def startup(app):
     app.add_url_rule('/ths/load-today-kline', view_func = load_ths_today, methods = ['GET'])
     app.add_url_rule('/ths/load-history-kline', view_func = load_ths_history, methods = ['GET'])
 
-# 查询个股涨跌信息
-# day = YYYYMMDD
-def queryAllCodeZD():
-    hx = henxin.Henxin()
-    hx.init()
-    print(hx.update())
-    url = 'https://www.iwencai.com/customized/chart/get-robot-data'
-    headers = {'Content-Type': 'application/json', 'hexin-v': hx.update(), 'Origin': 'https://www.iwencai.com',
-               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-               'Referer': 'https://www.iwencai.com/unifiedwap/result?w=%E4%B8%AA%E8%82%A1%E6%B6%A8%E8%B7%8C%E6%8E%92%E5%90%8D,%20%E4%BB%B7%E6%A0%BC,%E6%88%90%E4%BA%A4%E9%A2%9D%E6%8E%92%E5%90%8D&querytype=stock'}
-    params = {"source":"Ths_iwencai_Xuangu","version":"2.0","query_area":"","block_list":"","add_info":"{\"urp\":{\"scene\":1,\"company\":1,\"business\":1},\"contentType\":\"json\",\"searchInfo\":true}","question":"个股涨跌排名, 价格,成交额排名","perpage":"100","page":1,"secondary_intent":"stock","log_info":"{\"input_type\":\"click\"}"}
-    resp = requests.post(url, json = params , headers = headers) #
-    txt = resp.content.decode('utf-8')
-    print(txt)
-
 if __name__ == '__main__':
     #autoLoadHistory(20240708)
     #downloadOneDay(20240702)
-    queryAllCodeZD()
     pass
