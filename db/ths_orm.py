@@ -174,11 +174,26 @@ class THS_ZS_ZD(pw.Model):
         database = db_thszs
         table_name = '同花顺指数涨跌信息'
 
+db_thsdde = pw.SqliteDatabase(f'{path}GP/db/THS_DDE.db')
+class THS_DDE(pw.Model):
+    day = pw.CharField() # YYYY-MM-DD
+    code = pw.CharField() #指数代码
+    name = pw.CharField(null = True) #指数代码
+    dde_buy = pw.FloatField(default = 0) #  dde大单买入金额  (亿元)
+    dde_sell = pw.FloatField(default = 0) # dde大单卖出金额  (亿元)
+    dde = pw.FloatField(default = 0) # dde大单净额 (亿元)
+    dde_pm = pw.IntegerField(default = 0) # dde大单净额排名
+
+    class Meta:
+        database = db_thsdde
+        table_name = 'ths_dde'
+
 db_f10.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_Newest])
 db_hot.create_tables([THS_Hot, THS_HotZH])
 db_ddlr.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS_ZD])
 db_gntc.create_tables([THS_GNTC])
+db_thsdde.create_tables([THS_DDE])
 
 
 if __name__ == '__main__':

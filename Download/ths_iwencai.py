@@ -187,10 +187,44 @@ def save_hygn(updateDatas, insertDatas):
 
 
 # dde大单净额
-# @return data : list
+# @return data : list (前100 + 后100)
 def download_dde_money():
+    亿 = 100000000
     rs = iwencai_search('个股及行业板块, 最新dde大单净额')
-    return rs
+    datas = []
+    for row in rs:
+        obj = ths_orm.THS_DDE()
+        datas.append(obj)
+        for k in row:
+            v = row[k]
+            if k == 'code': obj.code = v
+            elif k == '股票简称': obj.name = v
+            elif k.startswith('dde大单净额'):
+                obj.dde = float(v) / 亿
+                day = k[8 : 16]
+                obj.day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
+            elif 'dde大单卖出金额' in k: obj.dde_sell = float(v) / 亿
+            elif 'dde大单买入金额' in k: obj.dde_buy = float(v) / 亿
+
+    datas.sort(key = lambda d: d.dde, reverse = True)
+    ndatas = []
+    for i in range(100):
+        datas[i].dde_pm = i + 1
+        ndatas.append(datas[i])
+    for i in range(-1, -101, -1):
+        datas[i].dde_pm = i
+        ndatas.append(datas[i])
+    return ndatas
+
+def save_dde_money(rs):
+    if not rs:
+        return False
+    day = rs[0].day
+    count = ths_orm.THS_DDE.select(pw.fn.count()).where(ths_orm.THS_DDE.day == day).scalar()
+    if count > 0:
+        return False # alreay exists
+    ths_orm.THS_DDE.bulk_create(rs, 50)
+    return True
 
 # 个股热度排名
 # http://www.iwencai.com/unifiedwap/result?w=个股热度排名<%3D200且个股热度从大到小排名&querytype=stock
@@ -271,9 +305,11 @@ def save_zs_zd(datas):
     return len(ndatas)
 
 if __name__ == '__main__':
-    #download_dde_money()
+    rs = download_dde_money()
+    save_dde_money(rs)
+    
     #download_hygn()
     #download_hot()
-    rs = download_zs_zd()
-    save_zs_zd(rs)
+    #rs = download_zs_zd()
+    #save_zs_zd(rs)
     pass
