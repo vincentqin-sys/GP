@@ -10,7 +10,9 @@ import functools
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import tck_orm
-from Download import henxin, console
+from Download import henxin, console, ths_iwencai
+from Common import holiday
+from THS import hot_utils
 
 def formatZtTime(ds):
     if not ds:
@@ -123,7 +125,7 @@ def downloadSaveOneDayTry(day):
         datas = downloadOneDayZT(day)
         saveZT(day, datas)
     except Exception as e:
-        pass
+        traceback.print_exc()
 
 def acceptDay(day):
     if type(day) == str:
@@ -145,27 +147,58 @@ def autoLoadHistory(fromDay = 20230301):
         fromDay += one
         time.sleep(2)
 
+def download_save_hot():
+    try:
+        rs = ths_iwencai.download_hot()
+        num, day, _time = ths_iwencai.save_hot(rs)
+        console.write_1(console.RED, f'[hot-server] ')
+        _time = f'{_time // 100}:{_time % 100 :02d}'
+        if num > 0:
+            print(f'success, insert {day} {_time} num:{num}')
+        else:
+            print(f'fail, {day} {_time} ')
+        return num > 0
+    except Exception as e:
+        traceback.print_exc()
+    return False
+
 def run():
     download_hygn_infos = {}
+    last_zt_time = 0
+    last_hotzh_time = 0
+    last_hot_time = 0
 
     while True:
+        time.sleep(10)
         now = datetime.datetime.now()
         day = now.strftime('%Y%m%d')
         if not acceptDay(now):
-            time.sleep(5 * 60)
             continue
         curTime = now.strftime('%H:%M')
+
+        # 下载热度信息
+        if (curTime >= '09:30' and curTime <= '11:30') or (curTime >= '13:00' and curTime <= '15:00'):
+            if (now.minute % 10 <= 2) and (time.time() - last_hot_time >= 5 * 60):
+                download_save_hot()
+                last_hot_time = time.time()
+
         # 下载同花顺涨停信息
         if curTime >= '09:30' and curTime < '17:30':
-            downloadSaveOneDayTry(now)
+            if time.time() - last_zt_time >= 5 * 60: # 5分钟
+                downloadSaveOneDayTry(now)
+                last_zt_time = time.time()
+
+        # 计算热度综合排名
+        if curTime >= '15:05' and curTime < '16:00':
+            if time.time() - last_hotzh_time >= 60 * 60:
+                hot_utils.calcAllHotZHAndSave()
+                last_hotzh_time = time.time()
 
         # 下载个股板块概念信息
-        if curTime >= '15:05':
-            from Download import ths_hygn
-            if day not in download_hygn_infos:
-                ok = ths_hygn.run_个股行业概念()
-                if ok: download_hygn_infos[day] = True
-        time.sleep(5 * 60)
+        if (curTime >= '15:20') and (day not in download_hygn_infos):
+            #ok = ths_iwencai.download_hygn()
+            #if ok: download_hygn_infos[day] = True
+            pass
 
 def autoLoadThsZT():
     th = threading.Thread(target = run)

@@ -56,8 +56,8 @@ def check_chrome_open():
 def sub_process():
     print('in sub_process')
     while True:
-        if not check_chrome_open():
-            os.startfile('https://cn.bing.com/')
+        #if not check_chrome_open():
+        #    os.startfile('https://cn.bing.com/')
         time.sleep(60 * 5) # 5 minutes
         checkRunCalcHotZH()
 

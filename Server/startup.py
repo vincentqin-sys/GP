@@ -27,7 +27,7 @@ if __name__ == '__main__':
     print('启动8071服务')
     
     # 启动同花顺热点服务
-    hot_server.startup(app)
+    #hot_server.startup(app)
     app.add_url_rule('/show-hot.html', view_func=showHot,  methods = ['GET'])
 
     # 启动龙虎榜

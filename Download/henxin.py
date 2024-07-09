@@ -87,6 +87,7 @@ class Henxin:
         self.mouseWhell = 0
         self.keyDown = 0
         self.tokenServerTime = 0
+        self.init()
 
     def init(self):
         self.data[0] = 3411707073 #self.ramdom()
