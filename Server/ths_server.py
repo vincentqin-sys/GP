@@ -147,17 +147,32 @@ def autoLoadHistory(fromDay = 20230301):
         fromDay += one
         time.sleep(2)
 
-def download_save_hot():
+def downloadSaveHot():
     try:
         rs = ths_iwencai.download_hot()
-        num, day, _time = ths_iwencai.save_hot(rs)
+        num = ths_iwencai.save_hot(rs)
         console.write_1(console.RED, f'[hot-server] ')
-        _time = f'{_time // 100}:{_time % 100 :02d}'
         if num > 0:
+            day = rs[0].day
+            _time = f'{rs[0].time // 100}:{rs[0].time % 100 :02d}'
             print(f'success, insert {day} {_time} num:{num}')
         else:
-            print(f'fail, {day} {_time} ')
+            print(f'fail ')
         return num > 0
+    except Exception as e:
+        traceback.print_exc()
+    return False
+
+def downloadSaveZs():
+    try:
+        rs = ths_iwencai.download_zs_zd()
+        num = ths_iwencai.save_zs_zd(rs)
+        console.write_1(console.GREEN, f'[THS-ZS] ')
+        if rs:
+            print(f"Save ZS success, insert {rs[0].day} num: {num} ")
+        else:
+            print(f"Save ZS, no data ")
+        return len(rs) > 0
     except Exception as e:
         traceback.print_exc()
     return False
@@ -167,6 +182,7 @@ def run():
     last_zt_time = 0
     last_hotzh_time = 0
     last_hot_time = 0
+    last_zs_time = 0
 
     while True:
         time.sleep(10)
@@ -179,7 +195,7 @@ def run():
         # 下载热度信息
         if (curTime >= '09:30' and curTime <= '11:30') or (curTime >= '13:00' and curTime <= '15:00'):
             if (now.minute % 10 <= 2) and (time.time() - last_hot_time >= 5 * 60):
-                download_save_hot()
+                downloadSaveHot()
                 last_hot_time = time.time()
 
         # 下载同花顺涨停信息
@@ -193,11 +209,18 @@ def run():
             if time.time() - last_hotzh_time >= 60 * 60:
                 hot_utils.calcAllHotZHAndSave()
                 last_hotzh_time = time.time()
+        
+        # 下载同花顺指数涨跌信息
+        if curTime >= '15:10' and curTime < '16:00':
+            if time.time() - last_zs_time >= 60 * 60:
+                downloadSaveZs()
+                last_zs_time = time.time()
 
         # 下载个股板块概念信息
         if (curTime >= '15:20') and (day not in download_hygn_infos):
-            #ok = ths_iwencai.download_hygn()
-            #if ok: download_hygn_infos[day] = True
+            #upd, ins = ths_iwencai.download_hygn()
+            #ths_iwencai.save_hygn(upd, ins)
+            #download_hygn_infos[day] = True
             pass
 
 def autoLoadThsZT():

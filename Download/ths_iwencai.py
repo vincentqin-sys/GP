@@ -42,7 +42,8 @@ from Download import henxin, console
 # 例： question = '个股及行业板块' -->  http://www.iwencai.com/unifiedwap/result?w=个股及行业板块&querytype=stock
 # @return 数据:list, more-url: str, 结果数量: int
 # intent = 'stock' | 'zhishu' 用于指明是个股还是指数
-def iwencai_search_page_1(question, intent = 'stock'):
+# input_type = 'typewrite' | 'click'   typewrite: 点击搜索的方式查询   click:在url地址上附加查询参数的方式查询
+def iwencai_search_page_1(question, intent = 'stock', input_type = 'typewrite'):
     url = 'http://www.iwencai.com/customized/chart/get-robot-data'
     data = {
         'source': 'Ths_iwencai_Xuangu',
@@ -54,7 +55,7 @@ def iwencai_search_page_1(question, intent = 'stock'):
         'perpage': '100',
         'page': 1,
         'secondary_intent': intent,
-        'log_info': '{"input_type":"typewrite"}',
+        'log_info': '{"input_type":"' + input_type + '"}',
     }
     hx = henxin.Henxin()
     hx.init()
@@ -113,11 +114,12 @@ def iwencai_load_page_n(page : int, moreUrl):
 # 在 i问财搜索结果，返回所有页的数据
 # 例： question = '个股及行业板块' -->  http://www.iwencai.com/unifiedwap/result?w=个股及行业板块&querytype=stock
 # intent = 'stock' | 'zhishu' 用于指明是个股还是指数
+# input_type = 'typewrite' | 'click'
 # @return list
-def iwencai_search(question, intent = 'stock'):
+def iwencai_search(question, intent = 'stock', input_type = 'typewrite'):
     rs = []
     try:
-        data1, urlMore, count = iwencai_search_page_1(question, intent)
+        data1, urlMore, count = iwencai_search_page_1(question, intent, input_type)
         rs.extend(data1)
         maxPage = (count + 99) // 100
         for i in range(2, maxPage + 1):
@@ -144,51 +146,45 @@ def modify_hygn(obj : ths_orm.THS_GNTC, zsInfos):
     obj.hy_3_name = hys[2]
 
 # 个股行业概念
-# @return data : list
+# @return update-datas, insert-datas
 def download_hygn():
     # 下载所有的 个股行业概念（含当日涨跌信息）
     # code 市盈率(pe)[20240708],  总股本[20240708]  所属概念  所属同花顺行业  最新涨跌幅  最新价 股票简称
     rs = iwencai_search(question = '个股及行业板块')
-    return rs
-
-# @return False | (insertNum, updateNum)
-def save_hygn(rs, log : bool = True):
     zsInfos = {}
     qr = ths_orm.THS_ZS.select()
     for q in qr:
         zsInfos[q.name] = q.code
-
+    updates = []
+    inserts = []
     for idx, line in enumerate(rs):
-        if ('code' not in line) or ('股票简称' not in line) or ('所属同花顺行业' not in line) or ('所属概念' not in line):
-            print('[ths_iwencai.download_hygn] Error: not find column', line)
-            return False
         code, name, hy, gn = line['code'], line['股票简称'], line['所属同花顺行业'], line['所属概念']
         hy = hy.strip()
         gn = gn.strip()
         gns = gn.split(';')
         gn = ';'.join(gns)
         obj = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == code)
-        insertNum, updateNum = 0, 0
         if obj:
             if obj.hy != hy or obj.gn != gn or obj.name != name:
                 obj.hy = hy
                 obj.name = name
                 obj.gn = gn
-                updateNum += 1
-                if not log:
-                    print(f'[{idx :04d}]', 'update ', code, name, hy, gn)
                 modify_hygn(obj, zsInfos)
-                obj.save()
+                updates.append(obj)
         else:
             obj = ths_orm.THS_GNTC(code = code, name = name, gn = gn, hy = hy)
             modify_hygn(obj, zsInfos)
-            obj.save()
-            insertNum += 1
-            if not log:
-                print(f'[{idx :04d}]', 'insert ', code, name,hy, gn)
-    if log:
-        print(f'[download_hygn] insertNum ={insertNum} updateNum={updateNum}')
-    return insertNum, updateNum
+            inserts.append(obj)
+    return updates, inserts
+
+# @return (update-num, insert-num)
+def save_hygn(updateDatas, insertDatas):
+    for it in updateDatas:
+        it.save()
+    for it in insertDatas:
+        it.save()
+    return len(updateDatas), len(insertDatas)
+
 
 # dde大单净额
 # @return data : list
@@ -201,14 +197,8 @@ def download_dde_money():
 # code, 股票简称, 个股热度[20240709], 个股热度排名[20240709]
 def download_hot():
     rs = iwencai_search('个股热度排名<=200且个股热度从大到小排名')
-    return rs
-
-# @return 数量, 日期, 时间
-def save_hot(rs):
     now = datetime.datetime.now()
     _time = now.hour * 100 + now.minute
-    if not rs:
-        return 0, 0, 0
     hots = []
     for row in rs:
         obj = ths_orm.THS_Hot()
@@ -222,20 +212,68 @@ def save_hot(rs):
             elif '个股热度[' in k:
                 obj.hotValue = int(row[k]) // 10000
         hots.append(obj)
+    return hots
+
+# @return 数量
+def save_hot(hots):
     ths_orm.THS_Hot.bulk_create(hots, 50)
-    return len(rs), hots[0].day, _time
+    return len(hots)
 
 # 指数涨跌信息
 # http://www.iwencai.com/unifiedwap/result?w=同花顺概念指数或同花顺行业指数按涨跌幅排序&querytype=zhishu
-# @return True | False
+# @return  data : list
+# code, 指数简称, 指数@涨跌幅:前复权[20240709]
 def download_zs_zd():
-    rs = iwencai_search('同花顺概念指数或同花顺行业指数按涨跌幅排序', 'zhishu')
-    if not rs:
-        return False
-    
+    rs = iwencai_search('同花顺概念指数或同花顺行业指数按涨跌幅排序', 'zhishu', 'click')
+    datas = []
+    亿 = 100000000
+    RK = '指数@涨跌幅:前复权['
+    for row in rs:
+        obj = ths_orm.THS_ZS_ZD()
+        datas.append(obj)
+        for k in row:
+            if k == 'code': obj.code = row[k]
+            elif k == '指数简称': obj.name = row[k]
+            elif RK in k:
+                day = k[len(RK) : len(RK) + 8]
+                obj.day = f'{day[0 : 4]}-{day[4 : 6]}-{day[6 : 8]}'
+                obj.zdf = float(row[k])
+            elif '成交量' in k: obj.vol = int(float(row[k]) / 亿)
+            elif '成交额' in k: obj.money = int(float(row[k]) / 亿)
+            elif '开盘价' in k: obj.open = float(row[k])
+            elif '最高价' in k: obj.high = float(row[k])
+            elif '收盘价' in k: obj.close = float(row[k])
+            elif '换手率' in k: obj.rate = float(row[k])
+    return datas
+
+def save_zs_zd(datas):
+    for i in range(len(datas)):
+        if i <= len(datas) // 2:
+            datas[i].zdf_PM = i + 1
+        else:
+            datas[i].zdf_PM = i - len(datas)
+    d50 = [d for d in datas if d.money >= 50]
+    for i in range(len(d50)):
+        if i <= len(d50) // 2:
+            d50[i].zdf_50PM = i + 1
+        else:
+            d50[i].zdf_50PM = i - len(d50)
+    day = datas[0].day
+    q = ths_orm.THS_ZS_ZD.select().where(ths_orm.THS_ZS_ZD.day == day).dicts()
+    ex = {}
+    for it in q:
+        ex[it['code']] = True
+    ndatas = []
+    for it in datas:
+        if it.code not in ex:
+            ndatas.append(it)
+    ths_orm.THS_ZS_ZD.bulk_create(ndatas, 50)
+    return len(ndatas)
 
 if __name__ == '__main__':
     #download_dde_money()
-    #download_hygn(False)
-    download_hot()
+    #download_hygn()
+    #download_hot()
+    rs = download_zs_zd()
+    save_zs_zd(rs)
     pass
