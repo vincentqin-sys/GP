@@ -117,7 +117,7 @@ def saveZT(day, datas):
             obj.save()
             updateNum += 1
     if insertNum or updateNum:
-        console.write_1(console.YELLOW, f'[ths_zt_downloader] ')
+        console.write_1(console.YELLOW, f'[ths-zt] ')
         print(f'{day} insert {insertNum}, update {updateNum}')
 
 def downloadSaveOneDayTry(day):
@@ -177,12 +177,27 @@ def downloadSaveZs():
         traceback.print_exc()
     return False
 
+def downloadSaveDde():
+    try:
+        rs = ths_iwencai.download_dde_money()
+        ok = ths_iwencai.save_dde_money(rs)
+        console.write_1(console.CYAN, f'[THS-DDE] ')
+        if ok:
+            print('success, save num: ', len(rs))
+        else:
+            print('fail')
+        return ok
+    except Exception as e:
+        traceback.print_exc()
+    return False
+
 def run():
     download_hygn_infos = {}
     last_zt_time = 0
     last_hotzh_time = 0
     last_hot_time = 0
     last_zs_time = 0
+    last_dde_time = 0
 
     while True:
         time.sleep(10)
@@ -215,6 +230,12 @@ def run():
             if time.time() - last_zs_time >= 60 * 60:
                 downloadSaveZs()
                 last_zs_time = time.time()
+
+        # 下载dde数据
+        if curTime >= '15:15' and curTime < '16:00':
+            if time.time() - last_dde_time >= 60 * 60:
+                downloadSaveDde()
+                last_dde_time = time.time()
 
         # 下载个股板块概念信息
         if (curTime >= '15:20') and (day not in download_hygn_infos):

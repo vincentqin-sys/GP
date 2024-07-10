@@ -364,7 +364,7 @@ def work():
         print('merge mimute time line data')
         ld = datafile.DataFileLoader()
         ld.mergeAll()
-    print('---------------------\n\n')
+    print('-----------End----------\n\n')
     return flag
 
 def getDesktopGUILock():
