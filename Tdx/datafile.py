@@ -232,10 +232,10 @@ class DataFile:
         is20p = (self.code[0:3] == '688') or (self.code[0:2] == '30')
         is20p = is20p and c.day >= 20200824
         ZT = 20 if is20p else 10
-        iszt = int(pre * (100 + ZT) + 0.5) == int(c.close * 100 + 0.5)
-        isztzb = int(pre * (100 + ZT) + 0.5) == int(c.high * 100 + 0.5) and (c.high != c.close)
-        isdt = int(pre * (100 - ZT) + 0.5) == int(c.close * 100 + 0.5)
-        isdtzb = int(pre * (100 - ZT) + 0.5) == int(c.low * 100 + 0.5) and (c.low != c.close)
+        iszt = int(pre * (100 + ZT) + 0.5) <= int(c.close * 100 + 0.5)
+        isztzb = int(pre * (100 + ZT) + 0.5) <= int(c.high * 100 + 0.5) and (c.high != c.close)
+        isdt = int(pre * (100 - ZT) + 0.5) >= int(c.close * 100 + 0.5)
+        isdtzb = int(pre * (100 - ZT) + 0.5) >= int(c.low * 100 + 0.5) and (c.low != c.close)
         if isztzb: c.zdt = 'ZTZB'
         if isdtzb: c.zdt = 'DTZB'
         if iszt: c.zdt = 'ZT'

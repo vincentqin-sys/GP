@@ -424,13 +424,13 @@ class KLineIndicator(Indicator):
         if not self.valueRange or not self.height:
             return None
         m = y * (self.valueRange[1] - self.valueRange[0]) / self.height
-        val = int(self.valueRange[1] - m)
-        if val / 100 >= 1000:
-            fval = f'{val // 100}'
-        elif val / 100 >= 100:
-            fval = f'{val / 100 :0.1f}'
+        val = self.valueRange[1] - m
+        if val >= 1000:
+            fval = f'{val :0.1f}'
+        elif val >= 100:
+            fval = f'{val :0.1f}'
         else:
-            fval = f'{val // 100}.{val % 100 :02d}'
+            fval = f'{val :.02f}'
         return {'value': val, 'fmtVal': fval, 'valType': 'Price'}
 
     def getColor(self, idx, data):

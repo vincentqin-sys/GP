@@ -417,10 +417,7 @@ class HexinUrl(Henxin):
                     del item
                     item = None
                     break
-                if '.' in v and v.index('.') == len(v) - 3:
-                    v = v.replace('.', '')
-                else:
-                    v = float(v) * 100
+                v = float(v)
             setattr(item, k, int(v))
         rs = {'name': js['name'], 'data': item}
         return rs
@@ -449,10 +446,7 @@ class HexinUrl(Henxin):
                         del obj
                         obj = None
                         break
-                    if len(row[i]) > 3 and row[i][-3] == '.':
-                        d = int(row[i].replace('.', ''))
-                    else:
-                        d = int(float(row[i]) * 100)
+                    d = float(row[i])
                     setattr(obj, keys[i], d)
                 elif i == 6:
                     setattr(obj, keys[i], int(float(row[i])))

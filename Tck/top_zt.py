@@ -291,7 +291,7 @@ class ZT_Window(base_win.BaseWindow):
         today = datetime.date.today()
         fd = today - datetime.timedelta(days = 60)
         fromDay = f"{fd.year}-{fd.month :02d}-{fd.day :02d}"
-        kplQr = tck_orm.KPL_ZT.select().where(tck_orm.KPL_ZT.day >= fromDay).order_by(tck_orm.KPL_ZT.day.desc(), tck_orm.KPL_ZT.id.asc()).dicts()
+        #kplQr = tck_orm.KPL_ZT.select().where(tck_orm.KPL_ZT.day >= fromDay).order_by(tck_orm.KPL_ZT.day.desc(), tck_orm.KPL_ZT.id.asc()).dicts()
         thsQr = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.day >= fromDay).dicts()
         clsQr = tck_orm.CLS_ZT.select().where(tck_orm.CLS_ZT.day >= fromDay).dicts()
         hotZH = ths_orm.THS_HotZH.select().where(ths_orm.THS_HotZH.day >= int(fromDay.replace('-', ''))).dicts()
@@ -306,38 +306,21 @@ class ZT_Window(base_win.BaseWindow):
             day = f"{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}"
             k = f"{day}:{d['code'] :06d}"
             hots[k] = d['zhHotOrder']
-        for d in kplQr:
-            k = d['day'] + ':' + d['code']
-            allDicts[k] = item = {'code': d['code'], 'name': d['name'], 'day': d['day'], 'kpl_id': d['id']}
-            item['kpl_ztReason'] = d['ztReason'].upper()
-            ztNum = d.get('ztNum', 0)
-            if type(ztNum) == str:
-                print(d)
-                ztNum = 0
-            item['kpl_ztReason'] += f"({d['ztNum']})"
-            item['zhHotOrder'] = hots.get(k, None)
-            rs.append(item)
 
-        kplLastDay = rs[0]['day']
         for d in thsQr:
             k = d['day'] + ':' + d['code']
-            obj = allDicts.get(k, None)
-            insert = False if obj else True
-            if not obj:
-                allDicts[k] = obj = {}
+            allDicts[k] = obj = {'code': d['code'], 'name': d['name'], 'day': d['day'], 'kpl_id': d['id']}
             obj['ths_status'] = d['status']
             obj['ths_ztReason'] = d['ztReason'].upper()
             obj['ths_mark_1'] = d['mark_1']
             obj['ths_mark_2'] = d['mark_2']
             obj['ths_mark_3'] = d['mark_3']
             obj['ths_id'] = d['id']
-            if insert and kplLastDay < d['day']:
-                obj['zhHotOrder'] = hots.get(k, None)
-                obj['day'] = d['day']
-                obj['code'] = d['code']
-                obj['name'] = d['name']
-                rs.insert(0, obj)
-                allDicts[k] = obj
+            obj['zhHotOrder'] = hots.get(k, None)
+            obj['day'] = d['day']
+            obj['code'] = d['code']
+            obj['name'] = d['name']
+            rs.append(obj)
 
         for d in clsQr:
             k = d['day'] + ':' + d['code']

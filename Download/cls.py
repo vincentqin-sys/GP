@@ -198,10 +198,10 @@ class ClsDataFile(datafile.DataFile):
         for ds in datas:
             it = datafile.ItemData()
             it.day = ds['date']
-            it.open = int(ds['open_px'] * 100 + 0.5)
-            it.close = int(ds['close_px'] * 100 + 0.5)
-            it.low = int(ds['low_px'] * 100 + 0.5)
-            it.high = int(ds['high_px'] * 100 + 0.5)
+            it.open = ds['open_px']
+            it.close = ds['close_px']
+            it.low = ds['low_px']
+            it.high = ds['high_px']
             it.amount = int(ds['business_balance'])
             it.vol = int(ds['business_amount'])
             it.rate = ds.get('tr', 0) * 100
