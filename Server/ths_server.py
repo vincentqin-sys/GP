@@ -117,8 +117,7 @@ def saveZT(day, datas):
             obj.save()
             updateNum += 1
     if insertNum or updateNum:
-        console.write_1(console.YELLOW, f'[ths-zt] ')
-        print(f'{day} insert {insertNum}, update {updateNum}')
+        console.write_1(console.YELLOW, f'[ths-zt] ', f'{day} insert {insertNum}, update {updateNum}')
 
 def downloadSaveOneDayTry(day):
     try:
@@ -155,9 +154,9 @@ def downloadSaveHot():
         if num > 0:
             day = rs[0].day
             _time = f'{rs[0].time // 100}:{rs[0].time % 100 :02d}'
-            print(f'success, insert {day} {_time} num:{num}')
+            console.writeln_1(console.RED, f'success, insert {day} {_time} num:{num}')
         else:
-            print(f'fail ')
+            console.writeln_1(console.RED, f'fail ')
         return num > 0
     except Exception as e:
         traceback.print_exc()
@@ -169,9 +168,9 @@ def downloadSaveZs():
         num = ths_iwencai.save_zs_zd(rs)
         console.write_1(console.GREEN, f'[THS-ZS] ')
         if rs:
-            print(f"Save ZS success, insert {rs[0].day} num: {num} ")
+            console.writeln_1(console.GREEN, f"Save ZS success, insert {rs[0].day} num: {num} ")
         else:
-            print(f"Save ZS, no data ")
+            console.writeln_1(console.GREEN, f"Save ZS, no data ")
         return len(rs) > 0
     except Exception as e:
         traceback.print_exc()
@@ -181,11 +180,11 @@ def downloadSaveDde():
     try:
         rs = ths_iwencai.download_dde_money()
         ok = ths_iwencai.save_dde_money(rs)
-        console.write_1(console.CYAN, f'[THS-DDE] ')
+        console.write_1(console.PURPLE, f'[THS-DDE] ')
         if ok:
-            print('success, save num: ', len(rs))
+            console.writeln_1(console.PURPLE, 'success, save num: ', len(rs))
         else:
-            print('fail')
+            console.writeln_1(console.PURPLE, 'fail')
         return ok
     except Exception as e:
         traceback.print_exc()
