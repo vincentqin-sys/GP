@@ -117,7 +117,7 @@ def saveZT(day, datas):
             obj.save()
             updateNum += 1
     if insertNum or updateNum:
-        console.write_1(console.YELLOW, f'[ths-zt] ', f'{day} insert {insertNum}, update {updateNum}')
+        console.writeln_1(console.YELLOW, f'[ths-zt] ', f'{day} insert {insertNum}, update {updateNum}')
 
 def downloadSaveOneDayTry(day):
     try:
@@ -215,7 +215,7 @@ def run():
         # 下载同花顺涨停信息
         if curTime >= '09:30' and curTime < '17:30':
             if time.time() - last_zt_time >= 5 * 60: # 5分钟
-                downloadSaveOneDayTry(now)
+                downloadSaveOneDayTry(day)
                 last_zt_time = time.time()
 
         # 计算热度综合排名
@@ -230,7 +230,7 @@ def run():
                 downloadSaveZs()
                 last_zs_time = time.time()
 
-        # 下载dde数据
+        # 下载dde数据, 前100 + 后100
         if curTime >= '15:15' and curTime < '16:00':
             if time.time() - last_dde_time >= 60 * 60:
                 downloadSaveDde()

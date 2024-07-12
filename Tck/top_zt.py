@@ -333,7 +333,7 @@ class ZT_Window(base_win.BaseWindow):
                 obj['cls_ztReason'] = d['ztReason'].upper()
             else:
                 cls.append(d)
-        
+        rs.sort(key=lambda d : d['day'], reverse=True)
         self.tckData = rs
 
     def doSearch(self, search : str):

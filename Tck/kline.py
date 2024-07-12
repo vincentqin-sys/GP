@@ -1677,14 +1677,15 @@ class KLineWindow(base_win.BaseWindow):
               {'title': '打开指数', 'name': 'open-ref-zs', 'sub-menu': self.getRefZsModel},
               {'title': 'LINE'},
               {'title': '标记日期', 'name': 'mark-day', 'enable': selDay > 0, 'day': selDay},
-              {'title': '取消标记日期', 'name': 'cancel-mark-day', 'enable': selDay > 0, 'day': selDay},
+              {'title': '- 取消标记日期', 'name': 'cancel-mark-day', 'enable': selDay > 0, 'day': selDay},
               {'title': 'LINE'},
               {'title': '画线(直线)', 'name': 'draw-line'},
               {'title': '画线(文本)', 'name': 'draw-text'},
-              {'title': '删除画线', 'name': 'del-draw-line'},
+              {'title': '- 删除画线', 'name': 'del-draw-line'},
               {'title': 'LINE'},
               {'title': '涨停原因', 'name':'zt-reason', 'enable': selDay > 0},
-              {'title': '加自选', 'name':'JZX'}
+              {'title': '加自选', 'name':'JZX'},
+              {'title': '- 删自选', 'name':'SZX'}
               ]
         menu = base_win.PopupMenu.create(self.hwnd, mm)
         x, y = win32gui.GetCursorPos()
@@ -1729,6 +1730,8 @@ class KLineWindow(base_win.BaseWindow):
                     if obj:
                         self.model.name = obj.name
                 tck_orm.MySelCode.get_or_create(code = self.model.code, name = self.model.name)
+            elif name == 'SZX':
+                tck_orm.MySelCode.delete().where(tck_orm.MySelCode.code == self.model.code)
             elif name == 'zt-reason':
                 base_win.ThsShareMemory.instance().writeMarkDay(selDay)
                 evt = self.Event('zt-reason', self, code = self.model.code, day = selDay)
@@ -2222,6 +2225,7 @@ class SelectTipWin(ext_win.CellRenderWindow):
             cell['color'] = 0x808080
         elif rowInfo['name'] == 'refZSName' and self.klineWin:
             cell['span'] = 2
+            cell['textAlign'] = win32con.DT_CENTER
             refzs = self.klineWin.klineIndicator.refZSDrawer
             if refzs and refzs.model and refzs.model.name:
                 cell['text'] = refzs.model.name

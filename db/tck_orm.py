@@ -1,5 +1,5 @@
 import peewee as pw
-import sys
+import sys, datetime
 
 path = __file__[0 : __file__.upper().index('GP')]
 db_tck = pw.SqliteDatabase(f'{path}GP/db/TCK.db') # 题材库
@@ -121,6 +121,7 @@ class DrawLine(pw.Model):
 class MySelCode(pw.Model):
     code = pw.CharField()
     name = pw.CharField()
+    day = pw.DateField(null = True, default = datetime.date.today())
     class Meta:
         database = db_tck_def
         table_name = '自选股'

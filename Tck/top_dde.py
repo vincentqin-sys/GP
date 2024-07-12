@@ -3,7 +3,7 @@ import threading, time, datetime, sys, os, copy
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import ths_orm
+from db import ths_orm, tck_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr
 from THS import ths_win
@@ -39,7 +39,7 @@ class DdeWindow(base_win.BaseWindow):
         
         headers = [{'title': '', 'width': 30, 'name': '#idx' },
                    {'title': '代码', 'width': 60, 'name': 'code'},
-                   {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True, 'render': mark_utils.markColorTextRender },
+                   {'title': '名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True},
                    {'title': 'DDE净额_亿', 'width': 90, 'name': 'dde', 'sortable':True, 'formater': formateDde},
                    {'title': '排名', 'width': 70, 'name': 'dde_pm', 'sortable':False , 'textAlign': win32con.DT_CENTER}
                    ]
@@ -60,6 +60,19 @@ class DdeWindow(base_win.BaseWindow):
         day = today.strftime('%Y%m%d')
         self.datePicker.setSelDay(day)
         self.updateDay(day)
+        self.initMySelect()
+
+    def initMySelect(self):
+        self.listWins[0].headers = [
+                   {'title': '', 'width': 30, 'name': '#idx' },
+                   {'title': '代码', 'width': 80, 'name': 'code'},
+                   {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True, 'render': mark_utils.markColorTextRender },
+                   {'title': '加入日期', 'width': 100, 'name': 'dde_pm', 'sortable':False , 'textAlign': win32con.DT_CENTER}
+                   ]
+        rs = []
+        for it in tck_orm.MySelCode.select().dicts():
+            rs.append(it)
+        self.listWins[0].setData(rs)
 
     def onSelDayChanged(self, evt, args):
         if evt.name != 'Select':
@@ -85,11 +98,11 @@ class DdeWindow(base_win.BaseWindow):
         if len(day) == 8:
             day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
         
-        q = ths_orm.THS_DDE.select(ths_orm.THS_DDE.day).distinct().where(ths_orm.THS_DDE.day <= day).order_by(ths_orm.THS_DDE.day.desc()).limit(len(self.cols)).tuples()
+        q = ths_orm.THS_DDE.select(ths_orm.THS_DDE.day).distinct().where(ths_orm.THS_DDE.day <= day).order_by(ths_orm.THS_DDE.day.desc()).limit(len(self.cols) - 1).tuples()
         for i, d in enumerate(q):
             cday = d[0]
-            self.updateDay_Table(cday, self.listWins[i])
-            self.daysLabels[i].setText(cday)
+            self.updateDay_Table(cday, self.listWins[i + 1])
+            self.daysLabels[i + 1].setText(cday)
 
     def updateDay_Table(self, cday, tableWin):
         ds = ths_orm.THS_DDE.select().where(ths_orm.THS_DDE.day == cday).order_by(ths_orm.THS_DDE.dde.desc())

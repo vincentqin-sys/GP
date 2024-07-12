@@ -417,8 +417,7 @@ class HexinUrl(Henxin):
                     del item
                     item = None
                     break
-                v = float(v)
-            setattr(item, k, int(v))
+            setattr(item, k, float(v))
         rs = {'name': js['name'], 'data': item}
         return rs
 
@@ -446,8 +445,7 @@ class HexinUrl(Henxin):
                         del obj
                         obj = None
                         break
-                    d = float(row[i])
-                    setattr(obj, keys[i], d)
+                    setattr(obj, keys[i], float(row[i]))
                 elif i == 6:
                     setattr(obj, keys[i], int(float(row[i])))
                 elif i == 7:
