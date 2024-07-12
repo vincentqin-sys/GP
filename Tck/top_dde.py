@@ -41,7 +41,7 @@ class DdeWindow(base_win.BaseWindow):
                    {'title': '代码', 'width': 60, 'name': 'code'},
                    {'title': '名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True},
                    {'title': 'DDE净额_亿', 'width': 90, 'name': 'dde', 'sortable':True, 'formater': formateDde},
-                   {'title': '排名', 'width': 70, 'name': 'dde_pm', 'sortable':False , 'textAlign': win32con.DT_CENTER}
+                   {'title': '排名', 'width': 70, 'name': 'dde_pm', 'sortable':False , 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
                    ]
         for i in range(len(self.layout.templateColumns)):
             win = base_win.TableWindow()
@@ -60,6 +60,8 @@ class DdeWindow(base_win.BaseWindow):
         day = today.strftime('%Y%m%d')
         self.datePicker.setSelDay(day)
         self.updateDay(day)
+
+    def onShow(self):
         self.initMySelect()
 
     def initMySelect(self):
@@ -67,7 +69,7 @@ class DdeWindow(base_win.BaseWindow):
                    {'title': '', 'width': 30, 'name': '#idx' },
                    {'title': '代码', 'width': 80, 'name': 'code'},
                    {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True, 'render': mark_utils.markColorTextRender },
-                   {'title': '加入日期', 'width': 100, 'name': 'dde_pm', 'sortable':False , 'textAlign': win32con.DT_CENTER}
+                   {'title': '加入日期', 'width': 100, 'name': 'day', 'sortable':False , 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
                    ]
         rs = []
         for it in tck_orm.MySelCode.select().dicts():

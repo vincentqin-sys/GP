@@ -38,12 +38,7 @@ from db import ths_orm
 from Common import holiday
 from Download import henxin, console
 
-# 在 i问财搜索结果，(第一面的数据)
-# 例： question = '个股及行业板块' -->  http://www.iwencai.com/unifiedwap/result?w=个股及行业板块&querytype=stock
-# @return 数据:list, more-url: str, 结果数量: int
-# intent = 'stock' | 'zhishu' 用于指明是个股还是指数
-# input_type = 'typewrite' | 'click'   typewrite: 点击搜索的方式查询   click:在url地址上附加查询参数的方式查询
-def iwencai_search_page_1(question, intent = 'stock', input_type = 'typewrite'):
+def iwencai_search_info(question, intent = 'stock', input_type = 'typewrite'):
     url = 'http://www.iwencai.com/customized/chart/get-robot-data'
     data = {
         'source': 'Ths_iwencai_Xuangu',
@@ -73,6 +68,18 @@ def iwencai_search_page_1(question, intent = 'stock', input_type = 'typewrite'):
     #pstr = json.dumps(data, ensure_ascii = False)
     resp = requests.post(url, json = data, headers = headers)
     txt = resp.text
+    #f = open('D:/a.json', 'w')
+    #f.write(txt)
+    #f.close()
+    return txt
+
+# 在 i问财搜索结果，(第一面的数据) 列表形的数据
+# 例： question = '个股及行业板块' -->  http://www.iwencai.com/unifiedwap/result?w=个股及行业板块&querytype=stock
+# @return 数据:list, more-url: str, 结果数量: int
+# intent = 'stock' | 'zhishu' 用于指明是个股还是指数
+# input_type = 'typewrite' | 'click'   typewrite: 点击搜索的方式查询   click:在url地址上附加查询参数的方式查询
+def iwencai_load_page_1(question, intent = 'stock', input_type = 'typewrite'):
+    txt = iwencai_search_info(question, intent, input_type)
     js = json.loads(txt)
     answer = js['data']['answer'][0]
     components = answer['txt'][0]['content']['components'][0]
@@ -116,10 +123,10 @@ def iwencai_load_page_n(page : int, moreUrl):
 # intent = 'stock' | 'zhishu' 用于指明是个股还是指数
 # input_type = 'typewrite' | 'click'
 # @return list
-def iwencai_search(question, intent = 'stock', input_type = 'typewrite'):
+def iwencai_load_list(question, intent = 'stock', input_type = 'typewrite'):
     rs = []
     try:
-        data1, urlMore, count = iwencai_search_page_1(question, intent, input_type)
+        data1, urlMore, count = iwencai_load_page_1(question, intent, input_type)
         rs.extend(data1)
         maxPage = (count + 99) // 100
         for i in range(2, maxPage + 1):
@@ -150,7 +157,7 @@ def modify_hygn(obj : ths_orm.THS_GNTC, zsInfos):
 def download_hygn():
     # 下载所有的 个股行业概念（含当日涨跌信息）
     # code 市盈率(pe)[20240708],  总股本[20240708]  所属概念  所属同花顺行业  最新涨跌幅  最新价 股票简称
-    rs = iwencai_search(question = '个股及行业板块')
+    rs = iwencai_load_list(question = '个股及行业板块')
     zsInfos = {}
     qr = ths_orm.THS_ZS.select()
     for q in qr:
@@ -190,7 +197,7 @@ def save_hygn(updateDatas, insertDatas):
 # @return data : list (前100 + 后100)
 def download_dde_money():
     亿 = 100000000
-    rs = iwencai_search('个股及行业板块, 最新dde大单净额')
+    rs = iwencai_load_list('个股及行业板块, 最新dde大单净额')
     datas = []
     for row in rs:
         obj = ths_orm.THS_DDE()
@@ -230,7 +237,7 @@ def save_dde_money(rs):
 # http://www.iwencai.com/unifiedwap/result?w=个股热度排名<%3D200且个股热度从大到小排名&querytype=stock
 # code, 股票简称, 个股热度[20240709], 个股热度排名[20240709]
 def download_hot():
-    rs = iwencai_search('个股热度排名<=200且个股热度从大到小排名')
+    rs = iwencai_load_list('个股热度排名<=200且个股热度从大到小排名')
     now = datetime.datetime.now()
     _time = now.hour * 100 + now.minute
     hots = []
@@ -258,7 +265,7 @@ def save_hot(hots):
 # @return  data : list
 # code, 指数简称, 指数@涨跌幅:前复权[20240709]
 def download_zs_zd():
-    rs = iwencai_search('同花顺概念指数或同花顺行业指数按涨跌幅排序', 'zhishu', 'click')
+    rs = iwencai_load_list('同花顺概念指数或同花顺行业指数按涨跌幅排序', 'zhishu', 'click')
     datas = []
     亿 = 100000000
     RK = '指数@涨跌幅:前复权['
@@ -304,9 +311,22 @@ def save_zs_zd(datas):
     ths_orm.THS_ZS_ZD.bulk_create(ndatas, 50)
     return len(ndatas)
 
+# 查找个股近30天的dde信息
+#  dde-info = {时间, 股票简称, dde大单净额, dde大单卖出金额, dde大单买入金额, 股票代码, dde大单净量, dde散户数量}
+# @return list of dde-info
+def download_one_dde(code):
+    txt = iwencai_search_info(f'{code}, dde')
+    js = json.loads(txt)
+    answer = js['data']['answer'][0]
+    components = answer['txt'][0]['content']['components']
+    datas = components[-1]['data']['datas']
+    return datas
+
 if __name__ == '__main__':
-    rs = download_dde_money()
-    save_dde_money(rs)
+    download_one_dde('300139')
+
+    #rs = download_dde_money()
+    #save_dde_money(rs)
     
     #download_hygn()
     #download_hot()

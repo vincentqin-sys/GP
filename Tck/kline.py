@@ -1288,6 +1288,52 @@ class ScqxIndicator(CustomIndicator):
             win32gui.SetTextColor(hdc, color)
             win32gui.DrawText(hdc, str(val) + '°', -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
+class DdeIndicator(CustomIndicator):
+    def __init__(self, config = None) -> None:
+        config = config or {}
+        if 'height' not in config:
+            config['height'] = 30
+        super().__init__(config)
+        if 'title' not in self.config:
+            self.config['title'] = '[DDE-亿元]'
+
+    def setData(self, data):
+        super().setData(data)
+        if not self.klineWin.model:
+            self.setCustomData(None)
+            return
+        from Download import ths_iwencai
+        rsx = ths_iwencai.download_one_dde(self.klineWin.model.code)
+        maps = {}
+        for d in rsx:
+            day = d['时间'].replace('-', '')
+            maps[int(day)] = d
+        rs = []
+        for d in data:
+            fd = maps.get(d.day, None)
+            if not fd:
+                fd = {'day': d.day, 'dde大单净额': None}
+            else:
+                fd['day'] = d.day
+            rs.append(fd)
+        self.setCustomData(rs)
+
+    def drawItem(self, idx, hdc, pens, hbrs, x):
+        iw = self.config['itemWidth']
+        cdata = self.customData[idx]
+        selIdx = self.klineWin.selIdx
+        selData = self.data[selIdx] if selIdx >= 0 and selIdx < len(self.data) else None
+        selDay = int(selData.day) if selData else 0
+        rc = (x + 1, 1, x + iw, self.height)
+        if selDay == int(cdata['__day']):
+            win32gui.FillRect(hdc, rc, hbrs['light_dark'])
+        rc = (x + 3, 3, x + iw - 3, self.height)
+        if cdata['dde大单净额']:
+            val = float(cdata['dde大单净额']) / 100000000 # 亿元
+            color = 0xcccccc
+            win32gui.SetTextColor(hdc, color)
+            win32gui.DrawText(hdc, f'{val :.1f}', -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+
 class KLineSelTipWindow(base_win.BaseWindow):
     def __init__(self, klineWin) -> None:
         super().__init__()
@@ -2520,6 +2566,7 @@ if __name__ == '__main__':
     win.addIndicator(HotIndicator()) # {'height' : 50}
     win.addIndicator(ThsZT_Indicator()) # {'height' : 50}
     win.addIndicator(ClsZT_Indicator()) # {'height' : 50}
+    win.addIndicator(DdeIndicator()) # {'height' : 50}
     rect = (0, 0, 1920, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     win.changeCode('002085') # cls82475 002085 603390 002085 002869  002055

@@ -18,14 +18,14 @@ class FuPanMgrWindow(base_win.BaseWindow):
             #{'name': 'KPL', 'title': '市场情绪', 'class': top_scqx.KPL_MgrWindow},
             #{'name': 'DDLR_STRUCT', 'title': '大单流入',  'class': ddlr_struct.DddlrStructWindow},
             {'name': 'VOL_PM', 'title': '成交额排名',  'class': top_vol_pm.VolPMWindow},
-            {'name': 'VOL_LB', 'title': '量比',  'class': top_vol_lb.VolLBWindow},
+            #{'name': 'VOL_LB', 'title': '量比',  'class': top_vol_lb.VolLBWindow},
             {'name': 'THS_ZS', 'title': '指数',  'class': top_zs.ZSWindow},
             {'name': 'ZT', 'title': '涨停',  'class': top_zt.ZT_Window},
             {'name': 'HOTS', 'title': '热度',  'class': top_hots.Hots_Window},
             #{'name': 'TCGN', 'title': '题材梳理',  'class': tcgn2.TCGN_Window},
-            {'name': 'CLS_BK', 'title': '财联社板块',  'class': top_cls_bk.ClsBkWindow},
-            {'name': 'DIALY', 'title': '日记',  'class': top_diary.DailyWindow},
+            #{'name': 'CLS_BK', 'title': '财联社板块',  'class': top_cls_bk.ClsBkWindow},
             {'name': 'DDE', 'title': '自选 && DDE',  'class': top_dde.DdeWindow},
+            {'name': 'DIALY', 'title': '日记',  'class': top_diary.DailyWindow},
         ]
         gp = base_win.GroupButton(gpInfos)
         gp.setSelGroup(0)
@@ -46,6 +46,9 @@ class FuPanMgrWindow(base_win.BaseWindow):
     def changeGroup(self, evt, args):
         idx = evt.groupIdx
         self.cardLayout.showCardByIdx(idx)
+        win = self.cardLayout.winsInfo[idx]['win']
+        if hasattr(win, 'onShow'):
+            win.onShow()
 
 if __name__ == '__main__':
     base_win.ThreadPool.start()
