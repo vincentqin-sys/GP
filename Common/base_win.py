@@ -1756,6 +1756,15 @@ class PopupMenu(NoActivePopupWindow):
             x = ownerRect[0]
         if y == None:
             y = ownerRect[3]
+        SW = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+        SH = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+        if x + w > SW:
+            if x >= w:
+                x = x - w
+            else:
+                x = SW - w
+        if y + h > SH - 40:
+            y = SH - h - 40
         self.resize(w, h)
         super().show(x, y)
     

@@ -236,7 +236,10 @@ class Indicator:
         return (fromIdx, endIdx)
     
     def onMouseClick(self, x, y):
-        pass
+        return False
+
+    def onContextMenu(self, x, y):
+        return False
 
 class RefZSKDrawer:
     def __init__(self) -> None:
@@ -861,6 +864,12 @@ class CustomIndicator(Indicator):
         win32gui.MoveToEx(hdc, x + WW, 0)
         win32gui.LineTo(hdc, x + WW, self.height)
 
+    def onMouseClick(self, x, y):
+        return True
+
+    def onContextMenu(self, x, y):
+        return True
+
 class DdlrIndicator(CustomIndicator):
     PADDING_TOP = 25
     def __init__(self, config = None, isDetail = True) -> None:
@@ -1214,16 +1223,16 @@ class ClsZT_Indicator(CustomIndicator):
 
     def onMouseClick(self, x, y):
         if not self.visibleRange:
-            return
+            return True
         itemWidth = self.config['itemWidth']
         idx = x // itemWidth + self.visibleRange[0]
         # click item idx
         itemData = self.customData[idx]
         if not itemData:
-            return
+            return True
         detail = itemData.get('detail', '')
         if not detail:
-            return
+            return True
         # draw tip
         hdc = win32gui.GetDC(self.klineWin.hwnd)
         W, H = int(self.width * 0.8), 70
@@ -1241,6 +1250,7 @@ class ClsZT_Indicator(CustomIndicator):
         rc[3] -= 3
         drawer.drawText(hdc, detail, rc, color = 0xd0a0a0, align = win32con.DT_WORDBREAK)
         win32gui.ReleaseDC(self.klineWin.hwnd, hdc)
+        return True
 
 class ScqxIndicator(CustomIndicator):
     def __init__(self, config = None) -> None:
@@ -1707,6 +1717,13 @@ class KLineWindow(base_win.BaseWindow):
         self.invalidWindow()
 
     def onContextMenu(self, x, y):
+        for it in self.indicators:
+            isInRect = x >= it.x and y >= it.y and x < it.x + it.width and y < it.y + it.height
+            if isInRect:
+                if it.onContextMenu(x - it.x, y - it.y):
+                    return
+                break
+        # default deal
         selDay = 0
         if self.selIdx >= 0:
             selDay = self.model.data[self.selIdx].day
