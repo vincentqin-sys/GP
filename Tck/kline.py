@@ -1328,6 +1328,48 @@ class DdeIndicator(CustomIndicator):
             rs.append(fd)
         self.setCustomData(rs)
 
+    def onMouseClick(self, x, y):
+        if not self.visibleRange:
+            return True
+        itemWidth = self.config['itemWidth']
+        idx = x // itemWidth + self.visibleRange[0]
+        # click item idx
+        itemData = self.customData[idx]
+        if not itemData:
+            return True
+        self.klineWin.invalidWindow()
+        win32gui.UpdateWindow(self.klineWin.hwnd)
+        code = self.klineWin.model.code
+        day = itemData['day']
+        sday = f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
+        qr = ths_orm.THS_DDE.select().where(ths_orm.THS_DDE.code == code, ths_orm.THS_DDE.day == sday)
+        detail = ''
+        for q in qr:
+            detail = f'排名：{q.dde_pm}'
+            break
+        # draw tip
+        hdc = win32gui.GetDC(self.klineWin.hwnd)
+        W, H = 120, 50
+        ix = x // itemWidth * itemWidth
+        drawer : base_win.Drawer = self.klineWin.drawer
+        if ix + W <= self.width:
+            sx = self.x + ix
+        else:
+            sx = self.width - W + self.x
+        sy = self.y - H
+        rc = [sx, sy, sx + W, sy + H]
+        drawer.fillRect(hdc, rc, 0x101010)
+        drawer.drawRect(hdc, rc, 0xa0f0a0)
+        win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
+        drawer.use(hdc, drawer.getFont())
+        rc[0] += 5
+        rc[1] += 3
+        rc[2] -= 5
+        rc[3] -= 3
+        drawer.drawText(hdc, detail, rc, color = 0xd0a0a0, align = win32con.DT_WORDBREAK)
+        win32gui.ReleaseDC(self.klineWin.hwnd, hdc)
+        return True
+
     def drawItem(self, idx, hdc, pens, hbrs, x):
         iw = self.config['itemWidth']
         cdata = self.customData[idx]
