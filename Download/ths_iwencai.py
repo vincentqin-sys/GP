@@ -197,7 +197,9 @@ def save_hygn(updateDatas, insertDatas):
 # @return data : list (前100 + 后100)
 def download_dde_money():
     亿 = 100000000
-    rs = iwencai_load_list('个股及行业板块, 最新dde大单净额')
+    rs, *_ = iwencai_load_page_1('个股及行业板块, 最新dde大单净额,按dde净额从大到小排序')
+    rs2, *_ = iwencai_load_page_1('个股及行业板块, 最新dde大单净额,按dde净额从小到大排序')
+    rs.extend(rs2)
     datas = []
     for row in rs:
         obj = ths_orm.THS_DDE()
@@ -206,7 +208,7 @@ def download_dde_money():
             v = row[k]
             if k == 'code': obj.code = v
             elif k == '股票简称': obj.name = v
-            elif k.startswith('dde大单净额'):
+            elif k.startswith('dde大单净额['):
                 obj.dde = float(v) / 亿
                 day = k[8 : 16]
                 obj.day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
@@ -323,9 +325,9 @@ def download_one_dde(code):
     return datas
 
 if __name__ == '__main__':
-    download_one_dde('300139')
+    #download_one_dde('300139')
 
-    #rs = download_dde_money()
+    rs = download_dde_money()
     #save_dde_money(rs)
     
     #download_hygn()

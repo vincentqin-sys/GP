@@ -5,10 +5,10 @@ import os, sys, requests
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm, tck_orm
 from Tdx import datafile
-from Download import henxin, ths_ddlr
+from Download import henxin, ths_ddlr, ths_iwencai
 from THS import ths_win
 from Common import base_win
-from Tck import kline, kline_utils, mark_utils, timeline, top_diary
+from Tck import kline, kline_utils, mark_utils, timeline, top_diary, cache
 
 class DdeWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -16,7 +16,9 @@ class DdeWindow(base_win.BaseWindow):
         rows = (30, 20, '1fr')
         cw = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
         n = 4 if cw > 1600 else 3
-        self.cols = ('1fr', ) * n
+        self.cols = ['1fr']
+        for i in range(n - 1):
+            self.cols.append(350)
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.listWins = []
         self.daysLabels =[]
@@ -65,16 +67,22 @@ class DdeWindow(base_win.BaseWindow):
         self.initMySelect()
 
     def initMySelect(self):
-        self.listWins[0].headers = [
+        tab = self.listWins[0]
+        tab.rowHeight = 50
+        tab.headers = [
                    {'title': '', 'width': 30, 'name': '#idx' },
-                   {'title': '代码', 'width': 80, 'name': 'code'},
-                   {'title': '指数名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True, 'render': mark_utils.markColorTextRender },
+                   {'title': '代码', 'width': 80, 'name': 'code', 'sortable':True},
+                   {'title': '名称', 'width': 80, 'name': 'name', 'sortable':True, 'render': mark_utils.markColorTextRender },
+                   {'title': '板块', 'width': 0, 'stretch': 1, 'name': 'bk', 'sortable':True},
+                   {'title': '分时', 'width': 300, 'name': 'code', 'render': cache.renderTimeline},
                    {'title': '加入日期', 'width': 100, 'name': 'day', 'sortable':False , 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
                    ]
         rs = []
         for it in tck_orm.MySelCode.select().dicts():
             rs.append(it)
-        self.listWins[0].setData(rs)
+            bk = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == it['code'])
+            it['bk'] = bk.hy_2_name if bk else ''
+        tab.setData(rs)
 
     def onSelDayChanged(self, evt, args):
         if evt.name != 'Select':
@@ -100,11 +108,23 @@ class DdeWindow(base_win.BaseWindow):
         if len(day) == 8:
             day = day[0 : 4] + '-' + day[4 : 6] + '-' + day[6 : 8]
         
-        q = ths_orm.THS_DDE.select(ths_orm.THS_DDE.day).distinct().where(ths_orm.THS_DDE.day <= day).order_by(ths_orm.THS_DDE.day.desc()).limit(len(self.cols) - 1).tuples()
+        rs = ths_iwencai.download_dde_money()
+        skip = 0
+        if rs and rs[0].day <= day:
+            skip = 1
+            win = self.listWins[1]
+            cday = rs[0].day
+            self.daysLabels[1].setText(cday)
+            data = [r.__data__ for r in rs]
+            win.setData(data)
+            win._day = cday
+            win.invalidWindow()
+
+        q = ths_orm.THS_DDE.select(ths_orm.THS_DDE.day).distinct().where(ths_orm.THS_DDE.day <= day).order_by(ths_orm.THS_DDE.day.desc()).limit(len(self.cols) - 1 - skip).tuples()
         for i, d in enumerate(q):
             cday = d[0]
-            self.updateDay_Table(cday, self.listWins[i + 1])
-            self.daysLabels[i + 1].setText(cday)
+            self.updateDay_Table(cday, self.listWins[i + 1 + skip])
+            self.daysLabels[i + 1 + skip].setText(cday)
 
     def updateDay_Table(self, cday, tableWin):
         ds = ths_orm.THS_DDE.select().where(ths_orm.THS_DDE.day == cday).order_by(ths_orm.THS_DDE.dde.desc())
