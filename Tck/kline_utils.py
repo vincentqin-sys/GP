@@ -26,7 +26,7 @@ def openInCurWindow_Code(parent : base_win.BaseWindow, data):
     W, H = int(dw * 1), int(dh * 0.85)
     x = (dw - W) // 2
     y = (dh - H) // 2
-    win.createWindow(parent.hwnd, (0, 0, W, H), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION)
+    win.createWindow(parent.hwnd, (0, 0, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) # WS_OVERLAPPEDWINDOW
     win.changeCode(data['code'])
     win.klineWin.setMarkDay(data['day'])
     win.klineWin.addListener(openKlineMinutes_Simple, win)
@@ -43,7 +43,7 @@ def openInCurWindow_ZS(parent : base_win.BaseWindow, data):
     W, H = int(dw * 1), int(dh * 0.8)
     x = (dw - W) // 2
     y = (dh - H) // 2
-    win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION)
+    win.createWindow(parent.hwnd, (0, y, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
     win.changeCode(data['code'])
     win.klineWin.setMarkDay(data['day'])
     win.klineWin.addListener(openKlineMinutes_Simple, win)
@@ -62,7 +62,7 @@ def openKlineMinutes_DDLR(evt, parent : base_win.BaseWindow):
         return
     win = ddlr_detail.DDLR_MinuteMgrWindow()
     rc = win32gui.GetWindowRect(parent.hwnd)
-    win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW | win32con.WS_CAPTION)
+    win.createWindow(parent.hwnd, rc, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
     day = evt.data.day
     win.updateCodeDay(evt.code, day)
 

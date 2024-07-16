@@ -110,6 +110,7 @@ class DdeWindow(base_win.BaseWindow):
         
         rs = ths_iwencai.download_dde_money()
         skip = 0
+        netDay = None
         if rs and rs[0].day <= day:
             skip = 1
             win = self.listWins[1]
@@ -119,12 +120,20 @@ class DdeWindow(base_win.BaseWindow):
             win.setData(data)
             win._day = cday
             win.invalidWindow()
+            netDay = cday
 
-        q = ths_orm.THS_DDE.select(ths_orm.THS_DDE.day).distinct().where(ths_orm.THS_DDE.day <= day).order_by(ths_orm.THS_DDE.day.desc()).limit(len(self.cols) - 1 - skip).tuples()
+        num = len(self.cols) - 1 - skip
+        q = ths_orm.THS_DDE.select(ths_orm.THS_DDE.day).distinct().where(ths_orm.THS_DDE.day <= day).order_by(ths_orm.THS_DDE.day.desc()).limit(len(self.cols) - 1).tuples()
+        deal = 0
         for i, d in enumerate(q):
             cday = d[0]
-            self.updateDay_Table(cday, self.listWins[i + 1 + skip])
-            self.daysLabels[i + 1 + skip].setText(cday)
+            if netDay == cday:
+                continue
+            if deal >= num:
+                break
+            self.updateDay_Table(cday, self.listWins[deal + 1 + skip])
+            self.daysLabels[deal + 1 + skip].setText(cday)
+            deal += 1
 
     def updateDay_Table(self, cday, tableWin):
         ds = ths_orm.THS_DDE.select().where(ths_orm.THS_DDE.day == cday).order_by(ths_orm.THS_DDE.dde.desc())
