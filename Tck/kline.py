@@ -1834,9 +1834,9 @@ class KLineWindow(base_win.BaseWindow):
                     obj = ths_orm.THS_GNTC.get_or_none(code = self.model.code)
                     if obj:
                         self.model.name = obj.name
-                tck_orm.MySelCode.get_or_create(code = self.model.code, name = self.model.name)
+                tck_orm.MyObserve.get_or_create(code = self.model.code, name = self.model.name)
             elif name == 'SZX':
-                tck_orm.MySelCode.delete().where(tck_orm.MySelCode.code == self.model.code)
+                tck_orm.MyObserve.delete().where(tck_orm.MyObserve.code == self.model.code)
             elif name == 'zt-reason':
                 base_win.ThsShareMemory.instance().writeMarkDay(selDay)
                 evt = self.Event('zt-reason', self, code = self.model.code, day = selDay)

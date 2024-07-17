@@ -8,17 +8,15 @@ from Tdx import datafile
 from Download import henxin, ths_ddlr, ths_iwencai
 from THS import ths_win
 from Common import base_win
-from Tck import kline, kline_utils, mark_utils, timeline, top_diary, cache
+from Tck import kline, kline_utils, mark_utils, timeline, top_diary, cache, utils
 
 class DdeWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, 20, '1fr')
         cw = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
-        n = 4 if cw > 1600 else 3
-        self.cols = ['1fr']
-        for i in range(n - 1):
-            self.cols.append(350)
+        n = cw // 400
+        self.cols = ('1fr', ) * n
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.listWins = []
         self.daysLabels =[]
@@ -41,8 +39,9 @@ class DdeWindow(base_win.BaseWindow):
         
         headers = [{'title': '', 'width': 30, 'name': '#idx' },
                    {'title': '代码', 'width': 60, 'name': 'code'},
-                   {'title': '名称', 'width': 0, 'stretch': 1, 'name': 'name', 'sortable':True},
-                   {'title': 'DDE净额_亿', 'width': 90, 'name': 'dde', 'sortable':True, 'formater': formateDde},
+                   {'title': '名称', 'width': 70, 'name': 'name', 'sortable':True},
+                   {'title': '板块', 'width': 0, 'stretch': 1, 'name': 'bk', 'sortable':True},
+                   {'title': 'DDE净额_亿', 'width': 90, 'name': 'dde', 'sortable':True, 'formater': formateDde, 'textAlign': win32con.DT_RIGHT | win32con.DT_VCENTER | win32con.DT_SINGLELINE},
                    {'title': '排名', 'width': 70, 'name': 'dde_pm', 'sortable':False , 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
                    ]
         for i in range(len(self.layout.templateColumns)):
@@ -64,26 +63,8 @@ class DdeWindow(base_win.BaseWindow):
         self.updateDay(day)
 
     def onShow(self):
-        self.initMySelect()
-
-    def initMySelect(self):
-        tab = self.listWins[0]
-        tab.rowHeight = 50
-        tab.headers = [
-                   {'title': '', 'width': 30, 'name': '#idx' },
-                   {'title': '代码', 'width': 80, 'name': 'code', 'sortable':True},
-                   {'title': '名称', 'width': 80, 'name': 'name', 'sortable':True, 'render': mark_utils.markColorTextRender },
-                   {'title': '板块', 'width': 0, 'stretch': 1, 'name': 'bk', 'sortable':True},
-                   {'title': '分时', 'width': 300, 'name': 'code', 'render': cache.renderTimeline},
-                   {'title': '加入日期', 'width': 100, 'name': 'day', 'sortable':False , 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
-                   ]
-        rs = []
-        for it in tck_orm.MySelCode.select().dicts():
-            rs.append(it)
-            bk = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == it['code'])
-            it['bk'] = bk.hy_2_name if bk else ''
-        tab.setData(rs)
-
+        pass
+   
     def onSelDayChanged(self, evt, args):
         if evt.name != 'Select':
             return
@@ -113,17 +94,20 @@ class DdeWindow(base_win.BaseWindow):
         netDay = None
         if rs and rs[0].day <= day:
             skip = 1
-            win = self.listWins[1]
+            win = self.listWins[0]
             cday = rs[0].day
-            self.daysLabels[1].setText(cday)
+            self.daysLabels[0].setText(cday)
             data = [r.__data__ for r in rs]
+            for d in data:
+                bk = utils.get_THS_GNTC(d['code'])
+                d['bk'] = bk['hy_2_name'] + '-' + bk['hy_3_name'] if bk else ''
             win.setData(data)
             win._day = cday
             win.invalidWindow()
             netDay = cday
 
-        num = len(self.cols) - 1 - skip
-        q = ths_orm.THS_DDE.select(ths_orm.THS_DDE.day).distinct().where(ths_orm.THS_DDE.day <= day).order_by(ths_orm.THS_DDE.day.desc()).limit(len(self.cols) - 1).tuples()
+        num = len(self.cols) - skip
+        q = ths_orm.THS_DDE.select(ths_orm.THS_DDE.day).distinct().where(ths_orm.THS_DDE.day <= day).order_by(ths_orm.THS_DDE.day.desc()).limit(len(self.cols)).tuples()
         deal = 0
         for i, d in enumerate(q):
             cday = d[0]
@@ -131,13 +115,16 @@ class DdeWindow(base_win.BaseWindow):
                 continue
             if deal >= num:
                 break
-            self.updateDay_Table(cday, self.listWins[deal + 1 + skip])
-            self.daysLabels[deal + 1 + skip].setText(cday)
+            self.updateDay_Table(cday, self.listWins[deal + skip])
+            self.daysLabels[deal + skip].setText(cday)
             deal += 1
 
     def updateDay_Table(self, cday, tableWin):
         ds = ths_orm.THS_DDE.select().where(ths_orm.THS_DDE.day == cday).order_by(ths_orm.THS_DDE.dde.desc())
         datas = [d.__data__ for d in ds]
+        for d in datas:
+            bk = utils.get_THS_GNTC(d['code'])
+            d['bk'] = bk['hy_2_name'] + '-' + bk['hy_3_name'] if bk else ''
         tableWin.setData(datas)
         tableWin._day = cday
         tableWin.invalidWindow()

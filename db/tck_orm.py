@@ -118,16 +118,17 @@ class DrawLine(pw.Model):
         table_name = '画线'
 
 # 自选股
-class MySelCode(pw.Model):
+class MyObserve(pw.Model):
     code = pw.CharField()
     name = pw.CharField()
+    kind = pw.CharField(null = True, default = 'def')
     day = pw.DateField(null = True, default = datetime.date.today)
     class Meta:
         database = db_tck_def
         table_name = '自选股'
 
 db_tck.create_tables([THS_ZT, CLS_ZT, KPL_ZT, KPL_SCQX, CLS_SCQX, TCK_TCGN])
-db_tck_def.create_tables([TCK_CiTiao, DailyFuPan, Mark, DrawLine, MySelCode])
+db_tck_def.create_tables([TCK_CiTiao, DailyFuPan, Mark, DrawLine, MyObserve])
 
 # move table from a database to another database
 def move_table_data(fromDb, modelClass : pw.Model):
