@@ -74,6 +74,8 @@ class THS_GNTC(pw.Model):
     hy_2_code = pw.CharField(null=True) # 二级行业代码
     hy_3_name = pw.CharField(null=True) # 三级行业名称
     hy_3_code = pw.CharField(null=True) # 三级行业代码
+    zsz = pw.IntegerField(null = True, default = 0) # 总市值, 亿元
+    ltsz = pw.IntegerField(null = True, default = 0) # 流通市值, 亿元
 
     class Meta:
         database = db_gntc

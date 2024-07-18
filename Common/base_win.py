@@ -1005,6 +1005,14 @@ class TableWindow(BaseWindow):
     def getHeaders(self):
         return self.headers
 
+    def getHeaderByName(self, headerName):
+        if not self.headers:
+            return None
+        for h in self.headers:
+            if h['name'] == headerName:
+                return h
+        return None
+
     def getValueAt(self, row, col, colName):
         datas = self.getData()
         if not datas:
@@ -2251,6 +2259,33 @@ class Editor(BaseEditor):
     def setPopupTip(self, model : list):
         self.popupTipModel = model
 
+    # tip = int | str | dict
+    #      int -> tip model' idx
+    #      str -> tip model' name
+    #      dict -> tip model' item
+    def setSelectItem(self, tip):
+        if not self.popupTipModel:
+            return
+        item = None
+        if isinstance(tip, int):
+            idx = tip
+            if idx < 0 or idx > len(self.popupTipModel):
+                return
+            item = self.popupTipModel[idx]
+        elif isinstance(tip, str):
+            for k in self.popupTipModel:
+                if k['name'] == tip:
+                    item = k
+                    break
+        elif isinstance(tip, dict):
+            item = tip
+        if not item:
+            return
+        self.setText(item['title'])
+        self.invalidWindow()
+        newEvt = self.Event('PressEnter', self, text = item['title'], **item)
+        self.notifyListener(newEvt)
+
     def setText(self, text):
         self.scrollX = 0
         self.selRange = None
@@ -2267,6 +2302,8 @@ class Editor(BaseEditor):
     def setInsertPos(self, pos):
         self.insertPos = pos
         rc = self.getCaretRect()
+        if not rc:
+            return
         self.setCaretPos(rc[0], rc[1])
         self.showCaret()
 
@@ -2375,7 +2412,10 @@ class Editor(BaseEditor):
 
     # (left, top, right, bottom)
     def getCaretRect(self):
-        W, H = self.getClientSize()
+        cs = self.getClientSize()
+        if not cs:
+            return None
+        W, H = cs
         lh = self.css['fontSize'] + 4
         x = self.getXAtPos(self.insertPos)
         y = (H - lh ) // 2
@@ -2402,10 +2442,7 @@ class Editor(BaseEditor):
         if not self.popupTipModel:
             return
         def onCc(evt, args):
-            self.setText(evt.item['title'])
-            self.invalidWindow()
-            newEvt = self.Event('PressEnter', self, text = evt.item['title'], **evt.item)
-            self.notifyListener(newEvt)
+            self.setSelectItem(evt.item)
         menu = PopupMenu.create(self.hwnd, self.popupTipModel)
         menu.addNamedListener('Select', onCc)
         rc = win32gui.GetWindowRect(self.hwnd)
@@ -3043,6 +3080,42 @@ class ComboBox(Editor):
     def __init__(self) -> None:
         super().__init__()
         self.css['paddings'] = (0, 0, 20, 0)
+        self.selIdx = -1
+
+    def getSelectItem(self):
+        if not self.popupTipModel:
+            return None
+        if self.selIdx < 0 or self.selIdx >= len(self.popupTipModel):
+            return None
+        return self.popupTipModel[self.selIdx]
+    
+    # tip = int | str | dict
+    #      int -> tip model' idx
+    #      str -> tip model' name
+    #      dict -> tip model' item
+    def setSelectItem(self, tip):
+        if not self.popupTipModel:
+            return
+        item = None
+        if isinstance(tip, int):
+            idx = tip
+            if idx < 0 or idx > len(self.popupTipModel):
+                return
+            item = self.popupTipModel[idx]
+        elif isinstance(tip, str):
+            for k in self.popupTipModel:
+                if k['name'] == tip:
+                    item = k
+                    break
+        elif isinstance(tip, dict):
+            item = tip
+        if not item:
+            return
+        for i, d in enumerate(self.popupTipModel):
+            if d == item:
+                self.selIdx = i
+                break
+        return super().setSelectItem(tip)
 
     def onDraw(self, hdc):
         super().onDraw(hdc)

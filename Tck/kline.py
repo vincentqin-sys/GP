@@ -1773,6 +1773,10 @@ class KLineWindow(base_win.BaseWindow):
                 selDay = selDay.replace('-', '')
                 selDay = int(selDay)
         ck = self.klineIndicator.visibleRefZS
+        zx = [
+            {'title': '默认', 'kind': 'def'},
+            {'title': '涨停观察', 'kind': 'zt'},
+        ]
         mm = [#{'title': '日线', 'name': 'day', 'enable': 'day' != self.dateType}, 
               #{'title': '周线', 'name': 'week', 'enable': 'week' != self.dateType}, 
               #{'title': '月线', 'name': 'month', 'enable': 'month' != self.dateType},
@@ -1789,8 +1793,8 @@ class KLineWindow(base_win.BaseWindow):
               {'title': '- 删除画线', 'name': 'del-draw-line'},
               {'title': 'LINE'},
               {'title': '涨停原因', 'name':'zt-reason', 'enable': selDay > 0},
-              {'title': '加自选', 'name':'JZX'},
-              {'title': '- 删自选', 'name':'SZX'}
+              {'title': '加自选', 'name':'JZX', 'sub-menu': zx},
+              {'title': '- 删自选', 'name':'SZX', 'sub-menu': zx}
               ]
         menu = base_win.PopupMenu.create(self.hwnd, mm)
         x, y = win32gui.GetCursorPos()
@@ -1834,9 +1838,9 @@ class KLineWindow(base_win.BaseWindow):
                     obj = ths_orm.THS_GNTC.get_or_none(code = self.model.code)
                     if obj:
                         self.model.name = obj.name
-                tck_orm.MyObserve.get_or_create(code = self.model.code, name = self.model.name)
+                tck_orm.MyObserve.get_or_create(code = self.model.code, name = self.model.name, kind = evt.item['kind'])
             elif name == 'SZX':
-                tck_orm.MyObserve.delete().where(tck_orm.MyObserve.code == self.model.code)
+                tck_orm.MyObserve.delete().where((tck_orm.MyObserve.code == self.model.code) & (tck_orm.MyObserve.kind == evt.item['kind']))
             elif name == 'zt-reason':
                 base_win.ThsShareMemory.instance().writeMarkDay(selDay)
                 evt = self.Event('zt-reason', self, code = self.model.code, day = selDay)

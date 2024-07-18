@@ -190,6 +190,16 @@ def downloadSaveDde():
         traceback.print_exc()
     return False
 
+def download_hygn():
+    try:
+        upd, ins = ths_iwencai.download_hygn()
+        u, i = ths_iwencai.save_hygn(upd, ins)
+        console.write_1(console.CYAN, f'[THS-HyGn]  update {u}, insert {i}')
+        return True
+    except Exception as e:
+        traceback.print_exc()
+    return False
+
 def run():
     download_hygn_infos = {}
     last_zt_time = 0
@@ -238,9 +248,8 @@ def run():
 
         # 下载个股板块概念信息
         if (curTime >= '15:20') and (day not in download_hygn_infos):
-            #upd, ins = ths_iwencai.download_hygn()
-            #ths_iwencai.save_hygn(upd, ins)
-            #download_hygn_infos[day] = True
+            download_hygn()
+            download_hygn_infos[day] = True
             pass
 
 def autoLoadThsZT():

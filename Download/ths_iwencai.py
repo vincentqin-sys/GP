@@ -156,8 +156,8 @@ def modify_hygn(obj : ths_orm.THS_GNTC, zsInfos):
 # @return update-datas, insert-datas
 def download_hygn():
     # 下载所有的 个股行业概念（含当日涨跌信息）
-    # code 市盈率(pe)[20240708],  总股本[20240708]  所属概念  所属同花顺行业  最新涨跌幅  最新价 股票简称
-    rs = iwencai_load_list(question = '个股及行业板块')
+    # code 市盈率(pe)[20240708],  总股本[20240708]  所属概念  所属同花顺行业  最新涨跌幅  最新价 股票简称  总市值[20240717] a股市值(不含限售股)[20240717]
+    rs = iwencai_load_list(question = '个股及行业板块,总市值,流通市值')
     zsInfos = {}
     qr = ths_orm.THS_ZS.select()
     for q in qr:
@@ -166,12 +166,20 @@ def download_hygn():
     inserts = []
     for idx, line in enumerate(rs):
         code, name, hy, gn = line['code'], line['股票简称'], line['所属同花顺行业'], line['所属概念']
-        hy = hy.strip()
-        gn = gn.strip()
+        zsz, ltsz = 0, 0
+        for k in line:
+            if '总市值' in k: zsz = int(float(line[k])) // 100000000
+            elif 'a股市值' in k: ltsz = int(float(line[k])) // 100000000
+        hy = hy.strip() if hy else ''
+        gn = gn.strip() if gn else ''
         gns = gn.split(';')
         gn = ';'.join(gns)
         obj = ths_orm.THS_GNTC.get_or_none(ths_orm.THS_GNTC.code == code)
         if obj:
+            if obj.zsz != zsz or obj.ltsz != ltsz:
+                obj.zsz = zsz
+                obj.ltsz = ltsz
+                obj.save()
             if obj.hy != hy or obj.gn != gn or obj.name != name:
                 obj.hy = hy
                 obj.name = name
@@ -179,7 +187,7 @@ def download_hygn():
                 modify_hygn(obj, zsInfos)
                 updates.append(obj)
         else:
-            obj = ths_orm.THS_GNTC(code = code, name = name, gn = gn, hy = hy)
+            obj = ths_orm.THS_GNTC(code = code, name = name, gn = gn, hy = hy, zsz = zsz, ltsz = ltsz)
             modify_hygn(obj, zsInfos)
             inserts.append(obj)
     return updates, inserts
@@ -327,10 +335,11 @@ def download_one_dde(code):
 if __name__ == '__main__':
     #download_one_dde('300139')
 
-    rs = download_dde_money()
+    #rs = download_dde_money()
     #save_dde_money(rs)
     
-    #download_hygn()
+    #u, i = download_hygn()
+    #save_hygn(u, i)
     #download_hot()
     #rs = download_zs_zd()
     #save_zs_zd(rs)

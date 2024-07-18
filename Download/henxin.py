@@ -1,4 +1,4 @@
-import datetime, time, random, requests, re, json, os, sys, struct
+import datetime, time, random, requests, re, json, os, sys, struct, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
@@ -221,10 +221,10 @@ class ThsZsCache:
             return False
         return now.hour >= 16
     
-    # item = struct.unpack('l5f2l', bs)
-    #('day', 'open', 'high', 'low', 'close', 'amount', 'vol') # vol(股 始终设为0)
     # res = {name:xx, data:[], today: }
-    def save(self, code, res):
+    def saveKline(self, code, res):
+        if not res or not res['data']:
+            return
         df = DataFile(code, DataFile.DT_DAY, DataFile.FLAG_NEWEST)
         rdata = res['data']
         if not rdata:
@@ -255,10 +255,100 @@ class ThsZsCache:
         f.close()
 
 _cache = ThsZsCache()
-def saveZsCache(code, res):
-    if not res or not res['data']:
-        return
-    _cache.save(code, res)
+
+class CacheItem:
+    def __init__(self, data) -> None:
+        self.data = data
+        self.lastTime = time.time()
+        self.lastDay = datetime.date.today()
+
+class HexinMemCache:
+    # kind = 'kline' 'today' 'timeline'
+    def __init__(self) -> None:
+        self.datas = {} # key = code + kind, value = CacheItem
+    
+    def getCache(self, code, kind):
+        if not code or not kind:
+            return None
+        key = code + kind
+        rs = self.datas.get(key, None)
+        if rs:
+            return rs.data
+        return None
+    
+    # data:  {'name': xx, 'today': today,  'data': [HexinUrl.ItemData, ...]}
+    # data:  {name:xx, data: HexinUrl.ItemData}
+    # data: {name:xx, pre:xx, date:yyyymmdd, data: str;str;..., }  data: 时间，价格，成交额（元），分时均价，成交量（手）;
+    def saveCache(self, data, kind):
+        if kind == 'kline' or kind == 'today':
+            if not data or not data['data']:
+                return
+        elif kind == 'timeline':
+            if not data or not data['dataArr']:
+                return
+        code = data['code']
+        it = CacheItem(data)
+        self.datas[code + kind] = it
+    
+    # kind = 'kline' 'today' 'timeline'
+    # @return True | False
+    def needUpdate(self, code, kind):
+        if not code or not kind:
+            return False
+        key = f'{code}{kind}'
+        data = self.datas.get(key, None)
+        if not data:
+            return True
+        if kind == 'kline':
+            u = data.lastDay != datetime.date.today()
+            return u
+        if kind == 'today':
+            if data.lastDay != datetime.date.today():
+                return True
+            date = data.data['data'].day
+            today = datetime.date.today()
+            iday = today.year * 10000 + today.month * 100 + today.day
+            if iday != date:
+                return False
+            u = self._checkTime(data, 3 * 60) # 3 minuts
+            return u
+        if kind == 'timeline':
+            if data.lastDay != datetime.date.today():
+                return True
+            date = int(data.data['date'])
+            today = datetime.date.today()
+            iday = today.year * 10000 + today.month * 100 + today.day
+            if iday != date:
+                return False
+            u = self._checkTime(data, 3 * 60)
+            return u
+        return False
+
+    def _checkTime(self, data, diff):
+        if time.time() - data.lastTime <= diff:
+            return False
+        lt = datetime.datetime.fromtimestamp(data.lastTime)
+        mm = lt.hour * 100 + lt.minute
+        now = datetime.datetime.now()
+        nmm = now.hour * 100 + now.minute
+        if mm > 1500 and nmm > 1500:
+            return False
+        if (mm > 1130 and mm < 1300) and (nmm > 1130 and nmm < 1300):
+            return False
+        if mm < 930 and nmm < 930:
+            return False
+        return True
+
+    def getKindByUrl(self, url):
+        if '/last1800.js' in url:
+            return 'kline'
+        if '/today.js' in url:
+            return 'today'
+        if '/last.js' in url:
+            return 'timeline'
+        return None
+        
+_memcache = HexinMemCache()
 
 class HexinUrl(Henxin):
     session = None
@@ -348,12 +438,20 @@ class HexinUrl(Henxin):
         url = self._getUrlWithParam(url)
         return url
 
-    # @return today:  {name:xx, data: HexinUrl.ItemData}
-    #         kline:  {'name': xx, 'today': today,  'data': [HexinUrl.ItemData, ...]}
-    #         fenshi: {name:xx, pre:xx, date:xxx, data: str;str;..., }  data: 时间，价格，成交额（元），分时均价，成交量（手）;
+    # @return today:  {name:xx, code:xx, data: HexinUrl.ItemData}
+    #         kline:  {'name': xx, code:xx, 'today': yyyymmdd(str),  'data': [HexinUrl.ItemData, ...]}
+    #         fenshi: {name:xx, code:xx, pre:xx, date:yyyymmdd(str), data: str;str;..., dataArr:[HexinUrl.ItemData...] }  data: 时间，价格，成交额（元），分时均价，成交量（手）;
     def loadUrlData(self, url):
         if not url:
             return None
+        cp = re.compile(r'.*?/\d{2}_(\d{6})/.*')
+        ma = cp.match(url)
+        code = ma.group(1)
+        # find in cache
+        kind = _memcache.getKindByUrl(url)
+        if not _memcache.needUpdate(code, kind):
+            return _memcache.getCache(code, kind)
+
         resp = self.session.get(url)
         if resp.status_code != 200:
             print('[HexinUrl.loadUrlData] Error:', resp)
@@ -363,14 +461,18 @@ class HexinUrl(Henxin):
         ei = txt.rindex(')')
         txt = txt[bi + 1 : ei]
         #print(txt)
+        rs = None
         if '/last1800.js' in url:
             # dayly kline
-            return self.parseDaylyData(txt)
+            rs = self.parseDaylyData(txt)
         if '/today.js' in url:
-            return self.parseTodayData(txt)
+            rs = self.parseTodayData(txt)
         if '/last.js' in url:
-            return self.parseFenShiData(txt)
-        return None
+            rs = self.parseFenShiData(txt)
+        if rs:
+            rs['code'] = code
+        _memcache.saveCache(rs, kind)
+        return rs
     
     def loadKLineData(self, code):
         url = self.getKLineUrl(code)
@@ -379,10 +481,10 @@ class HexinUrl(Henxin):
             return None
         data = klineRs['data']
         if code[0 : 2] == '88' and '/01/last1800' in url: # 仅保存指数
-            saveZsCache(code, klineRs)
+            _cache.saveKline(code, klineRs)
         if (code[0 : 2] == '88') and (not data):
-            #df = DataFile(code, DataFile.DT_DAY)
-            #data = df.data
+            df = DataFile(code, DataFile.DT_DAY)
+            data = df.data
             pass
         if data:
             last = data[-1]
