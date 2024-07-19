@@ -9,7 +9,7 @@ from Common import base_win
 from Tck import ddlr_detail, timeline, kline
 from THS import ths_win
 
-def openInCurWindow_Code(parent : base_win.BaseWindow, data):
+def createKLineWindow(parent, rect = None, style = None):
     win = kline.KLineCodeWindow()
     win.addIndicator('rate | amount')
     win.addIndicator(kline.DayIndicator())
@@ -23,13 +23,21 @@ def openInCurWindow_Code(parent : base_win.BaseWindow, data):
     win.addIndicator(kline.DdeIndicator())
     dw = win32api.GetSystemMetrics (win32con.SM_CXSCREEN)
     dh = win32api.GetSystemMetrics (win32con.SM_CYSCREEN) - 35
-    W, H = int(dw * 1), int(dh * 0.85)
-    x = (dw - W) // 2
-    y = (dh - H) // 2
-    win.createWindow(parent.hwnd, (0, 0, W, H), win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) # WS_OVERLAPPEDWINDOW
+    if not rect:
+        W, H = int(dw * 1), int(dh * 0.85)
+        x = (dw - W) // 2
+        y = (dh - H) // 2
+        rect = (0, 0, W, H)
+    if not style:
+        style = win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION
+    win.createWindow(parent, rect, style) # WS_OVERLAPPEDWINDOW
+    win.klineWin.addListener(openKlineMinutes_Simple, win)
+    return win
+
+def openInCurWindow_Code(parent : base_win.BaseWindow, data):
+    win = createKLineWindow(parent.hwnd)
     win.changeCode(data['code'])
     win.klineWin.setMarkDay(data['day'])
-    win.klineWin.addListener(openKlineMinutes_Simple, win)
     win.klineWin.makeVisible(-1)
     return win
 

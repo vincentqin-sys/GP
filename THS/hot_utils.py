@@ -1,5 +1,5 @@
 import peewee as pw
-import sys, os
+import sys, os, time
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db.ths_orm import THS_Hot, THS_HotZH, THS_GNTC
@@ -69,6 +69,48 @@ def getLastTradeDay():
 def calcHotZHOnLastDay():
     day = getLastTradeDay()
     return calcHotZHOnDay(day)
+
+class DynamicHotZH:
+    def __init__(self) -> None:
+        self.lastTime = 0
+        self.hotMaxDay = 0
+        self.hotZHMaxDay = 0
+        self.datas = None
+    
+    def needUpdate(self):
+        diff = time.time() - self.lastTime
+        if diff < 6 * 60:
+            return False
+        return True
+
+    def calcDynamicHotsZH(self):
+        if not self.needUpdate():
+            return
+        self.lastTime = time.time()
+        self.hotMaxDay = getLastTradeDay()
+        self.hotZHMaxDay = THS_HotZH.select(pw.fn.max(THS_HotZH.day)).scalar()
+        if self.hotMaxDay == self.hotZHMaxDay:
+            self.datas = None
+            return
+        ds = calcHotZHOnDay(self.hotMaxDay)
+        self.datas = {}
+        for d in ds:
+            self.datas[d['code']] = d
+
+    def getDynamicHotZH(self, day, code):
+        if isinstance(day, str):
+            day = int(day.replace('-', ''))
+        if isinstance(code, str):
+            code = int(code)
+        self.calcDynamicHotsZH()
+        if not self.datas or day != self.hotMaxDay:
+            return None
+        return self.datas.get(code, None)
+    
+dyz = DynamicHotZH()
+def getDynamicHotZH(day, code):
+    return dyz.getDynamicHotZH(day, code)
+
 
 def loadFromFile():
     import json

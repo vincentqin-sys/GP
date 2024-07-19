@@ -7,6 +7,7 @@ from db import ths_orm, tdx_orm, tck_orm
 from Tdx import datafile
 from Download import henxin, cls
 from Common import base_win, ext_win, dialog
+from THS import hot_utils
 
 class KLineModel_Tdx(datafile.DataFile):
     def __init__(self, code):
@@ -266,8 +267,8 @@ class RefZSKDrawer:
         zs = ths_orm.THS_ZS.get_or_none(ths_orm.THS_ZS.name == hys[1])
         if not zs:
             return
-        if zs.code == self.zsCode:
-            return
+        #if zs.code == self.zsCode:
+        #    return
         self.updateRefZsData(zs.code)
 
     def updateRefZsData(self, zsCode):
@@ -1040,6 +1041,13 @@ class HotIndicator(CustomIndicator):
             if not fd:
                 fd = {'day': d.day, 'zhHotOrder': ''}
             rs.append(fd)
+        # calc last 
+        if rs:
+            last = rs[-1]
+            hot = hot_utils.getDynamicHotZH(last['day'], code)
+            if hot:
+                rs[-1] = hot
+
         self.setCustomData(rs)
 
     def drawItem(self, idx, hdc, pens, hbrs, x):

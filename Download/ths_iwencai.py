@@ -36,7 +36,7 @@ import sys, peewee as pw, requests, json, re, traceback, time, datetime
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm
 from Common import holiday
-from Download import henxin, console
+from Download import henxin, console, memcache
 
 def iwencai_search_info(question, intent = 'stock', input_type = 'typewrite'):
     url = 'http://www.iwencai.com/customized/chart/get-robot-data'
@@ -325,11 +325,15 @@ def save_zs_zd(datas):
 #  dde-info = {时间, 股票简称, dde大单净额, dde大单卖出金额, dde大单买入金额, 股票代码, dde大单净量, dde散户数量}
 # @return list of dde-info
 def download_one_dde(code):
+    KIND = 'DDE'
+    if not memcache.cache.needUpdate(code, KIND):
+        return memcache.cache.getCache(code, KIND)
     txt = iwencai_search_info(f'{code}, dde')
     js = json.loads(txt)
     answer = js['data']['answer'][0]
     components = answer['txt'][0]['content']['components']
     datas = components[-1]['data']['datas']
+    memcache.cache.saveCache(code, datas, KIND)
     return datas
 
 if __name__ == '__main__':

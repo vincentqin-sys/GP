@@ -52,19 +52,7 @@ class MyWindow(base_win.BaseWindow):
         win.addNamedListener('SelectRow', self.onSelectRow)
         self.kindCombox.addNamedListener('PressEnter', self.onSelectKind)
 
-        self.klineWin = kline.KLineCodeWindow()
-        self.klineWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.klineWin.addIndicator('rate | amount')
-        self.klineWin.addIndicator(kline.DayIndicator())
-        #win.addIndicator(kline.DdlrIndicator( {'height': 100}))
-        #win.addIndicator(kline.DdlrIndicator({}, False))
-        #win.addIndicator(kline.DdlrPmIndicator())
-        self.klineWin.addIndicator(kline.ScqxIndicator()) # {'itemWidth': 40}
-        self.klineWin.addIndicator(kline.HotIndicator()) # {'itemWidth': 40}
-        self.klineWin.addIndicator(kline.ThsZT_Indicator())
-        self.klineWin.addIndicator(kline.ClsZT_Indicator())
-        self.klineWin.addIndicator(kline.DdeIndicator())
-
+        self.klineWin = kline_utils.createKLineWindow(self.hwnd, (0, 0, 1, 1), win32con.WS_VISIBLE | win32con.WS_CHILD)
         # fs window
         self.fsWin = timeline.SimpleTimelineWindow()
         self.fsWin.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -123,7 +111,7 @@ class MyWindow(base_win.BaseWindow):
         menu = base_win.PopupMenu.create(self.hwnd, model)
         def onMenuItem(evt, rd):
             if evt.item['name'] == 'del':
-                tck_orm.MyObserve.delete().where(tck_orm.MyObserve.code == rowData['code'], tck_orm.MyObserve.kind == kind)
+                tck_orm.MyObserve.delete().where(tck_orm.MyObserve.code == rowData['code'], tck_orm.MyObserve.kind == kind).execute()
                 dts : list = tableWin.getData()
                 dts.pop(row)
             else:
