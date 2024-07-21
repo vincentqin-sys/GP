@@ -384,6 +384,9 @@ class KLineIndicator(Indicator):
     def setMarkDay(self, day, tip = None):
         if type(day) == str:
             day = int(day.replace('-', ''))
+        elif isinstance(day, datetime.date):
+            dd : datetime.date = day
+            day = dd.year * 10000 + dd.month * 100 + dd.day
         if type(day) != int:
             return
         if day not in self.markDays:
@@ -1686,6 +1689,9 @@ class KLineWindow(base_win.BaseWindow):
 
     def removeMarkDay(self, day):
         self.klineIndicator.removeMarkDay(day)
+
+    def clearMarkDay(self):
+        self.klineIndicator.clearMarkDay()
 
     def calcIndicatorsRect(self):
         if not self.hwnd:

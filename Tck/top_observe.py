@@ -80,6 +80,8 @@ class MyWindow(base_win.BaseWindow):
         code = evt.data['code']
         self.fsWin.load(code)
         self.klineWin.changeCode(code)
+        self.klineWin.klineWin.clearMarkDay()
+        self.klineWin.klineWin.setMarkDay(evt.data['day'])
 
     def onSelectKind(self, evt, args):
         kind = evt.kind
