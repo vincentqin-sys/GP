@@ -959,6 +959,7 @@ class FlowLayout(Layout):
 # listeners : DbClick = {src, x, y, row, data(row data), model(all data)}
 #             RowEnter = {src, row, data, model}
 #             SelectRow = {src, row(-1: 没有选中行), oldRow, data, model}
+#             DragEnd = {src, fromRow, toRow, rowData, data}
 class TableWindow(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -970,6 +971,12 @@ class TableWindow(BaseWindow):
         self.css['cellBorder'] = 0xc0c0c0
         self.css['selBgColor'] = 0xf0a0a0
         self.paddings = (2, 0, 2, 0) # cell default paddings
+
+        self.enableDrag = False
+        self.draging = False
+        self.lButtonDown = False
+        self.dragRow = -1
+        self.dragToRow = -1
 
         self.enableCellSelect = False
         self.rowHeight = 24
@@ -1170,6 +1177,15 @@ class TableWindow(BaseWindow):
         for i in range(vr[1] - vr[0]):
             rc = (0, sy + i * self.rowHeight, w, sy + (i + 1) * self.rowHeight)
             self.drawRow(hdc, i, i + vr[0], rc)
+        # draw draging
+        if not self.draging or self.dragToRow < 0:
+            return
+        CW, CH = self.getClientSize()
+        if self.dragToRow < len(self.data):
+            cy = self.getYOfRow(self.dragToRow)
+        else:
+            cy = self.getYOfRow(self.dragToRow - 1) + self.rowHeight
+        self.drawer.drawLine(hdc, 2, cy, CW - 2, cy, color = 0x00ff00, width = 2)
 
     def drawSort(self, hdc, rc):
         if not self.sortHeader:
@@ -1376,10 +1392,63 @@ class TableWindow(BaseWindow):
             return True
         return False
 
+    def _calcDragToRow(self, y):
+        if not self.data:
+            return -1
+        row = self.getRowAtY(y)
+        if row == -1:
+            return len(self.data)
+        if row < 0:
+            return -1
+        sy = self.getYOfRow(row)
+        if y - sy <= self.rowHeight // 2:
+            return row
+        return row + 1
+
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONDOWN:
             x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
-            self.onClick(x, y)
+            #win32gui.SetCapture()
+            self.lButtonDown = True
+            self.draging = False
+            self.dragRow = -1
+            self.dragToRow = -1
+            if self.enableDrag:
+                row = self.getRowAtY(y)
+                if row >= 0:
+                    self.dragRow = row
+            return True
+        if msg == win32con.WM_MOUSEMOVE:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            if self.lButtonDown and self.enableDrag:
+                row = self._calcDragToRow(y)
+                if row != self.dragRow and row >= 0:
+                    self.draging = True
+                    self.dragToRow = row
+                    self.invalidWindow()
+                    win32gui.UpdateWindow(self.hwnd)
+            return True
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            self.lButtonDown = False
+            row = self._calcDragToRow(y)
+            if not self.draging:
+                self.onClick(x, y)
+            elif self.draging and self.dragRow != row and self.dragRow >= 0 and row >= 0:
+                #drag end
+                ds = self.getData()
+                obj = ds.pop(self.dragRow)
+                if self.dragRow < row:
+                    ds.insert(row - 1, obj)
+                else:
+                    ds.insert(row, obj)
+                self.invalidWindow()
+                self.notifyListener(self.Event('DragEnd', self, fromRow = self.dragRow, toRow = row, rowData = obj, data = ds))
+            self.draging = False
+            self.dragRow = -1
+            self.dragToRow = -1
+            self.invalidWindow()
+            win32gui.UpdateWindow(self.hwnd)
             return True
         if msg == win32con.WM_MOUSEWHEEL:
             self.onMouseWheel((wParam >> 16) & 0xffff)

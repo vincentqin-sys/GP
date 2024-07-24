@@ -194,7 +194,7 @@ def download_hygn():
     try:
         upd, ins = ths_iwencai.download_hygn()
         u, i = ths_iwencai.save_hygn(upd, ins)
-        console.write_1(console.CYAN, f'[THS-HyGn]  update {u}, insert {i}')
+        console.writeln_1(console.CYAN, f'[THS-HyGn]  update {u}, insert {i}')
         return True
     except Exception as e:
         traceback.print_exc()

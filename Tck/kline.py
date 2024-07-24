@@ -2355,6 +2355,21 @@ class SelectTipWin(ext_win.CellRenderWindow):
                 cell['color'] = 0x808080
         return cell
 
+class PanKouWindow(ext_win.CellRenderWindow):
+    def __init__(self, ) -> None:
+        super().__init__(('1fr', '1fr', '1fr'), 5)
+        self.init()
+
+    def init(self):
+        RH = 20
+        for i in range(5):
+            self.addRow({'height': 25, 'margin': 0, 'name': 'sell', 'val': 5 - i}, self.getCell)
+        for i in range(5):
+            self.addRow({'height': 25, 'margin': 0, 'name': 'buy', 'val': i + 1}, self.getCell)
+
+    def getCell(self, rowInfo, idx):
+        pass
+
 class KLineCodeWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()

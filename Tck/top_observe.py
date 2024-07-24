@@ -30,26 +30,28 @@ class MyWindow(base_win.BaseWindow):
         self.kindCombox.createWindow(self.hwnd, (0, 0, 150, 30))
         flowLayout.addContent(self.kindCombox)
 
-        def formateDde(colName, val, rowData):
-            return f'{val :.2f}'
+        def formateMoney(colName, val, rowData):
+            return f'{val}亿'
 
         headers = [
                    {'title': '', 'width': 30, 'name': '#idx' },
                    #{'title': 'M', 'width': 30, 'name': 'markColor', 'sortable':True , 'render': mark_utils.markColorBoxRender, 'sorter': mark_utils.sortMarkColor },
                    {'title': '代码', 'width': 80, 'name': 'code', 'sortable':True},
                    {'title': '名称', 'width': 80, 'name': 'name', 'sortable':True, 'render': mark_utils.markColorTextRender },
-                   {'title': '市值', 'width': 60, 'name': 'zsz', 'sortable':True},
+                   {'title': '市值', 'width': 60, 'name': 'zsz', 'sortable':True, 'formater': formateMoney},
                    {'title': '板块', 'width': 0, 'stretch': 1, 'name': 'bk', 'sortable':True},
                    #{'title': '分时', 'width': 300, 'name': 'code', 'render': cache.renderTimeline},
                    {'title': '加入日期', 'width': 100, 'name': 'day', 'sortable':False , 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
                    ]
         self.tableWin = win = base_win.TableWindow()
         win.rowHeight = 30
+        win.enableDrag = True
         win.createWindow(self.hwnd, (0, 0, 1, 1))
         win.headers = headers
         win.addListener(self.onDbClick)
         win.addNamedListener('ContextMenu', self.onContextMenu)
         win.addNamedListener('SelectRow', self.onSelectRow)
+        win.addNamedListener('DragEnd', self.onDragMove)
         self.kindCombox.addNamedListener('PressEnter', self.onSelectKind)
 
         self.klineWin = kline_utils.createKLineWindow(self.hwnd, (0, 0, 1, 1), win32con.WS_VISIBLE | win32con.WS_CHILD)
@@ -59,12 +61,12 @@ class MyWindow(base_win.BaseWindow):
         self.fsWin.volHeight = 50
 
         rows = (30, 250, '1fr')
-        cols = (600, '1fr')
+        cols = (600, '1fr', 270)
         self.layout = base_win.GridLayout(rows, cols, (5, 10))
         self.layout.setContent(0, 0, flowLayout)
         self.layout.setContent(1, 0, win, {'verExpand': -1})
         self.layout.setContent(0, 1, self.fsWin, {'verExpand': 1})
-        self.layout.setContent(2, 1, self.klineWin)
+        self.layout.setContent(2, 1, self.klineWin, {'horExpand': 1})
 
     def onShow(self):
         idx = self.kindCombox.selIdx
@@ -89,7 +91,7 @@ class MyWindow(base_win.BaseWindow):
 
     def initMySelect(self, kind):
         rs = []
-        q = tck_orm.MyObserve.select().where(tck_orm.MyObserve.kind == kind).dicts()
+        q = tck_orm.MyObserve.select().where(tck_orm.MyObserve.kind == kind).order_by(tck_orm.MyObserve.order.asc()).dicts()
         for it in q:
             rs.append(it)
             bk = utils.get_THS_GNTC(it['code'])
@@ -99,8 +101,15 @@ class MyWindow(base_win.BaseWindow):
                 it['zsz'] = bk['zsz']
         mark_utils.mergeMarks(rs, 'observe-' + kind, False)
         self.tableWin.setData(rs)
-        self.tableWin.setSortHeader(self.tableWin.getHeaderByName('bk'), 'ASC')
+        #self.tableWin.setSortHeader(self.tableWin.getHeaderByName('bk'), 'ASC')
         self.tableWin.invalidWindow()
+
+        for idx, d in enumerate(self.tableWin.getData()):
+            order = idx + 1
+            #tck_orm.MyObserve.update(order = order).where(tck_orm.MyObserve.id == d['id']).execute()
+
+    def onDragMove(self, evt, args):
+        pass
 
     def onContextMenu(self, evt, args):
         tableWin = evt.src
@@ -109,13 +118,19 @@ class MyWindow(base_win.BaseWindow):
         rowData = tableWin.getData()[row] if row >= 0 else None
         model = mark_utils.getMarkModel(row >= 0)
         model.append({'title': 'LINE'})
-        model.append({'title': '删除', 'name': 'del', 'enable': rowData is not None})
+        model.append({'title': '- 删除', 'name': 'del', 'enable': rowData is not None})
+        model.append({'title': '导出', 'name': 'export'})
+        model.append({'title': '导入', 'name': 'import'})
         menu = base_win.PopupMenu.create(self.hwnd, model)
         def onMenuItem(evt, rd):
             if evt.item['name'] == 'del':
                 tck_orm.MyObserve.delete().where(tck_orm.MyObserve.code == rowData['code'], tck_orm.MyObserve.kind == kind).execute()
                 dts : list = tableWin.getData()
                 dts.pop(row)
+            elif evt.item['name'] == 'export':
+                pass
+            elif evt.item['name'] == 'import':
+                pass
             else:
                 mark_utils.saveOneMarkColor({'kind': 'observe-' + kind, 'code': rowData['code']}, evt.item['markColor'], endDay = rowData['day'])
                 rd['markColor'] = evt.item['markColor']

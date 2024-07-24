@@ -2,6 +2,7 @@ import ctypes, os, sys, requests, json, traceback
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
+from Download import memcache
 
 PX = os.path.join(os.path.dirname(__file__), 'cls-sign.dll')
 mydll = ctypes.CDLL(PX)
@@ -82,6 +83,9 @@ class ClsUrl:
     # 基本信息
     def loadBasic(self, code):
         try:
+            KIND = 'cls-basic'
+            if not memcache.cache.needUpdate(code, KIND):
+                return memcache.cache.getCache(code, KIND)
             params = {
                 'secu_code': self._getTagCode(code),
                 'fields': 'open_px,av_px,high_px,low_px,change,change_px,down_price,change_3,change_5,qrr,entrust_rate,tr,amp,TotalShares,mc,NetAssetPS,NonRestrictedShares,cmc,business_amount,business_balance,pe,ttm_pe,pb,secu_name,secu_code,trade_status,secu_type,preclose_px,up_price,last_px',
@@ -118,6 +122,7 @@ class ClsUrl:
             rt['市盈率_静'] = self.getVal(data, 'pe', float, 0)
             rt['市盈率_TTM'] = self.getVal(data, 'ttm_pe', float, 0)
             #print(rt)
+            memcache.cache.saveCache(code, rt, KIND)
             return rt
         except Exception as e:
             traceback.print_exc()
@@ -176,6 +181,58 @@ class ClsUrl:
             self._toStd(d)
         #print(data)
         return data
+    
+    # 5档盘口
+    # {b_amount_1...5 买1-5手    b_px_1...5: 买1-5价 preclose_px 昨日收盘价 s_amount_1...5 s_px_1...5}
+    def loadPanKou5(self, code):
+        try:
+            KIND = 'cls-pankou-5'
+            if not memcache.cache.needUpdate(code, KIND):
+                return memcache.cache.getCache(code, KIND)
+            params = {
+                'secu_code': self._getTagCode(code),
+                'app': 'CailianpressWeb',
+                'field': 'five',
+                'os': 'web',
+                'sv': '7.7.5',
+            }
+            url = f'https://x-quote.cls.cn/quote/stock/volume?' + self.signParams(params)
+            resp = requests.get(url)
+            txt = resp.content.decode('utf-8')
+            js = json.loads(txt)
+            data = js['data']
+            #print(data)
+            memcache.cache.saveCache(code, data, KIND)
+            return data
+        except Exception as e:
+            traceback.print_exc()
+        return None
+    
+    # 盘口成交量
+    # {end: int, volume: [{change_vol=2, change_vol_color=0, last_px=23.31, minute=102800}, ...] }
+    def loadPanKouVol(self, code):
+        try:
+            KIND = 'cls-pankou-vol'
+            if not memcache.cache.needUpdate(code, KIND):
+                return memcache.cache.getCache(code, KIND)
+            params = {
+                'secu_code': self._getTagCode(code),
+                'app': 'CailianpressWeb',
+                'field': 'vol',
+                'os': 'web',
+                'sv': '7.7.5',
+            }
+            url = f'https://x-quote.cls.cn/quote/stock/volume?' + self.signParams(params)
+            resp = requests.get(url)
+            txt = resp.content.decode('utf-8')
+            js = json.loads(txt)
+            data = js['data']
+            #print(data)
+            memcache.cache.saveCache(code, data, KIND)
+            return data
+        except Exception as e:
+            traceback.print_exc()
+        return None
 
 class ClsDataFile(datafile.DataFile):
     def __init__(self, code, dataType):

@@ -123,6 +123,7 @@ class MyObserve(pw.Model):
     name = pw.CharField()
     kind = pw.CharField(null = True, default = 'def')
     day = pw.DateField(null = True, default = datetime.date.today)
+    order = pw.IntegerField(null = True, default = 0, column_name = '_order')
     class Meta:
         database = db_tck_def
         table_name = '自选股'

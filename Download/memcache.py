@@ -8,7 +8,10 @@ class CacheItem:
 
 class MemCache:
     TIMEOUT = {
-        'default': 10 * 60
+        'default': 10 * 60,
+        'cls-pankou-5': 60,
+        'cls-pankou-vol': 60,
+        'cls-basic': 10 * 60 * 60
     }
     def __init__(self) -> None:
         self.datas = {} # key = code + kind, value = CacheItem
