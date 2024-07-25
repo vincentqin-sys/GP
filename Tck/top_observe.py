@@ -41,7 +41,7 @@ class MyWindow(base_win.BaseWindow):
                    {'title': '市值', 'width': 60, 'name': 'zsz', 'sortable':True, 'formater': formateMoney},
                    {'title': '板块', 'width': 0, 'stretch': 1, 'name': 'bk', 'sortable':True},
                    #{'title': '分时', 'width': 300, 'name': 'code', 'render': cache.renderTimeline},
-                   {'title': '加入日期', 'width': 100, 'name': 'day', 'sortable':False , 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
+                   {'title': '加入日期', 'width': 100, 'name': 'day', 'sortable':True , 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
                    ]
         self.tableWin = win = base_win.TableWindow()
         win.rowHeight = 30
@@ -61,12 +61,12 @@ class MyWindow(base_win.BaseWindow):
         self.fsWin.volHeight = 50
 
         rows = (30, 250, '1fr')
-        cols = (600, '1fr', 270)
+        cols = ('1fr', 270, 600)
         self.layout = base_win.GridLayout(rows, cols, (5, 10))
-        self.layout.setContent(0, 0, flowLayout)
-        self.layout.setContent(1, 0, win, {'verExpand': -1})
-        self.layout.setContent(0, 1, self.fsWin, {'verExpand': 1})
-        self.layout.setContent(2, 1, self.klineWin, {'horExpand': 1})
+        self.layout.setContent(0, 2, flowLayout)
+        self.layout.setContent(1, 2, win, {'verExpand': -1})
+        self.layout.setContent(0, 0, self.fsWin, {'verExpand': 1})
+        self.layout.setContent(2, 0, self.klineWin, {'horExpand': 1})
 
     def onShow(self):
         idx = self.kindCombox.selIdx
@@ -91,7 +91,7 @@ class MyWindow(base_win.BaseWindow):
 
     def initMySelect(self, kind):
         rs = []
-        q = tck_orm.MyObserve.select().where(tck_orm.MyObserve.kind == kind).order_by(tck_orm.MyObserve.order.asc()).dicts()
+        q = tck_orm.MyObserve.select().where(tck_orm.MyObserve.kind == kind).dicts() # .order_by(tck_orm.MyObserve.order.asc())
         for it in q:
             rs.append(it)
             bk = utils.get_THS_GNTC(it['code'])
@@ -101,7 +101,7 @@ class MyWindow(base_win.BaseWindow):
                 it['zsz'] = bk['zsz']
         mark_utils.mergeMarks(rs, 'observe-' + kind, False)
         self.tableWin.setData(rs)
-        #self.tableWin.setSortHeader(self.tableWin.getHeaderByName('bk'), 'ASC')
+        self.tableWin.setSortHeader(self.tableWin.getHeaderByName('bk'), 'ASC')
         self.tableWin.invalidWindow()
 
         for idx, d in enumerate(self.tableWin.getData()):

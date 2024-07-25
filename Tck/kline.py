@@ -1868,6 +1868,7 @@ class KLineWindow(base_win.BaseWindow):
         model = []
         if not obj:
             return model
+        model.append({'title': '上证指数', 'code': 'sh000001'})
         if obj.hy_2_code: model.append({'title': obj.hy_2_name, 'code': obj.hy_2_code})
         if obj.hy_3_code: model.append({'title': obj.hy_3_name, 'code': obj.hy_3_code})
         model.append({'title': 'LINE'})
@@ -1926,6 +1927,10 @@ class KLineWindow(base_win.BaseWindow):
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
             self.onContextMenu(x, y)
             return True
+        if msg == win32con.WM_MOUSELEAVE:
+            self.mouseXY = None
+            self.invalidWindow()
+            return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
     def updateAttr(self, attrName, attrVal):
@@ -1950,19 +1955,25 @@ class KLineWindow(base_win.BaseWindow):
         for it in self.indicators:
             acc = acc or self.acceptMouseMove(x, y, it)
         if not acc:
+            self.mouseXY = None
+            self.invalidWindow()
             return
         si = self.klineIndicator.getIdxAtX(x)
         if si < 0:
+            self.mouseXY = None
+            self.invalidWindow()
             return
         x = self.klineIndicator.getCenterX(si)
         if x < 0:
+            self.mouseXY = None
+            self.invalidWindow()
             return
         if self.selIdx == si and self.mouseXY and y == self.mouseXY[1]:
             return
         
         self.mouseXY = (x, y)
         self.updateAttr('selIdx', si)
-        win32gui.InvalidateRect(self.hwnd, None, True)
+        self.invalidWindow()
 
     def onMouseClick(self, x, y):
         for it in self.indicators:
