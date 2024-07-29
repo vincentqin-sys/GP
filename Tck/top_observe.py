@@ -13,6 +13,7 @@ from Tck import kline, kline_utils, mark_utils, timeline, top_diary, cache, util
 class MyWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
+        self.css['bgColor'] = 0x202020
         self.checkBox_THS = None
         self.tableWin = None
         self.kindCombox = None
@@ -64,16 +65,16 @@ class MyWindow(base_win.BaseWindow):
 
         self.klineWin = kline_utils.createKLineWindow(self.hwnd, (0, 0, 1, 1), win32con.WS_VISIBLE | win32con.WS_CHILD)
         # fs window
-        self.fsWin = timeline.SimpleTimelineWindow()
+        self.fsWin = timeline.TimelinePanKouWindow()
         self.fsWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.fsWin.volHeight = 50
+        self.fsWin.timelineWin.volHeight = 50
 
         rows = (30, 250, '1fr')
         cols = ('1fr', 270, 400)
         self.layout = base_win.GridLayout(rows, cols, (5, 10))
         self.layout.setContent(0, 2, flowLayout)
         self.layout.setContent(1, 2, win, {'verExpand': -1})
-        self.layout.setContent(0, 0, self.fsWin, {'verExpand': 1})
+        self.layout.setContent(0, 0, self.fsWin, {'verExpand': 1, 'horExpand': 1})
         self.layout.setContent(2, 0, self.klineWin, {'horExpand': 1})
 
     def onShow(self):

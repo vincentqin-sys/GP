@@ -77,7 +77,7 @@ def openKlineMinutes_DDLR(evt, parent : base_win.BaseWindow):
 def openKlineMinutes_Simple(evt, parent : base_win.BaseWindow):
     if evt.name != 'DbClick':
         return
-    win = timeline.SimpleTimelineWindow()
+    win = timeline.TimelinePanKouWindow()
     rc = win32gui.GetWindowRect(parent.hwnd)
     #rc2 = (rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1])
     SW = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
@@ -85,7 +85,8 @@ def openKlineMinutes_Simple(evt, parent : base_win.BaseWindow):
     w, h = max(800, int(SW * 0.6)), 600
     x, y = (SW - w) // 2, (SH - h) // 2
     rc2 = (x, y, w, h)
-    win.createWindow(parent.hwnd, rc2, win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+    win.createWindow(parent.hwnd, rc2, win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+    win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
     day = evt.data.day
     win.load(evt.code, day)
 

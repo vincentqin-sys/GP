@@ -1,3 +1,4 @@
+from win32.lib.win32con import WS_CHILD, WS_VISIBLE
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os, copy, traceback
 import os, sys, requests
@@ -7,7 +8,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from Download import henxin, ths_ddlr, cls
 from THS import ths_win
-from Common import base_win
+from Common import base_win, ext_win
 from db import ths_orm
 
 class TimelineModel:
@@ -802,11 +803,94 @@ class SimpleTimelineWindow(base_win.BaseWindow):
                 win32gui.InvalidateRect(hwnd, None, True)
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
+
+class PanKouWindow(ext_win.CellRenderWindow):
+    def __init__(self) -> None:
+        super().__init__(('1fr', '2fr', '2fr'))
+        self.data = None
+        VCENTER = win32con.DT_VCENTER | win32con.DT_SINGLELINE
+        CENTER = VCENTER | win32con.DT_CENTER
+        for i in range(5):
+            self.addRow({'height': 25, 'margin': 0, 'name': 'sell', 'val': 5 - i}, {'text': str(5 - i), 'color': 0xc0c0c0, 'textAlign': CENTER, 'fontSize': 16}, self.getCell, self.getCell)
+        self.addRow({'height': 2, 'bgColor': 0x2020a0})
+        for i in range(5):
+            self.addRow({'height': 25, 'margin': 0, 'name': 'buy', 'val': i + 1}, {'text': str(i + 1), 'color': 0xc0c0c0, 'textAlign': CENTER, 'fontSize': 16}, self.getCell, self.getCell)
+
+    def getCell(self, rowInfo, cellIdx):
+        if not self.data:
+            return None
+        k = rowInfo['name'][0]
+        i = rowInfo['val']
+        px = self.data.get(f'{k}_px_{i}', 0)
+        amount = self.data.get(f'{k}_amount_{i}', 0)
+        amount *= px * 100
+        cx = {'textAlign': win32con.DT_VCENTER | win32con.DT_SINGLELINE}
+
+        if cellIdx == 1:
+            ipx = int(px * 100 + 0.5)
+            if ipx > 0:
+                cx['text'] = f'{ipx // 100}.{ipx % 100}'
+            
+            pre = self.data.get('preclose_px', 0)
+            cx['color'] = 0x0000ff if px >= pre else 0x00ff00
+        elif cellIdx == 2:
+            cx['color'] = 0xF4E202
+            if amount >= 100000000:
+                cx['text'] = f'{amount / 100000000 :.2f}亿'
+            elif amount > 0:
+                cx['text'] = f'{amount / 10000 :.1f}万'
+            else:
+                cx['text'] = ''
+        return cx
+
+    def getVolCell(self, rowInfo, cellIdx):
+        if not self.data:
+            return None
+        k = rowInfo['name'][0]
+        i = rowInfo['val']
+        px = self.data.get(f'{k}_px_{i}', 0)
+        
+        cx = {}
+        pre = self.data.get('preclose_px', 0)
+        cx['color'] = 0x0000ff if px >= pre else 0x00ff00
+        ipx = int(px * 100 + 0.5)
+        cx['text'] = f'{ipx // 100}.{ipx % 100}'
+        return cx
+
+    def createWindow(self, parentWnd, rect, style= win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
+        super().createWindow(parentWnd, rect, style, className, title)
+
+    def load(self, code):
+        url = cls.ClsUrl()
+        self.data = url.loadPanKou5(code)
+        self.invalidWindow()
+
+class TimelinePanKouWindow(base_win.BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.timelineWin = None
+        self.pankouWin = None
+        self.css['bgColor'] = 0x202020
     
+    def createWindow(self, parentWnd, rect, style= win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
+        super().createWindow(parentWnd, rect, style, className, title)
+        self.layout = base_win.GridLayout(('1fr', ), ('1fr', 200), (5, 5))
+        self.timelineWin = SimpleTimelineWindow()
+        self.timelineWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.pankouWin = PanKouWindow()
+        self.pankouWin.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.layout.setContent(0, 0, self.timelineWin)
+        self.layout.setContent(0, 1, self.pankouWin)
+        win32gui.PostMessage(self.hwnd, win32con.WM_SIZE, 0, 0)
+
+    def load(self, code, day = None):
+        self.timelineWin.load(code, day)
+        self.pankouWin.load(code)
+
 if __name__ == '__main__':
-    win = SimpleTimelineWindow()
-    win.createWindow(None, (100, 100, 1200, 600), win32con.WS_OVERLAPPEDWINDOW)
+    win = TimelinePanKouWindow()
+    win.createWindow(None, (0, 0, 1000, 600), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
     #win.load('002085', None)
-    win.load('sh000001') # cls82437 sh000001
+    win.load('600611') # cls82437 sh000001
     win32gui.PumpMessages()
