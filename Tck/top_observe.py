@@ -32,16 +32,24 @@ class MyWindow(base_win.BaseWindow):
 
         def formateMoney(colName, val, rowData):
             return f'{val}亿'
+        def dayFormate(colName, val, rowData):
+            if not val:
+                return ''
+            if isinstance(val, datetime.date):
+                return f'{val.month :02d}-{val.day :02d}'
+            if isinstance(val, str):
+                return val[5 : ]
+            return val
 
         headers = [
                    {'title': '', 'width': 30, 'name': '#idx' },
                    #{'title': 'M', 'width': 30, 'name': 'markColor', 'sortable':True , 'render': mark_utils.markColorBoxRender, 'sorter': mark_utils.sortMarkColor },
-                   {'title': '代码', 'width': 80, 'name': 'code', 'sortable':True},
+                   {'title': '代码', 'width': 55, 'name': 'code', 'sortable':True},
                    {'title': '名称', 'width': 80, 'name': 'name', 'sortable':True, 'render': mark_utils.markColorTextRender },
                    {'title': '市值', 'width': 60, 'name': 'zsz', 'sortable':True, 'formater': formateMoney},
-                   {'title': '板块', 'width': 0, 'stretch': 1, 'name': 'bk', 'sortable':True},
+                   {'title': '板块', 'width': 0, 'stretch': 1, 'name': 'bk', 'sortable':True, 'fontSize': 12},
                    #{'title': '分时', 'width': 300, 'name': 'code', 'render': cache.renderTimeline},
-                   {'title': '加入日期', 'width': 100, 'name': 'day', 'sortable':True , 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
+                   {'title': '加入日期', 'width': 55, 'name': 'day', 'sortable':True , 'formater': dayFormate, 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
                    ]
         self.tableWin = win = base_win.TableWindow()
         win.rowHeight = 30
@@ -61,7 +69,7 @@ class MyWindow(base_win.BaseWindow):
         self.fsWin.volHeight = 50
 
         rows = (30, 250, '1fr')
-        cols = ('1fr', 270, 600)
+        cols = ('1fr', 270, 400)
         self.layout = base_win.GridLayout(rows, cols, (5, 10))
         self.layout.setContent(0, 2, flowLayout)
         self.layout.setContent(1, 2, win, {'verExpand': -1})

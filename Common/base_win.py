@@ -1745,15 +1745,20 @@ class NoActivePopupWindow(BaseWindow):
     def msgLoop(self):
         msg = ctypes.wintypes.MSG()
         ref = ctypes.byref(msg)
+        hasPressed = False
         while self.hwnd and win32gui.IsWindowVisible(self.hwnd):
             br = self.user32.GetMessageA(ref, 0, 0, 0)
             if not br:
                 break
             if msg.message >= win32con.WM_MOUSEFIRST and msg.message <= win32con.WM_MOUSELAST:
+                if msg.message == win32con.WM_LBUTTONDOWN:
+                    hasPressed = True
                 xy = win32gui.GetCursorPos()
                 rc = win32gui.GetWindowRect(self.hwnd)
                 isIn = win32gui.PtInRect(rc, xy)
                 if not isIn:
+                    if not hasPressed and msg.message == win32con.WM_LBUTTONUP:
+                        continue
                     if msg.message != win32con.WM_MOUSEMOVE:
                         self.hide()
                         break
@@ -2543,7 +2548,7 @@ class Editor(BaseEditor):
                 self._showPopupTip()
                 return True
             # else : NO return
-        if  msg == win32con.WM_IME_CHAR or msg == win32con.WM_CHAR:
+        if msg == win32con.WM_IME_CHAR or msg == win32con.WM_CHAR:
             self.onChar(wParam)
             return True
         if msg == win32con.WM_KEYDOWN:
@@ -3150,6 +3155,7 @@ class ComboBox(Editor):
         super().__init__()
         self.css['paddings'] = (0, 0, 20, 0)
         self.selIdx = -1
+        self.editable = False
 
     def getSelectItem(self):
         if not self.popupTipModel:
@@ -3163,6 +3169,7 @@ class ComboBox(Editor):
     #      str -> tip model' name
     #      dict -> tip model' item
     def setSelectItem(self, tip):
+        self.selIdx = -1
         if not self.popupTipModel:
             return
         item = None
@@ -3201,12 +3208,15 @@ class ComboBox(Editor):
         win32gui.Polygon(hdc, pts)
 
     def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_LBUTTONDOWN or msg == win32con.WM_LBUTTONUP:
+        if not self.editable:
+            if msg == win32con.WM_LBUTTONDOWN or msg == win32con.WM_MOUSEMOVE or msg == win32con.WM_LBUTTONDBLCLK \
+                or msg == win32con.WM_IME_CHAR or msg == win32con.WM_CHAR or msg == win32con.WM_KEYDOWN:
+                return True
+        if msg == win32con.WM_LBUTTONUP:
             W, H = self.getClientSize()
             x = lParam & 0xffff
-            if x >= W - self.css['paddings'][2]:
-                if msg == win32con.WM_LBUTTONUP:
-                    self._showPopupTip()
+            if x >= W - self.css['paddings'][2] or not self.editable:
+                self._showPopupTip()
                 return True
             # no return
         return super().winProc(hwnd, msg, wParam, lParam)
@@ -3429,6 +3439,7 @@ if __name__ == '__main__':
     editor1.createWindow(label.hwnd, (20, 20, 200, 30))
 
     editor2 = ComboBox()
+    editor2.editable = False
     editor2.setPopupTip([{'title': 'AAAAA'}, {'title': 'BBBBB'}])
     editor2.createWindow(label.hwnd, (20, 80, 200, 30))
     win32gui.PumpMessages()

@@ -1769,7 +1769,8 @@ class KLineWindow(base_win.BaseWindow):
         self.makeVisible(-1)
         self.selIdx = len(md.data) - 1
         x = self.klineIndicator.getCenterX(self.selIdx)
-        self.mouseXY = (x, self.mouseXY[1])
+        if self.mouseXY:
+            self.mouseXY = (x, self.mouseXY[1])
         self.invalidWindow()
 
     def onContextMenu(self, x, y):
@@ -1952,28 +1953,33 @@ class KLineWindow(base_win.BaseWindow):
 
     def onMouseMove(self, x, y):
         acc = False
+        lmxy = self.mouseXY
         for it in self.indicators:
             acc = acc or self.acceptMouseMove(x, y, it)
         if not acc:
             self.mouseXY = None
-            self.invalidWindow()
+            if lmxy != self.mouseXY:
+                self.invalidWindow()
             return
         si = self.klineIndicator.getIdxAtX(x)
         if si < 0:
             self.mouseXY = None
-            self.invalidWindow()
+            if lmxy != self.mouseXY:
+                self.invalidWindow()
             return
         x = self.klineIndicator.getCenterX(si)
         if x < 0:
             self.mouseXY = None
-            self.invalidWindow()
+            if lmxy != self.mouseXY:
+                self.invalidWindow()
             return
         if self.selIdx == si and self.mouseXY and y == self.mouseXY[1]:
             return
         
         self.mouseXY = (x, y)
         self.updateAttr('selIdx', si)
-        self.invalidWindow()
+        if lmxy != self.mouseXY:
+            self.invalidWindow()
 
     def onMouseClick(self, x, y):
         for it in self.indicators:
