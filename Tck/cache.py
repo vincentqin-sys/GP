@@ -17,11 +17,6 @@ class CacheManager(base_win.Listener):
     def _needUpdate(self, data):
         now = datetime.datetime.now()
         cc : datetime.datetime = data['_load_time']
-        scc = cc.strftime('%H:%M')
-        if cc.date() != now.date():
-            return True
-        if scc > '15:00':
-            return False
         delta : datetime.timedelta = now - cc
         if delta.seconds >= 180:
             return True

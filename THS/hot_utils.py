@@ -71,6 +71,8 @@ def calcHotZHOnLastDay():
     return calcHotZHOnDay(day)
 
 class DynamicHotZH:
+    ins = None
+
     def __init__(self) -> None:
         self.lastTime = 0
         self.hotMaxDay = 0
@@ -107,9 +109,18 @@ class DynamicHotZH:
             return None
         return self.datas.get(code, None)
     
-dyz = DynamicHotZH()
-def getDynamicHotZH(day, code):
-    return dyz.getDynamicHotZH(day, code)
+    # return dict object {code : THS_HotZH.__data__, ....}
+    def getNewestHotZH(self):
+        self.calcDynamicHotsZH()
+        if self.datas:
+            return self.datas
+        qs = THS_HotZH.select().where(THS_HotZH.day == self.hotZHMaxDay).dicts()
+        dt = {}
+        for d in qs:
+            dt[d['code']] = d
+        return dt
+    
+DynamicHotZH.ins = DynamicHotZH()
 
 
 def loadFromFile():

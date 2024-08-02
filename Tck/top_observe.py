@@ -6,19 +6,17 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm, tck_orm
 from Tdx import datafile
 from Download import henxin, ths_ddlr, ths_iwencai
-from THS import ths_win
+from THS import ths_win, hot_utils
 from Common import base_win
 from Tck import kline, kline_utils, mark_utils, timeline, top_diary, cache, utils
 
 class MyWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.css['bgColor'] = 0x202020
+        #self.css['bgColor'] = 0x202020
         self.checkBox_THS = None
         self.tableWin = None
         self.kindCombox = None
-        self.klineWin = None
-        self.fsWin = None
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -41,41 +39,36 @@ class MyWindow(base_win.BaseWindow):
             if isinstance(val, str):
                 return val[5 : ]
             return val
+        def hotSorter(colName, val, rowData, allDatas, asc):
+            return val if val is not None else 1000
 
         headers = [
                    {'title': '', 'width': 30, 'name': '#idx' },
-                   #{'title': 'M', 'width': 30, 'name': 'markColor', 'sortable':True , 'render': mark_utils.markColorBoxRender, 'sorter': mark_utils.sortMarkColor },
-                   {'title': '代码', 'width': 55, 'name': 'code', 'sortable':True},
+                   {'title': 'M', 'width': 30, 'name': 'markColor', 'sortable':True , 'render': mark_utils.markColorBoxRender, 'sorter': mark_utils.sortMarkColor },
+                   {'title': '代码', 'width': 80, 'name': 'code', 'sortable':True},
                    {'title': '名称', 'width': 80, 'name': 'name', 'sortable':True, 'render': mark_utils.markColorTextRender },
-                   {'title': '市值', 'width': 60, 'name': 'zsz', 'sortable':True, 'formater': formateMoney},
-                   {'title': '板块', 'width': 0, 'stretch': 1, 'name': 'bk', 'sortable':True, 'fontSize': 12},
-                   #{'title': '分时', 'width': 300, 'name': 'code', 'render': cache.renderTimeline},
-                   {'title': '加入日期', 'width': 55, 'name': 'day', 'sortable':True , 'formater': dayFormate, 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE}
+                   {'title': '市值', 'width': 80, 'name': 'zsz', 'sortable':True, 'formater': formateMoney},
+                   {'title': '热度', 'width': 80, 'name': 'zhHotOrder', 'sortable':True, 'sorter': hotSorter},
+                   {'title': '板块', 'width': 200,  'name': 'bk', 'sortable':True, 'fontSize': 12},
+                   {'title': '加入日期', 'width': 140, 'name': 'day', 'sortable':True , 'formater_': dayFormate, 'textAlign': win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE},
+                   {'title': '分时', 'width': 300, 'name': 'code', 'stretch_': 1,  'render': cache.renderTimeline}
                    ]
         self.tableWin = win = base_win.TableWindow()
-        win.rowHeight = 30
+        self.tableWin.css['selBgColor'] = 0xEAD6D6
+        win.rowHeight = 50
         win.enableDrag = True
         win.createWindow(self.hwnd, (0, 0, 1, 1))
         win.headers = headers
         win.addListener(self.onDbClick)
         win.addNamedListener('ContextMenu', self.onContextMenu)
-        win.addNamedListener('SelectRow', self.onSelectRow)
         win.addNamedListener('DragEnd', self.onDragMove)
-        self.kindCombox.addNamedListener('PressEnter', self.onSelectKind)
+        self.kindCombox.addNamedListener('Select', self.onSelectKind)
 
-        self.klineWin = kline_utils.createKLineWindow(self.hwnd, (0, 0, 1, 1), win32con.WS_VISIBLE | win32con.WS_CHILD)
-        # fs window
-        self.fsWin = timeline.TimelinePanKouWindow()
-        self.fsWin.createWindow(self.hwnd, (0, 0, 1, 1))
-        self.fsWin.timelineWin.volHeight = 50
-
-        rows = (30, 250, '1fr')
-        cols = ('1fr', 270, 400)
+        rows = (30, '1fr')
+        cols = ('1fr', )
         self.layout = base_win.GridLayout(rows, cols, (5, 10))
-        self.layout.setContent(0, 2, flowLayout)
-        self.layout.setContent(1, 2, win, {'verExpand': -1})
-        self.layout.setContent(0, 0, self.fsWin, {'verExpand': 1, 'horExpand': 1})
-        self.layout.setContent(2, 0, self.klineWin, {'horExpand': 1})
+        self.layout.setContent(0, 0, flowLayout)
+        self.layout.setContent(1, 0, win)
 
     def onShow(self):
         idx = self.kindCombox.selIdx
@@ -85,24 +78,18 @@ class MyWindow(base_win.BaseWindow):
             item = self.kindCombox.popupTipModel[idx]
             self.initMySelect(item['kind'])
 
-    def onSelectRow(self, evt, args):
-        if not evt.data:
-            return
-        code = evt.data['code']
-        self.fsWin.load(code)
-        self.klineWin.changeCode(code)
-        self.klineWin.klineWin.clearMarkDay()
-        self.klineWin.klineWin.setMarkDay(evt.data['day'])
-
     def onSelectKind(self, evt, args):
         kind = evt.kind
         self.initMySelect(kind)
 
     def initMySelect(self, kind):
+        hots = hot_utils.DynamicHotZH.ins.getNewestHotZH()
         rs = []
         q = tck_orm.MyObserve.select().where(tck_orm.MyObserve.kind == kind).dicts() # .order_by(tck_orm.MyObserve.order.asc())
         for it in q:
             rs.append(it)
+            h = hots.get(int(it['code']), None)
+            it['zhHotOrder'] = h['zhHotOrder'] if h else None
             bk = utils.get_THS_GNTC(it['code'])
             if bk:
                 it['bk'] = bk['hy_2_name'] + '-' + bk['hy_3_name']

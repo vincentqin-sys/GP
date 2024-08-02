@@ -2311,7 +2311,6 @@ class BaseEditor(BaseWindow):
 
 # listeners : PressEnter = {src, text}
 #             PressTab = {src, text}
-#             SelectPopupTip = {src, <PoupMenu.Model-Item> }
 class Editor(BaseEditor):
     def __init__(self) -> None:
         super().__init__()
@@ -3191,7 +3190,10 @@ class ComboBox(Editor):
             if d == item:
                 self.selIdx = i
                 break
-        return super().setSelectItem(tip)
+        self.setText(item['title'])
+        self.invalidWindow()
+        newEvt = self.Event('Select', self, **item)
+        self.notifyListener(newEvt)
 
     def onDraw(self, hdc):
         super().onDraw(hdc)

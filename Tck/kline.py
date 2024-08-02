@@ -1047,7 +1047,7 @@ class HotIndicator(CustomIndicator):
         # calc last 
         if rs:
             last = rs[-1]
-            hot = hot_utils.getDynamicHotZH(last['day'], code)
+            hot = hot_utils.DynamicHotZH.ins.getDynamicHotZH(last['day'], code)
             if hot:
                 rs[-1] = hot
 
