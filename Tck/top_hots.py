@@ -18,6 +18,7 @@ class Hots_Window(base_win.BaseWindow):
         self.tableWin.css['selBgColor'] = 0xEAD6D6
         self.editorWin = base_win.ComboBox()
         self.editorWin.placeHolder = ' or条件: |分隔; and条件: 空格分隔'
+        self.editorWin.editable = True
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.datePicker = base_win.DatePicker()
         self.hotsData = None
@@ -47,13 +48,16 @@ class Hots_Window(base_win.BaseWindow):
                 value = rowData[colName]
             self.drawer.use(hdc, self.drawer.getFont(fontSize = 12))
             self.drawer.drawText(hdc, value, rect, align = win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER)
-
+        def formateLtsz(colName, val, rowData):
+            if not val:
+                return ''
+            return f'{val} 亿'
         headers = [ {'title': '', 'width': 40, 'name': '#idx','textAlign': win32con.DT_SINGLELINE | win32con.DT_CENTER | win32con.DT_VCENTER },
                    #{'title': '日期', 'width': 100, 'name': 'day', 'sortable':False , 'fontSize' : 14},
                    {'title': 'M', 'width': 30, 'name': 'markColor', 'sortable':True , 'render': mark_utils.markColorBoxRender, 'sorter': mark_utils.sortMarkColor },
-                   {'title': '代码', 'width': 80, 'name': 'code', 'sortable':True , 'fontSize' : 14},
+                   {'title': '代码', 'width': 70, 'name': 'code', 'sortable':True , 'fontSize' : 14},
                    {'title': '名称', 'width': 80, 'name': 'name', 'sortable':False , 'fontSize' : 14, 'render': mark_utils.markColorTextRender},
-                   #{'title': '代码', 'width': 80, 'name': 'code', 'sortable':True , 'fontSize' : 14},
+                   {'title': '流通盘', 'width': 70, 'name': 'ltsz', 'sortable':True , 'fontSize' : 14, 'formater': formateLtsz},
                    {'title': '热度', 'width': 60, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 14, 'sorter': sortHot},
                    {'title': '板块', 'width': 150, 'name': 'hy', 'sortable':True , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    {'title': '', 'width': 15, 'name':'xx-no-1'},
