@@ -20,11 +20,11 @@ class FuPanMgrWindow(base_win.BaseWindow):
             {'name': 'VOL_PM', 'title': '成交额排名',  'class': top_vol_pm.VolPMWindow},
             #{'name': 'VOL_LB', 'title': '量比',  'class': top_vol_lb.VolLBWindow},
             {'name': 'THS_ZS', 'title': '指数',  'class': top_zs.ZSWindow},
+            {'name': 'DDE', 'title': 'DDE',  'class': top_dde.DdeWindow},
             {'name': 'ZT', 'title': '涨停',  'class': top_zt.ZT_Window},
             {'name': 'HOTS', 'title': '热度',  'class': top_hots.Hots_Window},
             #{'name': 'TCGN', 'title': '题材梳理',  'class': tcgn2.TCGN_Window},
             #{'name': 'CLS_BK', 'title': '财联社板块',  'class': top_cls_bk.ClsBkWindow},
-            {'name': 'DDE', 'title': 'DDE',  'class': top_dde.DdeWindow},
             {'name': 'MY', 'title': '自选',  'class': top_observe.MyWindow},
             {'name': 'DIALY', 'title': '日记',  'class': top_diary.DailyWindow},
         ]
