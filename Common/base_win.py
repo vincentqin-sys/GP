@@ -169,7 +169,7 @@ class Thread:
     def addTask(self, taskId, fun, *args):
         self.lock.acquire()
         for tk in self.tasks:
-            if tk['task_id'] == taskId:
+            if (taskId is not None) and (tk['task_id'] == taskId):
                 self.lock.release()
                 return
         task = {'func': fun, 'args': args, 'task_id': taskId}
@@ -233,7 +233,7 @@ class TimerThread:
     def addTimerTask(self, taskId, delay, func, *args):
         self.lock.acquire()
         for tk in self.tasks:
-            if tk['task_id'] == taskId:
+            if (taskId is not None) and (tk['task_id'] == taskId):
                 self.lock.release()
                 return
         tsk = {'func': func, 'args': args, 'delay': time.time() + delay, 'task_id': taskId}
@@ -482,8 +482,10 @@ class Drawer:
     # rect = list or tuple (left, top, right, botton)
     # color = int(0xbbggrr color) | None(not set color)
     def drawText(self, hdc, text, rect, color = None, align = win32con.DT_CENTER):
-        if not text or not rect:
+        if text is None or not rect:
             return
+        if not isinstance(text, str):
+            text = str(text)
         if not isinstance(text, str):
             text = str(text)
         if type(color) == int:
@@ -1239,8 +1241,6 @@ class TableWindow(BaseWindow):
         formater = hd.get('formater', None)
         if formater:
             value = formater(colName, value, self.data[row])
-        if value == None:
-            return
         cellRender = hd.get('render', None)
         paddings = hd.get('paddings', self.paddings)
         if paddings:
@@ -1252,7 +1252,7 @@ class TableWindow(BaseWindow):
             cellRender(self, hdc, row, col, colName, value, rowData, rect)
         else:
             align = hd.get('textAlign', win32con.DT_LEFT | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
-            self.drawer.drawText(hdc, str(value), rect, self.css['textColor'], align = align)
+            self.drawer.drawText(hdc, value, rect, self.css['textColor'], align = align)
 
     def drawRow(self, hdc, showIdx, row, rect):
         rc = [0, rect[1], 0, rect[3]]

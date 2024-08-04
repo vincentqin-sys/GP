@@ -42,12 +42,7 @@ class Hots_Window(base_win.BaseWindow):
             if rowData.get('ths_mark_3', 0) == 1:
                 color = 0x0000dd
             self.drawer.drawText(hdc, value, rect, color, align = win32con.DT_VCENTER | win32con.DT_SINGLELINE | win32con.DT_LEFT)
-        def renderZtReason(win, hdc, row, col, colName, value, rowData, rect):
-            if not value:
-                self.findZtReason(rowData)
-                value = rowData[colName]
-            self.drawer.use(hdc, self.drawer.getFont(fontSize = 12))
-            self.drawer.drawText(hdc, value, rect, align = win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER)
+        
         def formateLtsz(colName, val, rowData):
             if not val:
                 return ''
@@ -61,9 +56,9 @@ class Hots_Window(base_win.BaseWindow):
                    {'title': '热度', 'width': 60, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 14, 'sorter': sortHot},
                    {'title': '板块', 'width': 150, 'name': 'hy', 'sortable':True , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    {'title': '', 'width': 15, 'name':'xx-no-1'},
-                   {'title': '同花顺', 'width': 180, 'name': 'ths_ztReason', 'sortable':True , 'render': renderZtReason, 'fontSize' : 12,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
+                   {'title': '同花顺', 'width': 180, 'name': 'ths_ztReason', 'sortable':True , 'formater': self.getZtReason, 'fontSize' : 12,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    {'title': '', 'width': 15, 'name':'xx-no-1'},
-                   {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'sortable':True , 'render': renderZtReason, 'fontSize' : 12,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
+                   {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'sortable':True , 'formater': self.getZtReason, 'fontSize' : 12,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    {'title': '', 'width': 15, 'name':'xx-no-1'},
                    {'title': '分时图', 'width': 250, 'name': 'code', 'render': cache.renderTimeline},
                    {'title': '详情', 'width': 0, 'name': '_detail_', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
@@ -157,9 +152,9 @@ class Hots_Window(base_win.BaseWindow):
         rsMaps = {}
         for d in hotZH:
             day = d['day']
-            day = f"{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}"
+            sday = f"{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}"
             code = f"{d['code'] :06d}"
-            mm = {'code': code, 'day': day, 'zhHotOrder': d['zhHotOrder']}
+            mm = {'code': code, 'day': sday, 'iday':day, 'zhHotOrder': d['zhHotOrder']}
             rs.append(mm)
             rsMaps[code] = mm
         self.hotsData = rs
@@ -174,44 +169,23 @@ class Hots_Window(base_win.BaseWindow):
                     m['gn'] = m['gn'].replace('【', '').replace('】', '').replace(';', '  ')
                 item.update(m)
         self.hotsData = rs
-        for d in rs:
-            base_win.ThreadPool.instance().addTask(d['code'], self.loadZtReason, d)
 
-    def findZtReason(self, rowData):
-        code = rowData['code']
-        day = rowData['day']
-        rs = self.thsClsInfos[code]
-        for d in rs['ths_objs']:
-            if d['day'] <= day:
-                rowData['ths_ztReason'] = d['ztReason']
-                break
-        for d in rs['cls_objs']:
-            if d['day'] <= day:
-                rowData['cls_ztReason'] = d['ztReason']
-                rowData['_detail_'] = d['detail']
-                break
-        if not rowData.get('_detail_', None) :
-            rowData['_detail_'] = rowData.get('gn', None)
-
-    def loadZtReason(self, rowData):
-        code = rowData['code']
-        if code in self.thsClsInfos:
-            rs = self.thsClsInfos[code]
-        else:
-            rs = self.thsClsInfos[code] = {'load_time' : 0, 'ths_objs': [], 'cls_objs': []}
-        diff = time.time() - rs['load_time']
-        if diff <= 30 * 60:
-            self.findZtReason(rowData)
-            return
-        rs['load_time'] = time.time()
-        thsQr = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.code == code).order_by(tck_orm.THS_ZT.day.desc()).dicts()
-        clsQr = tck_orm.CLS_ZT.select().where(tck_orm.CLS_ZT.code == code).order_by(tck_orm.CLS_ZT.day.desc()).dicts()
-        for d in thsQr:
-            rs['ths_objs'].append(d)
-        for d in clsQr:
-            rs['cls_objs'].append(d)
-        # find
-        self.findZtReason(rowData)
+    def getZtReason(self, colName, value, rowData):
+        if not value:
+            code = rowData['code']
+            day = rowData['day']
+            if 'ths' in colName:
+                thsQr = tck_orm.THS_ZT.select().where(tck_orm.THS_ZT.code == code, tck_orm.THS_ZT.day <= day).order_by(tck_orm.THS_ZT.day.desc()).limit(1).dicts()
+                for t in thsQr:
+                    value = rowData['ths_ztReason'] = t.get('ztReason', None)
+                    break
+            else:
+                clsQr = tck_orm.CLS_ZT.select().where(tck_orm.CLS_ZT.code == code, tck_orm.CLS_ZT.day <= day).order_by(tck_orm.CLS_ZT.day.desc()).limit(1).dicts()
+                for t in clsQr:
+                    value = rowData['cls_ztReason'] = t.get('ztReason', None)
+                    rowData['_detail_'] = t.get('detail', None)
+                    break
+        return value
 
     def doSearch(self, search : str):
         self.searchText = search
@@ -265,7 +239,7 @@ class Hots_Window(base_win.BaseWindow):
         return super().winProc(hwnd, msg, wParam, lParam)
     
 if __name__ == '__main__':
-    base_win.ThreadPool.start()
+    base_win.ThreadPool.instance().start()
     win = Hots_Window()
     win.createWindow(None, (0, 100, 1500, 700), win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
     win.layout.resize(0, 0, *win.getClientSize())

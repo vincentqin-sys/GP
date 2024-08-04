@@ -62,8 +62,8 @@ def __downloadClsZT():
 		# obj.ztTime = item.time.substring(11, 16);
         obj['day'] = item['time'][0 : 10]
         obj['ztReason'] = ''
-        if item['up_reason'].find(' | ') > 0:
-            idx = item['up_reason'].index('|')
+        idx = item['up_reason'].find('|')
+        if idx > 0 and idx < 40:
             obj['ztReason'] = item['up_reason'][0 : idx].strip()
             obj['detail'] = item['up_reason'][idx + 1 : ].strip()
         else:
