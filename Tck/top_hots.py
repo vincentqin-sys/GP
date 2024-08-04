@@ -175,7 +175,7 @@ class Hots_Window(base_win.BaseWindow):
                 item.update(m)
         self.hotsData = rs
         for d in rs:
-            base_win.ThreadPool.instance().addTimerTask(d['code'], 0, self.loadZtReason, d)
+            base_win.ThreadPool.instance().addTask(d['code'], self.loadZtReason, d)
 
     def findZtReason(self, rowData):
         code = rowData['code']

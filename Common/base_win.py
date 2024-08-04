@@ -297,7 +297,6 @@ class ThreadPool:
 
     def __init__(self) -> None:
         self.threads = [Thread(), Thread(), Thread()]
-        self.timerThread = TimerThread()
         self.started = False
 
     @staticmethod
@@ -312,7 +311,6 @@ class ThreadPool:
         self.started = True
         for th in self.threads:
             th.start()
-        self.timerThread.start()
 
     def addTask(self, taskId, func, *args):
         th = None
@@ -328,15 +326,6 @@ class ThreadPool:
     def clearTasks(self):
         for t in self.threads:
             t.clearTasks()
-
-    def addTimerTask(self, taskId, delay, func, *args):
-        self.timerThread.addTimerTask(taskId, delay, func, *args)
-
-    def addIntervalTask(self, taskId, intervalTime, func, *args):
-        self.timerThread.addIntervalTask(taskId, intervalTime, func, *args)
-
-    def removeTimerTask(self, taskId):
-        self.timerThread.removeTask(taskId)
 
 class Drawer:
     _instance = None
