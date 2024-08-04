@@ -197,6 +197,11 @@ class Thread:
         self.lock.release()
         return e
 
+    def clearTasks(self):
+        self.lock.acquire()
+        self.tasks.clear()
+        self.lock.release()
+
     @staticmethod
     def _run(self):
         while not self.stoped:
@@ -288,37 +293,46 @@ class TimerThread:
             self.runOnce()
 
 class ThreadPool:
-    _thread = Thread()
-    _timerThread = TimerThread()
-    _started = False
+    ins = None
 
-    @staticmethod
-    def start():
-        if ThreadPool._started == True:
+    def __init__(self) -> None:
+        self.threads = [Thread(), Thread(), Thread()]
+        self.timerThread = TimerThread()
+        self.started = False
+
+    def start(self):
+        if self.started == True:
             return
-        ThreadPool._started = True
-        ThreadPool._thread.start()
-        ThreadPool._timerThread.start()
+        self.started = True
+        for th in self.threads:
+            th.start()
+        self.timerThread.start()
 
-    @staticmethod
-    def addTask(taskId, func, *args):
-        ThreadPool._thread.addTask(taskId, func, *args)
+    def addTask(self, taskId, func, *args):
+        th = None
+        for t in self.threads:
+            if th is None or len(t.tasks) < len(th.tasks):
+                th = t
+        th.addTask(taskId, func, *args)
 
-    @staticmethod
-    def removeTask(taskId):
-        ThreadPool._thread.removeTask(taskId)
+    def removeTask(self, taskId):
+        for t in self.threads:
+            t.removeTask(taskId)
 
-    @staticmethod
-    def addTimerTask(taskId, delay, func, *args):
-        ThreadPool._timerThread.addTimerTask(taskId, delay, func, *args)
+    def clearTasks(self):
+        for t in self.threads:
+            t.clearTasks()
 
-    @staticmethod
-    def addIntervalTask(taskId, intervalTime, func, *args):
-        ThreadPool._timerThread.addIntervalTask(taskId, intervalTime, func, *args)
+    def addTimerTask(self, taskId, delay, func, *args):
+        self.timerThread.addTimerTask(taskId, delay, func, *args)
 
-    @staticmethod
-    def removeTimerTask(taskId):
-        ThreadPool._timerThread.removeTask(taskId)
+    def addIntervalTask(self, taskId, intervalTime, func, *args):
+        self.timerThread.addIntervalTask(taskId, intervalTime, func, *args)
+
+    def removeTimerTask(self, taskId):
+        self.timerThread.removeTask(taskId)
+
+ThreadPool.ins = ThreadPool()
 
 class Drawer:
     _instance = None

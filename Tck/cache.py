@@ -7,7 +7,7 @@ from Download import henxin
 from Common import base_win
 from Tdx.datafile import DataFile
 
-base_win.ThreadPool.start()
+#base_win.ThreadPool.ins.start()
 
 class CacheManager(base_win.Listener):
     def __init__(self) -> None:
@@ -54,13 +54,7 @@ class CacheManager(base_win.Listener):
             return
         curDatas = ds[vr[0] : vr[1]]
         codes = [self._getCode(d) for d in curDatas]
-
-        base_win.ThreadPool._thread.lock.acquire()
-        tasks = base_win.ThreadPool._thread.tasks
-        for i in range(len(tasks) - 1, -1, -1):
-            if tasks[i]['task_id'] not in codes:
-                tasks.pop(i)
-        base_win.ThreadPool._thread.lock.release()
+        base_win.ThreadPool.ins.clearTasks()
 
     def adjustDownloadList(self, win : base_win.TableWindow):
         wid = id(win)
@@ -69,7 +63,7 @@ class CacheManager(base_win.Listener):
             win.addNamedListener('VisibleRangeChanged', self.onVisibleRangeChanged)
 
     def download(self, code, win):
-        base_win.ThreadPool.addTask(code, self._download, code, win)
+        base_win.ThreadPool.ins.addTask(code, self._download, code, win)
 
     def _calcZF(self, data):
         if (not data.get('pre', 0)) or (not data.get('dataArr', None)) :

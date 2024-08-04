@@ -1198,7 +1198,7 @@ class CodeBasicWindow(base_win.BaseWindow):
         if scode in self.cacheData:
             self._useCacheData(scode)
         else:
-            base_win.ThreadPool.addTask(scode, self.loadCodeBasic, scode)
+            base_win.ThreadPool.ins.addTask(scode, self.loadCodeBasic, scode)
 
     def getWindowState(self):
         rc = win32gui.GetWindowRect(self.hwnd)

@@ -571,6 +571,8 @@ class HexinUrl(Henxin):
             its = item.split(',')
             row = {}
             row['time'] = int(its[0])
+            if row['time'] > 1500:
+                break
             row['price'] = float(its[1])
             row['money'] = float(its[2])
             row['avgPrice'] = float(its[3])

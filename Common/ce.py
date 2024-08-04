@@ -423,8 +423,8 @@ def runCode(evt, console):
     if evt.name != 'Run':
         return
     tskFunc = runCode_1 if console else runCode_2
-    base_win.ThreadPool.addTask('run', tskFunc, evt['code'], evt['src'], console)
-    base_win.ThreadPool.start()
+    base_win.ThreadPool.ins.addTask('run', tskFunc, evt['code'], evt['src'], console)
+    base_win.ThreadPool.ins.start()
 
 if __name__ == '__main__':
     MODE_SIMPLE = True
@@ -442,8 +442,8 @@ if __name__ == '__main__':
         btn = base_win.Button({'title': '执行(运行)'})
         def rr(evt, args):
             if evt.name == 'Click':
-                base_win.ThreadPool.addTask('run', runCode_2, editor.getText(), editor, None)
-                base_win.ThreadPool.start()
+                base_win.ThreadPool.ins.addTask('run', runCode_2, editor.getText(), editor, None)
+                base_win.ThreadPool.ins.start()
         btn.addListener(rr)
         btn.createWindow(mainWin.hwnd, (10, 5, 100, 25))
         layout.setContent(2, 1, btn, {'autoFit': False})

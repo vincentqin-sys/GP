@@ -22,6 +22,12 @@ def formatZtTime(ds):
     f = f'{sc.tm_hour :02d}:{sc.tm_min :02d}:{sc.tm_sec :02d}'
     return f
 
+def formatNowTime(hasDay):
+    ts = datetime.datetime.now()
+    if hasDay:
+        return ts.strftime('%Y-%m-%d %H:%M')
+    return ts.strftime('%H:%M')
+
 # 下载同花顺涨停信息(分页下载)
 # day = YYYYMMDD
 # pageIdx = 1, 2 ....
@@ -117,7 +123,7 @@ def saveZT(day, datas):
             obj.save()
             updateNum += 1
     if insertNum or updateNum:
-        console.writeln_1(console.YELLOW, f'[ths-zt] ', f'{day} insert {insertNum}, update {updateNum}')
+        console.writeln_1(console.YELLOW, f'[ths-zt] {formatNowTime(False)}', f'{day} insert {insertNum}, update {updateNum}')
 
 def downloadSaveOneDayTry(day):
     try:
@@ -150,7 +156,7 @@ def downloadSaveHot():
     try:
         rs = ths_iwencai.download_hot()
         num = ths_iwencai.save_hot(rs)
-        console.write_1(console.RED, f'[hot-server] ')
+        console.write_1(console.RED, f'[hot-server] {formatNowTime(False)}')
         if num > 0:
             day = rs[0].day
             _time = f'{rs[0].time // 100}:{rs[0].time % 100 :02d}'
@@ -166,7 +172,7 @@ def downloadSaveZs():
     try:
         rs = ths_iwencai.download_zs_zd()
         num = ths_iwencai.save_zs_zd(rs)
-        console.write_1(console.GREEN, f'[THS-ZS] ')
+        console.write_1(console.GREEN, f'[THS-ZS] {formatNowTime(False)}')
         if rs:
             console.writeln_1(console.GREEN, f"Save ZS success, insert {rs[0].day} num: {num} ")
         else:
@@ -180,7 +186,7 @@ def downloadSaveDde():
     try:
         rs = ths_iwencai.download_dde_money()
         ok = ths_iwencai.save_dde_money(rs)
-        console.write_1(console.PURPLE, f'[THS-DDE] ')
+        console.write_1(console.PURPLE, f'[THS-DDE] {formatNowTime(True)}')
         if ok:
             console.writeln_1(console.PURPLE, 'success, save num: ', len(rs))
         else:
@@ -194,7 +200,7 @@ def download_hygn():
     try:
         upd, ins = ths_iwencai.download_hygn()
         u, i = ths_iwencai.save_hygn(upd, ins)
-        console.writeln_1(console.CYAN, f'[THS-HyGn]  update {u}, insert {i}')
+        console.writeln_1(console.CYAN, f'[THS-HyGn] {formatNowTime(True)} update {u}, insert {i}')
         return True
     except Exception as e:
         traceback.print_exc()
