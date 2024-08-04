@@ -205,8 +205,8 @@ class VolLBWindow(base_win.BaseWindow):
             self.listWins[i].invalidWindow()
             self.daysLabels[i].setText(None)
 
-        base_win.ThreadPool.ins.start()
-        base_win.ThreadPool.ins.addTask('TOP_VOL_LB', self.loadAll, day)
+        base_win.ThreadPool.instance().start()
+        base_win.ThreadPool.instance().addTask('TOP_VOL_LB', self.loadAll, day)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SIZE:

@@ -293,12 +293,18 @@ class TimerThread:
             self.runOnce()
 
 class ThreadPool:
-    ins = None
+    _ins = None
 
     def __init__(self) -> None:
         self.threads = [Thread(), Thread(), Thread()]
         self.timerThread = TimerThread()
         self.started = False
+
+    @staticmethod
+    def instance():
+        if not ThreadPool._ins:
+            ThreadPool._ins = ThreadPool()
+        return ThreadPool._ins
 
     def start(self):
         if self.started == True:
@@ -331,8 +337,6 @@ class ThreadPool:
 
     def removeTimerTask(self, taskId):
         self.timerThread.removeTask(taskId)
-
-ThreadPool.ins = ThreadPool()
 
 class Drawer:
     _instance = None

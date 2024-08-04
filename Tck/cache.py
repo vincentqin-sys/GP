@@ -54,7 +54,7 @@ class CacheManager(base_win.Listener):
             return
         curDatas = ds[vr[0] : vr[1]]
         codes = [self._getCode(d) for d in curDatas]
-        base_win.ThreadPool.ins.clearTasks()
+        base_win.ThreadPool.instance().clearTasks()
 
     def adjustDownloadList(self, win : base_win.TableWindow):
         wid = id(win)
@@ -63,7 +63,7 @@ class CacheManager(base_win.Listener):
             win.addNamedListener('VisibleRangeChanged', self.onVisibleRangeChanged)
 
     def download(self, code, win):
-        base_win.ThreadPool.ins.addTask(code, self._download, code, win)
+        base_win.ThreadPool.instance().addTask(code, self._download, code, win)
 
     def _calcZF(self, data):
         if (not data.get('pre', 0)) or (not data.get('dataArr', None)) :

@@ -96,7 +96,7 @@ class ZT_Window(base_win.BaseWindow):
         
         self.inputTips = []
         
-        base_win.ThreadPool.ins.addTask('TCK', self.runTask)
+        base_win.ThreadPool.instance().addTask('TCK', self.runTask)
 
     def runTask(self):
         self.loadAllData()
@@ -262,7 +262,7 @@ class ZT_Window(base_win.BaseWindow):
     def onRefresh(self, evt, args):
         if evt.name == 'Click':
             self.tckData = None
-            base_win.ThreadPool.ins.addTask('TCK', self.runTask)
+            base_win.ThreadPool.instance().addTask('TCK', self.runTask)
             #self.onQuery(self.editorWin.text)
 
     def onQuery(self, queryText):

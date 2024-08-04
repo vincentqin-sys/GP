@@ -2217,7 +2217,7 @@ class CodeWindow(ext_win.CellRenderWindow):
         self.curCode = None
         self.data = None
         self.cacheData = {}
-        base_win.ThreadPool.ins.start()
+        base_win.ThreadPool.instance().start()
         self.init()
     
     def getCell(self, rowInfo, idx):
@@ -2314,7 +2314,7 @@ class CodeWindow(ext_win.CellRenderWindow):
         if scode in self.cacheData:
             self._useCacheData(scode)
         else:
-            base_win.ThreadPool.ins.addTask(scode, self.loadCodeBasic, scode)
+            base_win.ThreadPool.instance().addTask(scode, self.loadCodeBasic, scode)
 
 class SelectTipWin(ext_win.CellRenderWindow):
     def __init__(self, line : KLineWindow) -> None:
