@@ -16,10 +16,10 @@ def runner():
 def loop():
     lastDay = None
     while True:
-        td = datetime.datetime.today()
+        td = datetime.date.today().strftime('%Y-%m-%d')
         if lastDay != td:
             lastDay = td
-            print('---------------->', lastDay.strftime('%Y-%m-%d'), '<----------------')
+            print('---------------->', lastDay, '<----------------')
         thsServer.loadOneTime()
         clsServer.loadOneTime()
         lhbServer.loadOneTime()
