@@ -62,12 +62,13 @@ def __downloadClsZT():
 		# obj.ztTime = item.time.substring(11, 16);
         obj['day'] = item['time'][0 : 10]
         obj['ztReason'] = ''
-        idx = item['up_reason'].find('|')
-        if idx > 0 and idx < 40:
-            obj['ztReason'] = item['up_reason'][0 : idx].strip()
-            obj['detail'] = item['up_reason'][idx + 1 : ].strip()
+        rz : str = item['up_reason'].strip()
+        idx = rz.find('|')
+        if idx > 0 and idx < 30 and (not rz.startswith('1.')):
+            obj['ztReason'] = rz[0 : idx].strip()
+            obj['detail'] = rz[idx + 1 : ].strip()
         else:
-            obj['detail'] = item['up_reason']
+            obj['detail'] = rz
         if obj['ztReason'] != '--':
             rs.append(obj)
     return rs
@@ -158,6 +159,20 @@ def startup(app : Flask):
     app.add_url_rule('/save-CLS-Degree', view_func=saveCLS_Degree, methods = ['POST'])
     autoLoadClsZT()
 
+def do_reason():
+    qr = tck_orm.CLS_ZT.select().where(tck_orm.CLS_ZT.day >= '2024-07-26')
+    for it in qr:
+        if it.ztReason or not it.detail:
+            continue
+        rz : str = it.detail.strip()
+        idx = rz.find('|')
+        if idx > 0 and idx < 30 and (not rz.startswith('1.')):
+            it.ztReason = rz[0 : idx].strip()
+            it.detail = rz[idx + 1 : ].strip()
+            it.save()
+
 if __name__ == '__main__':
-    downloadClsZT()
+    #downloadClsZT()
     #tryDownloadDegree()
+    pass
+    #do_reason()

@@ -1029,17 +1029,14 @@ class TableWindow(BaseWindow):
                 return h
         return None
 
-    def getValueAt(self, row, col, colName):
-        datas = self.getData()
-        if not datas:
-            return None
+    def getValueOf(self, rowData, colName, row):
         if colName == '#idx':
             return row + 1
-        if row >= 0 and row < len(datas):
-            if isinstance(datas[row], dict):
-                return datas[row].get(colName, None)
-            return getattr(datas[row], colName, None)
-        return None
+        if not rowData:
+            return None
+        if isinstance(rowData, dict):
+            return rowData.get(colName, None)
+        return getattr(rowData, colName, None)
 
     def getColumnWidth(self, colIdx, colName):
         BASE_WIDTH = 40
@@ -1240,7 +1237,7 @@ class TableWindow(BaseWindow):
         self.drawer.use(hdc, self.drawer.getFont(fontSize = fs))
         formater = hd.get('formater', None)
         if formater:
-            value = formater(colName, value, self.data[row])
+            value = formater(colName, value, rowData)
         cellRender = hd.get('render', None)
         paddings = hd.get('paddings', self.paddings)
         if paddings:
@@ -1264,7 +1261,8 @@ class TableWindow(BaseWindow):
         for i in range(len(hds)):
             colName = hds[i]['name']
             rc[2] += self.getColumnWidth(i, colName)
-            val = self.getValueAt(row, i, colName)
+            rowData = datas[row]
+            val = self.getValueOf(rowData, colName, row)
             if self.enableCellSelect and row == self.selRow and self.selCol == i:
                 # draw cell border
                 h, s, v = Drawer.rgb2hsv(self.css['selBgColor'])
@@ -1272,7 +1270,7 @@ class TableWindow(BaseWindow):
                 else: v -= 0.2
                 color = Drawer.hsv2rgb(h, s, v)
                 self.drawer.drawRect(hdc, rc, color, 2)
-            self.drawCell(hdc, row, i, colName, val, datas[row], rc)
+            self.drawCell(hdc, row, i, colName, val, rowData, rc)
             rc[0] = rc[2]
 
     def drawTail(self, hdc, rect):
