@@ -219,7 +219,7 @@ class Server:
         curTime = now.strftime('%H:%M')
 
         # 下载同花顺涨停信息
-        if curTime >= '09:30' and curTime < '17:30':
+        if (curTime >= '09:30' and curTime < '11:40') or (curTime >= '13:00' and curTime <= '17:30'):
             if time.time() - self.last_zt_time >= 5 * 60: # 5分钟
                 self.downloadSaveOneDayTry(day)
                 self.last_zt_time = time.time()
@@ -259,7 +259,7 @@ class Server:
             if time.time() - self.last_hotzh_time >= 60 * 60:
                 hot_utils.calcAllHotZHAndSave()
                 self.last_hotzh_time = time.time()
-                console.write_1(console.RED, f'[hot-server] {self.formatNowTime(False)}', ' calc hot ZH success')
+                console.writeln_1(console.RED, f'[hot-server] {self.formatNowTime(False)}', ' calc hot ZH success')
 
 if __name__ == '__main__':
     #autoLoadHistory(20240708)
