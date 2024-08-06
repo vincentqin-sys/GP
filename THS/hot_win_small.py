@@ -1113,7 +1113,7 @@ class CodeBasicWindow(base_win.BaseWindow):
         self.css['bgColor'] = 0x050505
         self.css['borderColor'] = 0x22dddd
         self.css['enableBorder'] = True
-        base_win.ThreadPool.start()
+        base_win.ThreadPool.instance().start()
 
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUP)

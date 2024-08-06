@@ -4,80 +4,11 @@ import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm
-from THS import ths_win
+from THS import ths_win, hot_utils
 from Common import base_win, ext_win
 from db import tck_orm
-import kline_utils, conf
+from Tck import kline_utils, conf, mark_utils, utils
 
-class PageInfo:
-    pages = []
-    pagesIdx = -1
-    FALGS = ('selRow', 'startRow', 'sortHeader', 'searchText')
-
-    def __init__(self, tckWin, flag):
-        tabWin = tckWin.tableWin
-        self.tckWin = tckWin
-        if flag == 'all':
-            self.flag = PageInfo.FALGS
-        else:
-            self.flag = flag.replace(' ', '').split('|')
-        for f in self.flag:
-            if f == 'selRow':
-                self.selRow = tabWin.selRow
-            elif f == 'startRow':
-                self.startRow = tabWin.startRow
-            elif f == 'sortHeader':
-                self.sortHeader = tabWin.sortHeader
-            elif f == 'searchText':
-                self.searchText = tckWin.searchText
-
-    @classmethod
-    def save(clazz, tckWin, flag = 'all'):
-        for i in range(len(PageInfo.pages) - 1, PageInfo.pagesIdx, -1):
-            PageInfo.pages.pop(i)
-        pageInfo = PageInfo(tckWin, flag)
-        PageInfo.pages.append(pageInfo)
-        PageInfo.pagesIdx += 1
-
-    @classmethod
-    def back(clazz):
-        if PageInfo.pagesIdx < 0:
-            return
-        PageInfo.pagesIdx -= 1
-        info = PageInfo.pages[PageInfo.pagesIdx]
-        info.__restore()
-
-    @classmethod
-    def prev(clazz):
-        if PageInfo.pagesIdx + 1 >= len(PageInfo.pages):
-            return
-        PageInfo.pagesIdx += 1
-        info = PageInfo.pages[PageInfo.pagesIdx]
-        info.__restore()
-
-    @classmethod
-    def canPrev(clazz):
-        return PageInfo.pagesIdx + 1 < len(PageInfo.pages)
-
-    @classmethod
-    def canBack(clazz):
-        return PageInfo.pagesIdx  >= 0
-
-    def __restore(self):
-        if'searchText' in self.flag:
-            editWin = self.tckWin.editorWin
-            editWin.setText(self.searchText)
-            editWin.invalidWindow()
-            self.tckWin.onQuery(self.searchText)
-        tabWin : ext_win.EditTableWindow = self.tckWin.tableWin
-        for f in self.flag:
-            if f == 'selRow':
-                tabWin.setSelRow(self.selRow)
-            elif f == 'startRow':
-                tabWin.startRow = self.startRow
-            elif f == 'sortHeader':
-                tabWin.setSortHeader(self.sortHeader['header'], self.sortHeader['state'])
-        tabWin.invalidWindow()
 
 class ZT_Window(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -120,15 +51,17 @@ class ZT_Window(base_win.BaseWindow):
                 color = 0x0000dd
             self.drawer.drawText(hdc, value, rect, color, align = win32con.DT_VCENTER | win32con.DT_SINGLELINE | win32con.DT_LEFT)
         headers = [ {'title': '', 'width': 30, 'name': '#idx','textAlign': win32con.DT_SINGLELINE | win32con.DT_CENTER | win32con.DT_VCENTER },
-                   {'title': '日期', 'width': 70, 'name': 'day', 'sortable':True , 'fontSize' : 12},
-                   {'title': '名称', 'width': 55, 'name': 'name', 'sortable':True , 'fontSize' : 12, 'render': render},
+                   {'title': '日期', 'width': 80, 'name': 'day', 'sortable':True , 'fontSize' : 14},
+                   {'title': '名称', 'width': 80, 'name': 'name', 'sortable':True , 'fontSize' : 14, 'render': render},
                    #{'title': '代码', 'width': 50, 'name': 'code', 'sortable':True , 'fontSize' : 12},
-                   {'title': '热度', 'width': 40, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 12, 'sorter': sortHot},
-                   {'title': '开盘啦', 'width': 100, 'name': 'kpl_ztReason', 'sortable':True , 'fontSize' : 12},
-                   {'title': '同花顺', 'width': 60, 'name': 'ths_status', 'sortable':True , 'fontSize' : 12},
+                   {'title': '热度', 'width': 60, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 14, 'sorter': sortHot},
+                   #{'title': '开盘啦', 'width': 100, 'name': 'kpl_ztReason', 'sortable':True , 'fontSize' : 12},
+                   {'title': '连板', 'width': 60, 'name': 'ths_status', 'sortable':True , 'fontSize' : 12},
                    {'title': '同花顺', 'width': 150, 'name': 'ths_ztReason', 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True},
-                   {'title': '同花顺备注', 'width': 120, 'name': 'ths_mark_1', 'fontSize' : 12 , 'editable':True, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
+                   {'title': '', 'width': 10, 'name': 'sp'},
+                   #{'title': '同花顺备注', 'width': 120, 'name': 'ths_mark_1', 'fontSize' : 12 , 'editable':True, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
                    {'title': '财联社', 'width': 120, 'name': 'cls_ztReason', 'fontSize' : 12 ,'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER, 'sortable':True },
+                   {'title': '板块', 'width': 150, 'name': 'hy', 'sortable':True , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    {'title': '财联社详细', 'width': 0, 'name': 'cls_detail', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -161,52 +94,24 @@ class ZT_Window(base_win.BaseWindow):
         self.editorWin.addNamedListener('DbClick', self.onDbClickEditor, None)
         self.tableWin.addListener(self.onDbClick, None)
         self.tableWin.addListener(self.onEditCell, None)
-        def onTabMenu(evt, args):
-            hasSel = self.tableWin.selRow >= 0
-            model = [ {'title': '标记重点', 'name':'BJZD', 'enable': hasSel},
-                      {'title': '仅搜索当前选中的个股', 'name':'CUR_CODE', 'enable': hasSel},
-                      #{'title': '转到当前选中的日期', 'name':'CUR_DAY', 'enable': hasSel},
-                      {'title': 'LINE'},
-                      #{'title': '前进', 'name':'PREV', 'enable': PageInfo.canPrev()},
-                      #{'title': '后退', 'name':'BACK', 'enable': PageInfo.canBack()},
-                    ]
-            menu = base_win.PopupMenu.create(self.hwnd, model)
-            menu.addNamedListener('Select', onTabMenuSelect, self.tableWin.selRow)
-            menu.show(*win32gui.GetCursorPos())
-        def onTabMenuSelect(evt, selRow):
-            item = evt.item
-            if item['name'] == 'BJZD':
-                datas = self.tableWin.getData()
-                data = datas[selRow]
-                data['ths_mark_3'] = 1
-                qr = tck_orm.THS_ZT.update({tck_orm.THS_ZT.mark_3 : 1}).where(tck_orm.THS_ZT.id == data['ths_id'])
-                qr.execute()
-                self.tableWin.invalidWindow()
-            elif item['name'] == 'PREV':
-                PageInfo.prev()
-            elif item['name'] == 'BACK':
-                PageInfo.back()
-            elif item['name'] == 'CUR_CODE':
-                PageInfo.save(self)
-                datas = self.tableWin.getData()
-                code = datas[selRow]['code']
-                self.editorWin.setText(code)
-                self.editorWin.invalidWindow()
-                self.onQuery(code)
-                PageInfo.save(self)
-            elif item['name'] == 'CUR_DAY':
-                PageInfo.save(self)
-                datas = self.tableWin.getData()
-                day = datas[selRow]['day']
-                self.editorWin.setText(day)
-                self.editorWin.invalidWindow()
-                self.onQuery(day)
-                PageInfo.save(self)
-            
-        self.tableWin.addNamedListener('ContextMenu', onTabMenu)
+        
+        self.tableWin.addNamedListener('ContextMenu', self.onContextMenu)
         sm = base_win.ThsShareMemory.instance()
         sm.open()
         sm.addListener('ListenSync_TCK', self.onAutoSync)
+
+    def onContextMenu(self, evt, args):
+        row = self.tableWin.selRow
+        rowData = self.tableWin.getData()[row] if row >= 0 else None
+        model = mark_utils.getMarkModel(row >= 0)
+        menu = base_win.PopupMenu.create(self.hwnd, model)
+        def onMenuItem(evt, rd):
+            mark_utils.saveOneMarkColor({'kind': 'zt', 'code': rowData['code']}, evt.item['markColor'], endDay = rowData['day'])
+            rd['markColor'] = evt.item['markColor']
+            self.tableWin.invalidWindow()
+        menu.addNamedListener('Select', onMenuItem, rowData)
+        x, y = win32gui.GetCursorPos()
+        menu.show(x, y)
 
     def onAddCiTiao(self, evt, args):
         txt =  self.editorWin.getText().strip()
@@ -271,6 +176,8 @@ class ZT_Window(base_win.BaseWindow):
         self.loadAllData()
         self.doSearch(queryText)
         self.tableWin.setData(self.tckSearchData)
+        if self.tckSearchData:
+            mark_utils.mergeMarks(self.tckSearchData, 'zt', False)
         self.tableWin.invalidWindow()
     
     def onDbClick(self, evt, args):
@@ -297,7 +204,6 @@ class ZT_Window(base_win.BaseWindow):
         hotZH = ths_orm.THS_HotZH.select().where(ths_orm.THS_HotZH.day >= int(fromDay.replace('-', ''))).dicts()
         
         allDicts = {}
-        ths = []
         cls = []
         hots = {}
         rs = []
@@ -306,6 +212,14 @@ class ZT_Window(base_win.BaseWindow):
             day = f"{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}"
             k = f"{day}:{d['code'] :06d}"
             hots[k] = d['zhHotOrder']
+
+        htsNewest = hot_utils.DynamicHotZH.instance().getNewestHotZH()
+        for d in htsNewest:
+            item = htsNewest[d]
+            day = item['day']
+            day = f"{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}"
+            k = f"{day}:{item['code'] :06d}"
+            hots[k] = item['zhHotOrder']
 
         for d in thsQr:
             k = d['day'] + ':' + d['code']
@@ -325,15 +239,20 @@ class ZT_Window(base_win.BaseWindow):
         for d in clsQr:
             k = d['day'] + ':' + d['code']
             obj = allDicts.get(k, None)
+            detail = d['detail'].upper()
+            detail = detail.replace('\r\n', ' | ')
+            detail = detail.replace('\n', ' | ')
             if obj:
-                detail = d['detail'].upper()
-                detail = detail.replace('\r\n', ' | ')
-                detail = detail.replace('\n', ' | ')
                 obj['cls_detail'] = detail
                 obj['cls_ztReason'] = d['ztReason'].upper()
             else:
-                cls.append(d)
-        rs.sort(key=lambda d : d['day'], reverse=True)
+                d['cls_detail'] = detail
+                d['cls_ztReason'] = d['ztReason'].upper()
+                rs.append(d)
+        rs.sort(key = lambda d : d['day'], reverse = True)
+        for item in rs:
+            obj = utils.get_THS_GNTC(item['code'])
+            if obj: item.update(obj)
         self.tckData = rs
 
     def doSearch(self, search : str):

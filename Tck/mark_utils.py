@@ -27,7 +27,7 @@ def _buildKey(data, kind, enableDays):
     return key
 
 def mergeMarks(datas : list, kind, enableDays : bool):
-    qr = tck_orm.Mark.select().dicts()
+    qr = tck_orm.Mark.select().where(tck_orm.Mark.kind == kind).dicts()
     marks = {}
     for d in qr:
         k = _buildKey(d, kind, enableDays)

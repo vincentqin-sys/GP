@@ -78,6 +78,12 @@ class DynamicHotZH:
         self.hotMaxDay = 0
         self.hotZHMaxDay = 0
         self.datas = None
+
+    @staticmethod
+    def instance():
+        if not DynamicHotZH.ins:
+            DynamicHotZH.ins = DynamicHotZH()
+        return DynamicHotZH.ins
     
     def needUpdate(self):
         diff = time.time() - self.lastTime

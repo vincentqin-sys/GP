@@ -6,7 +6,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm, tck_orm
 from THS import ths_win, hot_utils
 from Common import base_win, ext_win
-import kline_utils, cache, mark_utils
+from Tck import kline_utils, cache, mark_utils, utils
 
 class Hots_Window(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -159,15 +159,10 @@ class Hots_Window(base_win.BaseWindow):
             rsMaps[code] = mm
         self.hotsData = rs
         TRUNCK = 50
-        for i in range((len(rs) + TRUNCK - 1) // TRUNCK):
-            prs = rs[i * TRUNCK : (i + 1) * TRUNCK ]
-            cs = [d['code'] for d in prs]
-            qr = ths_orm.THS_GNTC.select().where(ths_orm.THS_GNTC.code.in_(cs)).dicts()
-            for m in qr:
-                item : dict = rsMaps[m['code']]
-                if m['gn']:
-                    m['gn'] = m['gn'].replace('【', '').replace('】', '').replace(';', '  ')
-                item.update(m)
+        for item in rs:
+            obj = utils.get_THS_GNTC(item['code'])
+            if obj:
+                item.update(obj)
         self.hotsData = rs
 
     def getZtReason(self, colName, value, rowData):

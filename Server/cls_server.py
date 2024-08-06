@@ -37,8 +37,7 @@ class Server:
             insertNum += ins
             updateNum += upd
         if insertNum > 0 or updateNum > 0:
-            console.write_1(console.CYAN, '[cls-server] ')
-            print(f' {self.now()} save cls zt {day} insert({insertNum}) update({updateNum})')
+            console.writeln_1(console.CYAN, '[cls-server] ', f'{self.now()} save cls zt {day} insert({insertNum}) update({updateNum})')
 
     def __downloadClsZT(self):
         url = 'https://x-quote.cls.cn/quote/index/up_down_analysis?app=CailianpressWeb&os=web&rever=1&sv=7.7.5&type=up_pool&way=last_px&sign=a820dce18412fac3775aa940d0b00dcb'
