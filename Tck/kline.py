@@ -2265,7 +2265,7 @@ class CodeWindow(ext_win.CellRenderWindow):
         #self.addRow({'height': 25, 'margin': 0, 'name': 'refZSName'}, self.getCodeCell)
         self.addRow({'height': 25, 'margin': 0, 'name': 'code'}, self.getCodeCell)
         self.addRow({'height': 25, 'margin': 0, 'name': 'name'}, self.getCodeCell)
-        KEYS = ('涨幅', '委比', 'Line', '流通市值', '总市值', 'Line', '市盈率_静', '市盈率_TTM')
+        KEYS = ('Line', '流通市值', '总市值', 'Line', '市盈率_静', '市盈率_TTM') # '涨幅', '委比', 
         for k in KEYS:
             if k == 'Line':
                 self.addRow({'height': 1, 'margin': 0, 'name': 'split-line'}, {'color': 0xa0a0a0, 'bgColor': 0x606060, 'span': 2})
@@ -2273,7 +2273,7 @@ class CodeWindow(ext_win.CellRenderWindow):
                 self.addRow({'height': RH, 'margin': 5, 'name': k}, {'text': k, 'color': 0xcccccc}, self.getCell)
 
     def loadZS(self, code):
-        name = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name).where(ths_orm.THS_ZS_ZD.code == code).scalar()
+        name = ths_orm.THS_ZS.select(ths_orm.THS_ZS.name).where(ths_orm.THS_ZS.code == code).scalar()
         self.data = {'code': self.curCode, 'name': name}
         self.invalidWindow()
 
@@ -2322,14 +2322,16 @@ class SelectTipWin(ext_win.CellRenderWindow):
         self.data = None
         self.klineWin : KLineWindow = None
         line.addNamedListener('selIdx.changed', self.onSelIdxChanged)
+        self.TX = win32con.DT_SINGLELINE | win32con.DT_VCENTER
         
         RH = 25
         self.addRow({'height': RH, 'margin': 0, 'name': 'refZSName'}, self.getCell)
-        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSCode'}, {'text': '板块指数', 'color': 0x808080}, self.getCell)
-        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSZhangFu'}, {'text': '指数涨幅', 'color': 0x808080}, self.getCell)
-        self.addRow({'height': RH, 'margin': 0, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc}, self.getCell)
-        self.addRow({'height': RH, 'margin': 0, 'name': 'vol'},{'text': '成交额', 'color': 0xcccccc},  self.getCell)
-        self.addRow({'height': RH, 'margin': 0, 'name': 'rate'}, {'text': '换手率', 'color': 0xcccccc}, self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSCode'}, {'text': '板块指数', 'color': 0x808080, 'textAlign': self.TX}, self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSZhangFu'}, {'text': '指数涨幅', 'color': 0x808080, 'textAlign': self.TX}, self.getCell)
+        self.addRow({'height': 1, 'margin': 0, 'name': 'split-line'}, {'color': 0xa0a0a0, 'bgColor': 0x606060, 'span': 2})
+        self.addRow({'height': RH, 'margin': 0, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc, 'textAlign': self.TX}, self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'vol'},{'text': '成交额', 'color': 0xcccccc, 'textAlign': self.TX},  self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'rate'}, {'text': '换手率', 'color': 0xcccccc, 'textAlign': self.TX}, self.getCell)
 
     def onSelIdxChanged(self, evt, args):
         self.data = evt.data
@@ -2337,7 +2339,7 @@ class SelectTipWin(ext_win.CellRenderWindow):
         self.invalidWindow()
 
     def getCell(self, rowInfo, idx):
-        cell = {'text': '', 'color': 0xcccccc, 'textAlign': win32con.DT_LEFT, 'fontSize': 15}
+        cell = {'text': '', 'color': 0xcccccc, 'textAlign': self.TX, 'fontSize': 15}
         if self.data is None:
             return
         if rowInfo['name'] == 'zhangFu':
@@ -2657,11 +2659,11 @@ if __name__ == '__main__':
     win.addIndicator('rate amount')
     win.addIndicator(DayIndicator({'height': 20}))
     win.addIndicator(ScqxIndicator())
-    win.addIndicator(HotIndicator()) # {'height' : 50}
-    win.addIndicator(ThsZT_Indicator()) # {'height' : 50}
-    win.addIndicator(ClsZT_Indicator()) # {'height' : 50}
-    win.addIndicator(DdeIndicator()) # {'height' : 50}
+    #win.addIndicator(HotIndicator()) # {'height' : 50}
+    #win.addIndicator(ThsZT_Indicator()) # {'height' : 50}
+    #win.addIndicator(ClsZT_Indicator()) # {'height' : 50}
+    #win.addIndicator(DdeIndicator()) # {'height' : 50}
     rect = (0, 0, 1920, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('002085') # cls82475 002085 603390 002085 002869  002055
+    win.changeCode('881121') # cls82475 002085 603390 002085 002869  002055
     win32gui.PumpMessages()
