@@ -12,7 +12,7 @@ class Hots_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (150, 300, 120, '1fr')
+        self.cols = (150, 300, 120, 70, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = ext_win.EditTableWindow()
         self.tableWin.css['selBgColor'] = 0xEAD6D6
@@ -76,6 +76,10 @@ class Hots_Window(base_win.BaseWindow):
         self.layout.setContent(0, 0, self.datePicker)
         self.layout.setContent(0, 1, self.editorWin)
         self.layout.setContent(0, 2, self.checkBox)
+        btn = base_win.Button({'title': '刷新'})
+        btn.createWindow(self.hwnd, (0, 0, 1, 1))
+        btn.addNamedListener('Click', self.onRefresh)
+        self.layout.setContent(0, 3, btn)
 
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
         def onPressEnter(evt, args):
@@ -101,6 +105,10 @@ class Hots_Window(base_win.BaseWindow):
             if not finded:
                 model.append({'title': q})
         self.editorWin.setPopupTip(model)
+
+    def onRefresh(self, evt, args):
+        self.loadAllData()
+        self.onQuery()
 
     def onQuery(self):
         queryText = self.editorWin.text
