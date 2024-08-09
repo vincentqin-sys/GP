@@ -978,7 +978,7 @@ class TableWindow(BaseWindow):
         self.css['headerBorderColor'] = 0x888888
         self.css['headerTextColor'] = 0x333333
         self.css['cellBorder'] = 0xc0c0c0
-        self.css['selBgColor'] = 0xf0a0a0
+        self.css['selBgColor'] = 0xf0a0a0 # 0xEAD6D6 #0xf0a0a0
         self.paddings = (2, 0, 2, 0) # cell default paddings
 
         self.enableDrag = False

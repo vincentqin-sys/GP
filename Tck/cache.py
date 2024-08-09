@@ -20,6 +20,10 @@ class CacheManager(base_win.Listener):
         delta : datetime.timedelta = now - cc
         if delta.seconds >= 180:
             return True
+        ts = cc.hour * 100 + cc.minute
+        cs = now.hour * 100 + now.minute
+        if ts < 930 and cs >= 930:
+            return True
         return False
 
     def getData(self, code, win):

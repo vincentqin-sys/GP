@@ -261,6 +261,8 @@ class CacheItem:
         self.data = data
         self.lastTime = time.time()
         self.lastDay = datetime.date.today()
+        td = datetime.datetime.now()
+        self.itime = td.hour * 100 + td.minute
 
 class HexinMemCache:
     # kind = 'kline' 'today' 'timeline'
@@ -298,6 +300,10 @@ class HexinMemCache:
         key = f'{code}{kind}'
         data = self.datas.get(key, None)
         if not data:
+            return True
+        td = datetime.datetime.now()
+        itime = td.hour * 100 + td.minute
+        if data.itime < 930 and itime >= 930:
             return True
         if kind == 'kline':
             u = data.lastDay != datetime.date.today()
