@@ -1327,8 +1327,9 @@ class DdeIndicator(CustomIndicator):
         rsx = ths_iwencai.download_one_dde(self.klineWin.model.code)
         maps = {}
         for d in rsx:
-            day = d['时间'].replace('-', '')
-            maps[int(day)] = d
+            if d.get('时间', None):
+                day = d['时间'].replace('-', '')
+                maps[int(day)] = d
         rs = []
         for d in data:
             fd = maps.get(d.day, None)
@@ -2212,22 +2213,25 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.DeleteObject(hb)
 
 class CodeWindow(ext_win.CellRenderWindow):
-    def __init__(self) -> None:
+    def __init__(self, line : KLineWindow) -> None:
         super().__init__((70, '1fr'), 5)
         self.curCode = None
         self.data = None
+        self.selData = None
         self.cacheData = {}
-        base_win.ThreadPool.instance().start()
+        self.klineWin : KLineWindow = line
+        line.addNamedListener('selIdx.changed', self.onSelIdxChanged)
+        self.V_CENTER = win32con.DT_SINGLELINE | win32con.DT_VCENTER
         self.init()
     
-    def getCell(self, rowInfo, idx):
-        cell = {'text': '', 'color': 0xcccccc, 'textAlign': win32con.DT_LEFT, 'fontSize': 15}
+    def getBasicCell(self, rowInfo, idx):
+        cell = {'text': '', 'color': 0xcccccc, 'textAlign': self.V_CENTER, 'fontSize': 15}
         if not self.data:
             return cell
         name = rowInfo['name']
         val = self.data.get(name, None)
         if val == None:
-            cell['text'] = '--'
+            #cell['text'] = '--'
             return cell
         if name == '委比': cell['text'] = f'{int(val)} %'
         elif '市值' in name: cell['text'] = f'{val // 100000000}' + ' 亿'
@@ -2235,16 +2239,28 @@ class CodeWindow(ext_win.CellRenderWindow):
             if val < 0: cell['text'] = '亏损'
             else: cell['text'] = f'{int(val)}'
         elif '涨幅' == name: cell['text'] = f'{val :.2f} %'
-        else: cell['text'] = str(val)
-
+        else: 
+            cell['text'] = str(val)
         if name == '涨幅' or name == '委比':
             cell['color'] = 0x0000ff if int(val) >= 0 else 0x00ff00
         if '市盈率' in name and val < 0:
             cell['color'] =  0x00ff00
         return cell
     
+    def getBkCell(self, rowInfo, idx):
+        cell = {'text': '', 'color': 0x808080, 'textAlign': self.V_CENTER, 'fontSize': 15}
+        if not self.data:
+            return cell
+        name = rowInfo['name']
+        val = self.data.get(name, None)
+        cell['text'] = val
+        if name == 'refZSName':
+            cell['span'] = 2
+            cell['textAlign'] |= win32con.DT_CENTER
+        return cell
+
     def getCodeCell(self, rowInfo, idx):
-        cell = {'text': '', 'color': 0x5050ff, 'textAlign': win32con.DT_CENTER, 'fontSize': 15, 'fontWeight': 1000, 'span': 2}
+        cell = {'text': '', 'color': 0x5050ff, 'textAlign': win32con.DT_CENTER | self.V_CENTER, 'fontSize': 15, 'fontWeight': 1000, 'span': 2}
         if not self.data:
             return cell
         if rowInfo['name'] == 'code':
@@ -2253,24 +2269,25 @@ class CodeWindow(ext_win.CellRenderWindow):
         elif rowInfo['name'] == 'name':
             name = self.data.get('name', None)
             cell['text'] = name
-        elif rowInfo['name'] == 'refZSName':
-            cell['fontSize'] = 14
-            cell['fontWeight'] = 800
-            cell['color'] = 0xa0a0a0
-            cell['text'] = '【' + self.data.get('refZSName', '') + '】'
         return cell
 
     def init(self):
-        RH = 20
-        #self.addRow({'height': 25, 'margin': 0, 'name': 'refZSName'}, self.getCodeCell)
+        RH = 25
         self.addRow({'height': 25, 'margin': 0, 'name': 'code'}, self.getCodeCell)
         self.addRow({'height': 25, 'margin': 0, 'name': 'name'}, self.getCodeCell)
-        KEYS = ('Line', '流通市值', '总市值', 'Line', '市盈率_静', '市盈率_TTM') # '涨幅', '委比', 
+        KEYS = ('Line', '流通市值', '总市值', 'Line', '市盈率_静', '市盈率_TTM', 'Line') # '涨幅', '委比', 
         for k in KEYS:
             if k == 'Line':
                 self.addRow({'height': 1, 'margin': 0, 'name': 'split-line'}, {'color': 0xa0a0a0, 'bgColor': 0x606060, 'span': 2})
             else:
-                self.addRow({'height': RH, 'margin': 5, 'name': k}, {'text': k, 'color': 0xcccccc}, self.getCell)
+                self.addRow({'height': RH, 'margin': 0, 'name': k}, {'text': k, 'color': 0xcccccc, 'textAlign': self.V_CENTER}, self.getBasicCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSName'}, self.getBkCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSCode'}, {'text': '板块指数', 'color': 0x808080, 'textAlign': self.V_CENTER}, self.getBkCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSZhangFu'}, {'text': '指数涨幅', 'color': 0x808080, 'textAlign': self.V_CENTER}, self.getCell)
+        self.addRow({'height': 1, 'margin': 0, 'name': 'split-line'}, {'color': 0xa0a0a0, 'bgColor': 0x606060, 'span': 2})
+        self.addRow({'height': RH, 'margin': 0, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc, 'textAlign': self.V_CENTER}, self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'vol'},{'text': '成交额', 'color': 0xcccccc, 'textAlign': self.V_CENTER},  self.getCell)
+        self.addRow({'height': RH, 'margin': 0, 'name': 'rate'}, {'text': '换手率', 'color': 0xcccccc, 'textAlign': self.V_CENTER}, self.getCell)
 
     def loadZS(self, code):
         name = ths_orm.THS_ZS.select(ths_orm.THS_ZS.name).where(ths_orm.THS_ZS.code == code).scalar()
@@ -2288,12 +2305,8 @@ class CodeWindow(ext_win.CellRenderWindow):
         if code[0] in ('0', '3', '6'):
             bk = ths_orm.THS_GNTC.get_or_none(code = code)
             if bk:
-                bks = str(bk.hy).split('-')
-                bkName = bks[1].strip()
-                data['refZSName'] = bkName
-                zsObj = ths_orm.THS_ZS.get_or_none(name = bkName)
-                if zsObj:
-                    data['refZSCode'] = zsObj.code
+                data['refZSName'] = bk.hy_2_name
+                data['refZSCode'] = bk.hy_2_code
         self._useCacheData(code)
 
     def _useCacheData(self, code):
@@ -2316,47 +2329,30 @@ class CodeWindow(ext_win.CellRenderWindow):
         else:
             base_win.ThreadPool.instance().addTask(scode, self.loadCodeBasic, scode)
 
-class SelectTipWin(ext_win.CellRenderWindow):
-    def __init__(self, line : KLineWindow) -> None:
-        super().__init__((70, '1fr'), 5)
-        self.data = None
-        self.klineWin : KLineWindow = None
-        line.addNamedListener('selIdx.changed', self.onSelIdxChanged)
-        self.TX = win32con.DT_SINGLELINE | win32con.DT_VCENTER
-        
-        RH = 25
-        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSName'}, self.getCell)
-        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSCode'}, {'text': '板块指数', 'color': 0x808080, 'textAlign': self.TX}, self.getCell)
-        self.addRow({'height': RH, 'margin': 0, 'name': 'refZSZhangFu'}, {'text': '指数涨幅', 'color': 0x808080, 'textAlign': self.TX}, self.getCell)
-        self.addRow({'height': 1, 'margin': 0, 'name': 'split-line'}, {'color': 0xa0a0a0, 'bgColor': 0x606060, 'span': 2})
-        self.addRow({'height': RH, 'margin': 0, 'name': 'zhangFu'}, {'text': '涨幅', 'color': 0xcccccc, 'textAlign': self.TX}, self.getCell)
-        self.addRow({'height': RH, 'margin': 0, 'name': 'vol'},{'text': '成交额', 'color': 0xcccccc, 'textAlign': self.TX},  self.getCell)
-        self.addRow({'height': RH, 'margin': 0, 'name': 'rate'}, {'text': '换手率', 'color': 0xcccccc, 'textAlign': self.TX}, self.getCell)
-
     def onSelIdxChanged(self, evt, args):
-        self.data = evt.data
+        self.selData = evt.data
         self.klineWin = evt.src
         self.invalidWindow()
 
     def getCell(self, rowInfo, idx):
-        cell = {'text': '', 'color': 0xcccccc, 'textAlign': self.TX, 'fontSize': 15}
-        if self.data is None:
+        cell = {'text': '', 'color': 0xcccccc, 'textAlign': self.V_CENTER, 'fontSize': 15}
+        if self.selData is None:
             return
         if rowInfo['name'] == 'zhangFu':
-            zf = getattr(self.data, 'zhangFu', None)
+            zf = getattr(self.selData, 'zhangFu', None)
             if zf is not None:
                 cell['text'] = f'{zf :.02f}%'
                 cell['color'] = 0x0000ff if zf >= 0 else 0x00ff00
         elif rowInfo['name'] == 'vol':
-            money = getattr(self.data, 'amount', None)
+            money = getattr(self.selData, 'amount', None)
             if money:
                 cell['text'] = f'{money / 100000000 :.01f} 亿'
         elif rowInfo['name'] == 'rate':
-            rate = getattr(self.data, 'rate', None)
+            rate = getattr(self.selData, 'rate', None)
             if rate:
                 cell['text'] = f'{int(rate)} %'
         elif rowInfo['name'] == 'refZSZhangFu' and self.klineWin:
-            day = self.data.day
+            day = self.selData.day
             zf = self.klineWin.klineIndicator.refZSDrawer.getZhangFu(day)
             if zf is not None:
                 cell['text'] = f'{zf :.02f}%'
@@ -2382,7 +2378,7 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.klineWin = KLineWindow()
         self.klineWin.showSelTip = True
         self.klineWin.showCodeName = False
-        self.codeWin = CodeWindow()
+        self.codeWin = CodeWindow(self.klineWin)
         self.codeList = None
         self.code = None
         self.idxCodeList = -1
@@ -2403,9 +2399,6 @@ class KLineCodeWindow(base_win.BaseWindow):
         rightLayout = base_win.FlowLayout()
         self.codeWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, self.codeWin.getContentHeight()))
         rightLayout.addContent(self.codeWin, {'margins': (0, 5, 0, 5)})
-        tipWin = SelectTipWin(self.klineWin)
-        tipWin.createWindow(self.hwnd, (0, 0, DETAIL_WIDTH, tipWin.getContentHeight()))
-        rightLayout.addContent(tipWin, {'margins': (0, 10, 0, 5)})
 
         btn = base_win.Button({'title': '<<', 'name': 'LEFT'})
         btn.createWindow(self.hwnd, (0, 0, 40, 30))
@@ -2653,6 +2646,7 @@ class KLineCodeWindow(base_win.BaseWindow):
         self.refZtReasonWin.invalidWindow()
 
 if __name__ == '__main__':
+    base_win.ThreadPool.instance().start()
     sm = base_win.ThsShareMemory.instance()
     sm.open()
     win = KLineCodeWindow()
