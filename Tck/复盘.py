@@ -3,7 +3,7 @@ import win32gui, win32con, sys, os, win32api
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
 import ddlr_detail, top_scqx, ddlr_struct, top_zs, top_zt
-import top_vol_pm, top_cls_bk, top_hots, top_vol_lb, top_diary, top_dde, Tck.top_observe as top_observe
+import top_vol_pm, top_cls_bk, top_hots, top_vol_lb, top_diary, top_dde, top_observe, top_hot_tc
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -26,6 +26,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
             #{'name': 'TCGN', 'title': '题材梳理',  'class': tcgn2.TCGN_Window},
             #{'name': 'CLS_BK', 'title': '财联社板块',  'class': top_cls_bk.ClsBkWindow},
             {'name': 'MY', 'title': '自选',  'class': top_observe.MyWindow},
+            {'name': 'HOTS_TC', 'title': '热度题材',  'class': top_hot_tc.HotTCWindow},
             {'name': 'DIALY', 'title': '日记',  'class': top_diary.DailyWindow},
         ]
         gp = base_win.GroupButton(gpInfos)

@@ -234,6 +234,31 @@ class ClsUrl:
             traceback.print_exc()
         return None
 
+    # 热度题材
+    def loadHotTC(self, day):
+        url = 'https://www.cls.cn/v3/transaction/anchor?app=CailianpressWeb&cdate=2024-08-12&os=web&sv=7.7.5&sign='
+        try:
+            KIND = 'cls-hot-tc'
+            if not memcache.cache.needUpdate(day, KIND):
+                return memcache.cache.getCache(day, KIND)
+            params = {
+                'app': 'CailianpressWeb',
+                'cdate': cday,
+                'os': 'web',
+                'sv': '7.7.5',
+            }
+            url = f'https://x-quote.cls.cn/quote/stock/volume?' + self.signParams(params)
+            resp = requests.get(url)
+            txt = resp.content.decode('utf-8')
+            js = json.loads(txt)
+            data = js['data']
+            #print(data)
+            memcache.cache.saveCache(code, data, KIND)
+            return data
+        except Exception as e:
+            traceback.print_exc()
+        return None
+
 class ClsDataFile(datafile.DataFile):
     def __init__(self, code, dataType):
         #super().__init__(code, dataType, flag)
