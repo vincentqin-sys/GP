@@ -1,4 +1,4 @@
-import ctypes, os, sys, requests, json, traceback
+import ctypes, os, sys, requests, json, traceback, datetime
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
@@ -34,7 +34,10 @@ def _c_digest(s : str):
 
 class ClsUrl:
     def __init__(self) -> None:
-        pass
+        self.reqHeaders = {'Accept': 'text/plain, */*; q=0.01',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'Accept-Language': 'zh-CN,zh;q=0.9'}
 
     def _getTagCode(self, code):
         if type(code) == int:
@@ -236,24 +239,35 @@ class ClsUrl:
 
     # 热度题材
     def loadHotTC(self, day):
-        url = 'https://www.cls.cn/v3/transaction/anchor?app=CailianpressWeb&cdate=2024-08-12&os=web&sv=7.7.5&sign='
         try:
+            today = datetime.date.today().strftime('%Y-%m-%d')
             KIND = 'cls-hot-tc'
-            if not memcache.cache.needUpdate(day, KIND):
-                return memcache.cache.getCache(day, KIND)
+            if isinstance(day, datetime.date):
+                cday = day.strftime('%Y-%m-%d')
+            elif isinstance(day, str):
+                if len(day) == 8:
+                    cday = f'{day[0 : 4]}-{day[4 : 6]}-{day[6 : 8]}'
+            elif isinstance(day, int):
+                cday = f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
+            if today > cday:
+                cc = memcache.cache.getCache(cday, KIND)
+                if cc:
+                    return cc
+            if not memcache.cache.needUpdate(cday, KIND):
+                return memcache.cache.getCache(cday, KIND)
             params = {
                 'app': 'CailianpressWeb',
                 'cdate': cday,
                 'os': 'web',
                 'sv': '7.7.5',
             }
-            url = f'https://x-quote.cls.cn/quote/stock/volume?' + self.signParams(params)
-            resp = requests.get(url)
+            url = 'https://www.cls.cn/v3/transaction/anchor?' + self.signParams(params)
+            resp = requests.get(url, headers = self.reqHeaders)
             txt = resp.content.decode('utf-8')
             js = json.loads(txt)
             data = js['data']
             #print(data)
-            memcache.cache.saveCache(code, data, KIND)
+            memcache.cache.saveCache(cday, data, KIND)
             return data
         except Exception as e:
             traceback.print_exc()

@@ -16,6 +16,7 @@ class HotTCWindow(base_win.BaseWindow):
         #self.css['bgColor'] = 0x202020
         self.tableWin = None
         self.daysCombox = None
+        self.details = []
 
     def createWindow(self, parentWnd, rect, style=win32con.WS_VISIBLE | win32con.WS_CHILD, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
@@ -68,11 +69,30 @@ class HotTCWindow(base_win.BaseWindow):
 
     def initMySelect(self, days):
         rs = []
-        url = cls.ClsUrl()
-        
-        mark_utils.mergeMarks(rs, 'hot-tc', False)
-        self.tableWin.setData(rs)
-        self.tableWin.setSortHeader(self.tableWin.getHeaderByName('bk'), 'ASC')
+        n = 0
+        curDay = datetime.date.today()
+        while n <= days:
+            url = cls.ClsUrl()
+            ds = url.loadHotTC(curDay)
+            if ds:
+                rs.extend(ds)
+                n += 1
+            curDay -= datetime.timedelta(days = 1)
+        #mark_utils.mergeMarks(rs, 'cls-hot-tc', False)
+        sums = {}
+        ds = []
+        for it in rs:
+            if 'symbol_name' not in it:
+                continue
+            name = it['symbol_name']
+            if name not in sums:
+                sums[name] = {'name': name, 'up': 0, 'down': 0, 'sum': 0}
+                ds.append(sums[name])
+            sums[name][it['float']] += 1
+            sums[name]['sum'] += 1
+        self.details = rs
+        self.tableWin.setData(ds)
+        self.tableWin.setSortHeader(self.tableWin.getHeaderByName('sum'), 'DSC')
         self.tableWin.invalidWindow()
 
     def onDragMove(self, evt, args):
