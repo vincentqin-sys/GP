@@ -1,4 +1,4 @@
-import time, os, threading, datetime
+import time, os, threading, datetime, traceback
 import json, os, sys
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
@@ -20,9 +20,12 @@ def loop():
         if lastDay != td:
             lastDay = td
             print('---------------->', lastDay, '<----------------')
-        thsServer.loadOneTime()
-        clsServer.loadOneTime()
-        lhbServer.loadOneTime()
+        try:
+            thsServer.loadOneTime()
+            clsServer.loadOneTime()
+            lhbServer.loadOneTime()
+        except Exception as e:
+            traceback.print_exc()
         time.sleep(10)
 
 if __name__ == '__main__':

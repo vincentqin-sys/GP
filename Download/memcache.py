@@ -11,7 +11,8 @@ class MemCache:
         'default': 10 * 60,
         'cls-pankou-5': 60,
         'cls-pankou-vol': 60,
-        'cls-basic': 10 * 60 * 60
+        'cls-basic': 10 * 60 * 60,
+        'cls-scqx': 3 * 60,
     }
     def __init__(self) -> None:
         self.datas = {} # key = code + kind, value = CacheItem
@@ -50,8 +51,6 @@ class MemCache:
         now = datetime.datetime.now()
         nmm = now.hour * 100 + now.minute
         if mm > 1500 and nmm > 1500:
-            return False
-        if (mm > 1130 and mm < 1300) and (nmm > 1130 and nmm < 1300):
             return False
         if mm < 930 and nmm < 930:
             return False

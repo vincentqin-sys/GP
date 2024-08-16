@@ -1,6 +1,6 @@
 import time, os, platform
 from PIL import Image
-import win32gui as win, win32con , win32api, win32ui # pip install pywin32
+import win32gui, win32con , win32api, win32ui # pip install pywin32
 
 class EImage:
     def __init__(self, oimg : Image):
@@ -152,10 +152,10 @@ class BuildTemplateImage:
         pass
 
     def dump(self):
-        if not win.IsWindowVisible(self.hwnd):
+        if not win32gui.IsWindowVisible(self.hwnd):
             return None
-        dc = win.GetWindowDC(self.hwnd)
-        #mdc = win.CreateCompatibleDC(dc)
+        dc = win32gui.GetWindowDC(self.hwnd)
+        #mdc = win32gui.CreateCompatibleDC(dc)
         mfcDC = win32ui.CreateDCFromHandle(dc)
         saveDC = mfcDC.CreateCompatibleDC()
         saveBitMap = win32ui.CreateBitmap()
@@ -177,10 +177,10 @@ class BuildTemplateImage:
                 self.copy(eimg, rect)
 
         # destory
-        win.DeleteObject(saveBitMap.GetHandle())
+        win32gui.DeleteObject(saveBitMap.GetHandle())
         saveDC.DeleteDC()
         mfcDC.DeleteDC()
-        win.ReleaseDC(self.hwnd, dc)
+        win32gui.ReleaseDC(self.hwnd, dc)
 
     def saveTemplate(self):
         while True:

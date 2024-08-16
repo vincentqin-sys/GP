@@ -1288,6 +1288,11 @@ class ScqxIndicator(CustomIndicator):
             if not fd:
                 fd = {'day': d.day, 'zhqd': ''}
             rs.append(fd)
+        if rs and not rs[-1]['zhqd']:
+            val = cls.ClsUrl().loadDegree()
+            last = rs[-1]
+            if val and last['day'] == int(val['day'].replace('-', '')):
+                last['zhqd'] = val['degree']
         self.setCustomData(rs)
 
     def drawItem(self, idx, hdc, pens, hbrs, x):
@@ -2659,5 +2664,5 @@ if __name__ == '__main__':
     #win.addIndicator(DdeIndicator()) # {'height' : 50}
     rect = (0, 0, 1920, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('881121') # cls82475 002085 603390 002085 002869  002055
+    win.changeCode('603390') # cls82475 002085 603390 002085 002869  002055
     win32gui.PumpMessages()

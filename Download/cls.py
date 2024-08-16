@@ -273,6 +273,26 @@ class ClsUrl:
             traceback.print_exc()
         return None
 
+    # 市场情绪 {day: YYYY-MM-DD, degree: int}
+    def loadDegree(self):
+        try:
+            KIND = 'cls-scqx'
+            if not memcache.cache.needUpdate(KIND, KIND):
+                return memcache.cache.getCache(KIND, KIND)
+            url = 'https://x-quote.cls.cn/quote/stock/emotion_options?app=CailianpressWeb&fields=up_performance&os=web&sv=7.7.5&sign=5f473c4d9440e4722f5dc29950aa3597'
+            resp = requests.get(url)
+            txt = resp.content.decode('utf-8')
+            js = json.loads(txt)
+            day = js['data']['date']
+            degree = js['data']['market_degree']
+            degree = int(float(degree) * 100)
+            data = {'day': day, 'degree': degree}
+            memcache.cache.saveCache(KIND, data, KIND)
+            return data
+        except Exception as e:
+            traceback.print_exc()
+        return None
+        
 class ClsDataFile(datafile.DataFile):
     def __init__(self, code, dataType):
         #super().__init__(code, dataType, flag)
@@ -321,3 +341,4 @@ class ClsDataFile(datafile.DataFile):
 #signByStr('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012')
 #signByStr('app=CailianpressWeb&fields=date,minute,last_px,business_balance,business_amount,open_px,preclose_px,av_px&os=web&secu_code=sz301488&sv=7.7.5')
 #ClsUrl().loadHistory5FenShi('cls80133') #cls80133
+ClsUrl().loadDegree()

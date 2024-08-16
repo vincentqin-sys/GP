@@ -339,8 +339,6 @@ class HexinMemCache:
         nmm = now.hour * 100 + now.minute
         if mm > 1500 and nmm > 1500:
             return False
-        if (mm > 1130 and mm < 1300) and (nmm > 1130 and nmm < 1300):
-            return False
         if mm < 930 and nmm < 930:
             return False
         return True
