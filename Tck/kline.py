@@ -3,7 +3,7 @@ import win32gui, win32con
 import requests, peewee as pw
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import ths_orm, tdx_orm, tck_orm
+from db import ths_orm, tdx_orm, tck_orm, tck_def_orm
 from Tdx import datafile
 from Download import henxin, cls
 from Common import base_win, ext_win, dialog
@@ -1451,7 +1451,7 @@ class DrawLineManager:
     def load(self, code):
         self.reset()
         self.code = code
-        q = tck_orm.DrawLine.select().where(tck_orm.DrawLine.code == code)
+        q = tck_def_orm.DrawLine.select().where(tck_def_orm.DrawLine.code == code)
         for row in q:
             row.info = json.loads(row.info)
             self.lines.append(row)
@@ -1462,7 +1462,7 @@ class DrawLineManager:
 
     def begin(self, dateType, kind):
         self.isDrawing = True
-        self.curLine = tck_orm.DrawLine(code = self.code, dateType = dateType, kind = kind)
+        self.curLine = tck_def_orm.DrawLine(code = self.code, dateType = dateType, kind = kind)
 
     def isValidLine(self, line):
         return line.info and ('startX' in line.info) and ('endX' in line.info)
@@ -1506,7 +1506,7 @@ class DrawLineManager:
         drawer = self.klineWin.drawer
         drawer.drawText(hdc, text, rc, color = 0x404040, align = win32con.DT_LEFT)
 
-    def onDrawLine(self, hdc, line : tck_orm.DrawLine):
+    def onDrawLine(self, hdc, line : tck_def_orm.DrawLine):
         if not self.isValidLine(line) or (not self.klineWin.klineIndicator.visibleRange):
             return
         sidx = self.klineWin.model.getItemIdx(int(line.info['startX']))
@@ -1851,7 +1851,7 @@ class KLineWindow(base_win.BaseWindow):
                 self.lineMgr.begin(self.dateType, 'text')
             elif name == 'del-draw-line':
                 #qr = tck_orm.DrawLine.select().where(tck_orm.DrawLine.day == str(selDay))
-                tck_orm.DrawLine.delete().where(tck_orm.DrawLine.day == str(selDay)).execute()
+                tck_def_orm.DrawLine.delete().where(tck_def_orm.DrawLine.day == str(selDay)).execute()
                 self.lineMgr.reload()
                 self.invalidWindow()
             elif name == 'JZX':
@@ -1859,9 +1859,9 @@ class KLineWindow(base_win.BaseWindow):
                     obj = ths_orm.THS_GNTC.get_or_none(code = self.model.code)
                     if obj:
                         self.model.name = obj.name
-                tck_orm.MyObserve.get_or_create(code = self.model.code, name = self.model.name, kind = evt.item['kind'])
+                tck_def_orm.MyObserve.get_or_create(code = self.model.code, name = self.model.name, kind = evt.item['kind'])
             elif name == 'SZX':
-                tck_orm.MyObserve.delete().where((tck_orm.MyObserve.code == self.model.code) & (tck_orm.MyObserve.kind == evt.item['kind']))
+                tck_def_orm.MyObserve.delete().where((tck_def_orm.MyObserve.code == self.model.code) & (tck_def_orm.MyObserve.kind == evt.item['kind']))
             elif name == 'zt-reason':
                 base_win.ThsShareMemory.instance().writeMarkDay(selDay)
                 evt = self.Event('zt-reason', self, code = self.model.code, day = selDay)

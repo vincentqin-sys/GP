@@ -3,7 +3,7 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests, re
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import tck_orm
+from db import tck_def_orm
 from Common import base_win, sheet
 from Tck import kline_utils
 from db import ths_orm as ths_orm
@@ -150,7 +150,7 @@ class DailyWindow(base_win.BaseWindow):
         self.tableWin.invalidWindow()
 
     def loadDays(self):
-        qr = tck_orm.DailyFuPan.select().order_by(tck_orm.DailyFuPan.day.desc()).dicts()
+        qr = tck_def_orm.DailyFuPan.select().order_by(tck_def_orm.DailyFuPan.day.desc()).dicts()
         datas = []
         for d in qr:
             d['_updated'] = False
@@ -160,9 +160,9 @@ class DailyWindow(base_win.BaseWindow):
 
     def onInsertDay(self, evt, args):
         def onPeekDay(evt, args):
-            obj = tck_orm.DailyFuPan.get_or_none(day = evt.sday)
+            obj = tck_def_orm.DailyFuPan.get_or_none(day = evt.sday)
             if obj: return # exists
-            tck_orm.DailyFuPan.create(day = evt.sday)
+            tck_def_orm.DailyFuPan.create(day = evt.sday)
             self.loadDays()
             for i, d in enumerate(self.tableWin.getData()):
                 if d['day'] == evt.sday:
@@ -179,7 +179,7 @@ class DailyWindow(base_win.BaseWindow):
         datas = self.tableWin.getData()
         if selRow < 0 or not datas or selRow >= len(datas):
             return
-        tck_orm.DailyFuPan.delete_by_id(datas[selRow]['id'])
+        tck_def_orm.DailyFuPan.delete_by_id(datas[selRow]['id'])
         datas.pop(selRow)
         if selRow > 0:
             selRow -= 1
@@ -195,7 +195,7 @@ class DailyWindow(base_win.BaseWindow):
             return
         model.setUpdated(False)
         self.curData['info'] = info
-        qr = tck_orm.DailyFuPan.update({'info': info}).where(tck_orm.DailyFuPan.id == self.curData['id'])
+        qr = tck_def_orm.DailyFuPan.update({'info': info}).where(tck_def_orm.DailyFuPan.id == self.curData['id'])
         qr.execute()
         self.tableWin.invalidWindow()
     

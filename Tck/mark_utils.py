@@ -3,7 +3,7 @@ import threading, time, datetime, sys, os, copy, json, functools
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import tck_orm
+from db import tck_def_orm
 from Common import base_win
 
 def formatDay(day):
@@ -27,7 +27,7 @@ def _buildKey(data, kind, enableDays):
     return key
 
 def mergeMarks(datas : list, kind, enableDays : bool):
-    qr = tck_orm.Mark.select().where(tck_orm.Mark.kind == kind).dicts()
+    qr = tck_def_orm.Mark.select().where(tck_def_orm.Mark.kind == kind).dicts()
     marks = {}
     for d in qr:
         k = _buildKey(d, kind, enableDays)
@@ -114,15 +114,15 @@ def saveOneMarkColor( keyVals, markColor, **kwargs):
         return
     cnd = None
     for k in keyVals:
-        cndx = getattr(tck_orm.Mark, k) == keyVals[k]
+        cndx = getattr(tck_def_orm.Mark, k) == keyVals[k]
         if not cnd: cnd = cndx
         else: cnd = cnd & cndx
-    cnd = cnd & (tck_orm.Mark.markColor > 0)
+    cnd = cnd & (tck_def_orm.Mark.markColor > 0)
 
     # save end mark day
     if markColor == MARK_END_VAL:
-        cnd = cnd & (tck_orm.Mark.endDay.is_null(True) | tck_orm.Mark.endDay < kwargs['endDay'])
-        obj = tck_orm.Mark.get_or_none(cnd)
+        cnd = cnd & (tck_def_orm.Mark.endDay.is_null(True) | tck_def_orm.Mark.endDay < kwargs['endDay'])
+        obj = tck_def_orm.Mark.get_or_none(cnd)
         if obj:
             obj.endDay = kwargs['endDay']
             obj.save()
@@ -133,11 +133,11 @@ def saveOneMarkColor( keyVals, markColor, **kwargs):
     mps['markColor'] = markColor
     if 'name' in kwargs:
         mps['name'] = kwargs['name']
-    obj : tck_orm.Mark = tck_orm.Mark.get_or_none(cnd)
+    obj : tck_def_orm.Mark = tck_def_orm.Mark.get_or_none(cnd)
     if not obj:
         if markColor == 0:
             return None
-        return tck_orm.Mark.create(**mps)
+        return tck_def_orm.Mark.create(**mps)
     else:
         if markColor == 0: # delete
             obj.delete_instance()

@@ -6,7 +6,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from db import ths_orm
 from THS import ths_win, hot_utils
 from Common import base_win, ext_win
-from db import tck_orm
+from db import tck_orm, tck_orm
 from Tck import kline_utils, conf, mark_utils, utils
 
 
@@ -117,9 +117,9 @@ class ZT_Window(base_win.BaseWindow):
         txt =  self.editorWin.getText().strip()
         if not txt:
             return
-        obj = tck_orm.TCK_CiTiao.get_or_none(name = txt)
+        obj = tck_def_orm.TCK_CiTiao.get_or_none(name = txt)
         if not obj:
-            tck_orm.TCK_CiTiao.create(name = txt)
+            tck_def_orm.TCK_CiTiao.create(name = txt)
 
     def onDbClickEditor(self, evt, args):
         model = []
@@ -127,7 +127,7 @@ class ZT_Window(base_win.BaseWindow):
             model.append({'title': s})
         model.append({'title': 'LINE'})
         model.extend(conf.top_zt_tips)
-        #for s in tck_orm.TCK_CiTiao.select():
+        #for s in tck_def_orm.TCK_CiTiao.select():
         #    model.append({'title': s.name})
         #if len(model) == 1:
         #    return

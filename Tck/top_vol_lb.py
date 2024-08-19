@@ -3,13 +3,11 @@ import threading, time, datetime, sys, os, copy, pyautogui
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import tdx_orm, ths_orm, tck_orm
+from db import ths_orm
 from Tdx import datafile
-from Download import henxin, ths_ddlr
 from THS import ths_win
 from Common import base_win
-import ddlr_detail, mark_utils
-from Tck import timeline
+import mark_utils
 
 thsWin = ths_win.ThsWindow.ins()
 

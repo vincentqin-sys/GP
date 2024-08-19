@@ -3,7 +3,7 @@ import threading, time, datetime, sys, os, copy
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import ths_orm, tck_orm
+from db import ths_orm
 
 _ths_gntc_s = {}
 

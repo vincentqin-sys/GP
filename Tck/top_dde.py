@@ -3,12 +3,10 @@ import threading, time, datetime, sys, os, copy
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import ths_orm, tck_orm
-from Tdx import datafile
-from Download import henxin, ths_ddlr, ths_iwencai
-from THS import ths_win
+from db import ths_orm
+from Download import ths_iwencai
 from Common import base_win
-from Tck import kline, kline_utils, mark_utils, timeline, top_diary, cache, utils
+from Tck import kline_utils, utils
 
 class DdeWindow(base_win.BaseWindow):
     def __init__(self) -> None:

@@ -3,12 +3,10 @@ import threading, time, datetime, sys, os, copy
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import ths_orm, tck_orm
-from Tdx import datafile
-from Download import henxin, ths_ddlr, ths_iwencai
-from THS import ths_win, hot_utils
+from db import tck_def_orm
+from THS import hot_utils
 from Common import base_win
-from Tck import kline, kline_utils, mark_utils, timeline, top_diary, cache, utils
+from Tck import  kline_utils, mark_utils, cache, utils
 
 class MyWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -85,7 +83,7 @@ class MyWindow(base_win.BaseWindow):
     def initMySelect(self, kind):
         hots = hot_utils.DynamicHotZH.ins.getNewestHotZH()
         rs = []
-        q = tck_orm.MyObserve.select().where(tck_orm.MyObserve.kind == kind).dicts() # .order_by(tck_orm.MyObserve.order.asc())
+        q = tck_def_orm.MyObserve.select().where(tck_def_orm.MyObserve.kind == kind).dicts() # .order_by(tck_def_orm.MyObserve.order.asc())
         for it in q:
             rs.append(it)
             h = hots.get(int(it['code']), None)
@@ -102,7 +100,7 @@ class MyWindow(base_win.BaseWindow):
 
         for idx, d in enumerate(self.tableWin.getData()):
             order = idx + 1
-            #tck_orm.MyObserve.update(order = order).where(tck_orm.MyObserve.id == d['id']).execute()
+            #tck_def_orm.MyObserve.update(order = order).where(tck_def_orm.MyObserve.id == d['id']).execute()
 
     def onDragMove(self, evt, args):
         pass
@@ -120,7 +118,7 @@ class MyWindow(base_win.BaseWindow):
         menu = base_win.PopupMenu.create(self.hwnd, model)
         def onMenuItem(evt, rd):
             if evt.item['name'] == 'del':
-                tck_orm.MyObserve.delete().where(tck_orm.MyObserve.code == rowData['code'], tck_orm.MyObserve.kind == kind).execute()
+                tck_def_orm.MyObserve.delete().where(tck_def_orm.MyObserve.code == rowData['code'], tck_def_orm.MyObserve.kind == kind).execute()
                 dts : list = tableWin.getData()
                 dts.pop(row)
             elif evt.item['name'] == 'export':

@@ -3,7 +3,7 @@ import threading, time, datetime, sys, os, copy, json, re
 import os, sys, requests
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import tck_orm
+from db import tck_def_orm
 from Download import cls
 from THS import hot_utils
 from Common import base_win, ext_win
@@ -214,7 +214,7 @@ class ClsBkWindow(base_win.BaseWindow):
         menu = base_win.PopupMenu.create(self.hwnd, model)
         def onMM(evt, args):
             rowData = self.tableWin.getData()[selRow]
-            obj = tck_orm.Mark.get_or_create(code = rowData['secu_code'], kind = 'cls-bk')[0]
+            obj = tck_def_orm.Mark.get_or_create(code = rowData['secu_code'], kind = 'cls-bk')[0]
             obj.name = rowData['secu_name']
             obj.markColor = evt.item['markColor']
             obj.save()
