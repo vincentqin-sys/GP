@@ -2662,6 +2662,7 @@ class MutiEditor(BaseEditor):
 
     def setText(self, text):
         self.selRange = None
+        self.lines.clear()
         if not text:
             text = ''
         if not isinstance(text, str):

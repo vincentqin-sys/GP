@@ -1455,10 +1455,12 @@ class DrawTextDialog(dialog.Dialog):
     def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP, className = 'STATIC', title = '画线'):
         super().createWindow(parentWnd, rect, style, className, title)
         if self.updateLine:
-            self.radoisUpd.createWindow(self.hwnd, (0, 0, 1, 1))
+            self.radoisUpd.createWindow(self.hwnd, (0, 0, 60, 25))
             self.radoisUpd.addNamedListener('Checked', self.onChecked)
-        self.radoisNew.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.radoisNew.createWindow(self.hwnd, (0, 0, 60, 25))
         self.radoisNew.addNamedListener('Checked', self.onChecked)
+        self.radoisUpd.css['bgColor'] = 0x404040
+        self.radoisNew.css['bgColor'] = 0x404040
         self.dayPicker.css['bgColor'] = 0xf0f0f0
         self.dayPicker.css['textColor'] = 0x202020
         self.dayPicker.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -1491,6 +1493,8 @@ class DrawTextDialog(dialog.Dialog):
         self.layout.setContent(4, 0, okBtn)
         cancelBtn = base_win.Button({'title': 'Cancel', 'name': 'cancel'})
         cancelBtn.createWindow(self.hwnd, (0, 0, 50, 25))
+        okBtn.addNamedListener('Click', self.onOkCancel)
+        cancelBtn.addNamedListener('Click', self.onOkCancel)
         rl = base_win.FlowLayout(30)
         rl.addContent(okBtn)
         rl.addContent(cancelBtn)
@@ -1503,20 +1507,38 @@ class DrawTextDialog(dialog.Dialog):
         else:
             self.radoisNew.setChecked(True)
 
-    def updateData(self, line):
-        self.dayPicker.setSelDay(line['day'])
-        txt = line.get('info', '')
-        if not txt:
+    def onOkCancel(self, evt, args):
+        self.close()
+        ok = evt.info['name'] == 'ok'
+        if not ok:
+            self.notifyListener(self.Event('InputEnd', self, ok = False, data = None))
             return
-        js = json.loads(txt)
-        price = float(js['startY']) + 0.005
+        data = self.updateLine if self.radoisUpd.isChecked() else self.insertLine
+        try:
+            data.day = self.dayPicker.getSelDayInt()
+            data.info['startX'] = data.day
+            price = self.priceEditor.getText()
+            data.info['startY'] = float(price)
+            data.info['text'] = self.mEditor.getText()
+            self.notifyListener(self.Event('InputEnd', self, ok = ok, data = data))
+        except Exception as e:
+            pass
+
+    def updateData(self, line):
+        self.dayPicker.setSelDay(line.day)
+        info = line.info
+        if not info:
+            return
+        price = float(info['startY']) + 0.005
         self.priceEditor.setText(f'{price :.2f}')
-        self.mEditor.setText(js['text'])
+        self.priceEditor.invalidWindow()
+        self.mEditor.setText(info.get('text', ''))
+        self.mEditor.invalidWindow()
     
     def onChecked(self, evt, args):
-        if evt.info['name'] == 'NEW' and evt.info['checked']:
+        if evt.info['value'] == 'NEW' and evt.info['checked']:
             self.updateData(self.insertLine)
-        elif evt.info['name'] == 'UPDATE' and evt.info['checked']:
+        elif evt.info['value'] == 'UPDATE' and evt.info['checked']:
             self.updateData(self.updateLine)
 
 class DrawLineManager:
@@ -1567,6 +1589,10 @@ class DrawLineManager:
             self.curLine.info = json.dumps(ln)
             self.curLine.save()
             self.curLine.info = ln
+            for i, it in enumerate(self.lines):
+                if it.id == self.curLine.id:
+                    self.lines.pop(i)
+                    break
             self.lines.append(self.curLine)
         self.curLine = None
     
@@ -1647,7 +1673,7 @@ class DrawLineManager:
     
     def onInputEnd(self, evt, args):
         if evt.ok:
-            self.curLine.info['text'] = evt.text
+            self.curLine = evt.data
             self.end()
         else:
             self.cancel()
@@ -1679,10 +1705,12 @@ class DrawLineManager:
             price = it.getValueAtY(y)
             self.curLine.info = {'startX': data.day, 'startY': price['value']}
 
-            qr = tck_def_orm.DrawLine.select().where(tck_def_orm.DrawLine.day == self.curLine.day)
+            qr = tck_def_orm.DrawLine.select().where(tck_def_orm.DrawLine.day == self.curLine.day, tck_def_orm.DrawLine.kind == 'text')
             u = None
             for it in qr:
-                u = it.__data__
+                u = it
+                if u.info:
+                    u.info = json.loads(u.info)
                 break
             dlg = DrawTextDialog(u, self.curLine)
             #dlg = dialog.MultiInputDialog()
@@ -2753,5 +2781,5 @@ if __name__ == '__main__':
     #win.addIndicator(DdeIndicator()) # {'height' : 50}
     rect = (0, 0, 1920, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('603390') # cls82475 002085 603390 002085 002869  002055
+    win.changeCode('000062') # cls82475 002085 603390 002085 002869  002055
     win32gui.PumpMessages()
