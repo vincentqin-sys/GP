@@ -1646,7 +1646,8 @@ class CheckBox(BaseWindow):
             self.uncheckedGroup(name)
         self.info['checked'] = checked
         self.invalidWindow()
-        self.notifyListener(self.Event('Checked', self, info = self.info))
+        if checked:
+            self.notifyListener(self.Event('Checked', self, info = self.info))
 
     def uncheckedGroup(self, name):
         if not name:
@@ -2175,6 +2176,7 @@ class DatePopupWindow(NoActivePopupWindow):
 class DatePicker(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
+        self.css['textColor'] = 0xcccccc
         self.popWin = DatePopupWindow()
         self.popWin.destroyOnHide = False
         self.popWin.addListener(self.onSelDayChanged, 'DatePopupWindow')
@@ -2209,11 +2211,11 @@ class DatePicker(BaseWindow):
 
     def onDraw(self, hdc):
         w, h = self.getClientSize()
-        self.drawer.drawRect(hdc, (0, 0, w, h), 0xcccccc)
+        self.drawer.drawRect(hdc, (0, 0, w, h), self.css['textColor'])
         if not self.getSelDay():
             return
         sy = (h - 2 - 14) // 2
-        self.drawer.drawText(hdc, self.getSelDay(), (0, sy, w - 1, h), 0xcccccc)
+        self.drawer.drawText(hdc, self.getSelDay(), (0, sy, w - 1, h), self.css['textColor'])
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONUP:
@@ -2319,6 +2321,7 @@ class BaseEditor(BaseWindow):
 class Editor(BaseEditor):
     def __init__(self) -> None:
         super().__init__()
+        self.css['fontSize'] = 18
         self.css['bgColor'] = 0xf0f0f0
         self.css['textColor'] = 0x202020
         self.css['placeHolderColor'] = 0xb0b0b0
@@ -3154,6 +3157,7 @@ class MutiEditor(BaseEditor):
         self.setCaretPos(rc[0], rc[1])
         super().onSetFocus()
 
+# listeners : Select = {src, tip-item}
 class ComboBox(Editor):
     def __init__(self) -> None:
         super().__init__()

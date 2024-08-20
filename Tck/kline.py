@@ -1,4 +1,5 @@
 import os, sys, functools, copy, datetime, json
+from win32.lib.win32con import WS_CAPTION, WS_POPUP, WS_SYSMENU
 import win32gui, win32con
 import requests, peewee as pw
 
@@ -1437,6 +1438,87 @@ class KLineSelTipWindow(base_win.BaseWindow):
             return win32con.HTCAPTION
         return super().winProc(hwnd, msg, wParam, lParam)
 
+class DrawTextDialog(dialog.Dialog):
+    def __init__(self, update, insert) -> None:
+        super().__init__()
+        self.css['bgColor'] = 0x404040
+        self.css['paddings'] = (5, 5, 5, 5)
+        self.updateLine = update
+        self.insertLine = insert
+        self.layout = base_win.GridLayout((25, 25, 25, '1fr', 25), (40, '1fr'), (5, 5))
+        self.radoisUpd = base_win.CheckBox({'name': 'op', 'value': 'UPDATE', 'title':'修改'})
+        self.radoisNew = base_win.CheckBox({'name': 'op', 'value': 'NEW', 'title':'新建'})
+        self.dayPicker = base_win.DatePicker()
+        self.priceEditor = base_win.Editor()
+        self.mEditor = base_win.MutiEditor()
+    
+    def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP, className = 'STATIC', title = '画线'):
+        super().createWindow(parentWnd, rect, style, className, title)
+        if self.updateLine:
+            self.radoisUpd.createWindow(self.hwnd, (0, 0, 1, 1))
+            self.radoisUpd.addNamedListener('Checked', self.onChecked)
+        self.radoisNew.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.radoisNew.addNamedListener('Checked', self.onChecked)
+        self.dayPicker.css['bgColor'] = 0xf0f0f0
+        self.dayPicker.css['textColor'] = 0x202020
+        self.dayPicker.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.priceEditor.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.mEditor.createWindow(self.hwnd, (0, 0, 1, 1))
+
+        rl = base_win.FlowLayout(30)
+        rl.addContent(self.radoisNew)
+        if self.radoisUpd.hwnd:
+            rl.addContent(self.radoisUpd)
+        self.layout.setContent(0, 1, rl)
+        t = base_win.Label('日期')
+        t.css['bgColor'] = 0x404040
+        t.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.layout.setContent(1, 0, t)
+        self.layout.setContent(1, 1, self.dayPicker)
+        t = base_win.Label('价格')
+        t.css['bgColor'] = 0x404040
+        t.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.layout.setContent(2, 0, t)
+        self.layout.setContent(2, 1, self.priceEditor)
+        t = base_win.Label('备注')
+        t.css['bgColor'] = 0x404040
+        t.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.layout.setContent(3, 0, t)
+        self.layout.setContent(3, 1, self.mEditor)
+
+        okBtn = base_win.Button({'title': 'OK', 'name': 'ok'})
+        okBtn.createWindow(self.hwnd, (0, 0, 50, 25))
+        self.layout.setContent(4, 0, okBtn)
+        cancelBtn = base_win.Button({'title': 'Cancel', 'name': 'cancel'})
+        cancelBtn.createWindow(self.hwnd, (0, 0, 50, 25))
+        rl = base_win.FlowLayout(30)
+        rl.addContent(okBtn)
+        rl.addContent(cancelBtn)
+        self.layout.setContent(4, 1, rl)
+        pds = self.css['paddings']
+        w, h = self.getClientSize()
+        self.layout.resize(pds[0], pds[1], w - pds[0] - pds[2], h - pds[1] - pds[3])
+        if self.updateLine:
+            self.radoisUpd.setChecked(True)
+        else:
+            self.radoisNew.setChecked(True)
+
+    def updateData(self, line):
+        self.dayPicker.setSelDay(line['day'])
+        txt = line.get('info', '')
+        if not txt:
+            return
+        js = json.loads(txt)
+        price = float(js['startY']) + 0.005
+        self.priceEditor.setText(f'{price :.2f}')
+        self.mEditor.setText(js['text'])
+    
+    def onChecked(self, evt, args):
+        if evt.info['name'] == 'NEW' and evt.info['checked']:
+            self.updateData(self.insertLine)
+        elif evt.info['name'] == 'UPDATE' and evt.info['checked']:
+            self.updateData(self.updateLine)
+
 class DrawLineManager:
     def __init__(self, klineWin) -> None:
         self.klineWin : KLineWindow = klineWin
@@ -1596,8 +1678,15 @@ class DrawLineManager:
             self.curLine.day = str(data.day)
             price = it.getValueAtY(y)
             self.curLine.info = {'startX': data.day, 'startY': price['value']}
-            dlg = dialog.MultiInputDialog()
-            dlg.createWindow(self.klineWin.hwnd, (0, 0, 250, 150), style = win32con.WS_POPUP)
+
+            qr = tck_def_orm.DrawLine.select().where(tck_def_orm.DrawLine.day == self.curLine.day)
+            u = None
+            for it in qr:
+                u = it.__data__
+                break
+            dlg = DrawTextDialog(u, self.curLine)
+            #dlg = dialog.MultiInputDialog()
+            dlg.createWindow(self.klineWin.hwnd, (0, 0, 250, 200), style = win32con.WS_POPUP)
             dlg.addNamedListener('InputEnd', self.onInputEnd)
             dlg.show(* win32gui.GetCursorPos())
             #print('lbtnUP:', self.curLine.info)

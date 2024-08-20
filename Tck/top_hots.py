@@ -89,6 +89,7 @@ class Hots_Window(base_win.BaseWindow):
             self.initTips()
             self.onQuery()
         self.editorWin.addNamedListener('PressEnter', onPressEnter, None)
+        self.editorWin.addNamedListener('Select', onPressEnter, None)
         self.tableWin.addListener(self.onDbClick, None)
         self.tableWin.addNamedListener('ContextMenu', self.onContextMenu)
         self.initTips()
