@@ -250,9 +250,9 @@ class Server:
 
         # 下载热度信息
         if (curTime >= '09:30' and curTime <= '11:30') or (curTime >= '13:00' and curTime <= '15:00'):
-            if (now.minute % 10 <= 2) and (time.time() - self.last_hot_time >= 5 * 60):
-                self.downloadSaveHot()
+            if (now.minute % 5 <= 1) and (time.time() - self.last_hot_time >= 3 * 60):
                 self.last_hot_time = time.time()
+                self.downloadSaveHot()
         
         # 计算热度综合排名
         if curTime > '15:05' and curTime < '16:00':

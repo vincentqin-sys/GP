@@ -96,6 +96,7 @@ def queryFullInfo(code):
     return rs
 
 db_hot = pw.SqliteDatabase(f'{path}GP/db/THS_Hot.db')
+db_hot_zh = pw.SqliteDatabase(f'{path}GP/db/THS_HotZH.db')
 
 # 同花顺--个股热度排名
 class THS_Hot(pw.Model):
@@ -118,7 +119,7 @@ class THS_HotZH(pw.Model):
     zhHotOrder = pw.IntegerField(column_name = '综合热度排名' )
 
     class Meta:
-        database = db_hot
+        database = db_hot_zh
         table_name = '个股热度综合排名'
 
 
@@ -191,7 +192,8 @@ class THS_DDE(pw.Model):
         table_name = 'ths_dde'
 
 db_f10.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_Newest])
-db_hot.create_tables([THS_Hot, THS_HotZH])
+db_hot.create_tables([THS_Hot])
+db_hot_zh.create_tables([THS_HotZH])
 db_ddlr.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS_ZD])
 db_gntc.create_tables([THS_GNTC])

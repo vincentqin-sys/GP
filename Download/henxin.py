@@ -316,7 +316,7 @@ class HexinMemCache:
             iday = today.year * 10000 + today.month * 100 + today.day
             if iday != date:
                 return False
-            u = self._checkTime(data, 3 * 60) # 3 minuts
+            u = self._checkTime(data, 1 * 60) # 3 minuts
             return u
         if kind == 'timeline':
             if data.lastDay != datetime.date.today():
@@ -326,7 +326,7 @@ class HexinMemCache:
             iday = today.year * 10000 + today.month * 100 + today.day
             if iday != date:
                 return False
-            u = self._checkTime(data, 3 * 60)
+            u = self._checkTime(data, 1 * 60)
             return u
         return False
 
@@ -340,6 +340,8 @@ class HexinMemCache:
         if mm > 1500 and nmm > 1500:
             return False
         if mm < 930 and nmm < 930:
+            return False
+        if mm > 1130 and mm < 1300 and nmm > 1130 and nmm < 1300:
             return False
         return True
 
