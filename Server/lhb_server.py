@@ -8,6 +8,7 @@ from db import lhb_orm
 class Server:
     def __init__(self) -> None:
         self._lastLoadTime = 0
+        self.debug = False
 
     # yyyy-mm-dd
     # return [ {code, name}, ... ]
@@ -92,12 +93,15 @@ class Server:
                 #'vol': getColInfo(totalColNames, r, 'cjl'),
                 'cjje': self.getColInfo(totalColNames, r, 'cje'), 
                 'title': title,
-                'mrje': 0, 'mcje': 0, 'jme': 0, 'famous': '', 'famousBuy':'', 'famousSell': ''} # 'mrjeRate': 0, 'mcjeRate': 0,
+                'mrje': 0, 'mcje': 0, 'jme': 0, 'famous': '', 'famousBuy':'', 'famousSell': '', 'detail': []} # 'mrjeRate': 0, 'mcjeRate': 0,
             results[ title ] = obj
 
         infos = rs['ResultSets'][1]
         infosColNames = infos['ColName']
         infosCnt = infos['Content']
+
+        def toInt(a):
+            return int(a)
 
         for idx, it in enumerate(infosCnt):
             # 'yz': it[2],
@@ -109,12 +113,14 @@ class Server:
 
             if self.isExsitsCnt(idx, infosColNames, 'T012', infosCnt, ('T008', 'T009', 'T010')):
                 continue
-
+            
+            yyb = self.getColInfo(infosColNames, it, 'T008') or ''
             yzDesc = self.getColInfo(infosColNames, it, 'bq1') or ''
             mrje = self.getColInfo(infosColNames, it, 'T009') or 0
             mcje = self.getColInfo(infosColNames, it, 'T010') or 0
             jme = self.getColInfo(infosColNames, it, 'je') or 0
             bs = self.getColInfo(infosColNames, it, 'T006') # 'B' or 'S'
+            curInfo['detail'].append({'yyb': yyb, 'yz': yzDesc, 'mrje': toInt(mrje), 'mcje': toInt(mcje), 'jme': toInt(jme), 'bs': bs})
             curInfo['mrje'] += mrje
             curInfo['mcje'] += mcje
             curInfo['jme'] += jme
@@ -145,6 +151,7 @@ class Server:
             rs['mcje'] /= 10000
             rs['jme'] /= 10000
             rs['cjje'] /= 10000
+            rs['detail'] = json.dumps(rs['detail'])
             datas.append(rs)
         return datas
 
@@ -158,7 +165,7 @@ class Server:
 
         q = lhb_orm.TdxLHB.select().where(lhb_orm.TdxLHB.day == day)
         oldDatas = [d.code for d in q]
-        
+
         for gp in gps:
             if gp['code'] in oldDatas:
                 continue
@@ -177,8 +184,9 @@ class Server:
         return True
 
     #runLock = threading.RLock()
-    def loadTdxLHB(self):
-        dayFrom = datetime.date(2023, 1, 1)
+    def loadTdxLHB(self, dayFrom = None):
+        if not dayFrom:
+            dayFrom = datetime.date(2023, 1, 1)
         cursor = lhb_orm.db_lhb.cursor()
         rs = cursor.execute('select min(日期), max(日期) from tdxlhb').fetchall()
         rs = rs[0]
@@ -186,8 +194,8 @@ class Server:
             minDay = datetime.datetime.strptime(rs[0], '%Y-%m-%d').date()
             maxDay = datetime.datetime.strptime(rs[1], '%Y-%m-%d').date()
         else:
-            minDay = datetime.date(2023, 1, 1)
-            maxDay = datetime.date(2023, 1, 1)
+            minDay = dayFrom
+            maxDay = dayFrom
 
         today = datetime.date.today()
         delta = datetime.timedelta(days=1)
@@ -218,6 +226,9 @@ class Server:
 
     
 if __name__ == '__main__':
-    pass
+    svr = Server()
+    svr.debug = True
+    #svr.loadOneGP('000062', '2024-08-20', '深圳华强')
+    #svr.loadTdxLHB(datetime.date(2024, 5, 1))
 
     

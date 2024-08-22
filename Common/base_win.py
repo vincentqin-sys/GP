@@ -2230,7 +2230,6 @@ class DatePicker(BaseWindow):
 class BaseEditor(BaseWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.lineHeight = 18
         self._caretCreated = False
         self._caretVisible = False
 
@@ -2280,6 +2279,10 @@ class BaseEditor(BaseWindow):
         #win32clipboard.CloseClipboard()
         return val
 
+    @property
+    def lineHeight(self):
+        return self.css['fontSize'] + 4
+    
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SETFOCUS:
             self._caretCreated = False
@@ -2321,7 +2324,6 @@ class BaseEditor(BaseWindow):
 class Editor(BaseEditor):
     def __init__(self) -> None:
         super().__init__()
-        self.css['fontSize'] = 18
         self.css['bgColor'] = 0xf0f0f0
         self.css['textColor'] = 0x202020
         self.css['placeHolderColor'] = 0xb0b0b0
@@ -2647,8 +2649,6 @@ class MutiEditor(BaseEditor):
 
     def __init__(self) -> None:
         super().__init__()
-        self.lineHeight = 24
-        self.css['fontSize'] = 18
         self.css['bgColor'] = 0xf0f0f0
         self.css['textColor'] = 0x202020
         self.css['borderColor'] = 0xdddddd

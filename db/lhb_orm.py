@@ -5,10 +5,10 @@ path = sys.argv[0]
 path = path[0 : path.index('GP') ]
 
 db_lhb = pw.SqliteDatabase(f'{path}/GP/db/LHB.db')
-db_ths = pw.SqliteDatabase(f'{path}GP/db/THS_F10.db')
+#db_ths = pw.SqliteDatabase(f'{path}GP/db/THS_F10.db')
 
 class TdxLHB(pw.Model):
-    day = pw.CharField(column_name = '日期' )
+    day = pw.CharField(column_name = '日期' ) # YYYY-MM-DD
     code = pw.CharField()
     name = pw.CharField()
     title = pw.CharField(column_name = '上榜类型', null=True)
@@ -23,6 +23,7 @@ class TdxLHB(pw.Model):
     #mcjeRate = pw.IntegerField(column_name = '卖出金额_占比' , null=True) #  (占总成交比例%)
     jme = pw.DecimalField(column_name = '净买额_亿' , null=True, decimal_places = 1, max_digits = 10) #  (亿元)
     famous = pw.CharField(column_name = '知名游资' , null=True)
+    detail = pw.CharField(column_name = '详细', null = True)
 
     class Meta:
         database = db_lhb

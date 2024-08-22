@@ -150,7 +150,7 @@ if __name__ == '__main__':
     #getLastTradeDay()
     #calcAllHotZHAndSave()
     #loadFromFile()
-    calcHotZHAndSave(20240702)
+    #calcHotZHAndSave(20240820)
     
     print(os.getcwd())
     # 计算最热的30个股的综合排名

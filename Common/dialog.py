@@ -6,9 +6,24 @@ class Dialog(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.destroyOnHide = True
+        self.modal = None
 
     def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CAPTION | win32con.WS_SYSMENU, className='STATIC', title='I-Dialog'):
         super().createWindow(parentWnd, rect, style, className, title)
+
+    def setModal(self, modal : bool):
+        if self.modal == modal:
+            return
+        self.modal = modal
+        p = self.hwnd
+        while True:
+            pp = win32gui.GetParent(p)
+            if not pp:
+                break
+            win32gui.EnableWindow(pp, not modal)
+            style = win32gui.GetWindowLong(pp, win32con.GWL_STYLE)
+            if not (style & win32con.WS_CHILD):
+                break
 
     def showCenter(self):
         pr = win32gui.GetParent(self.hwnd)
@@ -30,9 +45,13 @@ class Dialog(base_win.BaseWindow):
         win32gui.SetActiveWindow(self.hwnd)
 
     def hide(self):
+        if self.modal:
+            self.setModal(False)
         win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
 
     def close(self):
+        if self.modal:
+            self.setModal(False)
         #win32gui.CloseWindow(self.hwnd)
         win32gui.DestroyWindow(self.hwnd)
     

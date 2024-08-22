@@ -4,7 +4,7 @@ import win32gui, win32con
 import requests, peewee as pw
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from db import ths_orm, tdx_orm, tck_orm, tck_def_orm
+from db import ths_orm, tdx_orm, tck_orm, tck_def_orm, lhb_orm
 from Tdx import datafile
 from Download import henxin, cls
 from Common import base_win, ext_win, dialog
@@ -1404,6 +1404,130 @@ class DdeIndicator(CustomIndicator):
             win32gui.SetTextColor(hdc, color)
             win32gui.DrawText(hdc, f'{val :.1f}', -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
+class LhbIndicator(CustomIndicator):
+    def __init__(self, config = None) -> None:
+        config = config or {}
+        if 'height' not in config:
+            config['height'] = 30
+        super().__init__(config)
+        if 'title' not in self.config:
+            self.config['title'] = '[龙虎榜]'
+
+    def setData(self, data):
+        super().setData(data)
+        if not self.klineWin.model:
+            self.setCustomData(None)
+            return
+        code = self.klineWin.model.code
+        q = lhb_orm.TdxLHB.select().where(lhb_orm.TdxLHB.code == code).dicts()
+        maps = {}
+        for d in q:
+            day = d['day'].replace('-', '')
+            maps[int(day)] = d
+        rs = []
+        for d in data:
+            fd = maps.get(d.day, None)
+            if not fd:
+                fd = {'day': d.day, 'title': None, 'detail': ''}
+            else:
+                fd['day'] = d.day
+                fd['detail'] = json.loads(fd['detail'])
+            rs.append(fd)
+        self.setCustomData(rs)
+
+    def onMouseClick(self, x, y):
+        if not self.visibleRange:
+            return True
+        itemWidth = self.config['itemWidth']
+        idx = x // itemWidth + self.visibleRange[0]
+        # click item idx
+        self.klineWin.invalidWindow()
+        win32gui.UpdateWindow(self.klineWin.hwnd)
+        itemData = self.customData[idx]
+        if not itemData:
+            return True
+        code = self.klineWin.model.code
+        day = itemData['day']
+        sday = f'{day // 10000}-{day // 100 % 100 :02d}-{day % 100 :02d}'
+        # draw tip
+        hdc = win32gui.GetDC(self.klineWin.hwnd)
+        W, H = 400, 240
+        ix = x // itemWidth * itemWidth
+        drawer : base_win.Drawer = self.klineWin.drawer
+        if ix + W <= self.width:
+            sx = self.x + ix
+        else:
+            sx = self.width - W + self.x
+        sy = self.y - H
+        rc = [sx, sy, sx + W, sy + H]
+        drawer.fillRect(hdc, rc, 0x101010)
+        drawer.drawRect(hdc, rc, 0xa0f0a0)
+        win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
+        drawer.use(hdc, drawer.getFont())
+        rc[0] += 1
+        rc[1] += 1
+        rc[2] -= 1
+        rc[3] -= 1
+        #drawer.drawText(hdc, itemData['detail'], rc, color = 0xd0a0a0, align = win32con.DT_WORDBREAK)
+        self.drawItemDetail(drawer, hdc, rc, itemData['detail'])
+        win32gui.ReleaseDC(self.klineWin.hwnd, hdc)
+        return True
+    
+    def getYzName(self, it):
+        if it.get('yz', None):
+            return ' (' + it['yz'] + ')'
+        yyb = it.get('yyb', '')
+        if '分公司' in yyb:
+            yyb = yyb[0 : yyb.index('公司') + 2]
+        if '公司' in yyb:
+            i = yyb.index('公司')
+            if i != len(yyb) - 2:
+                yyb = yyb[i + 2 : ]
+        return yyb
+    
+    def drawItemDetail(self, drawer : base_win.Drawer, hdc, rect, detail):
+        ws = [0, 70, 70, 70]
+        ws[0] = rect[2] - rect[0] - sum(ws)
+        IH = (rect[3] - rect[1]) / 11
+        drawer.fillRect(hdc, (rect[0], rect[1], rect[2], rect[1] + int(IH)), 0x404040)
+        titles = ['席位名称', '买入', '卖出', '净额']
+        sx = rect[0]
+        sy = rect[1]
+        VCENTER = win32con.DT_SINGLELINE | win32con.DT_VCENTER
+        for i in range(4):
+            drawer.drawText(hdc, titles[i], (sx + 2, sy, sx + ws[i], int(sy + IH)), 0xcccccc, align = VCENTER)
+            sx += ws[i]
+        if not detail:
+            return
+        for r, d in enumerate(detail):
+            sx = rect[0]
+            sy += IH
+            lw = 1
+            lc = 0x202020
+            if r > 0 and d['bs'] == 'S' and detail[r - 1]['bs'] == 'B':
+                lw = 1
+                lc = 0xa0f0a0
+            drawer.drawLine(hdc, rect[0] + 1, int(sy), rect[2] - 1, int(sy), lc, width = lw)
+            cs = (self.getYzName(d), d.get('mrje', 0), d.get('mcje', 0), d.get('jme', 0))
+            for i in range(4):
+                drawer.drawText(hdc, cs[i], (sx + 2, int(sy), sx + ws[i], int(sy + IH)), color = 0xd0d0d0, align = VCENTER)
+                sx += ws[i]
+
+    def drawItem(self, idx, hdc, pens, hbrs, x):
+        iw = self.config['itemWidth']
+        cdata = self.customData[idx]
+        selIdx = self.klineWin.selIdx
+        selData = self.data[selIdx] if selIdx >= 0 and selIdx < len(self.data) else None
+        selDay = int(selData.day) if selData else 0
+        rc = (x + 1, 1, x + iw, self.height)
+        if selDay == int(cdata['__day']):
+            win32gui.FillRect(hdc, rc, hbrs['light_dark'])
+        rc = (x + 3, 3, x + iw - 3, self.height)
+        if cdata['detail']:
+            color = 0xcccccc
+            win32gui.SetTextColor(hdc, color)
+            win32gui.DrawText(hdc, f'Y', -1, rc, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
+
 class KLineSelTipWindow(base_win.BaseWindow):
     def __init__(self, klineWin) -> None:
         super().__init__()
@@ -1715,6 +1839,7 @@ class DrawLineManager:
             dlg = DrawTextDialog(u, self.curLine)
             #dlg = dialog.MultiInputDialog()
             dlg.createWindow(self.klineWin.hwnd, (0, 0, 250, 200), style = win32con.WS_POPUP)
+            dlg.setModal(True)
             dlg.addNamedListener('InputEnd', self.onInputEnd)
             dlg.show(* win32gui.GetCursorPos())
             #print('lbtnUP:', self.curLine.info)
@@ -2779,6 +2904,7 @@ if __name__ == '__main__':
     #win.addIndicator(ThsZT_Indicator()) # {'height' : 50}
     #win.addIndicator(ClsZT_Indicator()) # {'height' : 50}
     #win.addIndicator(DdeIndicator()) # {'height' : 50}
+    win.addIndicator(LhbIndicator())
     rect = (0, 0, 1920, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     win.changeCode('000062') # cls82475 002085 603390 002085 002869  002055
