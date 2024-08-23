@@ -4,7 +4,7 @@ from multiprocessing import Process
 from PIL import Image # pip install pillow
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import number_ocr
+from THS import number_ocr, ths_ocr
 from Common import base_win 
 
 class ThsWindow(base_win.BaseWindow):
@@ -16,7 +16,8 @@ class ThsWindow(base_win.BaseWindow):
         self.mainHwnd = None
         self.level2CodeHwnd = None
         self.selDayHwnd = None
-        self.ocr = number_ocr.NumberOCR()
+        self.numberOcr = number_ocr.NumberOCR()
+        self.ocrUtils = ths_ocr.ThsOcrUtils()
 
     @classmethod
     def ins(clazz):
@@ -87,7 +88,7 @@ class ThsWindow(base_win.BaseWindow):
         return win32gui.IsWindowVisible(self.topHwnd)
 
     # 查找股票代码
-    def findCode(self):
+    def findCode_Level2(self):
         #if (not self.isInKlineWindow()) and (not self.isInMyHomeWindow()):
             #print('Not in KLine Window')
         #    return None
@@ -100,6 +101,10 @@ class ThsWindow(base_win.BaseWindow):
         if '逐笔成交--' in title:
             code = title[6 : 12]
         return code
+
+    def runOnceOcr(self):
+        ocrResult = self.ocrUtils.runOcr(self.mainHwnd)
+        return ocrResult
 
     def hasCodeWindow(self):
         if not self.level2CodeHwnd:
@@ -126,7 +131,7 @@ class ThsWindow(base_win.BaseWindow):
         bmpstr = saveBitMap.GetBitmapBits(True)
         im_PIL = Image.frombuffer('RGB',(bmpinfo['bmWidth'], 17), bmpstr, 'raw', 'BGRX', 0, 1) # bmpinfo['bmHeight']
 
-        selYear = self.ocr.match(im_PIL)
+        selYear = self.numberOcr.match(im_PIL)
         # print('selYear=', selYear)
         
         # copy day bmp
@@ -135,7 +140,7 @@ class ThsWindow(base_win.BaseWindow):
         bmpinfo = saveBitMap.GetInfo()
         bmpstr = saveBitMap.GetBitmapBits(True)
         im_PIL = Image.frombuffer('RGB',(bmpinfo['bmWidth'], 17), bmpstr, 'raw', 'BGRX', 0, 1) 
-        selDay = self.ocr.match(im_PIL)
+        selDay = self.numberOcr.match(im_PIL)
         # print('selDay=', selDay)
         # im_PIL.show()
 
@@ -157,6 +162,8 @@ class ThsWindow(base_win.BaseWindow):
         return sd
 
     def init(self):
+        self.ocrUtils.init()
+
         def callback(hwnd, lparam):
             title = win32gui.GetWindowText(hwnd)
             if ('同花顺(v' in title) and ('副屏1' not in title):

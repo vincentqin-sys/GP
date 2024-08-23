@@ -1113,12 +1113,13 @@ class CodeBasicWindow(base_win.BaseWindow):
         self.css['bgColor'] = 0x050505
         self.css['borderColor'] = 0x22dddd
         self.css['enableBorder'] = True
+        self.wb = None
         base_win.ThreadPool.instance().start()
 
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUP)
         w = win32api.GetSystemMetrics(0) # desktop width
-        SIZE = (260, 65)
+        SIZE = (350, 65)
         rect = (w - SIZE[0] - 100, 200, *SIZE)
         super().createWindow(parentWnd, rect, style, title='CodeBasic')
         #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
@@ -1126,6 +1127,7 @@ class CodeBasicWindow(base_win.BaseWindow):
 
     def onDraw(self, hdc):
         W, H = self.getClientSize()
+        LW, LH = W - 110, H
         PD = 10
         LR = 3
         rc = (LR, 2, W - LR, 18)
@@ -1141,19 +1143,19 @@ class CodeBasicWindow(base_win.BaseWindow):
             return
         self.drawer.use(hdc, self.drawer.getFont(fontSize = 14, weight=1000))
         y1 = 22
-        rc = (LR, y1, W // 2 - PD, y1 + 20)
+        rc = (LR, y1, LW // 2 - PD, y1 + 20)
         v = self.data["流通市值"] // 100000000 #亿
         cs1 =  f'{v :d} 亿'
         self.drawer.drawText(hdc, '流通值', rc, 0xcccccc, align=win32con.DT_LEFT)
         self.drawer.drawText(hdc, cs1, rc, 0xF4E202, align=win32con.DT_RIGHT)
-        rc = (W // 2 + PD, y1, W - LR, y1 + 20)
+        rc = (LW // 2 + PD, y1, LW - LR, y1 + 20)
         v = self.data["总市值"] // 100000000 #亿
         cs1 =  f'{v :d} 亿'
         self.drawer.drawText(hdc, '总市值', rc, 0xcccccc, align=win32con.DT_LEFT)
         self.drawer.drawText(hdc, cs1, rc, 0xF4E202, align=win32con.DT_RIGHT)
 
         y2 = 45
-        rc = (LR, y2, W // 2 - PD, y2 + 20)
+        rc = (LR, y2, LW // 2 - PD, y2 + 20)
         self.drawer.drawText(hdc, '市盈_静', rc, 0xcccccc, align=win32con.DT_LEFT)
         v = self.data['市盈率_静']
         if v == None:
@@ -1161,7 +1163,7 @@ class CodeBasicWindow(base_win.BaseWindow):
         else:
             cs1 = '亏损' if v < 0 else f'{int(v)}'
         self.drawer.drawText(hdc, cs1, rc, 0xF4E202, align=win32con.DT_RIGHT)
-        rc = (W // 2 + PD, y2, W - LR, y2 + 20)
+        rc = (LW // 2 + PD, y2, LW - LR, y2 + 20)
         self.drawer.drawText(hdc, '市盈_TTM', rc, 0xcccccc, align=win32con.DT_LEFT)
         v = self.data["市盈率_TTM"]
         if v == None:
@@ -1169,6 +1171,29 @@ class CodeBasicWindow(base_win.BaseWindow):
         else:
             cs1 = '亏损' if v < 0 else f'{int(v)}'
         self.drawer.drawText(hdc, cs1, rc, 0xF4E202, align=win32con.DT_RIGHT)
+
+        x = LW + 20
+        y = 22
+        self.drawer.drawText(hdc, '委买', (x, y + 22, x + 30, y + 22 + 20), 0xcccccc, align = win32con.DT_LEFT)
+        self.drawer.drawText(hdc, '委卖', (x, y, x + 30, y + 20), 0xcccccc, align = win32con.DT_LEFT)
+        # draw 委比
+        wb = self.wb
+        if not wb:
+            return
+        if 'sell' in self.wb:
+            bi = self.wb['sell']
+            if bi >= 10000:
+                b = f'{bi / 10000 :.1f}亿'
+            else:
+                b = f'{bi}万'
+            self.drawer.drawText(hdc, b, (x, y, W - 5, y + 20), 0x00aa00, align = win32con.DT_RIGHT)
+        if 'buy' in self.wb:
+            bi = self.wb['buy']
+            if bi >= 10000:
+                b = f'{bi / 10000 :.1f}亿'
+            else:
+                b = f'{bi}万'
+            self.drawer.drawText(hdc, b, (x, y + 22, W - 5, y + 22 + 20), 0x2222aa, align = win32con.DT_RIGHT)
 
     def onDayChanged(self, evt, args):
         if evt.name != 'Select':
@@ -1209,6 +1234,11 @@ class CodeBasicWindow(base_win.BaseWindow):
             return
         x, y = state['pos']
         win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+
+    def updateWeiBi(self, info):
+        self.wb = info
+        if info:
+            self.invalidWindow()
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_NCHITTEST:

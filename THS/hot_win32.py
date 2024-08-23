@@ -99,7 +99,7 @@ def updateWindowInfo(thsWin, stateMgr : WinStateMgr):
             cp.update(cp2)
             stateMgr.save()
 
-def _workThread(thsWin, fileName):
+def _workThread(thsWin : ths_win.ThsWindow, fileName):
     global curCode
     stateMgr = WinStateMgr(fileName)
     stateMgr.read()
@@ -115,7 +115,8 @@ def _workThread(thsWin, fileName):
         if win32gui.GetForegroundWindow() != thsWin.topHwnd:
             continue
         updateWindowInfo(thsWin, stateMgr)
-        nowCode = thsWin.findCode()
+        rs = thsWin.runOnceOcr()
+        nowCode = thsWin.findCode_Level2()
         if curCode != nowCode:
             updateCode(nowCode)
         selDay = thsWin.getSelectDay()
@@ -124,6 +125,7 @@ def _workThread(thsWin, fileName):
             simpleWindow.changeSelectDay(selDay)
             simpleWindow2.changeSelectDay(selDay)
             thsShareMem.writeSelDay(selDay)
+        codeBasicWindow.updateWeiBi(rs)
 
 def onListen(evt, args):
     if args == 'ListenHotWindow' and evt.name == 'mode.change':
@@ -134,7 +136,7 @@ def subprocess_main():
     while True:
         if thsWindow.init():
             break
-        time.sleep(10)
+        time.sleep(3)
     thsShareMem.open()
     hotWindow.createWindow(thsWindow.topHwnd)
     simpleWindow.createWindow(thsWindow.topHwnd)
