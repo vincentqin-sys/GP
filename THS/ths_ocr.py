@@ -1,12 +1,84 @@
-import win32gui, win32ui, win32con, re, io
+import win32gui, win32ui, win32con, re, io, traceback
 from PIL import Image
 import easyocr, ths_win
+
+class BitImage:
+    def __init__(self) -> None:
+        pass
+
+    def calcSign(self, srcImg):
+        w, h = srcImg.size
+        y = h // 2
+        gn, rn = 0, 0
+        pixs = srcImg.load()
+        for x in range(w):
+            r, g, b = pixs[x, y]
+            if r > g * 2 and r > b * 2:
+                gn += 1
+            elif g > r * 2 and g > b * 2:
+                rn += 1
+            if gn >= 5 or rn >= 5:
+                break
+        return gn > rn
+    
+    def expand(self, srcImg):
+        w, h = srcImg.size
+        SPACE_W = 5
+        dw = 30
+        items = self.splitVertical(srcImg)
+        for it in items:
+            dw += it[1] - it[0] + SPACE_W
+        destImg = Image.new('RGB', (dw, h), 0)
+
+        destPixs = destImg.load()
+        srcPixs = srcImg.load()
+        sdx = 5
+        for it in items:
+            sx, ex = it
+            sdx += SPACE_W
+            for x in range(sx, ex):
+                sdx += 1
+                for y in range(h):
+                    destPixs[sdx, y] = srcPixs[x, y]
+        #destImg.save('D:/d.bmp')
+        return destImg
+
+    def isEmpty(self, x, srcImg):
+        pixs = srcImg.load()
+        for y in range(srcImg.height):
+            r, g, b = pixs[x, y]
+            if r != g or g != b or r != 0:
+                return False
+        return True
+    
+    # return [startX, endX)
+    def splitVerticalOne(self, startX, srcImg):
+        sx = ex = -1
+        for x in range(startX, srcImg.width):
+            if not self.isEmpty(x, srcImg):
+                sx = x
+                break
+        for x in range(sx, srcImg.width):
+            if self.isEmpty(x, srcImg):
+                ex = x
+                break
+        return (sx, ex)
+    
+    def splitVertical(self, srcImg):
+        items = []
+        sx = ex = 0
+        while True:
+            sx, ex = self.splitVerticalOne(ex, srcImg)
+            if sx < 0 or ex < 0:
+                break
+            items.append((sx, ex))
+        return items
 
 class ThsOcrUtils:
     def __init__(self) -> None:
         self.titleHwnds = set()
         self.ocr = None
-        self.WB_WIN_HEIGHT = 30
+        self.WB_WIN_HEIGHT = 28
 
     def init(self):
         if not self.ocr:
@@ -47,22 +119,27 @@ class ThsOcrUtils:
         
         srcPos = 0, 0
         saveDC.BitBlt((0, 0), srcSize, mfcDC, srcPos, win32con.SRCCOPY)
-        bmpinfo = saveBitMap.GetInfo()
-        self.imgSize = (bmpinfo['bmWidth'], bmpinfo['bmHeight'])
+        #bmpinfo = saveBitMap.GetInfo()
+        #imgSize = (bmpinfo['bmWidth'], bmpinfo['bmHeight'])
         bits = saveBitMap.GetBitmapBits(True)
-        #print(self.imgSize, 'bytes.length = ', len(self.bits))
-        img_PIL = Image.frombuffer('RGB',self.imgSize, bits, 'raw', 'BGRX', 0, 1)
-        #img_PIL.save('D:/a.bmp')
-        #img_PIL.show()
-        # destory
+        imgFull = Image.frombuffer('RGB',srcSize, bits, 'raw', 'BGRX', 0, 1)
         win32gui.DeleteObject(saveBitMap.GetHandle())
         saveDC.DeleteDC()
         mfcDC.DeleteDC()
         win32gui.ReleaseDC(hwnd, dc)
-        return img_PIL
+        #imgFull.save('D:/full.bmp')
+        #img_PIL.show()
+
+        WB_TXT_WIDTH = 35
+        wbImg = imgFull.crop((WB_TXT_WIDTH, srcSize[1] - self.WB_WIN_HEIGHT + 1, int(srcSize[0] - 70), srcSize[1]))
+        bi = BitImage()
+        sign = bi.calcSign(wbImg)
+        wbImg = bi.expand(wbImg)
+        #wbImg.save('D:/a.bmp')
+        return imgFull, sign, wbImg
     
-    def parseText(self, result):
-        if not result:
+    def parseText(self, result, wbResult):
+        if not result or not wbResult:
             return None
         rs = {}
         cn = result[0][1]
@@ -79,22 +156,9 @@ class ThsOcrUtils:
         px = result[1][0]
         rs['price_pos'] = (px[0][0], px[0][1], px[1][0], px[2][1])
         #rs['zdPrice'] = float(result[2][1])
-        # find 委比
-        wsstrs = ''
-        idx = -1
-        for i, it in enumerate(result):
-            leftTop = it[0][0]
-            if leftTop[0] < 5 or '委比' in it[1]:
-                idx = i
-                wsstrs = it[1]
-                px = it[0]
-                rs['wb_pos'] = (px[0][0], px[0][1], px[1][0], px[2][1])
-            elif idx > 0:
-                wsstrs += ' ' + it[1]
-        if idx < 0:
-            return rs
-        
-        cc = re.compile('^委比\\s*([+-]?\\d+[.]*\\d*)%\s*([+-]?\\d+)')
+        # 委比
+        wsstrs = wbResult[0][1].replace(' ', '')
+        cc = re.compile('^([+-]?\\d+[.]*\\d*)%\s*([+-]?\\d+)')
         ma = cc.match(wsstrs)
         if not ma:
             return rs
@@ -154,30 +218,39 @@ class ThsOcrUtils:
     def runOcr(self, thsMainWin):
         try:
             hwnd = self.getCurStockTitleHwnd(thsMainWin)
-            img = self.dump(hwnd)
+            img, sign, wbImg = self.dump(hwnd)
             if not img:
                 return None
             bmpBytes = io.BytesIO()
             img.save(bmpBytes, format = 'bmp')
             bits = bmpBytes.getvalue()
             result = self.ocr.readtext(bits)
-            rs = self.parseText(result)
+
+            bmpBytes = io.BytesIO()
+            wbImg.save(bmpBytes, format = 'bmp')
+            bits = bmpBytes.getvalue()
+            wbResult = self.ocr.readtext(bits)
+            rs = self.parseText(result, wbResult)
             if (not rs) or ('wb' not in rs) or ('diff' not in rs):
                 return None
             #self.parseNumSign(rs, img, 'price')
-            self.parseNumSign(rs, img, 'wb')
-            if 'wb_sign' in rs:
-                rs['wb'] = abs(rs['wb']) if rs['wb_sign'] else -abs(rs['wb'])
-                rs['diff'] = abs(rs['diff']) if rs['wb_sign'] else -abs(rs['diff'])
+            #self.parseNumSign(rs, img, 'wb')
+            rs['wb_sign'] = sign
+            rs['wb'] = abs(rs['wb']) if sign else -abs(rs['wb'])
+            rs['diff'] = abs(rs['diff']) if sign else -abs(rs['diff'])
             self.calcBS(rs)
             return rs
         except Exception as e:
             #print('ths_ocr.runOcr Error: ', e)
+            traceback.print_exc()
             pass
         return None
 
 if __name__ == '__main__':
+    #ocr = easyocr.Reader(['ch_sim'], download_enabled = True)
+    #xt = ocr.readtext_batched('D:/a.png')
+    #print(txt)
     ths = ths_win.ThsWindow()
     ths.init()
     result = ths.runOnceOcr()
-    print(result)
+    print('result = ', result)
