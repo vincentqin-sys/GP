@@ -1,16 +1,20 @@
-import win32gui, win32ui, win32con, re, io, traceback
+import win32gui, win32ui, win32con, re, io, traceback, sys
 from PIL import Image
-import easyocr, ths_win
+import easyocr
+
+sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
+from THS import ths_win, number_ocr
 
 class ThsOcrUtils:
     def __init__(self) -> None:
         self.titleHwnds = set()
         self.ocr = None
+        self.wbOcr = number_ocr.NumberOCR('wb', '+-.%0123456789')
         self.WB_WIN_HEIGHT = 28
 
     def init(self):
         if not self.ocr:
-            #self.ocr = easyocr.Reader(['ch_sim'], download_enabled = True )
+            self.ocr = easyocr.Reader(['ch_sim'], download_enabled = True )
             pass
         
     # wb = 委比 28.45
@@ -30,8 +34,8 @@ class ThsOcrUtils:
         rs['sell'] = sell # 万元
 
     def dump(self, hwnd):
-        if (not win32gui.IsWindow(hwnd)) or (not win32gui.IsWindowVisible(hwnd)):
-            return None
+        if (not hwnd) or (not win32gui.IsWindow(hwnd)) or (not win32gui.IsWindowVisible(hwnd)):
+            return None, None
         dc = win32gui.GetWindowDC(hwnd)
         mfcDC = win32ui.CreateDCFromHandle(dc)
         saveDC = mfcDC.CreateCompatibleDC()
@@ -59,13 +63,16 @@ class ThsOcrUtils:
         #imgFull.save('D:/full.bmp')
         #img_PIL.show()
 
+        #PRICE_LEFT_RIGHT = 30
+        #priceImg = imgFull.crop((PRICE_LEFT_RIGHT,  h // 2, w - PRICE_LEFT_RIGHT, h - 1))
+        #priceImg.save('D:/price.bmp')
+
         WB_TXT_WIDTH = 35
         wbImg = imgFull.crop((WB_TXT_WIDTH, srcSize[1] - self.WB_WIN_HEIGHT + 1, int(srcSize[0] - 70), srcSize[1]))
-        bi = BitImage()
-        sign = bi.calcSign(wbImg)
-        wbImg = bi.expand(wbImg)
+        #sign = bi.calcSign(wbImg)
+        #wbImg = bi.expand(wbImg)
         #wbImg.save('D:/a.bmp')
-        return imgFull, sign, wbImg
+        return imgFull, wbImg
     
     def parseText(self, result, wbResult):
         if not result or not wbResult:
@@ -86,8 +93,11 @@ class ThsOcrUtils:
         rs['price_pos'] = (px[0][0], px[0][1], px[1][0], px[2][1])
         #rs['zdPrice'] = float(result[2][1])
         # 委比
-        ms = map(lambda x: x[1], wbResult)
-        wsstrs = ''.join(ms).replace(' ', '')
+        if isinstance(wbResult, list):
+            ms = map(lambda x: x[1], wbResult)
+            wsstrs = ''.join(ms).replace(' ', '')
+        else:
+            wsstrs = wbResult
         cc = re.compile('^([+-]?\\d+[.]*\\d*)%\s*([+-]?\\d+)')
         ma = cc.match(wsstrs)
         if not ma:
@@ -148,31 +158,32 @@ class ThsOcrUtils:
     def runOcr(self, thsMainWin):
         try:
             hwnd = self.getCurStockTitleHwnd(thsMainWin)
-            objs = self.dump(hwnd)
-            if not objs:
-                return None
-            img, sign, wbImg = objs
-            if not img:
+            fullImg, wbImg = self.dump(hwnd)
+            if not fullImg:
                 return None
             bmpBytes = io.BytesIO()
-            img.save(bmpBytes, format = 'bmp')
+            fullImg.save(bmpBytes, format = 'bmp')
             bits = bmpBytes.getvalue()
             result = self.ocr.readtext(bits)
+            #fullImg.save('D:/price.bmp')
 
-            bmpBytes = io.BytesIO()
-            wbImg.save(bmpBytes, format = 'bmp')
-            wbImg.save('D:/wb.bmp')
-            bits = bmpBytes.getvalue()
-            wbResult = self.ocr.readtext(bits)
+            #bmpBytes = io.BytesIO()
+            #wbImg.save(bmpBytes, format = 'bmp')
+            #wbImg.save('D:/wb.bmp')
+            #bits = bmpBytes.getvalue()
+            #wbResult = self.ocr.readtext(bits)
+
+            wbResult = self.wbOcr.match(wbImg)
             rs = self.parseText(result, wbResult)
             if (not rs) or ('wb' not in rs) or ('diff' not in rs):
                 return None
             #self.parseNumSign(rs, img, 'price')
             #self.parseNumSign(rs, img, 'wb')
-            rs['wb_sign'] = sign
-            rs['wb'] = abs(rs['wb']) if sign else -abs(rs['wb'])
-            rs['diff'] = abs(rs['diff']) if sign else -abs(rs['diff'])
+            #rs['wb_sign'] = sign
+            #rs['wb'] = abs(rs['wb']) if sign else -abs(rs['wb'])
+            #rs['diff'] = abs(rs['diff']) if sign else -abs(rs['diff'])
             self.calcBS(rs)
+            print(rs)
             return rs
         except Exception as e:
             #print('ths_ocr.runOcr Error: ', e)
@@ -190,5 +201,5 @@ def main1():
     print('result = ', result)
 
 if __name__ == '__main__':
-    #main1()
+    main1()
     pass

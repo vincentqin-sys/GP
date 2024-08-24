@@ -92,7 +92,7 @@ class EImage:
             return 0 # size not equal
         matchNum = 0
         pixs1 = self.pixs
-        pixs2 = img2.load()
+        pixs2 = img2.bImg.load()
         for x in range(tW):
             for y in range(tH):
                 if pixs1[x + sx1, y + sy1] == pixs2[x + sx2, y + sy2]:
