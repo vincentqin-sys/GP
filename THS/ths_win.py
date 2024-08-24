@@ -16,7 +16,7 @@ class ThsWindow(base_win.BaseWindow):
         self.mainHwnd = None
         self.level2CodeHwnd = None
         self.selDayHwnd = None
-        self.numberOcr = number_ocr.NumberOCR()
+        self.numberOcr = number_ocr.NumberOCR('ocr-template', '0123456789')
         self.ocrUtils = ths_ocr.ThsOcrUtils()
 
     @classmethod

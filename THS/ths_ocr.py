@@ -2,80 +2,6 @@ import win32gui, win32ui, win32con, re, io, traceback
 from PIL import Image
 import easyocr, ths_win
 
-class BitImage:
-    def __init__(self, srcImg) -> None:
-        oimg = srcImg.convert('L') # 转为灰度图
-        self.bImg : Image = oimg.point(lambda v : 0 if v == (0, 0, 0) else 255) # 二值化图片
-
-    def calcSign(self):
-        srcImg = self.srcImg
-        w, h = srcImg.size
-        y = h // 2
-        gn, rn = 0, 0
-        pixs = srcImg.load()
-        for x in range(w):
-            r, g, b = pixs[x, y]
-            if r > g * 2 and r > b * 2:
-                gn += 1
-            elif g > r * 2 and g > b * 2:
-                rn += 1
-            if gn >= 5 or rn >= 5:
-                break
-        return gn > rn
-    
-    def expand(self):
-        w, h = self.bImg.size
-        SPACE_W = 5
-        dw = 30
-        items = self.splitVertical()
-        for it in items:
-            dw += it[1] - it[0] + SPACE_W
-        destImg = Image.new('RGB', (dw, h), 0)
-
-        destPixs = destImg.load()
-        srcPixs = self.bImg.load()
-        sdx = 5
-        for it in items:
-            sx, ex = it
-            sdx += SPACE_W
-            for x in range(sx, ex):
-                sdx += 1
-                for y in range(h):
-                    destPixs[sdx, y] = srcPixs[x, y]
-        #destImg.save('D:/d.bmp')
-        return destImg
-
-    def isVerLineEmpty(self, x):
-        pixs = self.bImg.load()
-        for y in range(self.bImg.height):
-            color = pixs[x, y]
-            if color != 0:
-                return False
-        return True
-
-    # return [startX, endX)
-    def splitVerticalOne(self, startX):
-        sx = ex = -1
-        for x in range(startX, self.bImg.width):
-            if not self.isVerLineEmpty(x):
-                sx = x
-                break
-        for x in range(sx, self.bImg.width):
-            if self.isVerLineEmpty(x):
-                ex = x
-                break
-        return (sx, ex)
-
-    def splitVertical(self):
-        items = []
-        sx = ex = 0
-        while True:
-            sx, ex = self.splitVerticalOne(ex)
-            if sx < 0 or ex < 0:
-                break
-            items.append((sx, ex))
-        return items
-
 class ThsOcrUtils:
     def __init__(self) -> None:
         self.titleHwnds = set()
@@ -84,7 +10,8 @@ class ThsOcrUtils:
 
     def init(self):
         if not self.ocr:
-            self.ocr = easyocr.Reader(['ch_sim'], download_enabled = True )
+            #self.ocr = easyocr.Reader(['ch_sim'], download_enabled = True )
+            pass
         
     # wb = 委比 28.45
     # diff = 委差
@@ -253,7 +180,7 @@ class ThsOcrUtils:
             pass
         return None
 
-if __name__ == '__main__':
+def main1():
     #ocr = easyocr.Reader(['ch_sim'], download_enabled = True)
     #xt = ocr.readtext_batched('D:/a.png')
     #print(txt)
@@ -261,3 +188,7 @@ if __name__ == '__main__':
     ths.init()
     result = ths.runOnceOcr()
     print('result = ', result)
+
+if __name__ == '__main__':
+    #main1()
+    pass

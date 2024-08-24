@@ -5,24 +5,25 @@ import win32gui, win32con , win32api, win32ui # pip install pywin32
 class EImage:
     def __init__(self, oimg : Image):
         oimg = oimg.convert('L') # 转为灰度图
-        self.imgPIL : Image = oimg.point(lambda v : 0 if v == 0 else 255) # 二值化图片
-        self.pixs = list(self.imgPIL.getdata())
+        self.bImg : Image = oimg.point(lambda v : 0 if v == 0 else 255) # 二值化图片
+        #self.pixs = list(self.imgPIL.getdata())
+        self.pixs = self.bImg.load()
         self.itemsRect = [] # array of (left, top, right, bottom)
         self.split()
 
-    def getPixel(self, x, y):
-        pos = y * self.imgPIL.width + x
-        return self.pixs[pos]
+    #def getPixel(self, x, y):
+    #    pos = y * self.bImg.width + x
+    #    return self.pixs[pos]
 
     def rowColorIs(self, sx, ex, y, color):
-        for x in range(sx, min(ex, self.imgPIL.width)):
-            if self.getPixel(x, y) != color:
+        for x in range(sx, min(ex, self.bImg.width)):
+            if self.pixs[x, y] != color:
                 return False
         return True
     
     def colColorIs(self, x, color):
-        for y in range(self.imgPIL.height):
-            ncolor = self.getPixel(x, y)
+        for y in range(self.bImg.height):
+            ncolor = self.pixs[x, y]
             if ncolor != color:
                 return False
         return True
@@ -30,11 +31,11 @@ class EImage:
     # return [startX, endX)
     def splitVerticalOne(self, startX):
         sx = ex = -1
-        for x in range(startX, self.imgPIL.width):
+        for x in range(startX, self.bImg.width):
             if not self.colColorIs(x, 0):
                 sx = x
                 break
-        for x in range(sx, self.imgPIL.width):
+        for x in range(sx, self.bImg.width):
             if self.colColorIs(x, 0):
                 ex = x
                 break
@@ -52,11 +53,11 @@ class EImage:
     
     def splitHorizontalOne(self, sx, ex):
         sy = ey = -1
-        for y in range(self.imgPIL.height):
+        for y in range(self.bImg.height):
             if not self.rowColorIs(sx, ex, y, 0):
                 sy = y
                 break
-        for y in range(sy, self.imgPIL.height):
+        for y in range(sy, self.bImg.height):
             if self.rowColorIs(sx, ex, y, 0):
                 ey = y
                 break
@@ -67,7 +68,7 @@ class EImage:
         nb = 0
         for x in range(sx, ex):
             for y in range(sy, ey):
-                if self.getPixel(x, y) == color:
+                if self.pixs[x, y] == color:
                     nb += 1
         return nb
 
@@ -79,14 +80,10 @@ class EImage:
             rect = (sx, sy, ex, ey)
             rs.append(rect)
         self.itemsRect = rs
-        #for it in rs:
-        #    sx, sy, ex, ey = it[0]
-        #    print(ex - sx, ey - sy, '|', it[1], it[2])
 
     # return 0 ~ 100
-    # img1, img2 is EImage object
-    @staticmethod
-    def similar(img1, rect1, img2, rect2):
+    # img2 is EImage object
+    def similar(self, rect1, img2, rect2):
         sx1, sy1, ex1, ey1 = rect1
         sx2, sy2, ex2, ey2 = rect2
         tW, tH = ex1 - sx1, ey1 - sy1
@@ -94,9 +91,11 @@ class EImage:
         if tW != oW or tH != oH:
             return 0 # size not equal
         matchNum = 0
+        pixs1 = self.pixs
+        pixs2 = img2.load()
         for x in range(tW):
             for y in range(tH):
-                if img1.getPixel(x + sx1, y + sy1) == img2.getPixel(x + sx2, y + sy2):
+                if pixs1[x + sx1, y + sy1] == pixs2[x + sx2, y + sy2]:
                     matchNum += 1
         val = matchNum * 100 / (tW * tH)
         return val
@@ -105,19 +104,40 @@ class EImage:
     # :return an index, not find return -1
     def findSameAs(self, img, rect, similarVal = 100):
         for idx, rc in enumerate(self.itemsRect):
-            sval = EImage.similar(self, rc, img, rect)
+            sval = self.similar(rc, img, rect)
             if sval >= similarVal:
                 return idx
         return -1
-        
+    
+    def expand(self):
+        w, h = self.bImg.size
+        SPACE_W = 5
+        dw = 30
+        items = self.splitVertical()
+        for it in items:
+            dw += it[1] - it[0] + SPACE_W
+        destImg = Image.new('L', (dw, h), 0)
+
+        destPixs = destImg.load()
+        srcPixs = self.pixs
+        sdx = 5
+        for it in items:
+            sx, ex = it
+            sdx += SPACE_W
+            for x in range(sx, ex):
+                sdx += 1
+                for y in range(h):
+                    destPixs[sdx, y] = srcPixs[x, y]
+        #destImg.save('D:/d.bmp')
+        return destImg
 
 class NumberOCR:
-    def __init__(self):
-        key = platform.node()
+    def __init__(self, baseName, templateDigit):
+        plat = platform.node()
         bn = os.path.basename(__file__)
         p = __file__[0 : - len(bn)]
-        self.templateImg = EImage(Image.open(f'{p}img/ocr-template-{key}.bmp'))
-        self.templateDigit = '0123456789'
+        self.templateImg = EImage(Image.open(f'{p}img/{baseName}-{plat}.bmp'))
+        self.templateDigit = templateDigit
 
     def _matchOne(self, oimg : EImage, oRect):
         MIN_SIMILAR_VAL = 95
@@ -139,8 +159,8 @@ class BuildTemplateImage:
         self.destImg = EImage(Image.new('1', size=(200, 20)))
 
     def copy(self, eimg : EImage, rect):
-        targetImg : Image = self.destImg.imgPIL
-        box = eimg.imgPIL.crop(rect)
+        targetImg : Image = self.destImg.bImg
+        box = eimg.bImg.crop(rect)
         #box.show()
         dx = dy = 4
         if len(self.destImg.itemsRect) > 0:
@@ -188,7 +208,7 @@ class BuildTemplateImage:
             time.sleep(0.5)
             if len(self.destImg.itemsRect) >= 10:
                 break
-        self.destImg.imgPIL.save(f'[c] ocr-template-{platform.node()}.bmp')
+        self.destImg.bImg.save(f'[c] ocr-template-{platform.node()}.bmp')
     
 if __name__ == '__main__':
     print(platform.node())
