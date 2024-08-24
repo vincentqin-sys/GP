@@ -1113,7 +1113,7 @@ class CodeBasicWindow(base_win.BaseWindow):
         self.css['bgColor'] = 0x050505
         self.css['borderColor'] = 0x22dddd
         self.css['enableBorder'] = True
-        self.wb = None
+        self.wbData = None
         base_win.ThreadPool.instance().start()
 
     def createWindow(self, parentWnd):
@@ -1177,18 +1177,18 @@ class CodeBasicWindow(base_win.BaseWindow):
         self.drawer.drawText(hdc, '委买', (x, y + 22, x + 30, y + 22 + 20), 0xcccccc, align = win32con.DT_LEFT)
         self.drawer.drawText(hdc, '委卖', (x, y, x + 30, y + 20), 0xcccccc, align = win32con.DT_LEFT)
         # draw 委比
-        wb = self.wb
+        wb = self.wbData
         if not wb:
             return
-        if 'sell' in self.wb:
-            bi = self.wb['sell']
+        if 'sell' in self.wbData:
+            bi = self.wbData['sell']
             if bi >= 10000:
                 b = f'{bi / 10000 :.1f}亿'
             else:
                 b = f'{bi}万'
             self.drawer.drawText(hdc, b, (x, y, W - 5, y + 20), 0x00aa00, align = win32con.DT_RIGHT)
-        if 'buy' in self.wb:
-            bi = self.wb['buy']
+        if 'buy' in self.wbData:
+            bi = self.wbData['buy']
             if bi >= 10000:
                 b = f'{bi / 10000 :.1f}亿'
             else:
@@ -1217,6 +1217,7 @@ class CodeBasicWindow(base_win.BaseWindow):
         scode = f'{code :06d}' if type(code) == int else code
         self.curCode = scode
         self.data = None
+        self.wbData = None
         if len(scode) != 6 or (code[0] not in ('0', '3', '6')):
             self.invalidWindow()
             return
@@ -1236,7 +1237,7 @@ class CodeBasicWindow(base_win.BaseWindow):
         win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
 
     def updateWeiBi(self, info):
-        self.wb = info
+        self.wbData = info
         if info:
             self.invalidWindow()
 

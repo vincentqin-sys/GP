@@ -3,10 +3,12 @@ from PIL import Image
 import easyocr, ths_win
 
 class BitImage:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, srcImg) -> None:
+        oimg = srcImg.convert('L') # 转为灰度图
+        self.bImg : Image = oimg.point(lambda v : 0 if v == (0, 0, 0) else 255) # 二值化图片
 
-    def calcSign(self, srcImg):
+    def calcSign(self):
+        srcImg = self.srcImg
         w, h = srcImg.size
         y = h // 2
         gn, rn = 0, 0
@@ -21,17 +23,17 @@ class BitImage:
                 break
         return gn > rn
     
-    def expand(self, srcImg):
-        w, h = srcImg.size
+    def expand(self):
+        w, h = self.bImg.size
         SPACE_W = 5
         dw = 30
-        items = self.splitVertical(srcImg)
+        items = self.splitVertical()
         for it in items:
             dw += it[1] - it[0] + SPACE_W
         destImg = Image.new('RGB', (dw, h), 0)
 
         destPixs = destImg.load()
-        srcPixs = srcImg.load()
+        srcPixs = self.bImg.load()
         sdx = 5
         for it in items:
             sx, ex = it
@@ -43,32 +45,32 @@ class BitImage:
         #destImg.save('D:/d.bmp')
         return destImg
 
-    def isEmpty(self, x, srcImg):
-        pixs = srcImg.load()
-        for y in range(srcImg.height):
-            r, g, b = pixs[x, y]
-            if r != g or g != b or r != 0:
+    def isVerLineEmpty(self, x):
+        pixs = self.bImg.load()
+        for y in range(self.bImg.height):
+            color = pixs[x, y]
+            if color != 0:
                 return False
         return True
-    
+
     # return [startX, endX)
-    def splitVerticalOne(self, startX, srcImg):
+    def splitVerticalOne(self, startX):
         sx = ex = -1
-        for x in range(startX, srcImg.width):
-            if not self.isEmpty(x, srcImg):
+        for x in range(startX, self.bImg.width):
+            if not self.isVerLineEmpty(x):
                 sx = x
                 break
-        for x in range(sx, srcImg.width):
-            if self.isEmpty(x, srcImg):
+        for x in range(sx, self.bImg.width):
+            if self.isVerLineEmpty(x):
                 ex = x
                 break
         return (sx, ex)
-    
-    def splitVertical(self, srcImg):
+
+    def splitVertical(self):
         items = []
         sx = ex = 0
         while True:
-            sx, ex = self.splitVerticalOne(ex, srcImg)
+            sx, ex = self.splitVerticalOne(ex)
             if sx < 0 or ex < 0:
                 break
             items.append((sx, ex))
@@ -157,7 +159,8 @@ class ThsOcrUtils:
         rs['price_pos'] = (px[0][0], px[0][1], px[1][0], px[2][1])
         #rs['zdPrice'] = float(result[2][1])
         # 委比
-        wsstrs = wbResult[0][1].replace(' ', '')
+        ms = map(lambda x: x[1], wbResult)
+        wsstrs = ''.join(ms).replace(' ', '')
         cc = re.compile('^([+-]?\\d+[.]*\\d*)%\s*([+-]?\\d+)')
         ma = cc.match(wsstrs)
         if not ma:
@@ -218,7 +221,10 @@ class ThsOcrUtils:
     def runOcr(self, thsMainWin):
         try:
             hwnd = self.getCurStockTitleHwnd(thsMainWin)
-            img, sign, wbImg = self.dump(hwnd)
+            objs = self.dump(hwnd)
+            if not objs:
+                return None
+            img, sign, wbImg = objs
             if not img:
                 return None
             bmpBytes = io.BytesIO()
@@ -228,6 +234,7 @@ class ThsOcrUtils:
 
             bmpBytes = io.BytesIO()
             wbImg.save(bmpBytes, format = 'bmp')
+            wbImg.save('D:/wb.bmp')
             bits = bmpBytes.getvalue()
             wbResult = self.ocr.readtext(bits)
             rs = self.parseText(result, wbResult)
