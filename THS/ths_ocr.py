@@ -10,7 +10,6 @@ class ThsOcrUtils:
         self.titleHwnds = set()
         self.ocr = None
         self.wbOcr = number_ocr.NumberOCR('wb', '+-.%0123456789')
-        self.WB_WIN_HEIGHT = 28
 
     def init(self):
         if not self.ocr:
@@ -42,7 +41,8 @@ class ThsOcrUtils:
         saveBitMap = win32ui.CreateBitmap()
         rc = win32gui.GetWindowRect(hwnd)
         w, h = rc[2] - rc[0], rc[3] - rc[1]
-        srcSize = w, h + self.WB_WIN_HEIGHT
+        WB_WIN_HEIGHT = 28
+        srcSize = w, h + WB_WIN_HEIGHT
 
         saveBitMap.CreateCompatibleBitmap(mfcDC, *srcSize) # image size W x H
         saveDC.SelectObject(saveBitMap)
@@ -68,7 +68,8 @@ class ThsOcrUtils:
         #priceImg.save('D:/price.bmp')
 
         WB_TXT_WIDTH = 35
-        wbImg = imgFull.crop((WB_TXT_WIDTH, srcSize[1] - self.WB_WIN_HEIGHT + 1, int(srcSize[0] - 70), srcSize[1]))
+        r = max(srcSize[0] - 70, w * 0.6)
+        wbImg = imgFull.crop((WB_TXT_WIDTH, srcSize[1] - WB_WIN_HEIGHT + 1, int(r), srcSize[1]))
         #sign = bi.calcSign(wbImg)
         #wbImg = bi.expand(wbImg)
         #wbImg.save('D:/a.bmp')
