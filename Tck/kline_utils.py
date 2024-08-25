@@ -25,7 +25,7 @@ def createKLineWindow(parent, rect = None, style = None):
     dw = win32api.GetSystemMetrics (win32con.SM_CXSCREEN)
     dh = win32api.GetSystemMetrics (win32con.SM_CYSCREEN) - 35
     if not rect:
-        W, H = int(dw * 1), int(dh * 0.85)
+        W, H = int(dw * 1), max(int(dh * 0.85), 650)
         x = (dw - W) // 2
         y = (dh - H) // 2
         rect = (0, 0, W, H)

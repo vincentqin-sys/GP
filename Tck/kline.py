@@ -1423,7 +1423,12 @@ class LhbIndicator(CustomIndicator):
         maps = {}
         for d in q:
             day = d['day'].replace('-', '')
-            maps[int(day)] = d
+            old = maps.get(int(day), None)
+            if old:
+                if '累计' in old['title']:
+                    maps[int(day)] = d
+            else:
+                maps[int(day)] = d
         rs = []
         for d in data:
             fd = maps.get(d.day, None)
@@ -1444,7 +1449,7 @@ class LhbIndicator(CustomIndicator):
         self.klineWin.invalidWindow()
         win32gui.UpdateWindow(self.klineWin.hwnd)
         itemData = self.customData[idx]
-        if not itemData:
+        if not itemData or not itemData['detail']:
             return True
         code = self.klineWin.model.code
         day = itemData['day']
@@ -1483,9 +1488,21 @@ class LhbIndicator(CustomIndicator):
             i = yyb.index('公司')
             if i != len(yyb) - 2:
                 yyb = yyb[i + 2 : ]
+        yyb = yyb.replace('有限责任公司', '')
+        yyb = yyb.replace('股份有限公司', '')
+        yyb = yyb.replace('有限公司', '')
+        yyb = yyb.replace('证券营业部', '')
         return yyb
     
-    def drawItemDetail(self, drawer : base_win.Drawer, hdc, rect, detail):
+    def drawItemDetail(self, drawer : base_win.Drawer, hdc, rect, detail : list):
+        if not detail:
+            return
+        newDetail = []
+        detail.sort(key = lambda x : x['mrje'], reverse = True)
+        newDetail.extend(detail[0 : 5])
+        detail.sort(key = lambda x : x['mcje'], reverse = True)
+        newDetail.extend(detail[0 : 5])
+
         ws = [0, 70, 70, 70]
         ws[0] = rect[2] - rect[0] - sum(ws)
         IH = (rect[3] - rect[1]) / 11
@@ -1497,14 +1514,12 @@ class LhbIndicator(CustomIndicator):
         for i in range(4):
             drawer.drawText(hdc, titles[i], (sx + 2, sy, sx + ws[i], int(sy + IH)), 0xcccccc, align = VCENTER)
             sx += ws[i]
-        if not detail:
-            return
-        for r, d in enumerate(detail):
+        for r, d in enumerate(newDetail):
             sx = rect[0]
             sy += IH
             lw = 1
             lc = 0x202020
-            if r > 0 and d['bs'] == 'S' and detail[r - 1]['bs'] == 'B':
+            if r == 5:
                 lw = 1
                 lc = 0xa0f0a0
             drawer.drawLine(hdc, rect[0] + 1, int(sy), rect[2] - 1, int(sy), lc, width = lw)
@@ -2907,5 +2922,5 @@ if __name__ == '__main__':
     win.addIndicator(LhbIndicator())
     rect = (0, 0, 1920, 750)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('000062') # cls82475 002085 603390 002085 002869  002055
+    win.changeCode('000755') # cls82475 002085 603390 002085 002869  002055
     win32gui.PumpMessages()
