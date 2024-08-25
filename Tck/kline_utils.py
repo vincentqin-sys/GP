@@ -21,6 +21,7 @@ def createKLineWindow(parent, rect = None, style = None):
     win.addIndicator(kline.ThsZT_Indicator())
     win.addIndicator(kline.ClsZT_Indicator())
     win.addIndicator(kline.DdeIndicator())
+    win.addIndicator(kline.LhbIndicator())
     dw = win32api.GetSystemMetrics (win32con.SM_CXSCREEN)
     dh = win32api.GetSystemMetrics (win32con.SM_CYSCREEN) - 35
     if not rect:
@@ -90,9 +91,8 @@ def openKlineMinutes_Simple(evt, parent : base_win.BaseWindow):
     day = evt.data.day
     win.load(evt.code, day)
 
-thsWin = ths_win.ThsWindow()
-thsWin.init()
 def openInThsWindow(data):
+    thsWin = ths_win.ThsWindow._ins
     if not thsWin.topHwnd or not win32gui.IsWindow(thsWin.topHwnd):
         thsWin.topHwnd = None
         thsWin.init()

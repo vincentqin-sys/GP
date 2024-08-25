@@ -10,9 +10,6 @@ from THS import ths_win
 from Common import base_win
 import ddlr_detail, kline_utils, kline
 
-thsWin = ths_win.ThsWindow()
-thsWin.init()
-
 class DddlrStructWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -114,24 +111,9 @@ class DddlrStructWindow(base_win.BaseWindow):
         if not data:
             return
         if self.checkBox.isChecked():
-            self.openInThsWindow(data)
+            kline_utils.openInThsWindow(self, data)
         else:
-            self.openInCurWindow(data)
-
-    def openInThsWindow(self, data):
-        if not thsWin.topHwnd or not win32gui.IsWindow(thsWin.topHwnd):
-            thsWin.topHwnd = None
-            thsWin.init()
-        if not thsWin.topHwnd:
-            return
-        win32gui.SetForegroundWindow(thsWin.topHwnd)
-        time.sleep(0.5)
-        pyautogui.typewrite(data['code'], 0.1)
-        time.sleep(0.2)
-        pyautogui.press('enter')
-        
-    def openInCurWindow(self, data):
-        kline_utils.openInCurWindow_Code(self, data)
+            kline_utils.openInCurWindow(self, data)
 
     def onSelDayChanged(self, evt, args):
         if evt.name != 'Select':

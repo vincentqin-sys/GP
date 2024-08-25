@@ -9,8 +9,6 @@ from THS import ths_win
 from Common import base_win
 import kline_utils
 
-thsWin = ths_win.ThsWindow.ins()
-
 class VolPMWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
