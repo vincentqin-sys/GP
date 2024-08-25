@@ -162,7 +162,6 @@ class ThsWindow(base_win.BaseWindow):
         return sd
 
     def init(self):
-        self.ocrUtils.init()
 
         def callback(hwnd, lparam):
             title = win32gui.GetWindowText(hwnd)
