@@ -1829,7 +1829,7 @@ class DrawLineManager:
             price = it.getValueAtY(y)
             self.curLine.info = {'startX': data.day, 'startY': price['value']}
 
-            qr = tck_def_orm.DrawLine.select().where(tck_def_orm.DrawLine.day == self.curLine.day, tck_def_orm.DrawLine.kind == 'text')
+            qr = tck_def_orm.DrawLine.select().where(tck_def_orm.DrawLine.code == self.curLine.code, tck_def_orm.DrawLine.day == self.curLine.day, tck_def_orm.DrawLine.kind == 'text')
             u = None
             for it in qr:
                 u = it
