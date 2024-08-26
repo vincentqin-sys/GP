@@ -1474,7 +1474,7 @@ class LhbIndicator(CustomIndicator):
         rc[2] -= 1
         rc[3] -= 1
         #drawer.drawText(hdc, itemData['detail'], rc, color = 0xd0a0a0, align = win32con.DT_WORDBREAK)
-        self.drawItemDetail(drawer, hdc, rc, itemData['detail'])
+        self.drawItemDetail(drawer, hdc, rc, itemData)
         win32gui.ReleaseDC(self.klineWin.hwnd, hdc)
         return True
     
@@ -1494,20 +1494,23 @@ class LhbIndicator(CustomIndicator):
         yyb = yyb.replace('证券营业部', '')
         return yyb
     
-    def drawItemDetail(self, drawer : base_win.Drawer, hdc, rect, detail : list):
+    def drawItemDetail(self, drawer : base_win.Drawer, hdc, rect, itemData):
+        detail = itemData['detail']
         if not detail:
             return
         newDetail = []
         detail.sort(key = lambda x : x['mrje'], reverse = True)
-        newDetail.extend(detail[0 : 5])
+        mr = detail[0 : 5]
+        newDetail.extend(mr)
         detail.sort(key = lambda x : x['mcje'], reverse = True)
-        newDetail.extend(detail[0 : 5])
+        mc = detail[0 : 5]
+        newDetail.extend(mc)
 
-        ws = [0, 70, 70, 70]
+        ws = [0, 70, 70, 70, 70]
         ws[0] = rect[2] - rect[0] - sum(ws)
         IH = (rect[3] - rect[1]) / 11
         drawer.fillRect(hdc, (rect[0], rect[1], rect[2], rect[1] + int(IH)), 0x404040)
-        titles = ['席位名称', '买入', '卖出', '净额']
+        titles = ['席位名称', '买入', '卖出', '净额', '']
         sx = rect[0]
         sy = rect[1]
         VCENTER = win32con.DT_SINGLELINE | win32con.DT_VCENTER
@@ -1524,9 +1527,17 @@ class LhbIndicator(CustomIndicator):
                 lc = 0xa0f0a0
             drawer.drawLine(hdc, rect[0] + 1, int(sy), rect[2] - 1, int(sy), lc, width = lw)
             cs = (self.getYzName(d), d.get('mrje', 0), d.get('mcje', 0), d.get('jme', 0))
-            for i in range(4):
+            for i in range(len(cs)):
                 drawer.drawText(hdc, cs[i], (sx + 2, int(sy), sx + ws[i], int(sy + IH)), color = 0xd0d0d0, align = VCENTER)
                 sx += ws[i]
+        # draw sum info
+        sx = rect[2] - ws[-1]
+        sy = rect[1] + IH
+        sumInfo = ['总买', f'{itemData["mrje"] :.1f}亿', '占比', f'{itemData["mrje"] / itemData["cjje"] * 100 :.1f}%', '',
+                   '总卖', f'{itemData["mcje"] :.1f}亿', '占比', f'{itemData["mcje"] / itemData["cjje"] * 100 :.1f}%']
+        for i in range(len(sumInfo)):
+            drawer.drawText(hdc, sumInfo[i], (sx + 2, int(sy), rect[2], int(sy + IH)), color = 0xd0d0d0, align = VCENTER)
+            sy += IH
 
     def drawItem(self, idx, hdc, pens, hbrs, x):
         iw = self.config['itemWidth']
