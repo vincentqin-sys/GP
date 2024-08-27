@@ -1,5 +1,5 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
-import threading, time, datetime, sys, os, threading
+import threading, time, datetime, sys, os, threading, copy
 import sys, pyautogui
 import peewee as pw
 
@@ -127,10 +127,19 @@ def findDrawDaysIndex(days, selDay, maxNum):
             break
     return (fromIdx, lastIdx)
 
+def findDrawDaysIndexOfLastPage(days, maxNum):
+    if not days:
+        return (0, 0)
+    if maxNum >= len(days):
+        return (0, len(days))
+    return (len(days) - maxNum, len(days))
+
 class CardView(base_win.Drawer):
-    def __init__(self, hwnd):
+    def __init__(self, cardWindow):
         super().__init__()
-        self.hwnd = hwnd
+        self.hwnd = cardWindow.hwnd
+        self.cardWindow = cardWindow
+        
     def onDraw(self, hdc):
         pass
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -148,16 +157,21 @@ class CardWindow(base_win.BaseWindow):
         self.MIN_SIZE = minSize
         self.maxMode = True
         self.curCardViewIdx = 0
+        self.settings = None
 
     def getWindowState(self):
         rc = win32gui.GetWindowRect(self.hwnd)
-        return {'maxMode': self.maxMode, 'pos': (rc[0], rc[1])}
+        rs = {'maxMode': self.maxMode, 'pos': (rc[0], rc[1]), 'settings': self.settings}
+        return rs
     
     def setWindowState(self, state):
         if not state:
             return
         x, y = state['pos']
         self.maxMode = state['maxMode']
+        st = state.get('settings', None)
+        if st:
+            self.settings = st
         if state['maxMode']:
             win32gui.SetWindowPos(self.hwnd, 0, x, y, *self.MAX_SIZE, win32con.SWP_NOZORDER)
         else:
@@ -187,6 +201,24 @@ class CardWindow(base_win.BaseWindow):
                 win32gui.SetWindowText(self.hwnd, title)
             win32gui.InvalidateRect(self.hwnd, None, True)
 
+    def showSettings(self):
+        if not self.settings:
+            return
+        menu = base_win.PopupMenu.create(self.hwnd, self.settings)
+        menu.addNamedListener('Select', self.onSettings)
+        menu.show(*win32gui.GetCursorPos())
+
+    def onSettings(self, evt, args):
+        pass
+
+    def getSetting(self, name):
+        if not self.settings or not name:
+            return None
+        for s in self.settings:
+            if s['name'] == name:
+                return s
+        return None
+
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_NCLBUTTONDBLCLK:
             self.maxMode = not self.maxMode
@@ -198,6 +230,9 @@ class CardWindow(base_win.BaseWindow):
         if msg == win32con.WM_RBUTTONUP:
             self.changeCardView()
             return True
+        if msg == win32con.WM_MBUTTONUP:
+            self.showSettings()
+            return True
 
         cardView = self.getCurCardView()
         if self.maxMode and cardView:
@@ -208,8 +243,8 @@ class CardWindow(base_win.BaseWindow):
 
 #-------------小窗口----------------------------------------------
 class SortCardView(CardView):
-    def __init__(self, hwnd):
-        super().__init__(hwnd)
+    def __init__(self, cardWindow):
+        super().__init__(cardWindow)
         self.query = ThsSortQuery()
         self.sortData = None
         self.selectDay = 0
@@ -237,8 +272,8 @@ class SortCardView(CardView):
             win32gui.DrawText(hdc, line, len(line), (2, y, rect[2], y + H), win32con.DT_LEFT)
 
 class ZSCardView(CardView):
-    def __init__(self, hwnd):
-        super().__init__(hwnd)
+    def __init__(self, cardWindow):
+        super().__init__(cardWindow)
         self.selectDay = 0
 
     def onDraw(self, hdc):
@@ -299,8 +334,8 @@ class ZSCardView(CardView):
         self.selectDay = selDay
 
 class HotCardView(CardView):
-    def __init__(self, hwnd):
-        super().__init__(hwnd)
+    def __init__(self, cardWindow):
+        super().__init__(cardWindow)
         self.hotData = None
         self.ROW_HEIGHT = 18
         self.hotsInfo = [None] * 25  # {data: , rect: (), }
@@ -331,7 +366,12 @@ class HotCardView(CardView):
         RW = rect[2] - rect[0]
         MAX_ROWS = RH // H
         days = [d['day'] for d in self.hotData]
-        fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
+        ks = self.cardWindow.getSetting('LOCK_TO_LAST_PAGE')
+        if ks and ks['checked']:
+            # lock last page
+            fromIdx, endIdx =findDrawDaysIndexOfLastPage(days, MAX_ROWS * 2)
+        else:
+            fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
         for i in range(len(self.hotsInfo)):
             self.hotsInfo[i] = None
         for i in range(fromIdx, endIdx):
@@ -484,8 +524,8 @@ class HotCardView(CardView):
         self.tipInfo['detail'] = hot['detail']
 
 class KPLCardView(CardView):
-    def __init__(self, hwnd):
-        super().__init__(hwnd)
+    def __init__(self, cardWindow):
+        super().__init__(cardWindow)
         self.kplZTData = None
         self.ROW_HEIGHT = 18
         self.selectDay = 0
@@ -534,7 +574,12 @@ class KPLCardView(CardView):
         RW = rect[2] - rect[0]
         MAX_ROWS = RH // H
         days = [d['day'] for d in self.kplZTData]
-        fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
+        ks = self.cardWindow.getSetting('LOCK_TO_LAST_PAGE')
+        if ks and ks['checked']:
+            # lock last page
+            fromIdx, endIdx =findDrawDaysIndexOfLastPage(days, MAX_ROWS * 2)
+        else:
+            fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
         for i in range(fromIdx, endIdx):
             kpl = self.kplZTData[i]
             if kpl['day'] == str(self.selectDay):
@@ -552,8 +597,8 @@ class KPLCardView(CardView):
         win32gui.DeleteObject(pen)
 
 class THS_ZTCardView(KPLCardView):
-    def __init__(self, hwnd):
-        super().__init__(hwnd)
+    def __init__(self, cardWindow):
+        super().__init__(cardWindow)
         self.ormClazz = tck_orm.THS_ZT
         self.emptyLine = '\n\n无同花顺涨停信息'
         self.fontSize = 12
@@ -568,8 +613,8 @@ class THS_ZTCardView(KPLCardView):
         win32gui.DrawText(hdc, day, len(day), rect, win32con.DT_LEFT)
 
 class Cls_ZTCardView(KPLCardView):
-    def __init__(self, hwnd):
-        super().__init__(hwnd)
+    def __init__(self, cardWindow):
+        super().__init__(cardWindow)
         self.ormClazz = tck_orm.CLS_ZT
         self.emptyLine = '\n\n无财联社涨停信息'
         self.fontSize = 12
@@ -583,7 +628,6 @@ class Cls_ZTCardView(KPLCardView):
         win32gui.DrawText(hdc, line, len(line), rc2, win32con.DT_LEFT | win32con.DT_WORDBREAK)
         win32gui.DrawText(hdc, day, len(day), rect, win32con.DT_LEFT)
 
-
 class SimpleWindow(CardWindow):
     # type_ is 'HOT' | 'ZT_GN'
     def __init__(self, type_) -> None:
@@ -592,6 +636,9 @@ class SimpleWindow(CardWindow):
         self.selectDay = 0
         self.zsCardView = None
         self.type_ = type_
+        self.settings = [
+            {'name': 'LOCK_TO_LAST_PAGE', 'title': '锁定到最后一页', 'checked': False},
+        ]
 
     def createWindow(self, parentWnd):
         style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
@@ -600,13 +647,13 @@ class SimpleWindow(CardWindow):
         super().createWindow(parentWnd, rect, style, title='SimpleWindow')
         #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
-        #self.addCardView(SortCardView(self.hwnd))
+        #self.addCardView(SortCardView(self))
         if self.type_ == 'HOT':
-            self.addCardView(HotCardView(self.hwnd))
+            self.addCardView(HotCardView(self))
         elif self.type_ == 'ZT_GN':
-            self.addCardView(THS_ZTCardView(self.hwnd))
-            self.addCardView(Cls_ZTCardView(self.hwnd))
-        self.zsCardView = ZSCardView(self.hwnd)
+            self.addCardView(THS_ZTCardView(self))
+            self.addCardView(Cls_ZTCardView(self))
+        self.zsCardView = ZSCardView(self)
 
     def changeCardView(self):
         scode = f'{self.curCode :06d}' if type(self.curCode) == int else self.curCode
@@ -1068,8 +1115,8 @@ class SimpleHotZHWindow(CardWindow):
         super().createWindow(parentWnd, rect, style, title='HotZH')
         #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
-        self.addCardView(HotZHCardView(self.hwnd))
-        self.addCardView(KPL_AllCardView(self.hwnd))
+        self.addCardView(HotZHCardView(self))
+        self.addCardView(KPL_AllCardView(self))
 
     def onDraw(self, hdc):
         super().onDraw(hdc)

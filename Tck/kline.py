@@ -1506,7 +1506,7 @@ class LhbIndicator(CustomIndicator):
         mc = detail[0 : 5]
         newDetail.extend(mc)
 
-        ws = [0, 70, 70, 70, 70]
+        ws = [0, 60, 60, 60, 60]
         ws[0] = rect[2] - rect[0] - sum(ws)
         IH = (rect[3] - rect[1]) / 11
         drawer.fillRect(hdc, (rect[0], rect[1], rect[2], rect[1] + int(IH)), 0x404040)
@@ -1533,8 +1533,8 @@ class LhbIndicator(CustomIndicator):
         # draw sum info
         sx = rect[2] - ws[-1]
         sy = rect[1] + IH
-        sumInfo = ['总买', f'{itemData["mrje"] :.1f}亿', '占比', f'{itemData["mrje"] / itemData["cjje"] * 100 :.1f}%', '',
-                   '总卖', f'{itemData["mcje"] :.1f}亿', '占比', f'{itemData["mcje"] / itemData["cjje"] * 100 :.1f}%']
+        sumInfo = ['总买', f'{itemData["mrje"] :.1f}亿', f'{itemData["mrje"] / itemData["cjje"] * 100 :.1f}%', '', '',
+                   '总卖', f'{itemData["mcje"] :.1f}亿', f'{itemData["mcje"] / itemData["cjje"] * 100 :.1f}%']
         for i in range(len(sumInfo)):
             drawer.drawText(hdc, sumInfo[i], (sx + 2, int(sy), rect[2], int(sy + IH)), color = 0xd0d0d0, align = VCENTER)
             sy += IH

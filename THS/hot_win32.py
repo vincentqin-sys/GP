@@ -29,7 +29,7 @@ def updateCode(nowCode):
     if curCode == nowCode:
         return
     curCode = nowCode
-    hotWindow.updateCode(nowCode)
+    #hotWindow.updateCode(nowCode)
     simpleWindow.changeCode(nowCode)
     simpleWindow2.changeCode(nowCode)
     codeBasicWindow.changeCode(nowCode)
@@ -121,7 +121,7 @@ def _workThread(thsWin : ths_win.ThsWindow, fileName):
             updateCode(nowCode)
         selDay = thsWin.getSelectDay()
         if selDay:
-            hotWindow.updateSelectDay(selDay)
+            #hotWindow.updateSelectDay(selDay)
             simpleWindow.changeSelectDay(selDay)
             simpleWindow2.changeSelectDay(selDay)
             thsShareMem.writeSelDay(selDay)
@@ -138,12 +138,12 @@ def subprocess_main():
             break
         time.sleep(3)
     thsShareMem.open()
-    hotWindow.createWindow(thsWindow.topHwnd)
+    #hotWindow.createWindow(thsWindow.topHwnd)
     simpleWindow.createWindow(thsWindow.topHwnd)
     simpleWindow2.createWindow(thsWindow.topHwnd)
     simpleHotZHWindow.createWindow(thsWindow.topHwnd)
     codeBasicWindow.createWindow(thsWindow.topHwnd)
-    hotWindow.addListener(onListen, 'ListenHotWindow')
+    #hotWindow.addListener(onListen, 'ListenHotWindow')
     threading.Thread(target = _workThread, args=(thsWindow, 'hot-win32.json')).start()
     
     mm = MarkMain()
@@ -158,7 +158,7 @@ def subprocess_main_fp():
             break
         time.sleep(10)
     thsShareMem.open()
-    hotWindow.createWindow(thsFPWindow.topHwnd)
+    #hotWindow.createWindow(thsFPWindow.topHwnd)
     simpleWindow.createWindow(thsFPWindow.topHwnd)
     simpleWindow2.createWindow(thsFPWindow.topHwnd)
     simpleHotZHWindow.createWindow(thsFPWindow.topHwnd)
