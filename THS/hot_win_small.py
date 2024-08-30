@@ -285,7 +285,12 @@ class ZSCardView(CardView):
         RW = rect[2] - rect[0]
         MAX_ROWS = RH // H - 2
         days = [d['day'] for d in self.zsData]
-        fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
+        ks = self.cardWindow.getSetting('LOCK_TO_LAST_PAGE')
+        if ks and ks['checked']:
+            # lock last page
+            fromIdx, endIdx = findDrawDaysIndexOfLastPage(days, MAX_ROWS * 2)
+        else:
+            fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
         for i in range(fromIdx, endIdx):
             zs = self.zsData[i]
             if zs['day'] == self.selectDay:

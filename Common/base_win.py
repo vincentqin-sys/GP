@@ -2138,6 +2138,7 @@ class DatePopupWindow(NoActivePopupWindow):
 
     # day = int | datetime.date | str
     def setSelDay(self, day):
+        curDay = self.curSelDay
         if not day:
             day = datetime.date.today()
             self.curSelDay = None

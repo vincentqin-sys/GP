@@ -185,7 +185,7 @@ class ThsOcrUtils:
             #rs['wb'] = abs(rs['wb']) if sign else -abs(rs['wb'])
             #rs['diff'] = abs(rs['diff']) if sign else -abs(rs['diff'])
             self.calcBS(rs)
-            print('ths_ocr', rs)
+            #print('ths_ocr', rs)
             return rs
         except Exception as e:
             #print('ths_ocr.runOcr Error: ', e)

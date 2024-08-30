@@ -12,7 +12,7 @@ class Hots_Window(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         rows = (30, '1fr')
-        self.cols = (150, 300, 120, 70, '1fr')
+        self.cols = (150, 300, 120, 70, 30, 70, 150, '1fr')
         self.layout = base_win.GridLayout(rows, self.cols, (5, 10))
         self.tableWin = ext_win.EditTableWindow()
         self.tableWin.css['selBgColor'] = 0xEAD6D6
@@ -21,6 +21,9 @@ class Hots_Window(base_win.BaseWindow):
         self.editorWin.editable = True
         self.checkBox = base_win.CheckBox({'title': '在同花顺中打开'})
         self.datePicker = base_win.DatePicker()
+        self.fsBtn = base_win.Button({'title': '最新分时'})
+        self.fsDatePicker = base_win.DatePicker()
+
         self.hotsData = None
         self.searchData = None
         self.searchText = ''
@@ -60,7 +63,7 @@ class Hots_Window(base_win.BaseWindow):
                    {'title': '', 'width': 15, 'name':'xx-no-1'},
                    {'title': '财联社', 'width': 150, 'name': 'cls_ztReason', 'sortable':True , 'formater': self.getZtReason, 'fontSize' : 12,  'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    {'title': '', 'width': 15, 'name':'xx-no-1'},
-                   {'title': '分时图', 'width': 250, 'name': 'code', 'render': cache.renderTimeline},
+                   {'title': '分时图', 'width': 250, 'name': 'FS', 'render': cache.renderTimeline, 'LOCAL-FS-DAY': None},
                    {'title': '详情', 'width': 0, 'name': '_detail_', 'stretch': 1 , 'fontSize' : 12, 'textAlign': win32con.DT_LEFT | win32con.DT_WORDBREAK | win32con.DT_VCENTER},
                    ]
         self.checkBox.createWindow(self.hwnd, (0, 0, 1, 1))
@@ -80,6 +83,12 @@ class Hots_Window(base_win.BaseWindow):
         btn.createWindow(self.hwnd, (0, 0, 1, 1))
         btn.addNamedListener('Click', self.onRefresh)
         self.layout.setContent(0, 3, btn)
+        self.fsBtn.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.fsDatePicker.createWindow(self.hwnd, (0, 0, 1, 1))
+        self.fsBtn.addNamedListener('Click', self.onFSNewestClick)
+        self.fsDatePicker.addNamedListener('Select', self.onFSDateChanged)
+        self.layout.setContent(0, 5, self.fsBtn)
+        self.layout.setContent(0, 6, self.fsDatePicker)
 
         self.layout.setContent(1, 0, self.tableWin, {'horExpand': -1})
         def onPressEnter(evt, args):
@@ -106,6 +115,18 @@ class Hots_Window(base_win.BaseWindow):
             if not finded:
                 model.append({'title': q})
         self.editorWin.setPopupTip(model)
+
+    def onFSNewestClick(self, evt, args):
+        self.fsDatePicker.setSelDay(None)
+        self.onFSDateChanged(self.Event('Select', self.fsDatePicker, day = None, sday = None), None)
+
+    def onFSDateChanged(self, evt, args):
+        curDay = self.fsDatePicker.getSelDayInt()
+        for hd in self.tableWin.headers:
+            if hd['name'] == 'FS':
+                hd['LOCAL-FS-DAY'] = curDay
+                break
+        self.tableWin.invalidWindow()
 
     def onRefresh(self, evt, args):
         self.loadAllData()

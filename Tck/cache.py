@@ -11,7 +11,8 @@ from Tdx.datafile import DataFile
 
 class CacheManager(base_win.Listener):
     def __init__(self) -> None:
-        self.cache = {}
+        self.cache = {} # {code : data, ...}
+        self.localCache = {} # {code-day: data, ...)
         self.wins = []
 
     def _needUpdate(self, data):
@@ -25,10 +26,20 @@ class CacheManager(base_win.Listener):
         if ts < 930 and cs >= 930:
             return True
         return False
+    
+    def _needUpdateLocal(self, data, day):
+        if not data or data['day'] != day:
+            return True
+        now = datetime.datetime.now()
+        cc : datetime.datetime = data['_load_time']
+        delta : datetime.timedelta = now - cc
+        if delta.seconds >= 60 * 60:
+            return True
+        return False
 
     def getData(self, code, win):
         if type(code) == int:
-            code = f'{code :05d}'
+            code = f'{code :06d}'
         if code not in self.cache:
             self.download(code, win)
             return None
@@ -36,6 +47,20 @@ class CacheManager(base_win.Listener):
         if self._needUpdate(data):
             self.cache.pop(code)
             self.download(code, win)
+            return None
+        return data
+    
+    def getLocalData(self, code, day, win):
+        if type(code) == int:
+            code = f'{code :06d}'
+        if type(day) == str:
+            day = day.replace('-', '')
+            day = int(day)
+        data = self.localCache.get(code, None)
+        if self._needUpdateLocal(data, day):
+            if data:
+                self.localCache.pop(code)
+            self.downloadLocal(code, day, win)
             return None
         return data
     
@@ -57,7 +82,7 @@ class CacheManager(base_win.Listener):
         if not vr or not ds:
             return
         curDatas = ds[vr[0] : vr[1]]
-        codes = [self._getCode(d) for d in curDatas]
+        #codes = [self._getCode(d) for d in curDatas]
         base_win.ThreadPool.instance().clearTasks()
 
     def adjustDownloadList(self, win : base_win.TableWindow):
@@ -68,6 +93,9 @@ class CacheManager(base_win.Listener):
 
     def download(self, code, win):
         base_win.ThreadPool.instance().addTask(code, self._download, code, win)
+
+    def downloadLocal(self, code, day, win):
+        base_win.ThreadPool.instance().addTask(code, self._downloadLocal, code, day, win)
 
     def _calcZF(self, data):
         if (not data.get('pre', 0)) or (not data.get('dataArr', None)) :
@@ -90,6 +118,31 @@ class CacheManager(base_win.Listener):
         render.setData(ds)
         rs = {'_load_time': datetime.datetime.now(), 'render': render, 'zf': zf}
         self.cache[code] = rs
+        if win:
+            win.invalidWindow()
+
+    def _downloadLocal(self, code, day, win):
+        if type(day) == str:
+            day = int(day.replace('-', ''))
+        ds = {'code': code, 'day': day, 'pre': 0, 'dataArr': []}
+        render = TimelineRender()
+        rs = {'_load_time': datetime.datetime.now(), 'render': render, 'zf': 0, 'day': day}
+        self.localCache[code] = rs
+        df = DataFile(code, DataFile.DT_MINLINE)
+        idx = df.getItemIdx(day)
+        if idx < 0:
+            return
+        if idx == 0:
+            ds['pre'] = df.data[idx].open
+        else:
+            ds['pre'] = df.data[idx -1].close
+        while idx < len(df.data):
+            if df.data[idx].day != day:
+                break
+            ds['dataArr'].append({'price': df.data[idx].close})
+            idx += 1
+        rs['zf'] = self._calcZF(ds)
+        render.setData(ds)
         if win:
             win.invalidWindow()
 
@@ -234,7 +287,14 @@ def renderTimeline(win : base_win.TableWindow, hdc, row, col, colName, value, ro
     else:
         return
     _cache.adjustDownloadList(win)
-    data = _cache.getData(code, win)
+    hd = win.headers[col]
+    day = hd.get('LOCAL-FS-DAY', None)
+    if day:
+        if type(day) == str:
+            day = int(day.replace('-', ''))
+        data = _cache.getLocalData(code, day, win)
+    else:
+        data = _cache.getData(code, win)
     if not data:
         return
     data['render'].onDraw(hdc, win.drawer, rect)
