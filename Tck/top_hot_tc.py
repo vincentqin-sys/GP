@@ -84,6 +84,10 @@ class HotTCWindow(base_win.BaseWindow):
         self.initMySelect(evt.val)
 
     def initMySelect(self, days):
+        pass
+        base_win.ThreadPool.instance().addTask('load-cls-hots', self.initMySelect_, days)
+
+    def initMySelect_(self, days):
         rs = []
         n = 0
         curDay = datetime.date.today()

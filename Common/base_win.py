@@ -140,13 +140,13 @@ class BaseWindow(Listener):
         if not self:
             return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
         rs = self.winProc(hwnd, msg, wParam, lParam)
+        if not isinstance(rs, bool):
+            return rs
         if rs == True:
             return 0
-        if rs != False:
-            return rs
+        return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
         #if self.oldProc:
         #    return win32gui.CallWindowProc(self.oldProc, hwnd, msg, wParam, lParam)
-        return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
     
     def invalidWindow(self):
         if win32gui.IsWindow(self.hwnd):
@@ -3285,8 +3285,14 @@ class ThsShareMemory:
     def open(self):
         if self.shm:
             return
+        c = self.create
+        if self._open(c):
+            return
+        self._open(not c)
+        
+    def _open(self, create):
         try:
-            if self.create:
+            if create:
                 SZ = 512
                 self.shm = shared_memory.SharedMemory(self._name, True, size = SZ)
                 buf = self.shm.buf.cast('i')
@@ -3298,8 +3304,10 @@ class ThsShareMemory:
             if not ThsShareMemory._thread:
                 ThsShareMemory._thread = threading.Thread(target = self.onListenThread, daemon = True)
                 ThsShareMemory._thread.start()
+            return True
         except Exception as e:
-            print('ths_win.ThsShareMemory.open exception: ', e)
+            #print('ThsShareMemory.open exception: ', e)
+            return False
 
     def writeCode(self, code):
         if not self.shm:

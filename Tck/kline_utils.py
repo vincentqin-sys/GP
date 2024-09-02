@@ -38,7 +38,7 @@ def createKLineWindow(parent, rect = None, style = None):
 def openInCurWindow_Code(parent : base_win.BaseWindow, data):
     win = createKLineWindow(parent.hwnd)
     win.changeCode(data['code'])
-    win.klineWin.setMarkDay(data['day'])
+    win.klineWin.setMarkDay(data.get('day', None))
     win.klineWin.makeVisible(-1)
     return win
 

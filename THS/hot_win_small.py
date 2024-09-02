@@ -1295,5 +1295,15 @@ class CodeBasicWindow(base_win.BaseWindow):
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_NCHITTEST:
-            return win32con.HTCAPTION
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            cx, cy = win32gui.ScreenToClient(self.hwnd, (x, y))
+            if cy <= 20:
+                return win32con.HTCAPTION
+            return win32con.HTCLIENT
+        if msg == win32con.WM_LBUTTONDBLCLK:
+            from Tck import kline_utils
+            if self.data and 'code' in self.data and self.data['code']:
+                data = {'code': self.data['code'], 'day': None}
+                kline_utils.openInCurWindow(self, data)
+            return True
         return super().winProc(hwnd, msg, wParam, lParam)
