@@ -467,17 +467,31 @@ class KLineIndicator(Indicator):
         self.drawBackground(hdc, pens, hbrs)
         for mk in self.markDays:
             self.drawMarkDay(mk, hdc, pens, hbrs)
+        self.drawHilight(hdc, pens, hbrs)
         #sm = base_win.ThsShareMemory.instance()
         #if sm.readMarkDay() != 0:
         #    self.drawMarkDay(sm.readMarkDay(), hdc, pens, hbrs)
         self.drawKLines(hdc, pens, hbrs)
         self.drawMA(hdc, 5)
         self.drawMA(hdc, 10)
+
+    def drawHilight(self, hdc, pens, hbrs):
+        if not self.klineWin.model:
+            return
+        selIdx = self.klineWin.selIdx
+        if selIdx < 0 or selIdx >= self.visibleRange[1] or selIdx < self.visibleRange[0]:
+            return
+        x = self.getCenterX(selIdx)
+        sx = x - self.getItemWidth() // 2 #- self.getItemSpace()
+        ex = x + self.getItemWidth() // 2 #+ self.getItemSpace()
+        rc = (sx, 0, ex, self.height)
+        pen = win32gui.GetStockObject(win32con.NULL_PEN)
+        win32gui.SelectObject(hdc, pen)
+        win32gui.FillRect(hdc, rc, hbrs['drak'])
     
     def drawMarkDay(self, markDay, hdc, pens, hbrs):
         if not markDay or not self.klineWin.model or not self.visibleRange:
             return
-        
         idx = self.klineWin.model.getItemIdx(markDay)
         if idx < 0:
             return
@@ -869,10 +883,30 @@ class CustomIndicator(Indicator):
         win32gui.MoveToEx(hdc, x + WW, 0)
         win32gui.LineTo(hdc, x + WW, self.height)
 
+    def changeSelIdx(self, x, y):
+        if not self.visibleRange or not self.data or not self.customData:
+            return
+        itemWidth = self.config['itemWidth']
+        idx = x // itemWidth + self.visibleRange[0]
+        if idx >= self.visibleRange[1]:
+            return
+        # click item idx
+        itemData = self.customData[idx]
+        if not itemData:
+            return
+        day = itemData.get('__day', None)
+        if not day:
+            return
+        idx = self.klineWin.model.getItemIdx(day)
+        if idx >= 0:
+            self.klineWin.setSelIdx(idx)
+
     def onMouseClick(self, x, y):
+        self.changeSelIdx(x, y)
         return True
 
     def onContextMenu(self, x, y):
+        self.klineWin.invalidWindow() # redraw
         return True
 
 class DdlrIndicator(CustomIndicator):
@@ -1234,6 +1268,7 @@ class ClsZT_Indicator(CustomIndicator):
         win32gui.DrawText(hdc, cdata['ztReason'], -1, rc, win32con.DT_CENTER | win32con.DT_WORDBREAK) #  | win32con.DT_VCENTER | win32con.DT_SINGLELINE
 
     def onMouseClick(self, x, y):
+        #super().onMouseClick(x, y)
         if not self.visibleRange:
             return True
         itemWidth = self.config['itemWidth']
@@ -1246,6 +1281,8 @@ class ClsZT_Indicator(CustomIndicator):
         if not detail:
             return True
         # draw tip
+        self.klineWin.invalidWindow()
+        win32gui.UpdateWindow(self.klineWin.hwnd)
         hdc = win32gui.GetDC(self.klineWin.hwnd)
         W, H = int(self.width * 0.8), 70
         drawer : base_win.Drawer = self.klineWin.drawer
@@ -1347,6 +1384,7 @@ class DdeIndicator(CustomIndicator):
         self.setCustomData(rs)
 
     def onMouseClick(self, x, y):
+        super().onMouseClick(x, y)
         if not self.visibleRange:
             return True
         itemWidth = self.config['itemWidth']
@@ -1365,6 +1403,8 @@ class DdeIndicator(CustomIndicator):
         for q in qr:
             detail = f'排名：{q.dde_pm}'
             break
+        if not detail:
+            return True
         # draw tip
         hdc = win32gui.GetDC(self.klineWin.hwnd)
         W, H = 120, 50
@@ -1441,6 +1481,7 @@ class LhbIndicator(CustomIndicator):
         self.setCustomData(rs)
 
     def onMouseClick(self, x, y):
+        super().onMouseClick(x, y)
         if not self.visibleRange:
             return True
         itemWidth = self.config['itemWidth']
@@ -1925,6 +1966,8 @@ class KLineWindow(base_win.BaseWindow):
 
     def __init__(self):
         super().__init__()
+        self.pens = {}
+        self.hbrs = {}
         self.model = None
         self.dateType = 'day'
         self.models = {} # {'day': , 'week': xx, 'month': xx}
@@ -2249,7 +2292,6 @@ class KLineWindow(base_win.BaseWindow):
             return
         if self.selIdx == si and self.mouseXY and y == self.mouseXY[1]:
             return
-        
         self.mouseXY = (x, y)
         self.updateAttr('selIdx', si)
         if lmxy != self.mouseXY:
@@ -2270,9 +2312,9 @@ class KLineWindow(base_win.BaseWindow):
         if not idt.visibleRange or idx < 0 or idx >= idt.visibleRange[1]:
             return
         data = self.model.data[idx]
-        x = idt.getCenterX(idx)
-        y = idt.getYAtValue(data.close) + idt.y
-        self.mouseXY = (x, y)
+        #x = idt.getCenterX(idx)
+        #y = idt.getYAtValue(data.close) + idt.y
+        #self.mouseXY = (x, y)
         self.updateAttr('selIdx', idx)
 
     def onKeyDown(self, keyCode):
@@ -2364,32 +2406,33 @@ class KLineWindow(base_win.BaseWindow):
             win32gui.RestoreDC(hdc, sdc)
 
     def onDraw(self, hdc):
-        pens = {}
-        hbrs = {}
-        pens['white'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xffffff)
-        pens['red'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x0000ff)
-        pens['green'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ff00)
-        pens['light_green'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xfcfc54)
-        pens['blue'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xff0000)
-        pens['yellow'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
-        pens['yellow2'] = win32gui.CreatePen(win32con.PS_SOLID, 2, 0x00ffff)
-        pens['0xff00ff'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xff00ff)
-        pens['dark_red'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x0000aa) # 暗红色
-        pens['dark_red2'] = win32gui.CreatePen(win32con.PS_SOLID, 2, 0x0000aa) # 暗红色
-        pens['bk_dot_red'] = win32gui.CreatePen(win32con.PS_DOT, 1, 0x000055) # 背景虚线
-        pens['blue_dash_dot'] = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0xdd5555)
-        pens['light_drak_dash_dot'] = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0x606060)
-
-        hbrs['white'] = win32gui.CreateSolidBrush(0xffffff)
-        hbrs['drak'] = win32gui.CreateSolidBrush(0x202020)
-        hbrs['red'] = win32gui.CreateSolidBrush(0x0000ff)
-        hbrs['green'] = win32gui.CreateSolidBrush(0x00ff00)
-        hbrs['light_green'] = win32gui.CreateSolidBrush(0xfcfc54)
-        hbrs['blue'] = win32gui.CreateSolidBrush(0xff0000)
-        hbrs['yellow'] = win32gui.CreateSolidBrush(0x00ffff)
-        hbrs['black'] = win32gui.CreateSolidBrush(0x000000)
-        hbrs['0xff00ff'] = win32gui.CreateSolidBrush(0xff00ff)
-        hbrs['light_dark'] = win32gui.CreateSolidBrush(0x202020)
+        pens = self.pens
+        hbrs = self.hbrs
+        if not pens:
+            pens['white'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xffffff)
+            pens['red'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x0000ff)
+            pens['green'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ff00)
+            pens['light_green'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xfcfc54)
+            pens['blue'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xff0000)
+            pens['yellow'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x00ffff)
+            pens['yellow2'] = win32gui.CreatePen(win32con.PS_SOLID, 2, 0x00ffff)
+            pens['0xff00ff'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xff00ff)
+            pens['dark_red'] = win32gui.CreatePen(win32con.PS_SOLID, 1, 0x0000aa) # 暗红色
+            pens['dark_red2'] = win32gui.CreatePen(win32con.PS_SOLID, 2, 0x0000aa) # 暗红色
+            pens['bk_dot_red'] = win32gui.CreatePen(win32con.PS_DOT, 1, 0x000055) # 背景虚线
+            pens['blue_dash_dot'] = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0xdd5555)
+            pens['light_drak_dash_dot'] = win32gui.CreatePen(win32con.PS_DASHDOT, 1, 0x606060)
+        if not hbrs:
+            hbrs['white'] = win32gui.CreateSolidBrush(0xffffff)
+            hbrs['drak'] = win32gui.CreateSolidBrush(0x202020)
+            hbrs['red'] = win32gui.CreateSolidBrush(0x0000ff)
+            hbrs['green'] = win32gui.CreateSolidBrush(0x00ff00)
+            hbrs['light_green'] = win32gui.CreateSolidBrush(0xfcfc54)
+            hbrs['blue'] = win32gui.CreateSolidBrush(0xff0000)
+            hbrs['yellow'] = win32gui.CreateSolidBrush(0x00ffff)
+            hbrs['black'] = win32gui.CreateSolidBrush(0x000000)
+            hbrs['0xff00ff'] = win32gui.CreateSolidBrush(0xff00ff)
+            hbrs['light_dark'] = win32gui.CreateSolidBrush(0x202020)
         
         w, h = self.getClientSize()
         for i, idt in enumerate(self.indicators):
@@ -2418,11 +2461,7 @@ class KLineWindow(base_win.BaseWindow):
 
         if self.mouseXY:
             self.drawTipPrice(hdc, self.mouseXY[1], pens, hbrs)
-        for k in pens:
-            win32gui.DeleteObject(pens[k])
-        for k in hbrs:
-            win32gui.DeleteObject(hbrs[k])
-
+        
         # draw day | week | month
         cf = self.klineIndicator
         y = cf.getMargins(1) + cf.height
@@ -2448,6 +2487,16 @@ class KLineWindow(base_win.BaseWindow):
 
         self.lineMgr.onDraw(hdc)
 
+    def onDestory(self):
+        pens = self.pens
+        hbrs = self.hbrs
+        for k in pens:
+            win32gui.DeleteObject(pens[k])
+        for k in hbrs:
+            win32gui.DeleteObject(hbrs[k])
+        pens.clear()
+        hbrs.clear()
+
     def drawMouse(self, hdc, pens):
         if not self.mouseXY:
             return
@@ -2461,8 +2510,8 @@ class KLineWindow(base_win.BaseWindow):
         win32gui.SelectObject(hdc, wp)
         win32gui.MoveToEx(hdc, self.LEFT_MARGIN, y)
         win32gui.LineTo(hdc, w, y)
-        win32gui.MoveToEx(hdc, x, self.klineIndicator.getMargins(1))
-        win32gui.LineTo(hdc, x, h)
+        #win32gui.MoveToEx(hdc, x, self.klineIndicator.getMargins(1))
+        #win32gui.LineTo(hdc, x, h)
         win32gui.DeleteObject(wp)
 
     def getValueAtY(self, y):
@@ -2926,12 +2975,12 @@ if __name__ == '__main__':
     win.addIndicator('rate amount')
     win.addIndicator(DayIndicator({'height': 20}))
     win.addIndicator(ScqxIndicator())
-    #win.addIndicator(HotIndicator()) # {'height' : 50}
-    #win.addIndicator(ThsZT_Indicator()) # {'height' : 50}
-    #win.addIndicator(ClsZT_Indicator()) # {'height' : 50}
-    #win.addIndicator(DdeIndicator()) # {'height' : 50}
+    win.addIndicator(HotIndicator()) # {'height' : 50}
+    win.addIndicator(ThsZT_Indicator()) # {'height' : 50}
+    win.addIndicator(ClsZT_Indicator()) # {'height' : 50}
+    win.addIndicator(DdeIndicator()) # {'height' : 50}
     win.addIndicator(LhbIndicator())
-    rect = (0, 0, 1920, 750)
+    rect = (0, 0, 1920, 850)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
     win.changeCode('000755') # cls82475 002085 603390 002085 002869  002055
     win32gui.PumpMessages()

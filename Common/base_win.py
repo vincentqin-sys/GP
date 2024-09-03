@@ -79,6 +79,7 @@ class BaseWindow(Listener):
                 if not owner:
                     win32gui.PostQuitMessage(0)
                 return True
+            self.onDestory()
             del BaseWindow.bindHwnds[hwnd]
         if msg == win32con.WM_RBUTTONUP:
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
@@ -132,6 +133,9 @@ class BaseWindow(Listener):
         return True
         
     def onDraw(self, hdc):
+        pass
+    
+    def onDestory(self):
         pass
 
     @staticmethod

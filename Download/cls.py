@@ -284,7 +284,7 @@ class ClsUrl:
             txt = resp.content.decode('utf-8')
             js = json.loads(txt)
             day = js['data']['date']
-            degree = js['data']['market_degree']
+            degree = js['data']['market_degree'] or 0
             degree = int(float(degree) * 100)
             data = {'day': day, 'degree': degree}
             memcache.cache.saveCache(KIND, data, KIND)
