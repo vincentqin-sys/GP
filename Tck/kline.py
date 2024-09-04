@@ -484,7 +484,8 @@ class KLineIndicator(Indicator):
         x = self.getCenterX(selIdx)
         sx = x - self.getItemWidth() // 2 #- self.getItemSpace()
         ex = x + self.getItemWidth() // 2 #+ self.getItemSpace()
-        rc = (sx, 0, ex, self.height)
+        mr = self.config['margins'] or (0, 0)
+        rc = (sx, 0, ex, self.height + mr[1])
         pen = win32gui.GetStockObject(win32con.NULL_PEN)
         win32gui.SelectObject(hdc, pen)
         win32gui.FillRect(hdc, rc, hbrs['hilight'])
@@ -630,6 +631,10 @@ class AmountIndicator(Indicator):
         rect = [bx, self.getYAtValue(self.valueRange[0]), ex, self.getYAtValue(data.amount) + 1]
         if rect[3] - rect[1] == 0 and data.amount > 0:
             rect[1] -= 1
+        if idx == self.klineWin.selIdx:
+            mr = self.config['margins'] or (8, 0)
+            hr = (rect[0], -mr[0] + 1, rect[2], rect[3])
+            win32gui.FillRect(hdc, hr, hbrs['hilight'])
         rect = tuple(rect)
         color = self.getColor(idx, data)
         win32gui.SelectObject(hdc, pens[color])
@@ -728,6 +733,10 @@ class RateIndicator(Indicator):
         bx = cx - self.getItemWidth() // 2
         ex = bx + self.getItemWidth()
         rect = (bx, self.getYAtValue(self.valueRange[0]), ex, self.getYAtValue(data.rate) + 1)
+        if idx == self.klineWin.selIdx:
+            mr = self.config['margins'] or (8, 0)
+            hr = (rect[0], -mr[0] + 1, rect[2], rect[3])
+            win32gui.FillRect(hdc, hr, hbrs['hilight'])
         color = self.getColor(idx, data)
         win32gui.SelectObject(hdc, pens[color])
         if data.close >= data.open:
@@ -2465,7 +2474,7 @@ class KLineWindow(base_win.BaseWindow):
         self.drawMouse(hdc, pens)
         #self.drawSelTip(hdc, pens, hbrs)
         self.drawCodeInfo(hdc, pens, hbrs)
-        self.drawSelDayTip(hdc, pens, hbrs)
+        #self.drawSelDayTip(hdc, pens, hbrs)
 
         if self.mouseXY:
             self.drawTipPrice(hdc, self.mouseXY[1], pens, hbrs)
