@@ -487,7 +487,7 @@ class KLineIndicator(Indicator):
         rc = (sx, 0, ex, self.height)
         pen = win32gui.GetStockObject(win32con.NULL_PEN)
         win32gui.SelectObject(hdc, pen)
-        win32gui.FillRect(hdc, rc, hbrs['drak'])
+        win32gui.FillRect(hdc, rc, hbrs['hilight'])
     
     def drawMarkDay(self, markDay, hdc, pens, hbrs):
         if not markDay or not self.klineWin.model or not self.visibleRange:
@@ -498,8 +498,8 @@ class KLineIndicator(Indicator):
         if idx < self.visibleRange[0] or idx >= self.visibleRange[1]:
             return
         x = self.getCenterX(idx)
-        sx = x - self.getItemWidth() // 2 - self.getItemSpace()
-        ex = x + self.getItemWidth() // 2 + self.getItemSpace()
+        sx = x - self.getItemWidth() // 2# - self.getItemSpace()
+        ex = x + self.getItemWidth() // 2# + self.getItemSpace()
         rc = (sx, 0, ex, self.height)
         pen = win32gui.GetStockObject(win32con.NULL_PEN)
         win32gui.SelectObject(hdc, pen)
@@ -885,24 +885,28 @@ class CustomIndicator(Indicator):
 
     def changeSelIdx(self, x, y):
         if not self.visibleRange or not self.data or not self.customData:
-            return
+            return False
         itemWidth = self.config['itemWidth']
         idx = x // itemWidth + self.visibleRange[0]
         if idx >= self.visibleRange[1]:
-            return
+            return False
+        dx = x % itemWidth
         # click item idx
         itemData = self.customData[idx]
         if not itemData:
-            return
+            return False
         day = itemData.get('__day', None)
         if not day:
-            return
+            return False
         idx = self.klineWin.model.getItemIdx(day)
-        if idx >= 0:
-            self.klineWin.setSelIdx(idx)
+        if idx < 0:
+            return False
+        old = self.klineWin.selIdx
+        self.klineWin.setSelIdx(idx)
+        return self.klineWin.selIdx != old
 
     def onMouseClick(self, x, y):
-        self.changeSelIdx(x, y)
+        changed = self.changeSelIdx(x, y)
         return True
 
     def onContextMenu(self, x, y):
@@ -1268,7 +1272,8 @@ class ClsZT_Indicator(CustomIndicator):
         win32gui.DrawText(hdc, cdata['ztReason'], -1, rc, win32con.DT_CENTER | win32con.DT_WORDBREAK) #  | win32con.DT_VCENTER | win32con.DT_SINGLELINE
 
     def onMouseClick(self, x, y):
-        #super().onMouseClick(x, y)
+        if self.changeSelIdx(x, y):
+            return True
         if not self.visibleRange:
             return True
         itemWidth = self.config['itemWidth']
@@ -1384,7 +1389,8 @@ class DdeIndicator(CustomIndicator):
         self.setCustomData(rs)
 
     def onMouseClick(self, x, y):
-        super().onMouseClick(x, y)
+        if self.changeSelIdx(x, y):
+            return True
         if not self.visibleRange:
             return True
         itemWidth = self.config['itemWidth']
@@ -1481,7 +1487,8 @@ class LhbIndicator(CustomIndicator):
         self.setCustomData(rs)
 
     def onMouseClick(self, x, y):
-        super().onMouseClick(x, y)
+        if self.changeSelIdx(x, y):
+            return True
         if not self.visibleRange:
             return True
         itemWidth = self.config['itemWidth']
@@ -2433,6 +2440,7 @@ class KLineWindow(base_win.BaseWindow):
             hbrs['black'] = win32gui.CreateSolidBrush(0x000000)
             hbrs['0xff00ff'] = win32gui.CreateSolidBrush(0xff00ff)
             hbrs['light_dark'] = win32gui.CreateSolidBrush(0x202020)
+            hbrs['hilight'] = win32gui.CreateSolidBrush(0x202030)
         
         w, h = self.getClientSize()
         for i, idt in enumerate(self.indicators):
@@ -2982,5 +2990,6 @@ if __name__ == '__main__':
     win.addIndicator(LhbIndicator())
     rect = (0, 0, 1920, 850)
     win.createWindow(None, rect, win32con.WS_VISIBLE | win32con.WS_OVERLAPPEDWINDOW)
-    win.changeCode('000755') # cls82475 002085 603390 002085 002869  002055
+    win.changeCode('600611') # cls82475 002085 603390 002085 002869  002055 000755
+    win.klineWin.setMarkDay(20240822)
     win32gui.PumpMessages()
