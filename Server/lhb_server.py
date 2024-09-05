@@ -209,7 +209,7 @@ class Server:
             else:
                 #print('Load day ' + str(dayFrom))
                 self.loadOneDayLHB(dayFrom.strftime('%Y-%m-%d'))
-                time.sleep(12)
+                time.sleep(1.2)
             dayFrom = dayFrom + delta
     
     def loadOneTime(self):
@@ -229,6 +229,6 @@ if __name__ == '__main__':
     svr = Server()
     svr.debug = True
     #svr.loadOneGP('000062', '2024-08-20', '深圳华强')
-    #svr.loadTdxLHB(datetime.date(2024, 5, 1))
+    svr.loadTdxLHB(datetime.date(2023, 1, 1))
 
     

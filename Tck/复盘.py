@@ -3,7 +3,7 @@ import win32gui, win32con, sys, os, win32api
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Common import base_win
 import ddlr_detail, top_scqx, ddlr_struct, top_zs, top_zt
-import top_vol_pm, top_cls_bk, top_hots, top_vol_lb, top_diary, top_dde, top_observe, top_hot_tc
+import top_vol_pm, top_cls_bk, top_hots, top_vol_lb, top_diary, top_dde, top_observe, top_hot_tc, top_lhb
 
 class FuPanMgrWindow(base_win.BaseWindow):
     def __init__(self) -> None:
@@ -17,12 +17,13 @@ class FuPanMgrWindow(base_win.BaseWindow):
         gpInfos = [
             #{'name': 'KPL', 'title': '市场情绪', 'class': top_scqx.KPL_MgrWindow},
             #{'name': 'DDLR_STRUCT', 'title': '大单流入',  'class': ddlr_struct.DddlrStructWindow},
-            {'name': 'VOL_PM', 'title': '成交额排名',  'class': top_vol_pm.VolPMWindow},
+            #{'name': 'VOL_PM', 'title': '成交额排名',  'class': top_vol_pm.VolPMWindow},
             #{'name': 'VOL_LB', 'title': '量比',  'class': top_vol_lb.VolLBWindow},
             {'name': 'THS_ZS', 'title': '指数',  'class': top_zs.ZSWindow},
-            {'name': 'DDE', 'title': 'DDE',  'class': top_dde.DdeWindow},
+            #{'name': 'DDE', 'title': 'DDE',  'class': top_dde.DdeWindow},
             {'name': 'ZT', 'title': '涨停',  'class': top_zt.ZT_Window},
             {'name': 'HOTS', 'title': '热度',  'class': top_hots.Hots_Window},
+            {'name': 'LHB', 'title': '龙虎榜',  'class': top_lhb.LHB_Window},
             #{'name': 'TCGN', 'title': '题材梳理',  'class': tcgn2.TCGN_Window},
             #{'name': 'CLS_BK', 'title': '财联社板块',  'class': top_cls_bk.ClsBkWindow},
             {'name': 'MY', 'title': '自选',  'class': top_observe.MyWindow},

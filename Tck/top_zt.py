@@ -115,11 +115,11 @@ class ZT_Window(base_win.BaseWindow):
 
     def onAddCiTiao(self, evt, args):
         txt =  self.editorWin.getText().strip()
-        if not txt:
-            return
-        obj = tck_def_orm.TCK_CiTiao.get_or_none(name = txt)
-        if not obj:
-            tck_def_orm.TCK_CiTiao.create(name = txt)
+        #if not txt:
+        #    return
+        #obj = tck_def_orm.TCK_CiTiao.get_or_none(name = txt)
+        #if not obj:
+        #    tck_def_orm.TCK_CiTiao.create(name = txt)
 
     def onDbClickEditor(self, evt, args):
         model = []
@@ -248,6 +248,7 @@ class ZT_Window(base_win.BaseWindow):
             else:
                 d['cls_detail'] = detail
                 d['cls_ztReason'] = d['ztReason'].upper()
+                d['zhHotOrder'] = hots.get(k, None)
                 rs.append(d)
         rs.sort(key = lambda d : d['day'], reverse = True)
         for item in rs:
