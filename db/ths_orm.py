@@ -191,6 +191,22 @@ class THS_DDE(pw.Model):
         database = db_thsdde
         table_name = 'ths_dde'
 
+#db_zt = pw.SqliteDatabase(f'{path}GP/db/THS_ZT.db')
+class THS_ZT(pw.Model):
+    day = pw.CharField() # YYYY-MM-DD
+    code = pw.CharField() #指数代码
+    name = pw.CharField(null = True) #指数代码
+
+    tag = pw.CharField(null = True) # 涨停 | 炸板
+    lbs = pw.CharField(null = True) # 几天几板
+    lastZtTime = pw.CharField(null = True) # 最终涨停时间
+    firstZtTime = pw.CharField(null = True) # 首次涨停时间
+    ztMoney = pw.FloatField(default = 0) # 涨停封单额 (亿元)
+
+    class Meta:
+        #database = db_zt
+        table_name = 'ths_zt'       
+
 db_f10.create_tables([THS_JGCG, THS_HYDB, THS_Top10_LTGD, THS_Newest])
 db_hot.create_tables([THS_Hot])
 db_hot_zh.create_tables([THS_HotZH])
@@ -198,6 +214,7 @@ db_ddlr.create_tables([THS_DDLR])
 db_thszs.create_tables([THS_ZS_ZD])
 db_gntc.create_tables([THS_GNTC])
 db_thsdde.create_tables([THS_DDE])
+#db_zt.create_tables([THS_ZT])
 
 
 if __name__ == '__main__':

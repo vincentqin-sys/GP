@@ -1453,7 +1453,7 @@ class DdeIndicator(CustomIndicator):
         if selDay == int(cdata['__day']):
             win32gui.FillRect(hdc, rc, hbrs['light_dark'])
         rc = (x + 3, 3, x + iw - 3, self.height)
-        if cdata['dde大单净额']:
+        if cdata.get('dde大单净额', None):
             val = float(cdata['dde大单净额']) / 100000000 # 亿元
             color = 0xcccccc
             win32gui.SetTextColor(hdc, color)

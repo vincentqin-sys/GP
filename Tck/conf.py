@@ -14,3 +14,19 @@ top_hot_tips = [
     #{'title': '[2024.7.23] | 无人驾使 | 车联网 | 汽车 | 网约车 | 半导体 | 芯片'},
     #{'title': '[2024.6.19] | 印制电路板 | PCB | 消费电子'},
 ]
+
+if __name__ == '__main__':
+    import win32gui, win32con
+    hwnd = win32gui.FindWindow('#32770', '短线精灵')
+    owner = win32gui.GetWindow(hwnd, win32con.GW_OWNER)
+    print(f'owner = 0x{owner :X}')
+    parent = win32gui.GetParent(hwnd)
+    print(f'parent = 0x{parent :X}')
+
+    style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+    #style &= win32con.WS_POPUP
+    style = win32con.WS_OVERLAPPEDWINDOW
+    win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, style)
+
+    win32gui.SetWindowLong(hwnd, win32con.GWL_HWNDPARENT, 0)
+    #print(f'desktop={win32gui.GetDesktopWindow() :X}')

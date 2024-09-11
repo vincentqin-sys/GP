@@ -302,6 +302,52 @@ def download_one_dde(code):
     memcache.cache.saveCache(code, datas, KIND)
     return datas
 
+# 查找涨停或炸板个股
+# day = int | str
+def download_zt_zb(day = None):
+    if not day:
+        day = ''
+    if isinstance(day, int):
+        day = f'{day}'
+    else:
+        day = day.replace('-', '')
+    qs = day + '涨停或曾涨停，非st'
+    txt = iwencai_search_info(qs)
+    js = json.loads(txt)
+    answer = js['data']['answer'][0]
+    components = answer['txt'][0]['content']['components']
+    datas = components[-1]['data']['datas']
+    if not datas:
+        return None
+    # find day
+    rday = None
+    for k in datas[0]:
+        if '首次涨停时间[' in k:
+            rday = k[len('首次涨停时间[') : k.index(']')]
+            break
+    if not rday:
+        print('Error [ths_iwencai].download_zt_zb not find day')
+        return None
+    rs = []
+    fday = rday[0 : 4] + '-' + rday[4 : 6] + '-' +  rday[6 : 8]
+    for it in datas:
+        obj = {}
+        obj['day'] = fday
+        a = it.get(f'曾涨停[{rday}]', None)
+        obj['tag'] = '炸板' if a else '涨停'
+        obj['lbs'] = it.get(f'几天几板[{rday}]', '')
+        obj['code'] = it['code']
+        obj['name'] = it['股票简称']
+        obj['lastZtTime'] = it.get(f'最终涨停时间[{rday}]', '')
+        obj['firstZtTime'] = it.get(f'首次涨停时间[{rday}]', '')
+        #obj['kbs'] = it.get(f'涨停开板次数[{rday}]', None)
+        obj['reason'] = it.get(f'涨停原因类别[{rday}]', '')
+        m = it.get(f'涨停封单额[{rday}]', 0)
+        obj['ztMoney'] = float(m) / 100000000
+        rs.append(obj)
+    return rs
+
+
 if __name__ == '__main__':
     #download_one_dde('300139')
 
@@ -313,4 +359,8 @@ if __name__ == '__main__':
     #download_hot()
     #rs = download_zs_zd()
     #save_zs_zd(rs)
+
+    rs = download_zt_zb(20240909)
+    for r in rs:
+        print(r)
     pass
