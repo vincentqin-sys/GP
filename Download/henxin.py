@@ -316,7 +316,7 @@ class HexinMemCache:
             iday = today.year * 10000 + today.month * 100 + today.day
             if iday != date:
                 return False
-            u = self._checkTime(data, 1 * 60) # 3 minuts
+            u = self._checkTime(data, 30)
             return u
         if kind == 'timeline':
             if data.lastDay != datetime.date.today():
@@ -326,7 +326,7 @@ class HexinMemCache:
             iday = today.year * 10000 + today.month * 100 + today.day
             if iday != date:
                 return False
-            u = self._checkTime(data, 1 * 60)
+            u = self._checkTime(data, 30)
             return u
         return False
 

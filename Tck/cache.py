@@ -19,7 +19,7 @@ class CacheManager(base_win.Listener):
         now = datetime.datetime.now()
         cc : datetime.datetime = data['_load_time']
         delta : datetime.timedelta = now - cc
-        if delta.seconds >= 60:
+        if delta.seconds >= 15:
             return True
         ts = cc.hour * 100 + cc.minute
         cs = now.hour * 100 + now.minute
