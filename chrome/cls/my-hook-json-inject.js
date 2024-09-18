@@ -79,7 +79,7 @@ function loadZTInfo(response) {
 function adjustZTInfo(response) {
 	let body = response.response;
 	let json = JSON.parse(body);
-	console.log(json);
+	console.log('[Before]', json);
 	let rs = [];
 	for (i in json.data) {
 		let item = json.data[i];
@@ -89,6 +89,7 @@ function adjustZTInfo(response) {
 	}
 	json.data = rs;
 	response.response = JSON.stringify(json);
+	console.log('[After]', json);
 	//window.postMessage({cmd: 'ZT-INFO', data: rs}, '*');
 	window['zt-info'] = rs;
 }

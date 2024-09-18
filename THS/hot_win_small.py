@@ -284,13 +284,16 @@ class ZSCardView(CardView):
         RH = rect[3] - rect[1]
         RW = rect[2] - rect[0]
         MAX_ROWS = RH // H - 2
+        MIN_COL_WIDTH = 160
+        COL_NUM = RW // MIN_COL_WIDTH
+        COL_WIDTH = RW // COL_NUM
         days = [d['day'] for d in self.zsData]
         ks = self.cardWindow.getSetting('LOCK_TO_LAST_PAGE')
         if ks and ks['checked']:
             # lock last page
-            fromIdx, endIdx = findDrawDaysIndexOfLastPage(days, MAX_ROWS * 2)
+            fromIdx, endIdx = findDrawDaysIndexOfLastPage(days, MAX_ROWS * COL_NUM)
         else:
-            fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
+            fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * COL_NUM)
         for i in range(fromIdx, endIdx):
             zs = self.zsData[i]
             if zs['day'] == self.selectDay:
@@ -301,22 +304,23 @@ class ZSCardView(CardView):
             day = day[0 : 2] + '.' + day[2 : 4]
             idx = i - fromIdx
             y = (idx % MAX_ROWS) * H + 2 + H
-            x = RW // 2 if idx >= MAX_ROWS else 0
-            rect = (x + 2, y, x + RW // 2, y + H)
+            x = (idx // MAX_ROWS) * COL_WIDTH
+            rect = (x + 2, y, x + COL_WIDTH, y + H)
             line = f'{day}    {zs["zdf_PM"] :< 4d}     {zs["zdf_50PM"] :< 6d}'
-            win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT)
+            win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
         # draw title
         pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
         win32gui.SelectObject(hdc, pen)
         win32gui.SetTextColor(hdc, 0xdddddd)
-        for i in range(2):
-            trc = (i * RW // 2, 0, i * RW // 2 + RW // 2, H)
+        for i in range(COL_NUM):
+            trc = (i * COL_WIDTH, 0, i * COL_WIDTH + COL_WIDTH, H)
             title = f'       全市排名  50亿排名'
             win32gui.DrawText(hdc, title, len(title), trc, win32con.DT_LEFT)
         win32gui.MoveToEx(hdc, 0, H)
         win32gui.LineTo(hdc, RW, H)
-        win32gui.MoveToEx(hdc, RW // 2, 0)
-        win32gui.LineTo(hdc, RW // 2, RH)
+        if COL_NUM == 2:
+            win32gui.MoveToEx(hdc, COL_WIDTH, 0)
+            win32gui.LineTo(hdc, COL_WIDTH, RH)
         win32gui.DeleteObject(pen)
     
     def updateCode(self, code):
@@ -365,18 +369,20 @@ class HotCardView(CardView):
             return
         rr = win32gui.GetClientRect(self.hwnd)
         win32gui.SetTextColor(hdc, 0xdddddd)
-        H = 18
-        rect = win32gui.GetClientRect(self.hwnd)
+
         RH = rect[3] - rect[1]
         RW = rect[2] - rect[0]
-        MAX_ROWS = RH // H
+        MAX_ROWS = RH // self.ROW_HEIGHT
+        MIN_COL_WIDTH = 80
+        MAX_COLS = max(RW // MIN_COL_WIDTH, 1)
+        COL_WIDTH = RW // MAX_COLS
         days = [d['day'] for d in self.hotData]
         ks = self.cardWindow.getSetting('LOCK_TO_LAST_PAGE')
         if ks and ks['checked']:
             # lock last page
-            fromIdx, endIdx =findDrawDaysIndexOfLastPage(days, MAX_ROWS * 2)
+            fromIdx, endIdx = findDrawDaysIndexOfLastPage(days, MAX_ROWS * MAX_COLS)
         else:
-            fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
+            fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * MAX_COLS)
         for i in range(len(self.hotsInfo)):
             self.hotsInfo[i] = None
         for i in range(fromIdx, endIdx):
@@ -391,12 +397,15 @@ class HotCardView(CardView):
             avgHotOrder = f"{hot['avgHotOrder'] :.1f}"
             avgHotOrder = avgHotOrder[0 : 3]
             avgHotVal = int(hot['avgHotValue'])
-            line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {avgHotVal :>3d}万 {zhHotOrder}"
+            #line = f"{day} {hot['minOrder'] :>3d}->{hot['maxOrder'] :<3d} {avgHotVal :>3d}万 {zhHotOrder}"
+            line = f"{day}   {zhHotOrder}"
             idx = i - fromIdx
-            y = (idx % MAX_ROWS) * H + 2
-            x = RW // 2 if idx >= MAX_ROWS else 0
-            rect = (x + 2, y, x + RW // 2, y + H)
-            win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT)
+            col = idx // MAX_ROWS
+            row = idx % MAX_ROWS
+            y = row * self.ROW_HEIGHT
+            x = col * COL_WIDTH
+            rect = (x + 4, y, x + COL_WIDTH, y + self.ROW_HEIGHT)
+            win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
             self.hotsInfo[i - fromIdx] = {'data': hot, 'rect': rect}
         pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
         win32gui.SelectObject(hdc, pen)
@@ -488,6 +497,7 @@ class HotCardView(CardView):
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_LBUTTONUP:
+            return False
             self.showStartIdx = 0
             x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
             if self.isInRect(x, y, self.tipInfo['rect']):
@@ -636,7 +646,10 @@ class Cls_ZTCardView(KPLCardView):
 class SimpleWindow(CardWindow):
     # type_ is 'HOT' | 'ZT_GN'
     def __init__(self, type_) -> None:
-        super().__init__((380, 230), (180, 30))
+        if type_ == 'HOT':
+            super().__init__((200, 238), (180, 30))
+        else:
+            super().__init__((380, 230), (180, 30))
         self.curCode = None
         self.selectDay = 0
         self.zsCardView = None
@@ -668,7 +681,7 @@ class SimpleWindow(CardWindow):
 
     def getCurCardView(self):
         scode = f'{self.curCode :06d}' if type(self.curCode) == int else self.curCode
-        if scode and scode[0 : 2] == '88':
+        if scode and scode[0 : 2] == '88' and self.zsCardView:
             return self.zsCardView
         return super().getCurCardView()
 
@@ -677,7 +690,7 @@ class SimpleWindow(CardWindow):
             return
         self.curCode = code
         scode = f'{code :06d}' if type(code) == int else code
-        if scode[0 : 2] == '88':
+        if scode[0 : 2] == '88' and self.zsCardView:
             self.zsCardView.updateCode(code)
         else:
             for cv in self.cardViews:
@@ -699,7 +712,8 @@ class SimpleWindow(CardWindow):
         for cv in self.cardViews:
             cc =  getattr(cv, 'updateSelectDay', None)
             if cc: cc(selDay)
-        self.zsCardView.updateSelectDay(selDay)
+        if self.zsCardView:
+            self.zsCardView.updateSelectDay(selDay)
         if self.hwnd:
             win32gui.InvalidateRect(self.hwnd, None, True)
 
