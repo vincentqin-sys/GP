@@ -139,7 +139,7 @@ class CardView(base_win.Drawer):
         super().__init__()
         self.hwnd = cardWindow.hwnd
         self.cardWindow = cardWindow
-        
+
     def onDraw(self, hdc):
         pass
     def winProc(self, hwnd, msg, wParam, lParam):
@@ -546,8 +546,9 @@ class KPLCardView(CardView):
         self.selectDay = 0
         self.ormClazz = tck_orm.KPL_ZT
         self.emptyLine = '\n\n无开盘啦涨停信息'
-        self.fontSize = 14
+        self.fontSize = 12
         self.code = None
+        self.visibleRange = None
 
     def updateSelectDay(self, selDay):
         self.selectDay = selDay
@@ -569,32 +570,39 @@ class KPLCardView(CardView):
         line = f"{day} {kpl['ztReason']}({kpl['ztNum']})"
         win32gui.DrawText(hdc, line, len(line), rect, win32con.DT_LEFT)
 
-    def getWindowTitle(self):
-        obj = ths_orm.THS_Newest.get_or_none(code = self.code)
+    def getCodeName(self):
+        obj = ths_orm.THS_GNTC.get_or_none(code = self.code)
         if obj:
-            title = f"{self.code}  {obj.name}"
-        else:
-            title = f"{self.code}"
+            return obj.name
+        return ''
+
+    def getWindowTitle(self):
+        name = self.getCodeName()
+        title = f"{self.code}  {name}"
         return title
 
     def onDraw(self, hdc):
+        self.visibleRange = None
         win32gui.SetTextColor(hdc, 0xdddddd)
         rect = win32gui.GetClientRect(self.hwnd)
         if not self.kplZTData:
             win32gui.DrawText(hdc, self.emptyLine, len(self.emptyLine), rect, win32con.DT_CENTER)
             return
-        self.use(hdc, self.getFont(fontSize=self.fontSize))
+        self.use(hdc, self.getFont(fontSize = self.fontSize))
         H = self.ROW_HEIGHT
         RH = rect[3] - rect[1]
         RW = rect[2] - rect[0]
         MAX_ROWS = RH // H
+        COL_WIDTH = RW
         days = [d['day'] for d in self.kplZTData]
         ks = self.cardWindow.getSetting('LOCK_TO_LAST_PAGE')
         if ks and ks['checked']:
             # lock last page
-            fromIdx, endIdx =findDrawDaysIndexOfLastPage(days, MAX_ROWS * 2)
+            fromIdx, endIdx = findDrawDaysIndexOfLastPage(days, MAX_ROWS)
         else:
-            fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS * 2)
+            fromIdx, endIdx = findDrawDaysIndex(days, self.selectDay, MAX_ROWS)
+        self.visibleRange = (fromIdx, endIdx)
+
         for i in range(fromIdx, endIdx):
             kpl = self.kplZTData[i]
             if kpl['day'] == str(self.selectDay):
@@ -602,14 +610,9 @@ class KPLCardView(CardView):
             else:
                 win32gui.SetTextColor(hdc, 0xdddddd)
             idx = i - fromIdx
-            y = (idx % MAX_ROWS) * H + 2
-            x = RW // 2 if idx >= MAX_ROWS else 0
-            self.drawLine(hdc, kpl, (x + 2, y, x + RW // 2, y + H))
-        pen = win32gui.CreatePen(win32con.PS_SOLID, 1, 0xaaccaa)
-        win32gui.SelectObject(hdc, pen)
-        win32gui.MoveToEx(hdc, RW // 2, 0)
-        win32gui.LineTo(hdc, RW // 2, rect[3])
-        win32gui.DeleteObject(pen)
+            y = (idx % MAX_ROWS) * H
+            x = (idx // MAX_ROWS) * COL_WIDTH
+            self.drawLine(hdc, kpl, (x, y, x + COL_WIDTH, y + H))
 
 class THS_ZTCardView(KPLCardView):
     def __init__(self, cardWindow):
@@ -617,23 +620,67 @@ class THS_ZTCardView(KPLCardView):
         self.ormClazz = tck_orm.THS_ZT
         self.emptyLine = '\n\n无同花顺涨停信息'
         self.fontSize = 12
-        self.ROW_HEIGHT = 32
+        self.ROW_HEIGHT = 16
+
+    def getWindowTitle(self):
+        title = f'{self.code} {self.getCodeName()} THS'
+        return title
 
     def drawLine(self, hdc, kpl, rect):
         day = kpl['day']
         day = day[4 : 6] + '.' + day[6 : ]
         line = kpl['ztReason']
         rc2 = (rect[0] + 35, rect[1], rect[2], rect[3])
-        win32gui.DrawText(hdc, line, len(line), rc2, win32con.DT_LEFT | win32con.DT_WORDBREAK)
+        win32gui.DrawText(hdc, line, len(line), rc2, win32con.DT_LEFT) #  | win32con.DT_WORDBREAK
         win32gui.DrawText(hdc, day, len(day), rect, win32con.DT_LEFT)
 
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_LBUTTONUP:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            if not self.visibleRange:
+                return False
+            idx = y // self.ROW_HEIGHT
+            if idx + self.visibleRange[0] >= self.visibleRange[1]:
+                return False
+            win32gui.InvalidateRect(hwnd, None, True)
+            win32gui.UpdateWindow(hwnd)
+
+            kpl = self.kplZTData[idx + self.visibleRange[0]]
+            hdc = win32gui.GetDC(hwnd)
+            self.use(hdc, self.getFont(fontSize = self.fontSize))
+            win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
+            win32gui.SetTextColor(hdc, 0xffff00)
+            CR = win32gui.GetClientRect(hwnd)
+            W = CR[2] - CR[0]
+            H = CR[3] - CR[1]
+            rc = (35, 0, W, self.ROW_HEIGHT)
+            line = kpl['ztReason']
+            _, rc2 = win32gui.DrawText(hdc, line, -1, rc, win32con.DT_CALCRECT | win32con.DT_WORDBREAK)
+
+            if rc2[3] > rc[3]:
+                isLast = idx == H // self.ROW_HEIGHT - 1
+                if isLast:
+                    sy = H - (rc2[3] - rc2[1])
+                else:
+                    sy = idx * self.ROW_HEIGHT
+                drc = (rc[0], sy, rc[2], sy + rc2[3] - rc2[1])
+                win32gui.FillRect(hdc, drc, self.getBrush(0x202020))
+                win32gui.DrawText(hdc, line, -1, drc, win32con.DT_LEFT | win32con.DT_WORDBREAK)
+            win32gui.ReleaseDC(hwnd, hdc)
+            return True
+        return False
+    
 class Cls_ZTCardView(KPLCardView):
     def __init__(self, cardWindow):
         super().__init__(cardWindow)
         self.ormClazz = tck_orm.CLS_ZT
         self.emptyLine = '\n\n无财联社涨停信息'
         self.fontSize = 12
-        self.ROW_HEIGHT = 32
+        self.ROW_HEIGHT = 18
+
+    def getWindowTitle(self):
+        title = f'{self.code} {self.getCodeName()} CLS'
+        return title
 
     def drawLine(self, hdc, kpl, rect):
         day = kpl['day']
@@ -647,9 +694,9 @@ class SimpleWindow(CardWindow):
     # type_ is 'HOT' | 'ZT_GN'
     def __init__(self, type_) -> None:
         if type_ == 'HOT':
-            super().__init__((200, 238), (180, 30))
+            super().__init__((200, 238), (150, 30))
         else:
-            super().__init__((380, 230), (180, 30))
+            super().__init__((250, 250), (150, 30))
         self.curCode = None
         self.selectDay = 0
         self.zsCardView = None
@@ -696,6 +743,10 @@ class SimpleWindow(CardWindow):
             for cv in self.cardViews:
                 cc =  getattr(cv, 'updateCode')
                 if cc: cc(code)
+        cv = self.getCurCardView()
+        title = cv.getWindowTitle()
+        if title != None:
+            win32gui.SetWindowText(self.hwnd, title)
         if self.hwnd:
             win32gui.InvalidateRect(self.hwnd, None, True)
 
