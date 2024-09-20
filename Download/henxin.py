@@ -1,4 +1,4 @@
-import datetime, time, random, requests, re, json, os, sys, struct, re
+import datetime, time, random, requests, re, json, os, sys, struct, re, traceback
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
@@ -391,7 +391,8 @@ class HexinUrl(Henxin):
         if code[0] == '0' or code[0] == '3':
             return '33'
         #raise Exception('[HexinUrl.getCodeSH] unknow url for code :', code)
-        print('[HexinUrl.getCodeSH] unknow url for code :', code)
+        #print('[HexinUrl.getCodeSH] unknow url for code :', code)
+        #traceback.print_exc()
         return None
     
     def _getUrlWithParam(self, url):

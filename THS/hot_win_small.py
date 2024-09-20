@@ -904,12 +904,14 @@ class HotZHCardView(ListView):
             self.codeInfos[q.code] = {'name': q.name}
         self.thread = base_win.Thread()
         self.thread.start()
+        self.timerThread = base_win.TimerThread()
         self.henxinUrl = henxin.HexinUrl()
         self.updateDataTime = 0
 
         self.curSelDay : int = 0
         self.maxHotDay : int = 0
         self.windowTitle = 'HotZH'
+        self.timerThread.addIntervalTask('LoadInterval', 4 * 60, self.updateData)
 
     def updateData(self, foreUpdate = False):
         lt = time.time()
@@ -1186,7 +1188,7 @@ class SimpleHotZHWindow(CardWindow):
         #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
         win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
         self.addCardView(HotZHCardView(self))
-        self.addCardView(KPL_AllCardView(self))
+        #self.addCardView(KPL_AllCardView(self))
 
     def onDraw(self, hdc):
         super().onDraw(hdc)

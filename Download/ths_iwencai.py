@@ -228,7 +228,9 @@ def download_hot():
                 obj.hotOrder = int(v[0 : v.index('/')])
             elif '个股热度[' in k:
                 obj.hotValue = int(row[k]) // 10000
-        hots.append(obj)
+        #c0 = f'{obj.code :06d}'[0]
+        #if c0 in ('0', '3', '6'):
+        #    hots.append(obj)
     return hots
 
 # @return 数量
