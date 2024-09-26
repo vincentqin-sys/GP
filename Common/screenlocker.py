@@ -69,29 +69,13 @@ class ScreenLocker(base_win.BaseWindow):
 
     def onDraw(self, hdc):
         W, H = self.getClientSize()
-        #CW, CH = 250, 40
-        #x = (W - CW) // 2
-        #y = (H - CH) // 2
-        #rc = (x, y, x + CW, y + CH)
-        #self.drawer.fillRect(hdc, rc, 0x202020)
-        #focusColor = 0x202020 if win32gui.GetFocus() == self.hwnd else 0x303030 # 0x66B2FF
-        #self.drawer.drawLine(hdc, rc[0], rc[3], rc[2], rc[3], color = focusColor)
-
         # box
-        CW = 40
+        CW = 30
         sx = 0
         sy = H - CW
         rc = (sx, sy, sx + CW, sy + CW)
         color = 0x202020
-        if win32gui.GetFocus() == self.hwnd:
-            self.drawer.fillRect(hdc, rc, color)
-        else:
-            self.drawer.drawCycle(hdc, rc, color)
-
-        PD = 8
-        rc2 = (sx + PD, sy + PD, sx + CW - PD, sy + CW - PD)
-        self.drawer.fillCycle(hdc, rc2, self.css['bgColor'])
-
+        self.drawer.fillRect(hdc, rc, color)
 
 class Main:
     SKIP_IDLE_TIME_IDX = 0
@@ -110,7 +94,10 @@ class Main:
 
     def start(self):
         SZ = 128
-        self.shm = shared_memory.SharedMemory(self._name, True, size = SZ)
+        try:
+            self.shm = shared_memory.SharedMemory(self._name, True, size = SZ)
+        except:
+            self.shm = shared_memory.SharedMemory(self._name, False, size = SZ)
         buf = self.shm.buf.cast('i')
         for i in range(SZ // 4):
             buf[i] = 0
