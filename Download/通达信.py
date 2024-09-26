@@ -414,7 +414,7 @@ def autoMain():
             time.sleep(60 * 60)
             continue
         ts = f"{today.hour:02d}:{today.minute:02d}"
-        if ts < '21:05' or ts > '22:30':
+        if ts < '18:30' or ts > '19:30':
             time.sleep(3 * 60)
             continue
         lock = getDesktopGUILock()
