@@ -6,7 +6,7 @@ from multiprocessing.shared_memory import SharedMemory
 import system_hotkey #pip install system_hotkey
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import hot_utils, hot_win_small, ths_win, hot_win
+from THS import hot_utils, hot_win_small, ths_win, hot_win, ths_ocr
 from db import ths_orm
 from Common import base_win
 
@@ -19,6 +19,7 @@ simpleWindow2 = hot_win_small.SimpleWindow('ZT_GN')
 thsShareMem = base_win.ThsShareMemory()
 simpleHotZHWindow = hot_win_small.SimpleHotZHWindow()
 codeBasicWindow = hot_win_small.CodeBasicWindow()
+tipWins = [simpleWindow, simpleWindow2, simpleHotZHWindow, codeBasicWindow]
 
 def updateCode(nowCode):
     global curCode, thsShareMem
@@ -35,17 +36,18 @@ def updateCode(nowCode):
     codeBasicWindow.changeCode(nowCode)
     thsShareMem.writeCode(nowCode)
 
-def showHotWindow():
-    # check window size changed
-    if hotWindow.rect[1] > 0: # y > 0
-        return
-    rr = win32gui.GetClientRect(thsWindow.topHwnd)
-    y = rr[3] - rr[1] - hotWindow.rect[3]
-    if y < 0:
-        return
-    x = hotWindow.rect[0]
-    win32gui.SetWindowPos(hotWindow.hwnd, 0, x, y, 0, 0, 0x0010|0x0200|0x0001|0x0004)
-    hotWindow.rect = (x, y, hotWindow.rect[2], hotWindow.rect[3])
+def showTipWins(show : bool):
+    for win in tipWins:
+        if not win.hwnd or not win32gui.IsWindow(win.hwnd):
+            continue
+        win.setVisible(show)
+
+def isTipWinsForeground():
+    hwnd = win32gui.GetForegroundWindow()
+    for h in tipWins:
+        if hwnd == h.hwnd:
+            return True
+    return False
 
 class WinStateMgr:
     def __init__(self, fileName) -> None:
@@ -103,6 +105,8 @@ def _workThread(thsWin : ths_win.ThsWindow, fileName):
     global curCode
     stateMgr = WinStateMgr(fileName)
     stateMgr.read()
+    wbOcr = ths_ocr.ThsWbOcrUtils()
+    
     while True:
         time.sleep(0.5)
         #mywin.eyeWindow.show()
@@ -112,10 +116,11 @@ def _workThread(thsWin : ths_win.ThsWindow, fileName):
             os._exit(0) # 退出进程
             break
         #showHotWindow()
-        if win32gui.GetForegroundWindow() != thsWin.topHwnd:
+        if (win32gui.GetForegroundWindow() != thsWin.topHwnd) and (not isTipWinsForeground()):
+            showTipWins(False)
             continue
+        showTipWins(True)
         updateWindowInfo(thsWin, stateMgr)
-        rs = thsWin.runOnceOcr()
         nowCode = thsWin.findCode_Level2()
         if curCode != nowCode:
             updateCode(nowCode)
@@ -125,6 +130,7 @@ def _workThread(thsWin : ths_win.ThsWindow, fileName):
             simpleWindow.changeSelectDay(selDay)
             simpleWindow2.changeSelectDay(selDay)
             thsShareMem.writeSelDay(selDay)
+        rs = wbOcr.runOcr(thsWin.mainHwnd)
         codeBasicWindow.updateWeiBi(rs)
 
 def onListen(evt, args):
@@ -156,12 +162,13 @@ def subprocess_main_fp():
     while True:
         if thsFPWindow.init():
             break
-        time.sleep(10)
+        time.sleep(3)
     thsShareMem.open()
     #hotWindow.createWindow(thsFPWindow.topHwnd)
     simpleWindow.createWindow(thsFPWindow.topHwnd)
     simpleWindow2.createWindow(thsFPWindow.topHwnd)
     simpleHotZHWindow.createWindow(thsFPWindow.topHwnd)
+    codeBasicWindow.createWindow(thsFPWindow.topHwnd)
     threading.Thread(target = _workThread, args=(thsFPWindow, 'hot-win32-fp.json')).start()
     win32gui.PumpMessages()
     print('Quit Sub Process(THS FU PING)')    
@@ -267,11 +274,11 @@ if __name__ == '__main__':
     tsm = base_win.ThsShareMemory(True)
     tsm.open()
     # listen ths fu ping
-    #p = Process(target = listen_ThsFuPing_Process, daemon = False, name='hot_win32.py')
-    #p.start()
+    p = Process(target = listen_ThsFuPing_Process, daemon = False)
+    p.start()
     #th = threading.Thread(target=listen_ThsFuPing_Process, daemon=True, name='hot_win32.py')
     #th.start()
-    #time.sleep(1)
+    time.sleep(1)
     while True:
         p = Process(target = subprocess_main, daemon = True)
         p.start()

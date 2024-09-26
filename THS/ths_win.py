@@ -17,7 +17,6 @@ class ThsWindow(base_win.BaseWindow):
         self.level2CodeHwnd = None
         self.selDayHwnd = None
         self.numberOcr = number_ocr.NumberOCR('day', '0123456789')
-        self.ocrUtils = ths_ocr.ThsOcrUtils()
 
     @classmethod
     def ins(clazz):
@@ -83,6 +82,8 @@ class ThsWindow(base_win.BaseWindow):
 
     # 当前显示的窗口是否是“我的首页”
     def isInMyHomeWindow(self):
+        if not self.topHwnd or not win32gui.IsWindow(self.topHwnd):
+            return False
         if '我的首页' not in win32gui.GetWindowText(self.topHwnd):
             return False
         return win32gui.IsWindowVisible(self.topHwnd)
@@ -101,10 +102,6 @@ class ThsWindow(base_win.BaseWindow):
         if '逐笔成交--' in title:
             code = title[6 : 12]
         return code
-
-    def runOnceOcr(self):
-        ocrResult = self.ocrUtils.runOcr(self.mainHwnd)
-        return ocrResult
 
     def hasCodeWindow(self):
         if not self.level2CodeHwnd:
@@ -162,10 +159,9 @@ class ThsWindow(base_win.BaseWindow):
         return sd
 
     def init(self):
-
         def callback(hwnd, lparam):
             title = win32gui.GetWindowText(hwnd)
-            if ('同花顺(v' in title) and ('副屏1' not in title):
+            if ('同花顺(v' in title) and ('副屏' not in title):
                 self.topHwnd = hwnd
             return True
         win32gui.EnumWindows(callback, None)
@@ -178,6 +174,13 @@ class ThsWindow(base_win.BaseWindow):
         #print('ThsWindow.mainHwnd = %#X' % self.mainHwnd)
         #print('ThsWindow.selDayHwnd = %#X' % self.selDayHwnd)
         return True
+
+    def showMax(self):
+        if not win32gui.IsWindow(self.topHwnd):
+            return
+        #rc = win32gui.GetWindowRect(self.topHwnd)
+        #if win32gui.IsIconic(self.topHwnd):
+        win32gui.ShowWindow(self.topHwnd, win32con.SW_MAXIMIZE)
 
 class ThsFuPingWindow(ThsWindow):
     def __init__(self) -> None:

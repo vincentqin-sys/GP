@@ -1746,6 +1746,14 @@ class NoActivePopupWindow(BaseWindow):
         win32gui.ShowWindow(self.hwnd, win32con.SW_SHOWNOACTIVATE)
         self.msgLoop()
 
+    def setVisible(self, visible : bool):
+        if not win32gui.IsWindow(self.hwnd):
+            return
+        if visible:
+            win32gui.ShowWindow(self.hwnd, win32con.SW_SHOWNOACTIVATE)
+        else:
+            win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+
     def move(self, x, y):
         win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE)
 
@@ -1784,7 +1792,7 @@ class NoActivePopupWindow(BaseWindow):
             self.hwnd = None
             win32gui.DestroyWindow(hwnd)
 
-    def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP | win32con.WS_CHILD, className='STATIC', title=''):
+    def createWindow(self, parentWnd, rect, style = win32con.WS_POPUP, className='STATIC', title=''):
         super().createWindow(parentWnd, rect, style, className, title)
         self.ownerHwnd = parentWnd
         st = win32gui.GetWindowLong(self.hwnd, win32con.GWL_EXSTYLE)

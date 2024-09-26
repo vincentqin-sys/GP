@@ -1,16 +1,14 @@
-import time, os, platform
+import time, os, platform, io
 from PIL import Image
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 
-class EImage:
+class BaseEImage:
     def __init__(self, oimg : Image):
         oimg = oimg.convert('L') # 转为灰度图
         self.bImg : Image = oimg.point(lambda v : 0 if v == 0 else 255) # 二值化图片
         #self.pixs = list(self.imgPIL.getdata())
         self.pixs = self.bImg.load()
-        self.itemsRect = [] # array of (left, top, right, bottom)
-        self.split()
-
+        
     #def getPixel(self, x, y):
     #    pos = y * self.bImg.width + x
     #    return self.pixs[pos]
@@ -20,23 +18,39 @@ class EImage:
             if self.pixs[x, y] != color:
                 return False
         return True
-    
-    def colColorIs(self, x, color):
-        for y in range(self.bImg.height):
+
+    def colColorIs(self, sy, ey, x, color):
+        for y in range(sy, min(ey, self.bImg.height)):
             ncolor = self.pixs[x, y]
             if ncolor != color:
                 return False
         return True
+    
+    # from (sx, sy) search a box (w, h size)
+    # return x, not find return -1
+    def horSearchBoxColor(self, sx, sy, w, h, color):
+        if (sy + h > self.bImg.height) or (sx + w > self.bImg.width):
+            return -1
+        ex = max(sx, self.bImg.width)
+        for x in range(sx, ex):
+            f = True
+            for s in range(w):
+                if not self.colColorIs(sy, sy + h, x + s, color):
+                    f = False
+                    break
+            if f:
+                return x
+        return -1
 
     # return [startX, endX)
     def splitVerticalOne(self, startX):
         sx = ex = -1
         for x in range(startX, self.bImg.width):
-            if not self.colColorIs(x, 0):
+            if not self.colColorIs(x, 0, self.bImg.height, 0):
                 sx = x
                 break
         for x in range(sx, self.bImg.width):
-            if self.colColorIs(x, 0):
+            if self.colColorIs(x, 0, self.bImg.height, 0):
                 ex = x
                 break
         return (sx, ex)
@@ -72,15 +86,6 @@ class EImage:
                     nb += 1
         return nb
 
-    def split(self):
-        items = self.splitVertical()
-        rs = []
-        for sx, ex in items:
-            sy, ey = self.splitHorizontalOne(sx, ex)
-            rect = (sx, sy, ex, ey)
-            rs.append(rect)
-        self.itemsRect = rs
-
     # return 0 ~ 100
     # img2 is EImage object
     def similar(self, rect1, img2, rect2):
@@ -100,15 +105,6 @@ class EImage:
         val = matchNum * 100 / (tW * tH)
         return val
 
-    # :param img is EImage object
-    # :return an index, not find return -1
-    def findSameAs(self, img, rect, similarVal = 100):
-        for idx, rc in enumerate(self.itemsRect):
-            sval = self.similar(rc, img, rect)
-            if sval >= similarVal:
-                return idx
-        return -1
-    
     def expand(self):
         w, h = self.bImg.size
         SPACE_W = 5
@@ -130,6 +126,30 @@ class EImage:
                     destPixs[sdx, y] = srcPixs[x, y]
         #destImg.save('D:/d.bmp')
         return destImg
+
+class EImage(BaseEImage):
+    def __init__(self, oimg):
+        super().__init__(oimg)
+        self.itemsRect = [] # array of (left, top, right, bottom)
+        self.split()
+
+    def split(self):
+        items = self.splitVertical()
+        rs = []
+        for sx, ex in items:
+            sy, ey = self.splitHorizontalOne(sx, ex)
+            rect = (sx, sy, ex, ey)
+            rs.append(rect)
+        self.itemsRect = rs
+
+    # :param img is EImage object
+    # :return an index, not find return -1
+    def findSameAs(self, img, rect, similarVal = 100):
+        for idx, rc in enumerate(self.itemsRect):
+            sval = self.similar(rc, img, rect)
+            if sval >= similarVal:
+                return idx
+        return -1
 
 class NumberOCR:
     def __init__(self, baseName, templateDigit):
@@ -209,7 +229,44 @@ class BuildTemplateImage:
             if len(self.destImg.itemsRect) >= 10:
                 break
         self.destImg.bImg.save(f'[c] ocr-template-{platform.node()}.bmp')
-    
+
+class DumpWindowUtils:
+
+    # return  PIL.Image
+    def dumpImg(self, hwnd, rect):
+        if (not hwnd) or (not win32gui.IsWindow(hwnd)) or (not win32gui.IsWindowVisible(hwnd)):
+            return None
+        dc = win32gui.GetWindowDC(hwnd)
+        mfcDC = win32ui.CreateDCFromHandle(dc)
+        saveDC = mfcDC.CreateCompatibleDC()
+        saveBitMap = win32ui.CreateBitmap()
+        srcSize = rect[2] - rect[0], rect[3] - rect[1]
+
+        saveBitMap.CreateCompatibleBitmap(mfcDC, *srcSize) # image size W x H
+        saveDC.SelectObject(saveBitMap)
+        #hbr = win32ui.CreateBrush()
+        #hbr.CreateSolidBrush(0x000000)
+        #saveDC.FillRect((0, 0, W, H), hbr)
+        
+        srcPos = rect[0], rect[1]
+        saveDC.BitBlt((0, 0), srcSize, mfcDC, srcPos, win32con.SRCCOPY)
+        #bmpinfo = saveBitMap.GetInfo()
+        #imgSize = (bmpinfo['bmWidth'], bmpinfo['bmHeight'])
+        bits = saveBitMap.GetBitmapBits(True)
+        imgFull = Image.frombuffer('RGB',srcSize, bits, 'raw', 'BGRX', 0, 1)
+        win32gui.DeleteObject(saveBitMap.GetHandle())
+        saveDC.DeleteDC()
+        mfcDC.DeleteDC()
+        win32gui.ReleaseDC(hwnd, dc)
+        return imgFull
+
+    def imgToBmpBytes(self, img):
+        bmpBytes = io.BytesIO()
+        img.save(bmpBytes, format = 'bmp')
+        bits = bmpBytes.getvalue()
+        return bits
+
+
 if __name__ == '__main__':
     print(platform.node())
     # 同花顺分析图中的日期窗口

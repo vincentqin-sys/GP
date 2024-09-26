@@ -230,7 +230,7 @@ def download_hot():
                 obj.hotValue = int(row[k]) // 10000
         #c0 = f'{obj.code :06d}'[0]
         #if c0 in ('0', '3', '6'):
-        #    hots.append(obj)
+        hots.append(obj)
     return hots
 
 # @return 数量
@@ -358,11 +358,11 @@ if __name__ == '__main__':
     
     #u, i = download_hygn()
     #save_hygn(u, i)
-    #download_hot()
+    rs = download_hot()
     #rs = download_zs_zd()
     #save_zs_zd(rs)
 
-    rs = download_zt_zb(20240909)
+    #rs = download_zt_zb(20240909)
     for r in rs:
         print(r)
     pass

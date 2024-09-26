@@ -147,7 +147,7 @@ class CardView(base_win.Drawer):
     def getWindowTitle(self):
         return None
 
-class CardWindow(base_win.BaseWindow):
+class CardWindow(base_win.NoActivePopupWindow):
     # maxSize = (width, height)
     # minSize = (width, height)
     def __init__(self, maxSize, minSize) -> None:
@@ -173,9 +173,13 @@ class CardWindow(base_win.BaseWindow):
         if st:
             self.settings = st
         if state['maxMode']:
-            win32gui.SetWindowPos(self.hwnd, 0, x, y, *self.MAX_SIZE, win32con.SWP_NOZORDER)
+            self.move(x, y)
+            self.resize(*self.MAX_SIZE)
+            #win32gui.SetWindowPos(self.hwnd, 0, x, y, *self.MAX_SIZE, win32con.SWP_NOZORDER)
         else:
-            win32gui.SetWindowPos(self.hwnd, 0, x, y, *self.MIN_SIZE, win32con.SWP_NOZORDER)
+            self.move(x, y)
+            self.resize(*self.MIN_SIZE)
+            #win32gui.SetWindowPos(self.hwnd, 0, x, y, *self.MIN_SIZE, win32con.SWP_NOZORDER)
 
     def addCardView(self, cardView):
         self.cardViews.append(cardView)
@@ -706,12 +710,11 @@ class SimpleWindow(CardWindow):
         ]
 
     def createWindow(self, parentWnd):
-        style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
+        style = win32con.WS_POPUP | win32con.WS_CAPTION
         w = win32api.GetSystemMetrics(0) # desktop width
         rect = (int(w / 3), 300, *self.MAX_SIZE)
         super().createWindow(parentWnd, rect, style, title='SimpleWindow')
         #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
         #self.addCardView(SortCardView(self))
         if self.type_ == 'HOT':
             self.addCardView(HotCardView(self))
@@ -767,13 +770,6 @@ class SimpleWindow(CardWindow):
             self.zsCardView.updateSelectDay(selDay)
         if self.hwnd:
             win32gui.InvalidateRect(self.hwnd, None, True)
-
-    def hide(self):
-        win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
-    
-    def show(self):
-        if not win32gui.IsWindowVisible(self.hwnd):
-            win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
 
 #----------------------------------------
 class ListView(CardView):
@@ -1177,16 +1173,15 @@ class KPL_AllCardView(ListView):
 
 class SimpleHotZHWindow(CardWindow):
     def __init__(self) -> None:
-        super().__init__((220, 310), (220, 30))
+        super().__init__((220, 310), (80, 30))
         self.maxMode = True #  是否是最大化的窗口
 
     def createWindow(self, parentWnd):
-        style = (0x00800000 | 0x10000000 | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION) & ~win32con.WS_SYSMENU
+        style = win32con.WS_POPUP | win32con.WS_CAPTION
         w = win32api.GetSystemMetrics(0) # desktop width
         rect = (w - self.MAX_SIZE[0], 300, *self.MAX_SIZE)
         super().createWindow(parentWnd, rect, style, title='HotZH')
         #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
         self.addCardView(HotZHCardView(self))
         #self.addCardView(KPL_AllCardView(self))
 
@@ -1222,8 +1217,7 @@ class SimpleHotZHWindow(CardWindow):
             return False
         return super().winProc(hwnd, msg, wParam, lParam)
     
-
-class CodeBasicWindow(base_win.BaseWindow):
+class CodeBasicWindow(base_win.NoActivePopupWindow):
     def __init__(self) -> None:
         super().__init__()
         self.curCode = None
@@ -1236,13 +1230,10 @@ class CodeBasicWindow(base_win.BaseWindow):
         base_win.ThreadPool.instance().start()
 
     def createWindow(self, parentWnd):
-        style = (0x00800000 | 0x10000000 | win32con.WS_POPUP)
-        w = win32api.GetSystemMetrics(0) # desktop width
         SIZE = (350, 65)
+        w = win32api.GetSystemMetrics(0) # desktop width
         rect = (w - SIZE[0] - 100, 200, *SIZE)
-        super().createWindow(parentWnd, rect, style, title='CodeBasic')
-        #win32gui.SetWindowPos(self.hwnd, win32con.HWND_TOP, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        win32gui.ShowWindow(self.hwnd, win32con.SW_NORMAL)
+        super().createWindow(parentWnd, rect)
 
     def onDraw(self, hdc):
         W, H = self.getClientSize()

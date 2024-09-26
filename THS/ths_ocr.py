@@ -1,21 +1,16 @@
-import win32gui, win32ui, win32con, re, io, traceback, sys
+import win32gui, win32ui, win32con, re, io, traceback, sys, datetime, time
 from PIL import Image
 import easyocr
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import ths_win, number_ocr
 
-class ThsOcrUtils:
+class ThsWbOcrUtils(number_ocr.DumpWindowUtils):
     def __init__(self) -> None:
         self.titleHwnds = set()
-        self.ocr = None
         self.wbOcr = number_ocr.NumberOCR('wb', '+-.%0123456789')
+        self.ocr = easyocr.Reader(['ch_sim'], download_enabled = True ) # ch_sim
 
-    def init(self):
-        if not self.ocr:
-            self.ocr = easyocr.Reader(['ch_sim'], download_enabled = True )
-            pass
-        
     # wb = 委比 28.45
     # diff = 委差
     # price = 当前成交价
@@ -35,31 +30,12 @@ class ThsOcrUtils:
     def dump(self, hwnd):
         if (not hwnd) or (not win32gui.IsWindow(hwnd)) or (not win32gui.IsWindowVisible(hwnd)):
             return None, None
-        dc = win32gui.GetWindowDC(hwnd)
-        mfcDC = win32ui.CreateDCFromHandle(dc)
-        saveDC = mfcDC.CreateCompatibleDC()
-        saveBitMap = win32ui.CreateBitmap()
         rc = win32gui.GetWindowRect(hwnd)
         w, h = rc[2] - rc[0], rc[3] - rc[1]
         WB_WIN_HEIGHT = 28
         srcSize = w, h + WB_WIN_HEIGHT
 
-        saveBitMap.CreateCompatibleBitmap(mfcDC, *srcSize) # image size W x H
-        saveDC.SelectObject(saveBitMap)
-        #hbr = win32ui.CreateBrush()
-        #hbr.CreateSolidBrush(0x000000)
-        #saveDC.FillRect((0, 0, W, H), hbr)
-        
-        srcPos = 0, 0
-        saveDC.BitBlt((0, 0), srcSize, mfcDC, srcPos, win32con.SRCCOPY)
-        #bmpinfo = saveBitMap.GetInfo()
-        #imgSize = (bmpinfo['bmWidth'], bmpinfo['bmHeight'])
-        bits = saveBitMap.GetBitmapBits(True)
-        imgFull = Image.frombuffer('RGB',srcSize, bits, 'raw', 'BGRX', 0, 1)
-        win32gui.DeleteObject(saveBitMap.GetHandle())
-        saveDC.DeleteDC()
-        mfcDC.DeleteDC()
-        win32gui.ReleaseDC(hwnd, dc)
+        imgFull = self.dumpImg(hwnd, (0, 0, *srcSize))
         #imgFull.save('D:/full.bmp')
         #img_PIL.show()
 
@@ -158,7 +134,6 @@ class ThsOcrUtils:
 
     def runOcr(self, thsMainWin):
         try:
-            self.init()
             hwnd = self.getCurStockTitleHwnd(thsMainWin)
             fullImg, wbImg = self.dump(hwnd)
             if not fullImg:
@@ -193,15 +168,85 @@ class ThsOcrUtils:
             pass
         return None
 
+# 涨速排名
+class ThsZhangShuOcrUtils(number_ocr.DumpWindowUtils):
+    def __init__(self) -> None:
+        super().__init__()
+        self.ocr = easyocr.Reader(['en'], download_enabled = True) # ch_sim
+
+    def dump(self, hwnd):
+        if (not hwnd) or (not win32gui.IsWindow(hwnd)) or (not win32gui.IsWindowVisible(hwnd)):
+            return None
+        rc = win32gui.GetWindowRect(hwnd)
+        w, h = rc[2] - rc[0], rc[3] - rc[1]
+        if w < 500 or h < 200:
+            return None
+        sx, sy = 250, 50
+        ex, ey = 400, h // 2
+        imgFull = self.dumpImg(hwnd, (sx, sy, ex, ey))
+        #imgFull.save('D:/a.bmp')
+        #img_PIL.show()
+
+        #PRICE_LEFT_RIGHT = 30
+        #priceImg = imgFull.crop((PRICE_LEFT_RIGHT,  h // 2, w - PRICE_LEFT_RIGHT, h - 1))
+        #priceImg.save('D:/price.bmp')
+
+        #WB_TXT_WIDTH = 35
+        #r = max(srcSize[0] - 70, w * 0.6)
+        #wbImg = imgFull.crop((WB_TXT_WIDTH, srcSize[1] - WB_WIN_HEIGHT + 1, int(r), srcSize[1]))
+        #wbImg.save('D:/a.bmp')
+        return imgFull
+    
+    def runOcr(self, thsMainWnd):
+        img = self.dump(thsMainWnd)
+        if not img:
+            return
+        #img.save('D:/a.bmp')
+        eimg = number_ocr.BaseEImage(img)
+        sx = eimg.horSearchBoxColor(0, eimg.bImg.height // 2, 1, 60, 255)
+        if sx < 0:
+            return
+        destEx = -1
+        for y in range(5, img.height, 10):
+            ex = eimg.horSearchBoxColor(sx + 40, y, 3, 60, 0)
+            if ex >= 0:
+                destEx = ex
+                break
+        if destEx < 0:
+            return
+        dstImg = img.crop((sx + 2, 0, destEx + 3, img.height))
+        #dstImg.save('D:/b.bmp')
+        bits = self.imgToBmpBytes(dstImg)
+        rs = self.ocr.readtext(bits, allowlist ='0123456789')
+        arr = []
+        now = datetime.datetime.now()
+        day = now.year * 10000 + now.month * 100 + now.day
+        minuts = now.hour * 100 + now.minute
+        for r in rs:
+            #print(r)
+            if r[2] > 0.7 and len(r[1]) == 6:
+                arr.append({'code' : r[1], 'day' : day, 'minuts' : minuts})
+        return arr
+
 def main1():
     #ocr = easyocr.Reader(['ch_sim'], download_enabled = True)
     #xt = ocr.readtext_batched('D:/a.png')
     #print(txt)
     ths = ths_win.ThsWindow()
     ths.init()
-    result = ths.runOnceOcr()
-    print('result = ', result)
 
 if __name__ == '__main__':
-    main1()
-    pass
+    thsWin = ths_win.ThsWindow()
+    thsWin.init()
+    thsWin.showMax()
+    zs = ThsZhangShuOcrUtils()
+    dst = {}
+    f = open('D:/zs.txt', 'a')
+    while True:
+        rs = zs.runOcr(thsWin.mainHwnd)
+        for r in rs:
+            if r['code'] not in dst:
+                dst[r['code']] = r
+                f.write(f'{r["day"]} {r["minuts"]} {r["code"]} \n')
+        f.flush()
+        time.sleep(30)
