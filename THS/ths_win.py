@@ -112,9 +112,7 @@ class ThsWindow(base_win.BaseWindow):
         if not win32gui.IsWindowVisible(self.selDayHwnd):
             return None
         rc = win32gui.GetWindowRect(self.selDayHwnd)
-        RIGHT_CLOSE_BOX_WIDTH = 14
         w = rc[2] - rc[0]
-
         dc = win32gui.GetWindowDC(self.selDayHwnd)
         #mdc = win32gui.CreateCompatibleDC(dc)
         mfcDC = win32ui.CreateDCFromHandle(dc)
@@ -124,6 +122,7 @@ class ThsWindow(base_win.BaseWindow):
         saveDC.SelectObject(saveBitMap)
 
         # copy year bmp
+        RIGHT_CLOSE_BOX_WIDTH = 14
         srcPos = (RIGHT_CLOSE_BOX_WIDTH, 21)
         YEAR_MONTH_HEIGHT = 34
         srcSize = (w - RIGHT_CLOSE_BOX_WIDTH * 2, YEAR_MONTH_HEIGHT)
@@ -140,11 +139,11 @@ class ThsWindow(base_win.BaseWindow):
 
         yearImg = im_PIL.crop((0, 0, im_PIL.width, YEAR_MONTH_HEIGHT // 2))
         monthImg = im_PIL.crop((0, YEAR_MONTH_HEIGHT // 2, im_PIL.width, YEAR_MONTH_HEIGHT))
-        yearImg.save('D:/y.bmp')
-        monthImg.save('D:/m.bmp')
+        #yearImg.save('D:/y.bmp')
+        #monthImg.save('D:/m.bmp')
         selYear = self.numberOcr.match(yearImg)
         selDay = self.numberOcr.match(monthImg)
-        print('selYear=', selYear, 'selDay=', selDay)
+        #print('selYear=', selYear, 'selDay=', selDay)
 
         sd = selYear + '-' + selDay[0 : 2] + '-' + selDay[2 : 4]
         #check is a day

@@ -5,16 +5,19 @@ import easyocr
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import ths_win, number_ocr
 
+#委比
 class ThsWbOcrUtils(number_ocr.DumpWindowUtils):
     def __init__(self) -> None:
         self.titleHwnds = set()
         self.wbOcr = number_ocr.NumberOCR('wb', '+-.%0123456789')
-        self.ocr = easyocr.Reader(['ch_sim'], download_enabled = True ) # ch_sim
+        self.ocr = easyocr.Reader(['ch_sim'], download_enabled = True ) # ch_sim  en
 
     # wb = 委比 28.45
     # diff = 委差
     # price = 当前成交价
     def calcBS(self, rs):
+        if (not rs) or ('wb' not in rs) or ('diff' not in rs):
+            return
         wb, diff, price = rs['wb'], rs['diff'], rs['price']
         if wb == 0:
             return
@@ -29,19 +32,19 @@ class ThsWbOcrUtils(number_ocr.DumpWindowUtils):
 
     def dump(self, hwnd):
         if (not hwnd) or (not win32gui.IsWindow(hwnd)) or (not win32gui.IsWindowVisible(hwnd)):
-            return None, None
+            return None
         rc = win32gui.GetWindowRect(hwnd)
         w, h = rc[2] - rc[0], rc[3] - rc[1]
         WB_WIN_HEIGHT = 28
         srcSize = w, h + WB_WIN_HEIGHT
 
         imgFull = self.dumpImg(hwnd, (0, 0, *srcSize))
-        #imgFull.save('D:/full.bmp')
-        #img_PIL.show()
-
-        #PRICE_LEFT_RIGHT = 30
-        #priceImg = imgFull.crop((PRICE_LEFT_RIGHT,  h // 2, w - PRICE_LEFT_RIGHT, h - 1))
+        LEFT_PADDING = 20
+        codeImg = imgFull.crop((LEFT_PADDING, 2, w - LEFT_PADDING, h // 2))
+        priceImg = imgFull.crop((LEFT_PADDING, h // 2, w - LEFT_PADDING, h - 1))
         #priceImg.save('D:/price.bmp')
+        #codeImg.save('D:/code.bmp')
+        #img_PIL.show()
 
         WB_TXT_WIDTH = 35
         r = max(srcSize[0] - 70, w * 0.6)
@@ -49,27 +52,48 @@ class ThsWbOcrUtils(number_ocr.DumpWindowUtils):
         #sign = bi.calcSign(wbImg)
         #wbImg = bi.expand(wbImg)
         #wbImg.save('D:/a.bmp')
-        return imgFull, wbImg
+        return codeImg, priceImg, wbImg
     
-    def parseText(self, result, wbResult):
-        if not result or not wbResult:
-            return None
-        rs = {}
+    def parseCodeName(self, result, rs):
+        if not result:
+            return False
         cn = result[0][1]
         rs['name'] = cn[0 : len(cn) - 6]
         rs['code'] = cn[-6 : ]
-
-        cc = re.compile('^\\d+[.]\\d{2}')
-        px = result[1][1]
-        px = px.replace('。', '.')
-        ma = cc.match(px)
+        return True
+    
+    def parsePrice(self, result, rs):
+        if not result:
+            return False
+        price = ''
+        last = ''
+        MIN_PRICE_HEIGHT = 21
+        for it in result:
+            rect = it[0]
+            h = rect[3][1] - rect[0][1]
+            if h >= MIN_PRICE_HEIGHT:
+                price += it[1]
+            else:
+                last += it[1]
+        rs['price'] = float(price)
+        if not last:
+            return False
+        # zhang die & zhang fu
+        if last.startswith('0.00'):
+            rs['zd'] = 0
+            rs['zf'] = 0
+            return True
+        cc = re.compile('^([-+][^-+]+)([^%]+)%')
+        ma = cc.match(last)
         if not ma:
-            return None
-        rs['price'] = float(ma.group(0))
-        px = result[1][0]
-        rs['price_pos'] = (px[0][0], px[0][1], px[1][0], px[2][1])
-        #rs['zdPrice'] = float(result[2][1])
-        # 委比
+            return False
+        rs['zd'] = float(ma.group(1))
+        rs['zf'] = float(ma.group(2))
+        return True
+
+    def parseWeiBi(self, wbResult, rs):
+        if not wbResult:
+            return False
         if isinstance(wbResult, list):
             ms = map(lambda x: x[1], wbResult)
             wsstrs = ''.join(ms).replace(' ', '')
@@ -78,10 +102,10 @@ class ThsWbOcrUtils(number_ocr.DumpWindowUtils):
         cc = re.compile('^([+-]?\\d+[.]*\\d*)%\s*([+-]?\\d+)')
         ma = cc.match(wsstrs)
         if not ma:
-            return rs
+            return False
         rs['wb'] = float(ma.group(1))
         rs['diff'] = int(ma.group(2))
-        return rs
+        return True
     
     def findStockTitleHwnd(self, parentWnd, after):
         if not parentWnd:
@@ -135,37 +159,36 @@ class ThsWbOcrUtils(number_ocr.DumpWindowUtils):
     def runOcr(self, thsMainWin):
         try:
             hwnd = self.getCurStockTitleHwnd(thsMainWin)
-            fullImg, wbImg = self.dump(hwnd)
-            if not fullImg:
+            imgs = self.dump(hwnd)
+            if not imgs:
                 return None
+            codeImg, priceImg, wbImg = imgs
             bmpBytes = io.BytesIO()
-            fullImg.save(bmpBytes, format = 'bmp')
+            codeImg.save(bmpBytes, format = 'bmp')
             bits = bmpBytes.getvalue()
             result = self.ocr.readtext(bits)
-            #fullImg.save('D:/price.bmp')
-
-            #bmpBytes = io.BytesIO()
+            rs = {}
+            if not self.parseCodeName(result, rs):
+                return None
+            if rs['code'][0 : 2] not in ('00', '30', '60', '68'):
+                return None
+            bmpBytes = io.BytesIO()
+            priceImg.save(bmpBytes, format = 'bmp')
+            bits = bmpBytes.getvalue()
+            result = self.ocr.readtext(bits, allowlist = '0123456789+-.%')
+            if not self.parsePrice(result, rs):
+                return None
             #wbImg.save(bmpBytes, format = 'bmp')
             #wbImg.save('D:/wb.bmp')
             #bits = bmpBytes.getvalue()
             #wbResult = self.ocr.readtext(bits)
-
             wbResult = self.wbOcr.match(wbImg)
-            rs = self.parseText(result, wbResult)
-            if (not rs) or ('wb' not in rs) or ('diff' not in rs):
+            if not self.parseWeiBi(wbResult, rs):
                 return None
-            #self.parseNumSign(rs, img, 'price')
-            #self.parseNumSign(rs, img, 'wb')
-            #rs['wb_sign'] = sign
-            #rs['wb'] = abs(rs['wb']) if sign else -abs(rs['wb'])
-            #rs['diff'] = abs(rs['diff']) if sign else -abs(rs['diff'])
             self.calcBS(rs)
-            #print('ths_ocr', rs)
             return rs
         except Exception as e:
-            #print('ths_ocr.runOcr Error: ', e)
             traceback.print_exc()
-            pass
         return None
 
 # 涨速排名
@@ -228,14 +251,17 @@ class ThsZhangShuOcrUtils(number_ocr.DumpWindowUtils):
                 arr.append({'code' : r[1], 'day' : day, 'minuts' : minuts})
         return arr
 
-def main1():
-    #ocr = easyocr.Reader(['ch_sim'], download_enabled = True)
-    #xt = ocr.readtext_batched('D:/a.png')
-    #print(txt)
+def test_wb_main1():
     ths = ths_win.ThsWindow()
     ths.init()
+    wb = ThsWbOcrUtils()
+    while True:
+        rs = wb.runOcr(ths.mainHwnd)
+        print(rs)
+        break
+        time.sleep(5)
 
-if __name__ == '__main__':
+def test_zs_main2():
     thsWin = ths_win.ThsWindow()
     thsWin.init()
     thsWin.showMax()
@@ -250,3 +276,7 @@ if __name__ == '__main__':
                 f.write(f'{r["day"]} {r["minuts"]} {r["code"]} \n')
         f.flush()
         time.sleep(30)
+
+if __name__ == '__main__':
+    test_wb_main1()
+    pass        
