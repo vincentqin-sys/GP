@@ -111,41 +111,40 @@ class ThsWindow(base_win.BaseWindow):
     def getSelectDay(self):
         if not win32gui.IsWindowVisible(self.selDayHwnd):
             return None
+        rc = win32gui.GetWindowRect(self.selDayHwnd)
+        RIGHT_CLOSE_BOX_WIDTH = 14
+        w = rc[2] - rc[0]
+
         dc = win32gui.GetWindowDC(self.selDayHwnd)
         #mdc = win32gui.CreateCompatibleDC(dc)
         mfcDC = win32ui.CreateDCFromHandle(dc)
         saveDC = mfcDC.CreateCompatibleDC()
         saveBitMap = win32ui.CreateBitmap()
-        saveBitMap.CreateCompatibleBitmap(mfcDC, 50, 20) # image size 50 x 20
+        saveBitMap.CreateCompatibleBitmap(mfcDC, w, 50) # image size w x 50
         saveDC.SelectObject(saveBitMap)
 
         # copy year bmp
-        srcPos = (14, 20)
-        srcSize = (30, 17)
+        srcPos = (RIGHT_CLOSE_BOX_WIDTH, 21)
+        YEAR_MONTH_HEIGHT = 34
+        srcSize = (w - RIGHT_CLOSE_BOX_WIDTH * 2, YEAR_MONTH_HEIGHT)
         saveDC.BitBlt((0, 0), srcSize, mfcDC, srcPos, win32con.SRCCOPY)
-        #saveBitMap.SaveBitmapFile(saveDC, 'SD.bmp')
+        #saveBitMap.SaveBitmapFile(saveDC, 'D:/SD.bmp')
         bmpinfo = saveBitMap.GetInfo()
         bmpstr = saveBitMap.GetBitmapBits(True)
-        im_PIL = Image.frombuffer('RGB',(bmpinfo['bmWidth'], 17), bmpstr, 'raw', 'BGRX', 0, 1) # bmpinfo['bmHeight']
-
-        selYear = self.numberOcr.match(im_PIL)
-        # print('selYear=', selYear)
-        
-        # copy day bmp
-        srcPos = (14, 38)
-        saveDC.BitBlt((0, 0), srcSize, mfcDC, srcPos, win32con.SRCCOPY)
-        bmpinfo = saveBitMap.GetInfo()
-        bmpstr = saveBitMap.GetBitmapBits(True)
-        im_PIL = Image.frombuffer('RGB',(bmpinfo['bmWidth'], 17), bmpstr, 'raw', 'BGRX', 0, 1) 
-        selDay = self.numberOcr.match(im_PIL)
-        # print('selDay=', selDay)
-        # im_PIL.show()
-
+        im_PIL = Image.frombuffer('RGB',(bmpinfo['bmWidth'], YEAR_MONTH_HEIGHT), bmpstr, 'raw', 'BGRX', 0, 1) # bmpinfo['bmHeight']
         # destory
         win32gui.DeleteObject(saveBitMap.GetHandle())
         saveDC.DeleteDC()
         mfcDC.DeleteDC()
         win32gui.ReleaseDC(self.selDayHwnd, dc)
+
+        yearImg = im_PIL.crop((0, 0, im_PIL.width, YEAR_MONTH_HEIGHT // 2))
+        monthImg = im_PIL.crop((0, YEAR_MONTH_HEIGHT // 2, im_PIL.width, YEAR_MONTH_HEIGHT))
+        yearImg.save('D:/y.bmp')
+        monthImg.save('D:/m.bmp')
+        selYear = self.numberOcr.match(yearImg)
+        selDay = self.numberOcr.match(monthImg)
+        print('selYear=', selYear, 'selDay=', selDay)
 
         sd = selYear + '-' + selDay[0 : 2] + '-' + selDay[2 : 4]
         #check is a day
@@ -219,3 +218,11 @@ class ThsSmallF10Window:
         if not hwnd:
             return
         win32gui.SetWindowPos(hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+
+if __name__ == '__main__':
+    win = ThsWindow.ins()
+    win.init()
+    #win.getSelectDay()
+    img = Image.open('D:/y.bmp')
+    selYear = win.numberOcr.match(img)
+    pass

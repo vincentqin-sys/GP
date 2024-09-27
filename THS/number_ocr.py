@@ -46,11 +46,11 @@ class BaseEImage:
     def splitVerticalOne(self, startX):
         sx = ex = -1
         for x in range(startX, self.bImg.width):
-            if not self.colColorIs(x, 0, self.bImg.height, 0):
+            if not self.colColorIs(0, self.bImg.height, x, 0):
                 sx = x
                 break
         for x in range(sx, self.bImg.width):
-            if self.colColorIs(x, 0, self.bImg.height, 0):
+            if self.colColorIs(0, self.bImg.height, x, 0):
                 ex = x
                 break
         return (sx, ex)
