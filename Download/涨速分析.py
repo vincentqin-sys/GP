@@ -1,39 +1,142 @@
-import os, json, sys
+import os, json, sys, functools
 import time, re
+import win32gui, win32con, win32api
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 
 from Download import fiddler
 from Tdx.datafile import *
+from Common import base_win
+from Tck import kline_utils, timeline
 
-class FenXi:
-    DAY_MINUTES_NUM = 240
-    CHECK_MAX_NUM_DAY = 30  # only check last 30 trade days
-    SUM_MINUTES_LEN = 10 # sum minuts 5 / 10 /15
-
+class FenXiCode:
     def __init__(self, code) -> None:
+        self.MINUTES_IN_DAY = 240
+        self.SPEED_PEROID = 10 # 时速周期 5 / 10 /15
+        self.MIN_ZHANG_FU = 5 # 进攻最小涨幅
+
         self.code = code
-        self.ddf : DataFile = None # day DataFile
         self.mdf : DataFile = None # minute DataFile
+        self.infoOfDay = {} # day : {'dayAvgAmount': xx, 'item': ItemData, }
+        self.results = [] # 进攻
 
-    def load(self):
-        self.ddf = DataFile(self.code, DataFile.DT_DAY)
-        df = DataFile(self.code, DataFile.DT_MINLINE)
-        self.mdf = df
-        if not df.data:
+    def loadFile(self):
+        if not self.mdf:
+            self.mdf = DataFile(self.code, DataFile.DT_MINLINE)
+            self.mdf.loadData(DataFile.FLAG_ALL)
+
+    def calcLastestDays(self, lastDayNum = 30):
+        if not self.mdf.data:
             return
-        dayNum = len(df.data) // self.DAY_MINUTES_NUM
-        dayNumNew = min(dayNum, self.CHECK_MAX_NUM_DAY)
-        fromIdx = (dayNum - dayNumNew) * self.DAY_MINUTES_NUM
-        self.parseMinutes(fromIdx, len(df.data))
+        dayNum = len(self.mdf.data) // self.MINUTES_IN_DAY
+        dayNumNew = min(dayNum, lastDayNum)
+        fromIdx = dayNum - dayNumNew
+        for i in range(fromIdx, dayNum):
+            d = self.mdf.data[i * self.MINUTES_IN_DAY]
+            self.calcOneDay(d.day)
 
-    def parseMinutes(self, fromIdx, endIdx):
-        avgAmounts = {}
+    def calcOneDay(self, day : int):
+        self._calcAvgAmountOfDay(day)
+        self._calcMinutesOfDay(day)
+
+    def _calcAvgAmountOfDay(self, day : int):
+        idx = self.mdf.getItemIdx(day)
+        if idx < 0:
+            return False
+        m = self.mdf.data[idx]
+        if m.day in self.infoOfDay and 'dayAvgAmount' in self.infoOfDay[m.day]:
+            return True
+        if m.day not in self.infoOfDay:
+            self.infoOfDay[m.day] = {'midx': idx}
+        a = 0
+        for i in range(self.MINUTES_IN_DAY):
+            m = self.mdf.data[idx + i]
+            a += m.amount
+        self.infoOfDay[m.day]['dayAvgAmount'] = int(a / self.MINUTES_IN_DAY ) # 日内分时平均成交额 
+        return True
+
+    def _calcMinutesOfDay(self, day : int):
+        fromIdx = self.mdf.getItemIdx(day)
+        if fromIdx < 0:
+            return False
+        endMaxIdx = min(fromIdx + self.MINUTES_IN_DAY, len(self.mdf.data))
+        for i in range(fromIdx, endMaxIdx):
+            m = self.mdf.data[i]
+            maxIdx, maxPrice = self._calcMaxPrice(i, min(endMaxIdx, i + self.SPEED_PEROID))
+            if maxIdx < 0:
+                continue
+            me = self.mdf.data[maxIdx]
+            if i == fromIdx and i > 0:
+                pre = self.mdf.data[i - 1].close
+            else:
+                pre = self.mdf.data[i].close
+            zf = (maxPrice - pre) / pre * 100
+            if zf < self.MIN_ZHANG_FU:
+                continue
+            if self.results:
+                last = self.results[-1]
+                if last['day'] == m.day and i >= last['fromIdx'] and i <= last['endIdx']:
+                    if last['zf'] <= zf:
+                        self.results.pop(-1) # remove last, replace it
+                    else:
+                        continue # skip
+            maxAmount3 = self.getMax3MunitesAvgAmount(i, maxIdx + 1)
+            万 = 10000
+            di = self.infoOfDay[m.day]
+            curJg = {'day': m.day, 'fromMinute': m.time, 'endMinute': me.time, 'minuts': maxIdx - i + 1,
+                     'fromIdx' : i, 'endIdx': maxIdx, 'zf': zf,
+                     'max3MinutesAvgAmount': int(maxAmount3 / 万), 'dayAvgAmount': int(di['dayAvgAmount'] / 万) # 万元
+                    }
+            self.results.append(curJg)
+        return True
+
+    def getMax3MunitesAvgAmount(self, fromIdx, endIdx):
+        spec = self.mdf.data[fromIdx : endIdx]
+        spec.sort(key = lambda x : x.amount, reverse = True)
+        num = min(3, len(spec))
+        s = 0
+        for i in range(num):
+            s += spec[i].amount
+        return int(s / num)
+
+    def _calcMaxPrice(self, fromIdx, endIdx):
+        maxIdx = -1
+        maxPrice = 0
+        day = self.mdf.data[fromIdx].day
         for i in range(fromIdx, endIdx):
             m = self.mdf.data[i]
-            if m.day not in avgAmounts:
-                dd = self.ddf.getItemData(m.day)
-                avgAmounts[m.day] = dd.amount / self.DAY_MINUTES_NUM # 日内分时平均成交额
+            if m.day != day:
+                break
+            if m.close > maxPrice:
+                maxPrice = m.close
+                maxIdx = i
+        return maxIdx, maxPrice
+    
+    @staticmethod
+    def openSimple(evt, parent):
+        if evt.name != 'DbClick':
+            return
+        win = timeline.TimelinePanKouWindow()
+        SW = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+        SH = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+        w, h = max(800, int(SW * 0.6)), 600
+        x, y = (SW - w) // 2, (SH - h) // 2
+        rc2 = (x, y, w, h)
+        win.createWindow(parent.hwnd, rc2, win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
+        day = evt.data.day
+        win.load(evt.code, day)
+        win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
+        return win
+
+        for x in fx.results:
+            if x['day'] == day:
+                win.timelineWin.addHilight(x['fromMinute'], x['endMinute'], x)
+        win.timelineWin.invalidWindow()
+
+    @staticmethod
+    def initKlineTimeline():
+        FenXiCode._old = kline_utils.openKlineMinutes_Simple
+        kline_utils.openKlineMinutes_Simple = FenXiCode.openSimple
 
 def loadAllCodes():
     p = os.path.join(VIPDOC_BASE_PATH, '__minline')
@@ -49,9 +152,24 @@ def loadAllCodes():
 def fxAll():
     cs = loadAllCodes()
     for code in cs:
-        fx = FenXi(code)
-        fx.load()
+        fx = FenXiCode(code)
+        fx.calcLastestDays()
+
+def test():
+    FenXiCode.initKlineTimeline()
+
+    CODE = '300925'
+    fx = FenXiCode(CODE)
+    fx.loadFile()
+    fx.calcLastestDays()
+    #fx.calcOneDay(20240829)
+    win = kline_utils.openInCurWindow_Code(base_win.BaseWindow(), {'code': CODE, } )
+    for d in fx.results:
+        print(d)
+        win.klineWin.setMarkDay(d['day'])
+    win32gui.PumpMessages()
+
 
 if __name__ == '__main__':
-    fx = FenXi('300925')
-    fx.load()
+    test()
+    pass

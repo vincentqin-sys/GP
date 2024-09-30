@@ -966,7 +966,8 @@ class HotZHCardView(ListView):
             if 'HX_zhangFu_Native' in data:
                 del data['HX_zhangFu_Native']
             return
-        dt = datafile.DataFile(code, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
+        dt = datafile.DataFile(code, datafile.DataFile.DT_DAY)
+        dt.loadData(datafile.DataFile.FLAG_ALL)
         idx = dt.getItemIdx(self.curSelDay)
         if idx <= 0:
             return

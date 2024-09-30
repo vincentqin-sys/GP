@@ -6,154 +6,6 @@ from multiprocessing import shared_memory # python 3.8+
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
-from db import tdx_orm
-
-class TdxVolPMTools:
-    def __init__(self):
-        fromDay = 20230101
-        v = tdx_orm.TdxVolPMModel.select(pw.fn.max(tdx_orm.TdxVolPMModel.day)).scalar()
-        self.fromDay = v if v else fromDay
-        self.codes = None
-        self.codeNames = None
-        self.days = None
-        self.loadAllCodes()
-        self.calcDays()
-        self.initCodeName()
-        self.datafiles = [datafile.DataFile(c, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL) for c in self.codes]
-        
-    # 加载所有股标代码（上证、深证股），不含指数、北证股票
-    def loadAllCodes(self):
-        self.codes = datafile.DataFileUtils.listAllCodes()
-    
-    def calcDays(self):
-        self.days = datafile.DataFileUtils.calcDays(self.fromDay)
-
-    def initCodeName(self):
-        ths_db = pw.SqliteDatabase(f'{tdx_orm.path}GP/db/THS_F10.db')
-        sql = 'select code, name from 最新动态'
-        csr = ths_db.cursor()
-        csr.execute(sql)
-        rs = csr.fetchall()
-        codeNames = {}
-        for r in rs:
-            codeNames[r[0]] = r[1]
-        self.codeNames = codeNames
-        csr.close()
-        ths_db.close()
-    
-    def save(self, datas):
-        tdx_orm.TdxVolPMModel.bulk_create(datas, 50)
-    
-    def calcVolOrder_Top100(self):
-        dfs = self.datafiles
-        bpd = 0
-        def sortKey(df):
-            idx = df.getItemIdx(bpd)
-            if idx < 0:
-                return 0
-            return df.data[idx].amount
-
-        for day in self.days:
-            bpd = day
-            newdfs = sorted(dfs, key = sortKey, reverse=True)
-            top100 = []
-            for i in range(100):
-                nf = newdfs[i]
-                code = nf.code
-                di = nf.getItemData(day)
-                amount =  (di.amount if di else 0) / 100000000
-                name = self.codeNames.get(code)
-                if not name:
-                    name = 'N'
-                d = {'code': code, 'name': name, 'day': day, 'amount': amount, 'pm': i + 1}
-                top100.append(tdx_orm.TdxVolPMModel(**d))
-                #print(d)
-            self.save(top100)
-
-    # 计算两市成交总额
-    def calcSHSZVol(self):
-        sh = datafile.DataFile('999999', datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
-        sz = datafile.DataFile('399001', datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
-        zs = []
-        for day in self.days:
-            d1 = sh.getItemData(day)
-            d2 = sz.getItemData(day)
-            amount = (d1.amount + d2.amount) // 100000000
-            zs.append(tdx_orm.TdxVolPMModel(**{'code': '999999', 'name': '上证指数', 'day': day, 'amount': d1.amount // 100000000, 'pm': 0}))
-            zs.append(tdx_orm.TdxVolPMModel(**{'code': '399001', 'name': '深证指数', 'day': day, 'amount': d2.amount // 100000000, 'pm': 0}))
-            zs.append(tdx_orm.TdxVolPMModel(**{'code': '000000', 'name': '两市成交', 'day': day, 'amount': amount, 'pm': 0}))
-        self.save(zs)
-   
-class TdxLSTools:
-    def __init__(self) -> None:
-        fromDay = 20230101
-        v = tdx_orm.TdxLSModel.select(pw.fn.max(tdx_orm.TdxLSModel.day)).scalar()
-        if v: fromDay = v
-        self.fromDay = fromDay
-        self.codes = None
-        self.days = None
-
-    def calcOneDayInfo(self, day, sz, sh, dfs):
-        item = tdx_orm.TdxLSModel()
-        item.day = day
-        item.amount = (sz.getItemData(day).amount + sh.getItemData(day).amount) // 100000000 # 亿元
-        for df in dfs:
-            idx = df.getItemIdx(day)
-            if idx <= 0:
-                continue
-            dt = df.data[idx]
-            if dt.close > df.data[idx - 1].close:
-                item.upNum += 1
-            elif dt.close < df.data[idx - 1].close:
-                item.downNum += 1
-            else:
-                item.zeroNum += 1
-            zdt = getattr(dt, 'zdt', '')
-            if zdt == 'ZT':
-                item.ztNum += 1
-            elif zdt == 'DT':
-                item.dtNum += 1
-            else:
-                zd = getattr(dt, 'zhangFu', -9999)
-                if zd > 0 and zd <= 2:
-                    item.z0_2 += 1
-                elif zd > 2 and zd <= 5:
-                    item.z2_5 += 1
-                elif zd > 5 and zd <= 7:
-                    item.z5_7 += 1
-                elif zd > 7:
-                    item.z7 += 1
-                elif zd < 0 and zd >= -2:
-                    item.d0_2 += 1
-                elif zd < -2 and zd >= -5:
-                    item.d2_5 += 1
-                elif zd < -5 and zd >= -7:
-                    item.d5_7 += 1
-                elif zd < -7 and zd != -9999:
-                    item.d7 += 1
-            lbs = getattr(dt, 'lbs', 0)
-            if lbs >= 2:
-                item.lbNum += 1
-            if item.zgb < lbs:
-                item.zgb = lbs
-            
-        return item
-
-    def calcInfo(self):
-        self.codes = datafile.DataFileUtils.listAllCodes()
-        self.days = datafile.DataFileUtils.calcDays(self.fromDay)
-        sh = datafile.DataFile('999999', datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
-        sz = datafile.DataFile('399001', datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
-        dfs = [datafile.DataFile(c, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL) for c in self.codes]
-        rs = []
-        for df in dfs:
-            df.calcZDT()
-            df.calcZhangFu()
-        for day in self.days:
-            item = self.calcOneDayInfo(day, sz, sh, dfs)
-            rs.append(item)
-            print('TdxLSTools.calcInfo item=', item.__data__)
-        tdx_orm.TdxLSModel.bulk_create(rs, 50)
 
 class TdxDownloader:
     def __init__(self) -> None:
@@ -224,7 +76,8 @@ class TdxDownloader:
 
     def getStartDayForDay(self):
         maxday = 20240101
-        df = datafile.DataFile('999999', datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
+        df = datafile.DataFile('999999', datafile.DataFile.DT_DAY)
+        df.loadData(datafile.DataFile.FLAG_ALL)
         if df.data:
             maxday = df.data[-1].day
         dt = datetime.datetime.strptime(str(maxday), '%Y%m%d')
@@ -233,7 +86,8 @@ class TdxDownloader:
     
     def getStartDayForTimemimute(self):
         maxday = 20240101
-        df = datafile.DataFile('999999', datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL)
+        df = datafile.DataFile('999999', datafile.DataFile.DT_MINLINE)
+        df.loadData(datafile.DataFile.FLAG_ALL)
         if df.data:
             maxday = df.data[-1].day
         dt = datetime.datetime.strptime(str(maxday), '%Y%m%d')
@@ -353,14 +207,6 @@ def work():
         tm = datetime.datetime.now()
         ss = tm.strftime('%Y-%m-%d %H:%M')
         print('download end ', ss)
-        # 计算成交量排名
-        print('calc vol info')
-        t = TdxVolPMTools()
-        t.calcVolOrder_Top100()
-        t.calcSHSZVol()
-        #计算两市行情信息
-        t = TdxLSTools()
-        t.calcInfo()
         print('merge mimute time line data')
         ld = datafile.DataFileLoader()
         ld.mergeAll()

@@ -119,7 +119,8 @@ class VolLBWindow(base_win.BaseWindow):
         if code in self.dfs:
             df = self.dfs[code]
         else:
-            df = self.dfs[code] = datafile.DataFile(code, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
+            df = self.dfs[code] = datafile.DataFile(code, datafile.DataFile.DT_DAY)
+            df.loadData(datafile.DataFile.FLAG_ALL)
         idx = df.getItemIdx(maxDay)
         if idx < 0 or idx < dayNum * 2:
             return

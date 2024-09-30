@@ -29,22 +29,25 @@ class DataFile:
     FLAG_NEWEST, FLAG_OLDEST, FLAG_ALL = -1, -2, -3 # 最新、最早、全部
 
     # @param dataType = DT_DAY  |  DT_MINLINE
-    # @param flag = FLAG_NEWEST | FLAG_OLDEST | FLAG_ALL
-    def __init__(self, code, dataType, flag = -3):
+    def __init__(self, code, dataType):
         if type(code) == int:
             code = f'{code :06d}'
         self.code = code
+        self.name = ''
         self.dataType = dataType
+        self.data = []
+        self.days = []
+
+    # @param flag = FLAG_NEWEST | FLAG_OLDEST | FLAG_ALL
+    def loadData(self, flag):
         path = self.getPath()
         if flag == DataFile.FLAG_NEWEST:
             self.data = self._loadDataFile_Newest(path)
         elif flag == DataFile.FLAG_OLDEST:
             self.data = self._loadDataFile_Oldest(path)
-        else:
+        elif flag == DataFile.FLAG_ALL:
             self.data = self._loadDataFile_All(path)
-        self.days = []
         self.calcDays()
-        self.name = ''
 
     @staticmethod
     def loadFromFile(filePath):
@@ -54,7 +57,8 @@ class DataFile:
         elif name[0 : 3] == 'ths':
             code = name[3 : 9]
         dataType = DataFile.DT_DAY if name[-4 : ] == '.day' else DataFile.DT_MINLINE
-        datafile = DataFile('000000', dataType, DataFile.FLAG_ALL)
+        datafile = DataFile('000000', dataType)
+        datafile.loadData(DataFile.FLAG_ALL)
         datafile.code = code
         datafile.data = datafile._loadDataFile_All(filePath)
         return datafile
@@ -310,7 +314,8 @@ class DataFileUtils:
     # @return list[day, ...]
     @staticmethod
     def calcDays(fromDay, inclueFromDay = False):
-        df = DataFile('999999', DataFile.DT_DAY, DataFile.FLAG_ALL)
+        df = DataFile('999999', DataFile.DT_DAY)
+        df.loadData(DataFile.FLAG_ALL)
         days = []
         for i in range(len(df.data)):
             if inclueFromDay and df.data[i].day == fromDay:
@@ -372,7 +377,8 @@ class DataFileLoader:
         pph = os.path.join(VIPDOC_BASE_PATH, '__lday')
         if not os.path.exists(pph):
             os.mkdir(pph)
-        dst = DataFile(code, DataFile.DT_DAY, DataFile.FLAG_ALL)
+        dst = DataFile(code, DataFile.DT_DAY)
+        dst.loadData(DataFile.FLAG_ALL)
         ph = os.path.join(pph, f'{tag}{code}.day')
         f = open(ph, 'ab')
         lastDay = 0
@@ -394,7 +400,8 @@ class DataFileLoader:
         pph = os.path.join(VIPDOC_BASE_PATH, '__minline')
         if not os.path.exists(pph):
             os.mkdir(pph)
-        dst = DataFile(code, DataFile.DT_MINLINE, DataFile.FLAG_ALL)
+        dst = DataFile(code, DataFile.DT_MINLINE)
+        dst.loadData(DataFile.FLAG_ALL)
         ph = os.path.join(pph, f'{tag}{code}.lc1')
         f = open(ph, 'ab')
         lastDay = 0
@@ -409,7 +416,8 @@ class DataFileLoader:
 
     # only save data from [fromDay, endDay]
     def chunkDayFile(self, code, fromDay, endDay):
-        df = DataFile(code, DataFile.DT_DAY, DataFile.FLAG_ALL)
+        df = DataFile(code, DataFile.DT_DAY)
+        df.loadData(DataFile.FLAG_ALL)
         if not df.data:
             return
         minDay = df.data[0].day
@@ -426,7 +434,8 @@ class DataFileLoader:
 
     # only save data from [fromDay, endDay]
     def chunkMinlineFile(self, code, fromDay, endDay):
-        df = DataFile(code, DataFile.DT_MINLINE, DataFile.FLAG_ALL)
+        df = DataFile(code, DataFile.DT_MINLINE)
+        df.loadData(DataFile.FLAG_ALL)
         if not df.data:
             return
         minDay = df.data[0].day
@@ -454,12 +463,14 @@ if __name__ == '__main__':
     ld = DataFileLoader()
     #ld.mergeDayFile('999999')
     df = DataFile('999999', DataFile.DT_DAY)
+    df.loadData(DataFile.FLAG_ALL)
     df.calcDays()
     #ld.mergeAll()
     #df = DataFile('999999', DataFile.DT_MINLINE, DataFile.FLAG_ALL)
     #ld.chunkAll(20240301, 20240430)
     rs = ld._loadTdxDataFile(r'D:\Program Files\new_tdx2\vipdoc\sz\minline\sz000001.lc1')
     df = DataFile('000000', DataFile.DT_MINLINE)
+    df.loadData(DataFile.FLAG_ALL)
     df.data = rs
     df.calcDays()
     pass

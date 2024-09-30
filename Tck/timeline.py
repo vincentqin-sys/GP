@@ -35,7 +35,8 @@ class TimelineModel:
             code = f'{code :06d}'
         #if self.code != code:
         self.code = code
-        self.dataFile = datafile.DataFile(code, datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL)
+        self.dataFile = datafile.DataFile(code, datafile.DataFile.DT_MINLINE)
+        self.dataFile.loadData(datafile.DataFile.FLAG_ALL)
         self.ddlrFile = ths_ddlr.ThsDdlrDetailData(code)
         try:
             url = cls.ClsUrl()
@@ -384,7 +385,6 @@ class TimelineWindow(base_win.BaseWindow):
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
 
-
 class SimpleTimelineModel:
     def __init__(self) -> None:
         self.code = None
@@ -494,7 +494,8 @@ class SimpleTimelineModel:
         if code[0] not in ('0', '3', '6'):
             return
         if not self.localData or self.localData.code != code:
-            self.localData = datafile.DataFile(code, datafile.DataFile.DT_MINLINE, datafile.DataFile.FLAG_ALL)
+            self.localData = datafile.DataFile(code, datafile.DataFile.DT_MINLINE)
+            self.localData.loadData(datafile.DataFile.FLAG_ALL)
         if not self.localData:
             return
         if type(day) == str:
@@ -595,6 +596,7 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         self.paddings = (45, 10, 60, 30)
         self.volHeight = 160
         self.volSpace = 20
+        self.hilights = []
 
     def load(self, code, day = None):
         self.priceRange = None
@@ -716,6 +718,43 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         rc = (self.paddings[0], ey - self.volSpace + 1, W - self.paddings[2], ey - 1)
         self.drawer.fillRect(hdc, rc, self.drawer.darkness(self.css['bgColor']))
 
+    def minuteToIdx(self, minute):
+        if minute <= 930:
+            return 0
+        hour = minute // 100
+        minute = minute % 100
+        ds = 0
+        if hour <= 11:
+            ds = 60 * (hour - 9) + minute - 30
+            return ds
+        ds = 120
+        ds += minute + (hour - 13) * 60
+        return ds
+
+    def drawHilight(self, hdc):
+        if not self.model:
+            return
+        sdc = win32gui.SaveDC(hdc)
+        W, H = self.getClientSize()
+        vsy = H - self.paddings[3] - self.volHeight
+        for fe in self.hilights:
+            f, e, info = fe
+            sx = self.getXAtMinuteIdx(self.minuteToIdx(f), W)
+            ex = self.getXAtMinuteIdx(self.minuteToIdx(e), W)
+            psy = self.paddings[1]
+            pey = vsy - self.volSpace
+            self.drawer.fillRect(hdc, (sx, psy + 1, ex + 1, pey), 0x101010)
+            vey = H - self.paddings[3]
+            self.drawer.fillRect(hdc, (sx, vsy + 1, ex + 1, vey), 0x101010)
+            txtRc = (sx, pey - 30, sx + 60, pey)
+            text = f'{info["zf"] :.1f}% \n{info["max3MinutesAvgAmount"]}万'
+            self.drawer.drawText(hdc, text, txtRc, color = 0xe0abce, align = win32con.DT_LEFT)
+        win32gui.RestoreDC(hdc, sdc)
+            
+    def addHilight(self, fromMinute, endMinute, info):
+        fe = (fromMinute, endMinute, info)
+        self.hilights.append(fe)
+
     def drawMouse(self, hdc):
         if not self.mouseXY or not self.model:
             return
@@ -748,7 +787,8 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         W, H = self.getClientSize()
         self.drawer.use(hdc, self.drawer.getPen(0xffffff))
         for i, md in enumerate(self.model.data):
-            x = self.getXAtMinuteIdx(i, W)
+            idx = self.minuteToIdx(md.time)
+            x = self.getXAtMinuteIdx(idx, W)
             y = self.getYAtPrice(md.price, H)
             if i == 0:
                 win32gui.MoveToEx(hdc, x, y)
@@ -759,7 +799,8 @@ class SimpleTimelineWindow(base_win.BaseWindow):
             return
         self.drawer.use(hdc, self.drawer.getPen(0x00ffff))
         for i, md in enumerate(self.model.data):
-            x = self.getXAtMinuteIdx(i, W)
+            idx = self.minuteToIdx(md.time)
+            x = self.getXAtMinuteIdx(idx, W)
             y = self.getYAtPrice(md.avgPrice, H)
             if i == 0:
                 win32gui.MoveToEx(hdc, x, y)
@@ -781,7 +822,8 @@ class SimpleTimelineWindow(base_win.BaseWindow):
     def drawVol(self, hdc):
         W, H = self.getClientSize()
         for i, md in enumerate(self.model.data):
-            x = self.getXAtMinuteIdx(i, W)
+            idx = self.minuteToIdx(md.time)
+            x = self.getXAtMinuteIdx(idx, W)
             y = self.getYAtVol(md.vol, H)
             self.drawer.use(hdc, self.drawer.getPen(self._getVolLineColor(i)))
             win32gui.MoveToEx(hdc, x, H - self.paddings[3])
@@ -790,6 +832,7 @@ class SimpleTimelineWindow(base_win.BaseWindow):
     def onDraw(self, hdc):
         if not self.model:
             return
+        self.drawHilight(hdc)
         self.drawBackground(hdc)
         self.drawMouse(hdc)
         self.drawMinites(hdc)

@@ -225,7 +225,8 @@ class ThsZsCache:
     def saveKline(self, code, res):
         if not res or not res['data']:
             return
-        df = DataFile(code, DataFile.DT_DAY, DataFile.FLAG_NEWEST)
+        df = DataFile(code, DataFile.DT_DAY)
+        df.loadData(DataFile.FLAG_NEWEST)
         rdata = res['data']
         if not rdata:
             return
@@ -491,6 +492,7 @@ class HexinUrl(Henxin):
             _cache.saveKline(code, klineRs)
         if (code[0 : 2] == '88') and (not data):
             df = DataFile(code, DataFile.DT_DAY)
+            df.loadData(DataFile.FLAG_ALL)
             data = df.data
             pass
         if data:

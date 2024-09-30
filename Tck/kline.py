@@ -12,7 +12,8 @@ from THS import hot_utils
 
 class KLineModel_Tdx(datafile.DataFile):
     def __init__(self, code):
-        super().__init__(code, datafile.DataFile.DT_DAY, datafile.DataFile.FLAG_ALL)
+        super().__init__(code, datafile.DataFile.DT_DAY)
+        self.loadData(datafile.DataFile.FLAG_ALL)
 
 class KLineModel_Ths(henxin.ThsDataFile):
     def __init__(self, code) -> None:

@@ -90,6 +90,7 @@ def openKlineMinutes_Simple(evt, parent : base_win.BaseWindow):
     win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
     day = evt.data.day
     win.load(evt.code, day)
+    return win
 
 def openInThsWindow(data):
     thsWin = ths_win.ThsWindow._ins
