@@ -11,9 +11,12 @@ class ItemData:
     def __init__(self, *args):
         if not args:
             return
-        a = self.DS if len(args) == len(self.DS) else self.MLS
-        for i, k in enumerate(a):
-            setattr(self, k, args[i])
+        if len(args) == len(self.DS):
+            for i, k in enumerate(self.DS):
+                setattr(self, k, args[i])
+        elif len(args) == len(self.MLS):
+            for i, k in enumerate(self.MLS):
+                setattr(self, k, args[i])
 
     def __repr__(self) -> str:
         ds = self.__dict__

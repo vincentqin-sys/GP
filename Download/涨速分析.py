@@ -16,13 +16,12 @@ class FenXiCode:
         self.MIN_ZHANG_FU = 5 # 进攻最小涨幅
 
         self.code = code
-        self.mdf : DataFile = None # minute DataFile
+        self.mdf = DataFile(self.code, DataFile.DT_MINLINE)
         self.infoOfDay = {} # day : {'dayAvgAmount': xx, 'item': ItemData, }
         self.results = [] # 进攻
 
     def loadFile(self):
-        if not self.mdf:
-            self.mdf = DataFile(self.code, DataFile.DT_MINLINE)
+        if not self.mdf.data:
             self.mdf.loadData(DataFile.FLAG_ALL)
 
     def calcLastestDays(self, lastDayNum = 30):
@@ -54,7 +53,7 @@ class FenXiCode:
             a += m.amount
         self.infoOfDay[m.day]['dayAvgAmount'] = int(a / self.MINUTES_IN_DAY ) # 日内分时平均成交额 
         return True
-
+    
     def _calcMinutesOfDay(self, day : int):
         fromIdx = self.mdf.getItemIdx(day)
         if fromIdx < 0:

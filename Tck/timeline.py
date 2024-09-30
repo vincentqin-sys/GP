@@ -448,10 +448,11 @@ class SimpleTimelineModel:
                 d = lines[i]
                 ts = datafile.ItemData()
                 ts.time = url.getVal(d, 'minute', int, 0)
-                ts.price = int(url.getVal(d, 'last_px', float, 0) * 100 + 0.5)
+                ts.close = ts.price = int(url.getVal(d, 'last_px', float, 0) * 100 + 0.5)
                 ts.vol = url.getVal(d, 'business_amount', int, 0)
                 ts.amount = url.getVal(d, 'business_balance', int, 0)
                 ts.avgPrice = int(url.getVal(d, 'av_px', float, 0) * 100 + 0.5)
+                ts.day = url.getVal(d, 'date', int, 0)
                 self.data.append(ts)
         except Exception as e:
             traceback.print_exc()
@@ -478,9 +479,10 @@ class SimpleTimelineModel:
             for d in data['dataArr']:
                 ts = datafile.ItemData()
                 ts.time = d['time']
-                ts.price = int(d['price'] * 100 + 0.5)
+                ts.close = ts.price = int(d['price'] * 100 + 0.5)
                 ts.vol = int(d['vol'])
                 ts.amount = int(d['money'])
+                ts.day = lastDay
                 self.data.append(ts)
             return True
         except Exception as e:
@@ -602,9 +604,15 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         self.priceRange = None
         self.model = SimpleTimelineModel()
         self.model.load(code, day)
+        self.initHilights(code)
         self.invalidWindow()
         title = f'{self.model.code}   {self.model.name}'
         win32gui.SetWindowText(self.hwnd, title)
+
+    def initHilights(self, code):
+        self.hilights.clear()
+        #for x in fx.results:
+        #    self.addHilight(x['fromMinute'], x['endMinute'], x)
 
     def getYAtPrice(self, price, h):
         priceRange = self.model.getPriceRange()
