@@ -218,6 +218,49 @@ class ThsSmallF10Window:
             return
         win32gui.SetWindowPos(hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
 
+class ThsSelDayWindow:
+    RIGHT = 450
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self):
+        self.lastCode = None
+        self.lastMoved = None
+
+    def onTryMove(self, thsWin : ThsWindow, code):
+        if not thsWin.isInMyHomeWindow():
+            self.reset()
+            return
+        hwnd = thsWin.selDayHwnd
+        if not win32gui.IsWindow(hwnd):
+            self.reset()
+            return
+        if not win32gui.IsWindowVisible(hwnd):
+            self.reset()
+            return
+        if self.lastCode == code:
+            if self.lastMoved:
+                return
+            else:
+                self.move(hwnd, code)
+        else:
+            self.move(hwnd, code)
+            
+    def move(self, hwnd, code):
+        self.lastCode = code
+        self.lastMoved = True
+        parent = win32gui.GetParent(hwnd)
+        if not parent:
+            return
+        prc = win32gui.GetWindowRect(parent)
+        rc = win32gui.GetWindowRect(hwnd)
+        PW, PH = prc[2] - prc[0], prc[3] - prc[1]
+        W, H = rc[2] - rc[0], rc[3] - rc[1]
+        x = PW - W - self.RIGHT
+        y = PH - H
+        win32gui.SetWindowPos(hwnd, 0, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
+
 if __name__ == '__main__':
     win = ThsWindow.ins()
     win.init()

@@ -19,6 +19,7 @@ simpleWindow2 = hot_win_small.SimpleWindow('ZT_GN')
 thsShareMem = base_win.ThsShareMemory()
 simpleHotZHWindow = hot_win_small.SimpleHotZHWindow()
 codeBasicWindow = hot_win_small.CodeBasicWindow()
+thsSelDayWin = ths_win.ThsSelDayWindow()
 tipWins = [simpleWindow, simpleWindow2, simpleHotZHWindow, codeBasicWindow]
 
 def updateCode(nowCode):
@@ -132,6 +133,7 @@ def _workThread(thsWin : ths_win.ThsWindow, fileName):
             thsShareMem.writeSelDay(selDay)
         rs = wbOcr.runOcr(thsWin.mainHwnd)
         codeBasicWindow.updateWeiBi(rs)
+        thsSelDayWin.onTryMove(thsWin, nowCode)
 
 def onListen(evt, args):
     if args == 'ListenHotWindow' and evt.name == 'mode.change':
@@ -274,10 +276,8 @@ if __name__ == '__main__':
     tsm = base_win.ThsShareMemory(True)
     tsm.open()
     # listen ths fu ping
-    p = Process(target = listen_ThsFuPing_Process, daemon = False)
-    p.start()
-    #th = threading.Thread(target=listen_ThsFuPing_Process, daemon=True, name='hot_win32.py')
-    #th.start()
+    #p = Process(target = listen_ThsFuPing_Process, daemon = False)
+    #p.start()
     time.sleep(1)
     while True:
         p = Process(target = subprocess_main, daemon = True)

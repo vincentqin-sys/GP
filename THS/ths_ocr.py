@@ -67,11 +67,13 @@ class ThsWbOcrUtils(number_ocr.DumpWindowUtils):
             return False
         price = ''
         last = ''
-        MIN_PRICE_HEIGHT = 21
+        priceHeight = 0
         for it in result:
             rect = it[0]
             h = rect[3][1] - rect[0][1]
-            if h >= MIN_PRICE_HEIGHT:
+            if priceHeight == 0:
+                priceHeight = h
+            if h >= priceHeight - 5:
                 price += it[1]
             else:
                 last += it[1]

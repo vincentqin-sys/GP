@@ -7,7 +7,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Download import fiddler
 from Tdx.datafile import *
 from Common import base_win
-from Tck import kline_utils, timeline
+from Tck import kline_utils
 
 class FenXiCode:
     def __init__(self, code) -> None:
@@ -34,7 +34,11 @@ class FenXiCode:
             d = self.mdf.data[i * self.MINUTES_IN_DAY]
             self.calcOneDay(d.day)
 
-    def calcOneDay(self, day : int):
+    def calcOneDay(self, day):
+        if day is None:
+            return
+        if type(day) == str:
+            day = int(day.replace('-', ''))
         self._calcAvgAmountOfDay(day)
         self._calcMinutesOfDay(day)
 
@@ -111,32 +115,6 @@ class FenXiCode:
                 maxIdx = i
         return maxIdx, maxPrice
     
-    @staticmethod
-    def openSimple(evt, parent):
-        if evt.name != 'DbClick':
-            return
-        win = timeline.TimelinePanKouWindow()
-        SW = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
-        SH = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
-        w, h = max(800, int(SW * 0.6)), 600
-        x, y = (SW - w) // 2, (SH - h) // 2
-        rc2 = (x, y, w, h)
-        win.createWindow(parent.hwnd, rc2, win32con.WS_POPUPWINDOW | win32con.WS_CAPTION)
-        day = evt.data.day
-        win.load(evt.code, day)
-        win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
-        return win
-
-        for x in fx.results:
-            if x['day'] == day:
-                win.timelineWin.addHilight(x['fromMinute'], x['endMinute'], x)
-        win.timelineWin.invalidWindow()
-
-    @staticmethod
-    def initKlineTimeline():
-        FenXiCode._old = kline_utils.openKlineMinutes_Simple
-        kline_utils.openKlineMinutes_Simple = FenXiCode.openSimple
-
 def loadAllCodes():
     p = os.path.join(VIPDOC_BASE_PATH, '__minline')
     cs = os.listdir(p)
@@ -155,8 +133,6 @@ def fxAll():
         fx.calcLastestDays()
 
 def test():
-    FenXiCode.initKlineTimeline()
-
     CODE = '300925'
     fx = FenXiCode(CODE)
     fx.loadFile()

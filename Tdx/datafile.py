@@ -30,6 +30,7 @@ class ItemData:
 class DataFile:
     DT_DAY, DT_MINLINE = 1, 2
     FLAG_NEWEST, FLAG_OLDEST, FLAG_ALL = -1, -2, -3 # 最新、最早、全部
+    cache = {}
 
     # @param dataType = DT_DAY  |  DT_MINLINE
     def __init__(self, code, dataType):
@@ -43,14 +44,26 @@ class DataFile:
 
     # @param flag = FLAG_NEWEST | FLAG_OLDEST | FLAG_ALL
     def loadData(self, flag):
-        path = self.getPath()
-        if flag == DataFile.FLAG_NEWEST:
-            self.data = self._loadDataFile_Newest(path)
-        elif flag == DataFile.FLAG_OLDEST:
-            self.data = self._loadDataFile_Oldest(path)
-        elif flag == DataFile.FLAG_ALL:
-            self.data = self._loadDataFile_All(path)
-        self.calcDays()
+        key = f"{self.dataType}:{flag}"
+        needLoad = None
+        if (key in self.cache) and (self.code != self.cache[key].code):
+            needLoad = True
+        if key not in self.cache:
+            needLoad = True
+        if needLoad:
+            path = self.getPath()
+            if flag == DataFile.FLAG_NEWEST:
+                self.data = self._loadDataFile_Newest(path)
+            elif flag == DataFile.FLAG_OLDEST:
+                self.data = self._loadDataFile_Oldest(path)
+            elif flag == DataFile.FLAG_ALL:
+                self.data = self._loadDataFile_All(path)
+            self.calcDays()
+            self.cache[key] = self
+        else:
+            obj = self.cache[key]
+            self.data = obj.data
+            self.calcDays()
 
     @staticmethod
     def loadFromFile(filePath):

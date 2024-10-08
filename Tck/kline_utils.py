@@ -25,10 +25,11 @@ def createKLineWindow(parent, rect = None, style = None):
     dw = win32api.GetSystemMetrics (win32con.SM_CXSCREEN)
     dh = win32api.GetSystemMetrics (win32con.SM_CYSCREEN) - 35
     if not rect:
-        W, H = int(dw * 1), max(int(dh * 0.85), 650)
-        x = (dw - W) // 2
-        y = (dh - H) // 2
-        rect = (0, 0, W, H)
+        BORDER = 7
+        W, H = int(dw + BORDER * 2), max(int(dh * 0.85), 650)
+        x = -BORDER
+        y = dh - H
+        rect = (x, y, W, H)
     if not style:
         style = win32con.WS_VISIBLE | win32con.WS_POPUPWINDOW | win32con.WS_CAPTION
     win.createWindow(parent, rect, style) # WS_OVERLAPPEDWINDOW
