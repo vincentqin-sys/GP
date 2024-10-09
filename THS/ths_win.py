@@ -219,7 +219,7 @@ class ThsSmallF10Window:
         win32gui.SetWindowPos(hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
 
 class ThsSelDayWindow:
-    RIGHT = 450
+    RIGHT = 448
 
     def __init__(self) -> None:
         self.reset()
@@ -257,7 +257,7 @@ class ThsSelDayWindow:
         rc = win32gui.GetWindowRect(hwnd)
         PW, PH = prc[2] - prc[0], prc[3] - prc[1]
         W, H = rc[2] - rc[0], rc[3] - rc[1]
-        x = PW - W - self.RIGHT
+        x = PW - self.RIGHT
         y = PH - H
         win32gui.SetWindowPos(hwnd, 0, x, y, 0, 0, win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
 

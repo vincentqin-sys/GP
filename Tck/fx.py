@@ -52,10 +52,11 @@ class FenXiCode:
         if m.day not in self.infoOfDay:
             self.infoOfDay[m.day] = {'midx': idx}
         a = 0
-        for i in range(self.MINUTES_IN_DAY):
+        num = min(self.MINUTES_IN_DAY, len(self.mdf.data) - idx)
+        for i in range(num):
             m = self.mdf.data[idx + i]
             a += m.amount
-        self.infoOfDay[m.day]['dayAvgAmount'] = int(a / self.MINUTES_IN_DAY ) # 日内分时平均成交额 
+        self.infoOfDay[m.day]['dayAvgAmount'] = int(a / num ) # 日内分时平均成交额 
         return True
     
     def _calcMinutesOfDay(self, day : int):

@@ -62,7 +62,7 @@ class DataFile:
             self.cache[key] = self
         else:
             obj = self.cache[key]
-            self.data = obj.data
+            self.data = obj.data[ : ]
             self.calcDays()
 
     @staticmethod
@@ -285,6 +285,8 @@ class DataFile:
     #计算涨幅
     def calcZhangFu(self):
         if self.dataType != self.DT_DAY:
+            return
+        if not self.data:
             return
         for i in range(1, len(self.data)):
             pc = self.data[i - 1].close

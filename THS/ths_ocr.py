@@ -77,6 +77,12 @@ class ThsWbOcrUtils(number_ocr.DumpWindowUtils):
                 price += it[1]
             else:
                 last += it[1]
+        for k in ('+', '-'):
+            if k not in price:
+                continue
+            idx = price.index(k)
+            price = price[0 : idx]
+            last = price[idx : ] + last
         rs['price'] = float(price)
         if not last:
             return False
@@ -191,6 +197,7 @@ class ThsWbOcrUtils(number_ocr.DumpWindowUtils):
             return rs
         except Exception as e:
             traceback.print_exc()
+            print('ths_ocr:', rs)
         return None
 
 # 涨速排名

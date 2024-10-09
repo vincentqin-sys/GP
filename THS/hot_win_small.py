@@ -1011,15 +1011,16 @@ class HotZHCardView(ListView):
             nativeZF = info.get('HX_zhangFu_Native', None)
             if nativeZF != None:
                 nativeZF = f'{nativeZF :.2f}% '
+                zf = nativeZF
         txt = f"{data['zhHotOrder']:>3d} {name}"
         win32gui.SetTextColor(hdc, 0xdddddd)
         win32gui.DrawText(hdc, txt, len(txt), rect, win32con.DT_LEFT)
-        if nativeZF:
-            color = 0x00ff00 if  '-' in nativeZF else 0x0000ff
-            win32gui.SetTextColor(hdc, color)
-            rc2 = list(rect)
-            rc2[2] = 145
-            win32gui.DrawText(hdc, nativeZF, len(nativeZF), tuple(rc2), win32con.DT_RIGHT)
+        #if nativeZF:
+        #    color = 0x00ff00 if  '-' in nativeZF else 0x0000ff
+        #    win32gui.SetTextColor(hdc, color)
+        #    rc2 = list(rect)
+        #    rc2[2] = 145
+        #    win32gui.DrawText(hdc, nativeZF, len(nativeZF), tuple(rc2), win32con.DT_RIGHT)
         if zf:
             color = 0x00ff00 if  '-' in zf else 0x0000ff
             win32gui.SetTextColor(hdc, color)
@@ -1171,10 +1172,9 @@ class KPL_AllCardView(ListView):
         win32gui.SetWindowText(self.hwnd, self.getWindowTitle())
         win32gui.InvalidateRect(self.hwnd, None, True)
 
-
 class SimpleHotZHWindow(CardWindow):
     def __init__(self) -> None:
-        super().__init__((220, 310), (80, 30))
+        super().__init__((170, 310), (80, 30))
         self.maxMode = True #  是否是最大化的窗口
 
     def createWindow(self, parentWnd):

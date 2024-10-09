@@ -459,11 +459,15 @@ class HexinUrl(Henxin):
         kind = _memcache.getKindByUrl(url)
         if not _memcache.needUpdate(code, kind):
             return _memcache.getCache(code, kind)
-
-        resp = self.session.get(url)
+        try:
+            resp = self.session.get(url)
+        except Exception as e:
+            print('henxin.loadUrlData Error: ', url, '-->', e)
+            return None
         if resp.status_code != 200:
-            print('[HexinUrl.loadUrlData] Error:', resp)
-            raise Exception('[HexinUrl.loadUrlData]', resp)
+            print('[HexinUrl.loadUrlData] Error:', code, resp)
+            return None
+            #raise Exception('[HexinUrl.loadUrlData]', resp)
         txt = resp.content.decode('utf-8')
         bi = txt.index('(')
         ei = txt.rindex(')')
@@ -603,8 +607,11 @@ class ThsDataFile(DataFile):
         if self.dataType == DataFile.DT_DAY:
             hx = HexinUrl()
             rs = hx.loadKLineData(self.code)
-            self.data = rs['data']
-            self.name = rs['name']
+            if rs:
+                self.data = rs['data']
+                self.name = rs['name']
+            else:
+                self.data = None
             
 if __name__ == '__main__':
     hx = Henxin()

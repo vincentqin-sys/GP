@@ -16,34 +16,35 @@ class SimpleTimelineModel:
         self.code = None
         self.name = None
         self.day = None # int value
-        self.pre = None # int value
+        self.pre = None # float value
         self.priceRange = None
         self.volRange = None
         self.amountRange = None
-        self.data = []
-        self.localData = None
+        self.netData = []
+        self.curData = []
+        self.dataFile = None
 
-    def _calcCodePre(self, idx, lines):
+    def _calcCodePre_Cls(self, idx, lines):
         if idx == 0:
             c = lines[idx]['last_px']
         else:
             c = lines[idx - 1]['last_px']
-        self.pre = int(c * 100 + 0.5)
+        self.pre = c #int(c * 100 + 0.5)
 
     def _loadCode_Cls_Newest(self, code):
         self.code = code
-        self.data.clear()
+        self.netData.clear()
         try:
             url = cls.ClsUrl()
             ds = url.loadFenShi(code)
             for d in ds['line']:
                 ts = datafile.ItemData()
                 ts.time = url.getVal(d, 'minute', int, 0)
-                ts.price = int(url.getVal(d, 'last_px', float, 0) * 100 + 0.5)
+                ts.price = url.getVal(d, 'last_px', float, 0) #int(url.getVal(d, 'last_px', float, 0) * 100 + 0.5)
                 ts.vol = url.getVal(d, 'business_amount', int, 0)
                 ts.amount = url.getVal(d, 'business_balance', int, 0)
-                ts.avgPrice = int(url.getVal(d, 'av_px', float, 0) * 100 + 0.5)
-                self.data.append(ts)
+                ts.avgPrice = url.getVal(d, 'av_px', float, 0) #int(url.getVal(d, 'av_px', float, 0) * 100 + 0.5)
+                self.netData.append(ts)
         except Exception as e:
             traceback.print_exc()
             print('[SimpleTimelineModel.loadCode] fail', code)
@@ -52,7 +53,7 @@ class SimpleTimelineModel:
     # day : int | None(is last day)
     def _loadCode_Cls(self, code, day = None):
         self.code = code
-        self.data.clear()
+        self.netData.clear()
         try:
             if type(day) == 'str':
                 day = day.replace('-', '')
@@ -69,17 +70,17 @@ class SimpleTimelineModel:
             lines = his5datas['line']
             ONE_DAY_LINES = 241
             idx = days.index(day) * ONE_DAY_LINES
-            self._calcCodePre(idx, lines)
+            self._calcCodePre_Cls(idx, lines)
             for i in range(idx, min(idx + ONE_DAY_LINES, len(lines))):
                 d = lines[i]
                 ts = datafile.ItemData()
                 ts.time = url.getVal(d, 'minute', int, 0)
-                ts.close = ts.price = int(url.getVal(d, 'last_px', float, 0) * 100 + 0.5)
+                ts.close = ts.price = url.getVal(d, 'last_px', float, 0) #int(url.getVal(d, 'last_px', float, 0) * 100 + 0.5)
                 ts.vol = url.getVal(d, 'business_amount', int, 0)
                 ts.amount = url.getVal(d, 'business_balance', int, 0)
-                ts.avgPrice = int(url.getVal(d, 'av_px', float, 0) * 100 + 0.5)
+                ts.avgPrice = url.getVal(d, 'av_px', float, 0) #int(url.getVal(d, 'av_px', float, 0) * 100 + 0.5)
                 ts.day = url.getVal(d, 'date', int, 0)
-                self.data.append(ts)
+                self.netData.append(ts)
         except Exception as e:
             traceback.print_exc()
             print('[SimpleTimelineModel.loadCode] fail', code)
@@ -89,7 +90,7 @@ class SimpleTimelineModel:
     # 最新一天的指数分时
     def loadCode_Ths_Newest(self, code, day):
         self.code = code
-        self.data.clear()
+        self.netData.clear()
         try:
             if type(day) == 'str':
                 day = day.replace('-', '')
@@ -101,15 +102,15 @@ class SimpleTimelineModel:
             if day and day != lastDay:
                 return False
             self.day = lastDay
-            self.pre = int(data['pre'] * 100 + 0.5)
+            self.pre = data['pre'] #int(data['pre'] * 100 + 0.5)
             for d in data['dataArr']:
                 ts = datafile.ItemData()
                 ts.time = d['time']
-                ts.close = ts.price = int(d['price'] * 100 + 0.5)
+                ts.close = ts.price = d['price'] #int(d['price'] * 100 + 0.5)
                 ts.vol = int(d['vol'])
                 ts.amount = int(d['money'])
                 ts.day = lastDay
-                self.data.append(ts)
+                self.netData.append(ts)
             return True
         except Exception as e:
             traceback.print_exc()
@@ -121,51 +122,63 @@ class SimpleTimelineModel:
             code = code[2 : ]
         if code[0] not in ('0', '3', '6'):
             return
-        if not self.localData or self.localData.code != code:
-            self.localData = datafile.DataFile(code, datafile.DataFile.DT_MINLINE)
-            self.localData.loadData(datafile.DataFile.FLAG_ALL)
-        if not self.localData:
+        if not self.dataFile or self.dataFile.code != code:
+            self.dataFile = datafile.DataFile(code, datafile.DataFile.DT_MINLINE)
+            self.dataFile.loadData(datafile.DataFile.FLAG_ALL)
+    
+    def merge(self, day):
+        if not self.dataFile:
             return
+        if self.dataFile.data is None:
+            self.dataFile.data = []
+        self.dataFile.data.extend(self.netData)
         if type(day) == str:
             day = int(day.replace('-', ''))
-        idx = self.localData.getItemIdx(day)
+        if not day:
+            day = self.dataFile.data[-1].day
+        idx = self.dataFile.getItemIdx(day)
         if idx < 0:
             return
-        if idx > 0:
-            self.pre = self.localData.data[idx - 1].close
-        else:
-            self.pre = self.localData.data[idx].open
-        while idx < len(self.localData.data):
-            dt = self.localData.data[idx]
+        if not self.pre:
+            if idx > 0:
+                self.pre = self.dataFile.data[idx - 1].close
+            else:
+                self.pre = self.dataFile.data[idx].open
+
+        while idx < len(self.dataFile.data):
+            dt = self.dataFile.data[idx]
             if dt.day == day:
-                self.data.append(dt)
+                self.curData.append(dt)
                 dt.price = dt.close
                 idx += 1
             else:
                 break
+    
+    def loadNet(self, code, day):
+        if code[0] in ('0', '3', '6'): # , '8'
+            self._loadCode_Cls(code, day)
+        else:
+            self.loadCode_Ths_Newest(code, day)
 
     def load(self, code, day = None):
         if type(code) == int:
             code = f'{code :06d}'
         if not code:
             return
-        if code[0] in ('0', '3', '6', '8'):
-            if not self.loadCode_Ths_Newest(code, day):
-                self.loadLocal(code, day)
-        else:
-            if not self._loadCode_Cls(code, day):
-                self.loadLocal(code, day)
-            #obj = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name.distinct()).where(ths_orm.THS_ZS_ZD.code == code).scalar()
-            obj = ths_orm.THS_GNTC.select(ths_orm.THS_GNTC.name.distinct()).where(ths_orm.THS_GNTC.code == code).scalar()
-            self.name = obj
+        self.loadNet(code, day)
+        self.loadLocal(code, day)
+        self.merge(day)
+        #obj = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name.distinct()).where(ths_orm.THS_ZS_ZD.code == code).scalar()
+        obj = ths_orm.THS_GNTC.select(ths_orm.THS_GNTC.name.distinct()).where(ths_orm.THS_GNTC.code == code).scalar()
+        self.name = obj
 
     def getPriceRange(self):
-        if not self.data:
+        if not self.curData:
             return None
         if self.priceRange:
             return self.priceRange
         minPrice = maxPrice = 0
-        for dt in self.data:
+        for dt in self.curData:
             if minPrice == 0:
                 minPrice = dt.price
                 maxPrice = dt.price
@@ -181,12 +194,12 @@ class SimpleTimelineModel:
         return self.priceRange
     
     def getVolRange(self):
-        if not self.data:
+        if not self.curData:
             return None
         if self.volRange:
             return self.volRange
         minVol = maxVol = 0
-        for dt in self.data:
+        for dt in self.curData:
             if dt.vol <= 0:
                 continue
             if minVol == 0:
@@ -199,12 +212,12 @@ class SimpleTimelineModel:
         return self.volRange
     
     def getAmountRange(self):
-        if not self.data:
+        if not self.curData:
             return None
         if self.amountRange:
             return self.amountRange
         minVol = maxVol = 0
-        for dt in self.data:
+        for dt in self.curData:
             if dt.amount <= 0:
                 continue
             if minVol == 0:
@@ -230,20 +243,20 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         self.priceRange = None
         self.model = SimpleTimelineModel()
         self.model.load(code, day)
-        self.initHilights(code, day)
-        self.invalidWindow()
+        self.initHilights()
         title = f'{self.model.code}   {self.model.name}'
         win32gui.SetWindowText(self.hwnd, title)
+        self.invalidWindow()
 
-    def initHilights(self, code, day):
+    def initHilights(self):
         self.hilights.clear()
-        if not day:
-            return
-        fxc = fx.FenXiCode(code)
+        day = self.model.day
+        fxc = fx.FenXiCode(self.model.code)
         fxc.loadFile()
         fxc.calcOneDay(day)
         for x in fxc.results:
             self.addHilight(x['fromMinute'], x['endMinute'], x)
+        self.invalidWindow()
 
     def getYAtPrice(self, price, h):
         priceRange = self.model.getPriceRange()
@@ -296,8 +309,8 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         p = cw / ONE_DAY_LINES
         x += p / 2
         idx = int(x / p)
-        if idx >= len(self.model.data):
-            idx = len(self.model.data) - 1
+        if idx >= len(self.model.curData):
+            idx = len(self.model.curData) - 1
         return idx
 
     def formatAmount(self, amount):
@@ -382,9 +395,10 @@ class SimpleTimelineWindow(base_win.BaseWindow):
             ex = self.getXAtMinuteIdx(self.minuteToIdx(e), W)
             psy = self.paddings[1]
             pey = vsy - self.volSpace
-            self.drawer.fillRect(hdc, (sx, psy + 1, ex + 1, pey), 0x101010)
+            H_COLOR = 0x303030
+            self.drawer.fillRect(hdc, (sx, psy + 1, ex + 1, pey), H_COLOR)
             vey = H - self.paddings[3]
-            self.drawer.fillRect(hdc, (sx, vsy + 1, ex + 1, vey), 0x101010)
+            self.drawer.fillRect(hdc, (sx, vsy + 1, ex + 1, vey), H_COLOR)
             txtRc = (sx, pey - 30, sx + 60, pey)
             text = f'{info["zf"] :.1f}% \n{info["max3MinutesAvgAmount"]}万'
             self.drawer.drawText(hdc, text, txtRc, color = 0xe0abce, align = win32con.DT_LEFT)
@@ -405,7 +419,7 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         # vertical line
         x = self.getXAtMinuteIdx(idx, W)
         self.drawer.drawLine(hdc, x, self.paddings[1], x, H - self.paddings[3], 0x905090, style = win32con.PS_DOT)
-        md = self.model.data[idx]
+        md = self.model.curData[idx]
         tips = f'{self.formatAmount(md.amount)}元'
         ty = H - self.paddings[3] + 5
         rc = (x - 50, ty, x + 50, H)
@@ -421,11 +435,11 @@ class SimpleTimelineWindow(base_win.BaseWindow):
         self.drawer.drawText(hdc, f'{zf :.2f}%', rc, 0xf06050, win32con.DT_VCENTER | win32con.DT_SINGLELINE | win32con.DT_LEFT)
 
     def drawMinites(self, hdc):
-        if not self.model.data:
+        if not self.model.curData:
             return
         W, H = self.getClientSize()
         self.drawer.use(hdc, self.drawer.getPen(0xffffff))
-        for i, md in enumerate(self.model.data):
+        for i, md in enumerate(self.model.curData):
             idx = self.minuteToIdx(md.time)
             x = self.getXAtMinuteIdx(idx, W)
             y = self.getYAtPrice(md.price, H)
@@ -433,11 +447,11 @@ class SimpleTimelineWindow(base_win.BaseWindow):
                 win32gui.MoveToEx(hdc, x, y)
             else:
                 win32gui.LineTo(hdc, x, y)
-        first = self.model.data[0]
+        first = self.model.curData[0]
         if not hasattr(first, 'avgPrice'):
             return
         self.drawer.use(hdc, self.drawer.getPen(0x00ffff))
-        for i, md in enumerate(self.model.data):
+        for i, md in enumerate(self.model.curData):
             idx = self.minuteToIdx(md.time)
             x = self.getXAtMinuteIdx(idx, W)
             y = self.getYAtPrice(md.avgPrice, H)
@@ -447,11 +461,11 @@ class SimpleTimelineWindow(base_win.BaseWindow):
                 win32gui.LineTo(hdc, x, y)
 
     def _getVolLineColor(self, idx):
-        now = self.model.data[idx].price
+        now = self.model.curData[idx].price
         if idx == 0:
             pre = self.model.pre
         else:
-            pre = self.model.data[idx - 1].price
+            pre = self.model.curData[idx - 1].price
         if now > pre:
             return 0x0000dd
         if now == pre:
@@ -460,7 +474,7 @@ class SimpleTimelineWindow(base_win.BaseWindow):
 
     def drawVol(self, hdc):
         W, H = self.getClientSize()
-        for i, md in enumerate(self.model.data):
+        for i, md in enumerate(self.model.curData):
             idx = self.minuteToIdx(md.time)
             x = self.getXAtMinuteIdx(idx, W)
             y = self.getYAtVol(md.vol, H)
@@ -566,10 +580,16 @@ class TimelinePanKouWindow(base_win.BaseWindow):
         win32gui.PostMessage(self.hwnd, win32con.WM_SIZE, 0, 0)
 
     def load(self, code, day = None):
-        self.timelineWin.load(code, day)
-        self.pankouWin.load(code)
+        pool = base_win.ThreadPool.instance()
+        def lda():
+            self.timelineWin.load(code, day)
+        def ldb():
+            self.pankouWin.load(code)
+        pool.addTask('TLa', lda)
+        pool.addTask('TLb', ldb)
 
 if __name__ == '__main__':
+    base_win.ThreadPool.instance().start()
     win = TimelinePanKouWindow()
     win.createWindow(None, (0, 0, 1000, 600), win32con.WS_OVERLAPPEDWINDOW)
     win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)

@@ -1,4 +1,4 @@
-import os, sys, functools, copy, datetime, json
+import os, sys, functools, copy, datetime, json, time
 from win32.lib.win32con import WS_CAPTION, WS_POPUP, WS_SYSMENU
 import win32gui, win32con
 import requests, peewee as pw
@@ -30,13 +30,13 @@ class KLineModel_DateType(datafile.DataFile):
         if type(code) == int:
             code = f'{code :06d}'
         if not typeName:
-            typeName = 'ths' if code[0] in ('8', '0', '3', '6') else 'cls'
+            typeName = 'cls' if code[0] in ('0', '3', '6') else 'ths' # '8',
         self.code = code
         self.typeName = typeName
         self.dateType = 'day' # 'week' | 'month'
         self.dateTypeDatas = {}
         self.data = None
-
+    
     def loadDataFile(self):
         if self.typeName.lower() == 'ths':
             model = KLineModel_Ths(self.code)
@@ -45,6 +45,14 @@ class KLineModel_DateType(datafile.DataFile):
         model.loadDataFile()
         self.__dict__.update(model.__dict__)
         self.dateTypeDatas['day'] = self.data
+
+    def calcAttrs(self):
+    #    base_win.ThreadPool.instance().addTask(f'Attrs-{self.code}', self.calcAttrs_)
+    #   def calcAttrs(self):
+        self.calcMA(5)
+        self.calcMA(10)
+        self.calcZDT()
+        self.calcZhangFu()
 
     # 'day' | 'week' | 'month'
     def changeDateType(self, dateType):
@@ -2073,10 +2081,7 @@ class KLineWindow(base_win.BaseWindow):
             for idt in self.indicators:
                 idt.setData(None)
             return
-        self.model.calcMA(5)
-        self.model.calcMA(10)
-        self.model.calcZDT()
-        self.model.calcZhangFu()
+        self.model.calcAttrs()
         gntcObj = ths_orm.THS_GNTC.get_or_none(code = str(self.model.code))
         self.model.hy = []
         self.model.gn = []
@@ -2914,6 +2919,9 @@ class KLineCodeWindow(base_win.BaseWindow):
             self.klineWin.addIndicator(nameOrObj)
 
     def changeCode(self, code):
+        base_win.ThreadPool.instance().addTask(f'K-{code}', self.changeCode_R, code)
+
+    def changeCode_R(self, code):
         self.code = code
         self.codeWin.changeCode(code)
         model = KLineModel_DateType(code)
