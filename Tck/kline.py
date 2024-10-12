@@ -23,6 +23,17 @@ class KLineModel_Cls(cls.ClsDataFile):
     def __init__(self, code) -> None:
         super().__init__(code, datafile.DataFile.DT_DAY)        
 
+def getTypeByCode(code):
+    if not code:
+        return None
+    if type(code) == int:
+        code = f'{code :06d}'
+    if type(code) != str:
+        return None
+    if code[0] in ('0', '3', '6', '8'):
+        return 'ths'
+    return 'cls'
+
 class KLineModel_DateType(datafile.DataFile):
     # typeName is 'ths' | 'cls'
     def __init__(self, code, typeName = None):
@@ -30,7 +41,7 @@ class KLineModel_DateType(datafile.DataFile):
         if type(code) == int:
             code = f'{code :06d}'
         if not typeName:
-            typeName = 'cls' if code[0] in ('0', '3', '6') else 'ths' # '8',
+            typeName = getTypeByCode(code)
         self.code = code
         self.typeName = typeName
         self.dateType = 'day' # 'week' | 'month'
@@ -100,6 +111,8 @@ class KLineModel_DateType(datafile.DataFile):
 
     def initWeekModelData(self, ds):
         rs = []
+        if not ds:
+            return rs
         cur = None
         week = None
         for item in ds:

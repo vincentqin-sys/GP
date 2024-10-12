@@ -141,6 +141,7 @@ class EImage(BaseEImage):
             rect = (sx, sy, ex, ey)
             rs.append(rect)
         self.itemsRect = rs
+        return rs
 
     # :param img is EImage object
     # :return an index, not find return -1

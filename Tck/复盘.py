@@ -28,7 +28,7 @@ class FuPanMgrWindow(base_win.BaseWindow):
             #{'name': 'CLS_BK', 'title': '财联社板块',  'class': top_cls_bk.ClsBkWindow},
             {'name': 'MY', 'title': '自选',  'class': top_observe.MyWindow},
             {'name': 'HOTS_TC', 'title': '热度题材',  'class': top_hot_tc.HotTCWindow},
-            {'name': 'DIALY', 'title': '日记',  'class': top_diary.DailyWindow},
+            #{'name': 'DIALY', 'title': '日记',  'class': top_diary.DailyWindow},
         ]
         gp = base_win.GroupButton(gpInfos)
         gp.setSelGroup(0)

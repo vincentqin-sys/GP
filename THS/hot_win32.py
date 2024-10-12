@@ -131,7 +131,7 @@ def _workThread(thsWin : ths_win.ThsWindow, fileName):
             simpleWindow.changeSelectDay(selDay)
             simpleWindow2.changeSelectDay(selDay)
             thsShareMem.writeSelDay(selDay)
-        rs = wbOcr.runOcr(thsWin.mainHwnd)
+        rs = wbOcr.runOcr_InHomePage(thsWin.mainHwnd)
         codeBasicWindow.updateWeiBi(rs)
         thsSelDayWin.onTryMove(thsWin, nowCode)
 

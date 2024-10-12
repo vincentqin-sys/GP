@@ -11,7 +11,8 @@ class CodeEditor(MutiEditor):
         super().__init__()
         self.css['bgColor'] = 0xfdfdfd
         self.css['fontName'] = '新宋体'
-        self.paddingX = 40
+        self.css['fontSize'] = 16
+        self.css['paddings'] = (40, 0, 40, 0)
         self.KEYS = ('def', 'None', 'False', 'True', 'and', 'or', 
                     'break', 'class', 'continue', 'del', 'if', 'elif', 'else',
                     'for', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 
@@ -141,7 +142,7 @@ class CodeEditor(MutiEditor):
 
     def drawLineNo(self, hdc):
         _, H = self.getClientSize()
-        w = self.paddingX - 5
+        w = self.css['paddings'][0] - 5
         rc = (0, 0, w, H)
         self.drawer.fillRect(hdc, rc, 0xdddddd)
         for i in range(self.startRow, len(self.lines)):

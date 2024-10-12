@@ -11,6 +11,17 @@ from Common import base_win, ext_win
 from db import ths_orm
 from Tck import fx
 
+def getTypeByCode(code):
+    if not code:
+        return None
+    if type(code) == int:
+        code = f'{code :06d}'
+    if type(code) != str:
+        return None
+    if code[0] in ('0', '3', '6'):
+        return 'cls'
+    return 'ths'
+
 class SimpleTimelineModel:
     def __init__(self) -> None:
         self.code = None
@@ -71,7 +82,7 @@ class SimpleTimelineModel:
             ONE_DAY_LINES = 241
             idx = days.index(day) * ONE_DAY_LINES
             self._calcCodePre_Cls(idx, lines)
-            for i in range(idx, min(idx + ONE_DAY_LINES, len(lines))):
+            for i in range(idx, min(idx + ONE_DAY_LINES + 1, len(lines))): # skip 930
                 d = lines[i]
                 ts = datafile.ItemData()
                 ts.time = url.getVal(d, 'minute', int, 0)
@@ -126,16 +137,18 @@ class SimpleTimelineModel:
             self.dataFile = datafile.DataFile(code, datafile.DataFile.DT_MINLINE)
             self.dataFile.loadData(datafile.DataFile.FLAG_ALL)
     
-    def merge(self, day):
+    def merge(self):
         if not self.dataFile:
             return
+        day = self.day
         if self.dataFile.data is None:
             self.dataFile.data = []
-        self.dataFile.data.extend(self.netData)
-        if type(day) == str:
-            day = int(day.replace('-', ''))
-        if not day:
-            day = self.dataFile.data[-1].day
+        if self.dataFile.data:
+            last = self.dataFile.data[-1].day
+            if day != last:
+                self.dataFile.data.extend(self.netData)
+        else:
+            self.dataFile.data.extend(self.netData)
         idx = self.dataFile.getItemIdx(day)
         if idx < 0:
             return
@@ -145,6 +158,7 @@ class SimpleTimelineModel:
             else:
                 self.pre = self.dataFile.data[idx].open
 
+        self.curData.clear()
         while idx < len(self.dataFile.data):
             dt = self.dataFile.data[idx]
             if dt.day == day:
@@ -155,7 +169,7 @@ class SimpleTimelineModel:
                 break
     
     def loadNet(self, code, day):
-        if code[0] in ('0', '3', '6'): # , '8'
+        if getTypeByCode(code) == 'cls':
             self._loadCode_Cls(code, day)
         else:
             self.loadCode_Ths_Newest(code, day)
@@ -167,7 +181,7 @@ class SimpleTimelineModel:
             return
         self.loadNet(code, day)
         self.loadLocal(code, day)
-        self.merge(day)
+        self.merge()
         #obj = ths_orm.THS_ZS_ZD.select(ths_orm.THS_ZS_ZD.name.distinct()).where(ths_orm.THS_ZS_ZD.code == code).scalar()
         obj = ths_orm.THS_GNTC.select(ths_orm.THS_GNTC.name.distinct()).where(ths_orm.THS_GNTC.code == code).scalar()
         self.name = obj
@@ -279,7 +293,7 @@ class SimpleTimelineWindow(base_win.BaseWindow):
     def getXAtMinuteIdx(self, minuteIdx, w):
         ow = w
         w -= self.paddings[0] + self.paddings[2]
-        ONE_DAY_LINES = 240
+        ONE_DAY_LINES = max(self.getMinutesNum(), 240)
         p = w / ONE_DAY_LINES
         if minuteIdx == ONE_DAY_LINES:
             return ow - self.paddings[2]
@@ -305,13 +319,19 @@ class SimpleTimelineWindow(base_win.BaseWindow):
             x = w - self.paddings[2]
         x -= self.paddings[0]
         cw = w - self.paddings[0] - self.paddings[2]
-        ONE_DAY_LINES = 240
+        ONE_DAY_LINES = max(self.getMinutesNum(), 240)
         p = cw / ONE_DAY_LINES
         x += p / 2
         idx = int(x / p)
         if idx >= len(self.model.curData):
             idx = len(self.model.curData) - 1
         return idx
+    
+    def getMinutesNum(self):
+        if self.model and self.model.curData:
+            v = len(self.model.curData)
+            return v
+        return 1
 
     def formatAmount(self, amount):
         if amount >= 100000000:

@@ -2342,8 +2342,8 @@ class Editor(BaseEditor):
         self.css['placeHolderColor'] = 0xb0b0b0
         self.css['borderColor'] = 0xdddddd
         self.css['selBgColor'] = 0xf0c0c0
+        self.css['paddings'] = (3, 0, 3, 0)
         self.scrollX = 0 # always <= 0
-        self.paddingX = 3 # 左右padding
         self.text = ''
         self.insertPos = 0
         self.selRange = None # (beginPos, endPos)
@@ -2411,11 +2411,11 @@ class Editor(BaseEditor):
         W, H = self.getClientSize()
         W -= self.css['paddings'][2]
         stw, *_ = win32gui.GetTextExtentPoint32(hdc, self.text[0 : pos])
-        px = self.scrollX + stw + self.paddingX
-        if px < self.paddingX:
-            self.scrollX += self.paddingX - px
-        elif px > W - self.paddingX:
-            self.scrollX -= px - (W - self.paddingX)
+        px = self.scrollX + stw + self.css['paddings'][0]
+        if px < self.self.css['paddings'][0]:
+            self.scrollX += self.self.css['paddings'][0] - px
+        elif px > W - self.css['paddings'][2]:
+            self.scrollX -= px - (W - self.css['paddings'][2])
         win32gui.ReleaseDC(self.hwnd, hdc)
         self.invalidWindow()
 
@@ -2454,11 +2454,11 @@ class Editor(BaseEditor):
 
     def getXAtPos(self, pos):
         if not self.text or pos < 0:
-            return self.paddingX
+            return self.css['paddings'][0]
         hdc = win32gui.GetDC(self.hwnd)
         self.drawer.use(hdc, self.getDefFont())
         tw, *_ = win32gui.GetTextExtentPoint32(hdc, self.text[0 : pos])
-        x = self.scrollX + tw + self.paddingX
+        x = self.scrollX + tw + self.css['paddings'][0]
         win32gui.ReleaseDC(self.hwnd, hdc)
         return x
     
@@ -2482,7 +2482,7 @@ class Editor(BaseEditor):
 
     def getPosAtX(self, x):
         hdc = win32gui.GetDC(self.hwnd)
-        pos = self.getPosAtX_Text(self.text, x - self.paddingX)
+        pos = self.getPosAtX_Text(self.text, x - self.css['paddings'][0])
         win32gui.ReleaseDC(self.hwnd, hdc)
         return pos
     
@@ -2531,7 +2531,7 @@ class Editor(BaseEditor):
             ex = self.getXAtPos(self.selRange[1])
             src = (sx, y - 2, ex, y + lh + 2)
             self.drawer.fillRect(hdc, src, self.css['selBgColor'])
-        rc = (self.scrollX + self.paddingX, y, W - self.css['paddings'][2], y + lh)
+        rc = (self.scrollX + self.css['paddings'][0], y, W - self.css['paddings'][2], y + lh)
         self.drawer.drawText(hdc, self.text, rc, color=self.css['textColor'], align = win32con.DT_LEFT)
 
     def _showPopupTip(self):
@@ -2666,8 +2666,8 @@ class MutiEditor(BaseEditor):
         self.css['textColor'] = 0x202020
         self.css['borderColor'] = 0xdddddd
         self.css['selBgColor'] = 0xf0c0c0
+        self.css['paddings'] = (5, 0, 5, 0)
         self.startRow = 0
-        self.paddingX = 5
         self.lines = [] # items of { text,  }
         self.insertPos = None # Pos object
         self.selRange = None # (begin-Pos, end-Pos)
@@ -2798,16 +2798,16 @@ class MutiEditor(BaseEditor):
 
     def getXAtPos(self, pos):
         if not self.lines or not pos:
-            return self.paddingX
+            return self.css['paddings'][0]
         if pos.row > len(self.lines):
-            return self.paddingX
+            return self.css['paddings'][0]
         line = self.lines[pos.row]['text']
         if pos.col > len(line):
-            return self.paddingX
+            return self.css['paddings'][0]
         hdc = win32gui.GetDC(self.hwnd)
         self.drawer.use(hdc, self.getDefFont())
         tw, *_ = win32gui.GetTextExtentPoint32(hdc, line[0 : pos.col])
-        x = tw + self.paddingX
+        x = tw + self.css['paddings'][0]
         win32gui.ReleaseDC(self.hwnd, hdc)
         return x
 
@@ -2841,7 +2841,7 @@ class MutiEditor(BaseEditor):
     def getColAtX(self, row, x):
         if not self.lines or row < 0 or row >= len(self.lines):
             return 0
-        pos = self.getColAtX_Text(self.lines[row]['text'], x - self.paddingX)
+        pos = self.getColAtX_Text(self.lines[row]['text'], x - self.css['paddings'][0])
         return pos
     
     def getRowAtY(self, y):

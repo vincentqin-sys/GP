@@ -1347,10 +1347,21 @@ class CodeBasicWindow(base_win.NoActivePopupWindow):
         x, y = state['pos']
         win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
 
-    def updateWeiBi(self, info):
-        self.wbData = info
-        if info:
-            self.invalidWindow()
+    def updateWeiBi(self, newWb):
+        oldWb = self.wbData
+        # check changed
+        if not oldWb and not newWb:
+            return
+        if not newWb:
+            return
+        if not newWb.get('code', None):
+            return
+        # code changed ?
+        changed = newWb['code'] != self.curCode
+        if changed:
+            self.changeCode(newWb['code'])
+        self.wbData = newWb
+        self.invalidWindow()
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_NCHITTEST:
