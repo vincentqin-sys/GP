@@ -1,3 +1,4 @@
+from win32.lib.win32con import WS_CHILD, WS_VISIBLE
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os, threading, copy
 import sys, pyautogui
@@ -1377,3 +1378,54 @@ class CodeBasicWindow(base_win.NoActivePopupWindow):
                 kline_utils.openInCurWindow(self, data)
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
+
+class RecordWindow(base_win.MutiEditor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.css['bgColor'] = 0xffffff
+        self.MIN_SIZE = (80, 30)
+        self.MAX_SIZE = (700, 450)
+        self.minModeXY = None
+        self.maxMode = False
+
+    def setVisible(self, visible : bool):
+        if not win32gui.IsWindow(self.hwnd):
+            return
+        if visible:
+            win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
+        else:
+            win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+
+    def createWindow(self, parentWnd, rect = None, style = None, className = 'STATIC', title='记'):
+        style = win32con.WS_POPUP | win32con.WS_CAPTION | win32con.WS_VISIBLE
+        prc = win32gui.GetWindowRect(parentWnd)
+        PH = prc[3] - prc[1]
+        W, H = self.MIN_SIZE
+        self.minModeXY = (540, PH - H - 25)
+        rect = (*self.minModeXY, W, H)
+        super().createWindow(parentWnd, rect, style, className, title)
+        self.enableLineNo()
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_NCLBUTTONDBLCLK:
+            self.maxMode = not self.maxMode
+            if self.maxMode:
+                rc = win32gui.GetWindowRect(self.hwnd)
+                self.minModeXY = (rc[0], rc[1])
+                W, H = self.MAX_SIZE
+                SW, SH = win32api.GetSystemMetrics(win32con.SM_CXSCREEN), win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+                sx = (SW - W) // 2
+                sy = SH - H - 40
+                win32gui.SetWindowPos(self.hwnd, 0, sx, sy, *self.MAX_SIZE, win32con.SWP_NOZORDER) # win32con.HWND_TOP
+            else:
+                win32gui.SetWindowPos(self.hwnd, 0, *self.minModeXY, *self.MIN_SIZE, win32con.SWP_NOZORDER)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
+
+if __name__ == '__main__':
+    import ths_win
+    thsWin = ths_win.ThsWindow()
+    thsWin.init()
+    rwin = RecordWindow()
+    rwin.createWindow(thsWin.topHwnd)
+    win32gui.PumpMessages()

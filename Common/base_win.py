@@ -2294,7 +2294,7 @@ class BaseEditor(BaseWindow):
 
     @property
     def lineHeight(self):
-        return self.css['fontSize'] + 4
+        return self.css['fontSize'] + 6
     
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_SETFOCUS:
@@ -2666,12 +2666,15 @@ class MutiEditor(BaseEditor):
         self.css['textColor'] = 0x202020
         self.css['borderColor'] = 0xdddddd
         self.css['selBgColor'] = 0xf0c0c0
+        self.css['lineNoBgColor'] = 0xE0E0E0
+        self.css['lineNoTextColor'] = 0xD3B291
         self.css['paddings'] = (5, 0, 5, 0)
         self.startRow = 0
         self.lines = [] # items of { text,  }
         self.insertPos = None # Pos object
         self.selRange = None # (begin-Pos, end-Pos)
         self.readOnly = False
+        self.hasLineNo = False
 
     def setText(self, text):
         self.selRange = None
@@ -3061,6 +3064,10 @@ class MutiEditor(BaseEditor):
     def onDraw(self, hdc):
         W, H = self.getClientSize()
         lh = self.css['fontSize']
+        if self.hasLineNo:
+            pds = self.css['paddings']
+            lineNoRect = (0, pds[1], pds[0], H)
+            self.drawer.fillRect(hdc, lineNoRect, self.css['lineNoBgColor'])
         self.drawSelRange(hdc)
         for r in range(self.startRow, len(self.lines)):
             pos = MutiEditor.Pos(r, 0)
@@ -3068,6 +3075,10 @@ class MutiEditor(BaseEditor):
             sx = self.getXAtPos(pos)
             rc = (sx, sy, W, sy + self.lineHeight)
             self.drawRow(hdc, r, rc)
+            if self.hasLineNo:
+                lineNo = r - self.startRow + 1
+                rc2 = (lineNoRect[0], rc[1], lineNoRect[2], rc[3])
+                self.drawer.drawText(hdc, f'{lineNo :>3d}', rc2, color = self.css['lineNoTextColor'], align = win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
     def onSetFocus(self):
         super().onSetFocus()
@@ -3170,6 +3181,11 @@ class MutiEditor(BaseEditor):
         rc = self.getCaretRect()
         self.setCaretPos(rc[0], rc[1])
         super().onSetFocus()
+
+    def enableLineNo(self):
+        self.hasLineNo = True
+        pds = self.css['paddings']
+        self.css['paddings'] = (40, pds[1], pds[2], pds[3])
 
 # listeners : Select = {src, tip-item}
 class ComboBox(Editor):

@@ -6,7 +6,7 @@ from multiprocessing.shared_memory import SharedMemory
 import system_hotkey #pip install system_hotkey
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
-from THS import hot_utils, hot_win_small, ths_win, hot_win, ths_ocr
+from THS import hot_utils, ths_win, hot_win, ths_ocr, tips_win
 from db import ths_orm
 from Common import base_win
 
@@ -14,13 +14,14 @@ curCode = None
 thsWindow = ths_win.ThsWindow()
 thsFPWindow = ths_win.ThsFuPingWindow()
 hotWindow = hot_win.HotWindow()
-simpleWindow = hot_win_small.SimpleWindow('HOT')
-simpleWindow2 = hot_win_small.SimpleWindow('ZT_GN')
+simpleWindow = tips_win.SimpleWindow('HOT')
+simpleWindow2 = tips_win.SimpleWindow('ZT_GN')
 thsShareMem = base_win.ThsShareMemory()
-simpleHotZHWindow = hot_win_small.SimpleHotZHWindow()
-codeBasicWindow = hot_win_small.CodeBasicWindow()
+simpleHotZHWindow = tips_win.SimpleHotZHWindow()
+codeBasicWindow = tips_win.CodeBasicWindow()
 thsSelDayWin = ths_win.ThsSelDayWindow()
-tipWins = [simpleWindow, simpleWindow2, simpleHotZHWindow, codeBasicWindow]
+recordWin = tips_win.RecordWindow()
+tipWins = [simpleWindow, simpleWindow2, simpleHotZHWindow, codeBasicWindow, recordWin]
 
 def updateCode(nowCode):
     global curCode, thsShareMem
@@ -151,6 +152,7 @@ def subprocess_main():
     simpleWindow2.createWindow(thsWindow.topHwnd)
     simpleHotZHWindow.createWindow(thsWindow.topHwnd)
     codeBasicWindow.createWindow(thsWindow.topHwnd)
+    recordWin.createWindow(thsWindow.topHwnd)
     #hotWindow.addListener(onListen, 'ListenHotWindow')
     threading.Thread(target = _workThread, args=(thsWindow, 'hot-win32.json')).start()
     
