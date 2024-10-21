@@ -193,7 +193,6 @@ def tryWork():
         traceback.print_exc()
     return False
 
-
 def work():
     unlockScreen()
     time.sleep(10)

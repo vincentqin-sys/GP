@@ -2412,7 +2412,7 @@ class Editor(BaseEditor):
         W -= self.css['paddings'][2]
         stw, *_ = win32gui.GetTextExtentPoint32(hdc, self.text[0 : pos])
         px = self.scrollX + stw + self.css['paddings'][0]
-        if px < self.self.css['paddings'][0]:
+        if px < self.css['paddings'][0]:
             self.scrollX += self.self.css['paddings'][0] - px
         elif px > W - self.css['paddings'][2]:
             self.scrollX -= px - (W - self.css['paddings'][2])

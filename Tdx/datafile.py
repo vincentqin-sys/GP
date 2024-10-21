@@ -373,9 +373,26 @@ class DataFileLoader:
             rs.append(item)
         f.close()
         # check minute line number
-        if dataType == DataFile.DT_MINLINE and (len(rs) % 240) != 0:
-            raise Exception('Minute Line number error:', len(rs))
+        if dataType == DataFile.DT_MINLINE and (len(rs) % 240 != 0):
+            #self._checkMinutesData(rs)
+            print('minutes data length error. len = ', len(rs), path)
+            raise Exception()
         return rs
+    
+    def _checkMinutesData(self, rs : list):
+        DAY_OF_MINUTES = 240
+        idx = 0
+        while idx < len(rs):
+            first = rs[idx]
+            if idx + DAY_OF_MINUTES >= len(rs):
+                break
+            last = rs[idx + DAY_OF_MINUTES - 1]
+            if first.day != last.day:
+                break
+            idx += DAY_OF_MINUTES
+        num = len(rs) - idx
+        for i in range(num):
+            rs.pop(-1)
 
     def mergeAll(self):
         codes = DataFileUtils.listAllCodes()
@@ -477,19 +494,50 @@ class DataFileLoader:
             self.chunkDayFile(c, fromDay, endDay)
             self.chunkMinlineFile(c, fromDay, endDay)
 
-if __name__ == '__main__':
+class ThsDataFile:
+    def __init__():
+        pass
+
+def test1():
     ld = DataFileLoader()
     #ld.mergeDayFile('999999')
     df = DataFile('999999', DataFile.DT_DAY)
     df.loadData(DataFile.FLAG_ALL)
     df.calcDays()
+
     #ld.mergeAll()
+    #ld.chunkAll(20240301, 20241017)
+
     #df = DataFile('999999', DataFile.DT_MINLINE, DataFile.FLAG_ALL)
-    #ld.chunkAll(20240301, 20240430)
     rs = ld._loadTdxDataFile(r'D:\Program Files\new_tdx2\vipdoc\sz\minline\sz000001.lc1')
     df = DataFile('000000', DataFile.DT_MINLINE)
     df.loadData(DataFile.FLAG_ALL)
     df.data = rs
     df.calcDays()
+    print(df.days)
+    pass
+
+def test2():
+    f = open(r'C:\THS\history\sznse\day\000617.day', 'rb')
+    HEAD_LEN = 16
+    head = f.read(HEAD_LEN)
+    items = struct.unpack('<6Bi3H', head)
+    *_, recordNum, startPos, bytesPerRecord, colNum = items
+    print(items)
+    COLUMN_DEF_LEN = 4
+    colsDef = []
+    for i in range(colNum):
+        d = f.read(COLUMN_DEF_LEN)
+        xd = struct.unpack('<4B', d)
+        colsDef.append(xd)
+    COLUMN_CNT_LEN = 4
+    f.seek(-bytesPerRecord, 2)
+    for i in range(colNum):
+        colData = f.read(COLUMN_CNT_LEN)
+        print(colsDef[i], struct.unpack('I', colData), struct.unpack('f', colData), struct.unpack('4B', colData))
+    f.close()
+
+if __name__ == '__main__':
+    test2()
     pass
     

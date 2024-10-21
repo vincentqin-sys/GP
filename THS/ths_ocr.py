@@ -213,11 +213,10 @@ class ThsZhangShuOcrUtils(number_ocr.DumpWindowUtils):
             return None
         rc = win32gui.GetWindowRect(hwnd)
         w, h = rc[2] - rc[0], rc[3] - rc[1]
-        if w < 500 or h < 200:
+        if w < 600 or h < 200:
             return None
-        sx, sy = 250, 50
-        ex, ey = 400, h // 2
-        imgFull = self.dumpImg(hwnd, (sx, sy, ex, ey))
+        ZHANG_SU_RECT = (257, 50, 522, 500) # 涨速区域
+        imgFull = self.dumpImg(hwnd, ZHANG_SU_RECT)
         #imgFull.save('D:/a.bmp')
         #img_PIL.show()
 
@@ -234,32 +233,36 @@ class ThsZhangShuOcrUtils(number_ocr.DumpWindowUtils):
     def runOcr(self, thsMainWnd):
         img = self.dump(thsMainWnd)
         if not img:
-            return
+            return None
         #img.save('D:/a.bmp')
-        eimg = number_ocr.BaseEImage(img)
-        sx = eimg.horSearchBoxColor(0, eimg.bImg.height // 2, 1, 60, 255)
-        if sx < 0:
-            return
-        destEx = -1
-        for y in range(5, img.height, 10):
-            ex = eimg.horSearchBoxColor(sx + 40, y, 3, 60, 0)
-            if ex >= 0:
-                destEx = ex
-                break
-        if destEx < 0:
-            return
-        dstImg = img.crop((sx + 2, 0, destEx + 3, img.height))
+        codeImg = img.crop((0, 0, 62, img.height)) # 代码区，宽62
+        zfImg = img.crop((img.width - 65, 0, img.width, img.height)) # 涨幅区，宽65
         #dstImg.save('D:/b.bmp')
-        bits = self.imgToBmpBytes(dstImg)
-        rs = self.ocr.readtext(bits, allowlist ='0123456789')
+        bits = self.imgToBmpBytes(codeImg)
+        codes = self.ocr.readtext(bits, allowlist ='0123456789')
+        bits = self.imgToBmpBytes(zfImg)
+        zfs = self.ocr.readtext(bits, allowlist ='0123456789.+-%')
+
         arr = []
         now = datetime.datetime.now()
         day = now.year * 10000 + now.month * 100 + now.day
         minuts = now.hour * 100 + now.minute
-        for r in rs:
-            #print(r)
-            if r[2] > 0.7 and len(r[1]) == 6:
-                arr.append({'code' : r[1], 'day' : day, 'minuts' : minuts})
+        num = min(len(codes), len(zfs))
+        for i in range(num):
+            codeInfo = codes[i]
+            zfInfo = zfs[i]
+            if codeInfo[2] > 0.7 and len(codeInfo[1]) == 6:
+                zf = zfInfo[1]
+                if zf[0] == '+' or zf[0] == '-':
+                    zf = zf[1 : ]
+                if '%' in zf:
+                    zf = zf[0 : zf.index('%')]
+                zf = float(zf)
+                if zf < 4: # skip < 4%
+                    continue
+                item = {'code' : codeInfo[1], 'day' : day, 'minuts' : minuts, 'zf': zf, 'time': now}
+                print(item)
+                arr.append(item)
         return arr
 
 def test_wb_main1():
@@ -270,7 +273,7 @@ def test_wb_main1():
         rs = wb.runOcr_InHomePage(ths.mainHwnd)
         print(rs)
         #break
-        time.sleep(3)
+        time.sleep(10)
 
 def test_zs_main2():
     thsWin = ths_win.ThsWindow()
@@ -278,18 +281,16 @@ def test_zs_main2():
     thsWin.showMax()
     zs = ThsZhangShuOcrUtils()
     dst = {}
-    f = open('D:/zs.txt', 'a')
     while True:
         rs = zs.runOcr(thsWin.mainHwnd)
-        for r in rs:
-            if r['code'] not in dst:
-                dst[r['code']] = r
-                f.write(f'{r["day"]} {r["minuts"]} {r["code"]} \n')
-        f.flush()
-        time.sleep(30)
+        if not rs:
+            time.sleep(2)
+        time.sleep(10)
 
 if __name__ == '__main__':
-    test_wb_main1()
+    #test_wb_main1()
+    
+    test_zs_main2()
     #img = Image.open('D:/a.png')
     #eimg = number_ocr.EImage(img)
     #dimg = eimg.expand()

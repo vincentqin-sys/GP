@@ -8,8 +8,8 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from THS import hot_utils
 from Download import henxin, cls
-from Common import base_win
-from db import tck_orm, ths_orm
+from Common import base_win, ext_win
+from db import tck_orm, ths_orm, tck_def_orm
 
 #-----------------------------------------------------------
 class ThsSortQuery:
@@ -1229,12 +1229,14 @@ class CodeBasicWindow(base_win.NoActivePopupWindow):
         self.css['borderColor'] = 0x22dddd
         self.css['enableBorder'] = True
         self.wbData = None
+        self.MAX_SIZE = (350, 65)
+        self.MIN_SIZE = (60, 30)
+        self.maxMode = True
         base_win.ThreadPool.instance().start()
 
     def createWindow(self, parentWnd):
-        SIZE = (350, 65)
         w = win32api.GetSystemMetrics(0) # desktop width
-        rect = (w - SIZE[0] - 100, 200, *SIZE)
+        rect = (w - self.MAX_SIZE[0] - 100, 200, *self.MAX_SIZE)
         super().createWindow(parentWnd, rect)
 
     def onDraw(self, hdc):
@@ -1371,6 +1373,8 @@ class CodeBasicWindow(base_win.NoActivePopupWindow):
             if cy <= 20:
                 return win32con.HTCAPTION
             return win32con.HTCLIENT
+        if msg == win32con.WM_NCLBUTTONDBLCLK:
+            return True
         if msg == win32con.WM_LBUTTONDBLCLK:
             from Tck import kline_utils
             if self.data and 'code' in self.data and self.data['code']:
@@ -1384,9 +1388,10 @@ class RecordWindow(base_win.MutiEditor):
         super().__init__()
         self.css['bgColor'] = 0xffffff
         self.MIN_SIZE = (80, 30)
-        self.MAX_SIZE = (700, 450)
+        self.MAX_SIZE = (900, 500)
         self.minModeXY = None
         self.maxMode = False
+        self.noteObj = None
 
     def setVisible(self, visible : bool):
         if not win32gui.IsWindow(self.hwnd):
@@ -1400,11 +1405,39 @@ class RecordWindow(base_win.MutiEditor):
         style = win32con.WS_POPUP | win32con.WS_CAPTION | win32con.WS_VISIBLE
         prc = win32gui.GetWindowRect(parentWnd)
         PH = prc[3] - prc[1]
+        PW = prc[2] - prc[0]
         W, H = self.MIN_SIZE
-        self.minModeXY = (540, PH - H - 25)
+        sy = (PH - H) // 2
+        sx = (PW - W) // 2 - 30
+        self.minModeXY = (sx, sy)
         rect = (*self.minModeXY, W, H)
         super().createWindow(parentWnd, rect, style, className, title)
+        #exstyle = win32gui.GetWindowLong(self.hwnd, win32con.GWL_EXSTYLE)
+        #exstyle = exstyle & ~win32con.WS_EX_WINDOWEDGE
+        #win32gui.SetWindowLong(self.hwnd, win32con.GWL_EXSTYLE, exstyle)
         self.enableLineNo()
+        self.initText()
+
+    def initText(self):
+        qr = tck_def_orm.MyNote.select()
+        obj = None
+        for obj in qr:
+            break
+        if not obj:
+            self.noteObj = None
+            txt = '【复盘】\n观察近一周热点股的走势，总结出一套战法; 复盘涨停板; 复盘热点股; 复盘涨跌前列的指数;\n---------------------------------------\n\n '
+            self.setText(txt)
+        else:
+            self.noteObj = obj
+            self.setText(obj.info)
+
+    def onSave(self):
+        txt = self.getText()
+        if not self.noteObj:
+            self.noteObj = tck_def_orm.MyNote.create(info = txt)
+        else:
+            self.noteObj.info = txt
+            self.noteObj.save()
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_NCLBUTTONDBLCLK:
@@ -1420,12 +1453,160 @@ class RecordWindow(base_win.MutiEditor):
             else:
                 win32gui.SetWindowPos(self.hwnd, 0, *self.minModeXY, *self.MIN_SIZE, win32con.SWP_NOZORDER)
             return True
+        elif msg == win32con.WM_NCPAINT:
+            TH = win32api.GetSystemMetrics(win32con.SM_CYCAPTION)
+            #hdc = win32gui.GetWindowDC(self.hwnd)
+            #rc = win32gui.GetWindowRect(self.hwnd)
+            #mrc = (0, 0, rc[2] - rc[1], 30)
+            #self.drawer.fillRect(hdc, mrc, color = 0xff00ee)
+            #return True
+        elif msg == win32con.WM_NCHITTEST:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            #TH = win32api.GetSystemMetrics(win32con.SM_CYCAPTION)
+            #if y <= 30:
+            #    return win32con.HTCAPTION
+            #win32gui.PlgBlt()
+            #return win32con.HTCLIENT
+        elif msg == win32con.WM_KEYDOWN:
+            if wParam == ord('S') and self.getKeyState(win32con.VK_CONTROL):
+                self.onSave()
+        elif msg == win32con.WM_MOVE:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            if not self.maxMode:
+                self.minModeXY = (x, y)
         return super().winProc(hwnd, msg, wParam, lParam)
+
+    def getWindowState(self):
+        return {'pos': self.minModeXY}
+        #rc = win32gui.GetWindowRect(self.hwnd)
+        #return {'pos': (rc[0], rc[1])}
+
+    def setWindowState(self, state):
+        if not state:
+            return
+        self.minModeXY = state['pos']
+        if self.maxMode:
+            return
+        x, y = state['pos']
+        win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+
+class BkGnWindow(base_win.BaseWindow):
+    TITLE_HEIGHT = 15
+    DEF_COLOR = 0x00ff00
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.css['bgColor'] = 0x050505
+        self.css['borderColor'] = 0x22dddd
+        self.css['enableBorder'] = True
+        self.MAX_SIZE = (950, 70)
+        self.MIN_SIZE = (60, 30)
+        self.maxMode = True
+        self.curCode = None
+        self.data = None
+        MAX_LINE_NUM = 4
+        self.richRender = ext_win.RichTextRender(self.MAX_SIZE[1] // MAX_LINE_NUM)
+
+    def createWindow(self, parentWnd, rect = None, style = win32con.WS_POPUP, className='STATIC', title=''):
+        sz =  self.MAX_SIZE if self.maxMode else self.MIN_SIZE
+        rect = (0, 0, *sz)
+        super().createWindow(parentWnd, rect, style, className, title)
+
+    def getWindowState(self):
+        rc = win32gui.GetWindowRect(self.hwnd)
+        rs = {'maxMode': self.maxMode, 'pos': (rc[0], rc[1])}
+        return rs
+    
+    def setWindowState(self, state):
+        if not state:
+            return
+        x, y = state['pos']
+        self.maxMode = state['maxMode']
+        if state['maxMode']:
+            win32gui.SetWindowPos(self.hwnd, 0, x, y, *self.MAX_SIZE, win32con.SWP_NOZORDER)
+        else:
+            win32gui.SetWindowPos(self.hwnd, 0, x, y, *self.MIN_SIZE, win32con.SWP_NOZORDER)
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_NCHITTEST:
+            x, y = (lParam & 0xffff), (lParam >> 16) & 0xffff
+            cx, cy = win32gui.ScreenToClient(self.hwnd, (x, y))
+            if cy <= self.TITLE_HEIGHT:
+                return win32con.HTCAPTION
+            return win32con.HTCLIENT
+        if msg == win32con.WM_NCLBUTTONDBLCLK:
+            self.maxMode = not self.maxMode
+            if self.maxMode:
+                win32gui.SetWindowPos(self.hwnd, 0, 0, 0, *self.MAX_SIZE, win32con.SWP_NOMOVE | win32con.SWP_NOZORDER) # win32con.HWND_TOP
+            else:
+                win32gui.SetWindowPos(self.hwnd, 0, 0, 0, *self.MIN_SIZE, win32con.SWP_NOMOVE| win32con.SWP_NOZORDER)
+            return True
+        elif msg == win32con.WM_RBUTTONUP:
+            #return True
+            pass
+        elif msg == win32con.WM_MBUTTONUP:
+            #self.showSettings()
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
+    
+    def onDraw(self, hdc):
+        W, H = self.getClientSize()
+        self.drawer.fillRect(hdc, (2, 2, W - 2, self.TITLE_HEIGHT), 0x101010)
+        self.richRender.draw(hdc, self.drawer, (0, 0, W, H))
+
+    def changeCode(self, code):
+        if (self.curCode == code) or (not code):
+            return
+        scode = f'{code :06d}' if type(code) == int else code
+        self.curCode = scode
+        self.data = None
+        if len(scode) == 6 and (code[0] in ('0', '3', '6')):
+            # load code info
+            obj = ths_orm.THS_GNTC.get_or_none(code = scode)
+            self.buildBkgn(obj)
+        self.invalidWindow()
+
+    def buildBkgn(self, obj):
+        self.richRender.specs.clear()
+        self.data = None
+        if not obj:
+            return
+        self.data = obj.__data__
+        self.richRender.addText('【', self.DEF_COLOR)
+        self.richRender.addText(self.data['hy_2_name'], self.getColor(self.data['hy_2_name']))
+        self.richRender.addText('|', self.DEF_COLOR)
+        self.richRender.addText(self.data['hy_3_name'], self.getColor(self.data['hy_3_name']))
+        self.richRender.addText('】 ', self.DEF_COLOR)
+        gn = self.data['gn']
+        if not gn:
+            return
+        gns = gn.split(';')
+        for g in gns:
+            self.richRender.addText(g + ' ', self.getColor(g))
+            #self.richRender.addText(' | ', self.DEF_COLOR)
+
+    def getColor(self, bk):
+        for k in self.getHotBkgn():
+            if bk in k:
+                return 0xffff00
+        return self.DEF_COLOR
+
+    def getHotBkgn(self):
+        return ('半导体', '鸿蒙')
+    
+    def setVisible(self, visible : bool):
+        if not win32gui.IsWindow(self.hwnd):
+            return
+        if visible:
+            win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
+        else:
+            win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+
 
 if __name__ == '__main__':
     import ths_win
     thsWin = ths_win.ThsWindow()
     thsWin.init()
-    rwin = RecordWindow()
+    rwin = BkGnWindow()
     rwin.createWindow(thsWin.topHwnd)
     win32gui.PumpMessages()

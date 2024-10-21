@@ -2181,7 +2181,7 @@ class KLineWindow(base_win.BaseWindow):
                 self.klineIndicator.visibleRefZS = evt.item['checked']
                 self.invalidWindow()
             elif name == 'open-ref-zs':
-                import kline_utils
+                from Tck import kline_utils
                 dt = {'code': evt.item['code'], 'day': None}
                 kline_utils.openInCurWindow_ZS(self, dt)
             elif name == 'add-ref-zs':

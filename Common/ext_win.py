@@ -296,7 +296,7 @@ class RichTextRender:
             fnt = drawer.getFont(fontSize = item['fontSize'])
             drawer.use(hdc, fnt)
             sw, *_ = win32gui.GetTextExtentPoint32(hdc, text)
-            if sw + x >= W:
+            if sw + x <= W:
                 item['rect'] = (x, y, x + sw, y + self.lineHeight)
             else:
                 x = 0
@@ -307,7 +307,7 @@ class RichTextRender:
     def draw(self, hdc, drawer : base_win.Drawer, rect):
         sdc = win32gui.SaveDC(hdc)
         W, H = rect[2] - rect[0], rect[3] - rect[1]
-        self._calcSpecsRect(hdc, rect)
+        self._calcSpecsRect(hdc, drawer, rect)
         for item in self.specs:
             rc = item['rect']
             if rc[1] >= H or rc[3] > H:

@@ -7,17 +7,21 @@ from db import ths_orm
 
 _ths_gntc_s = {}
 
+def _init():
+    q = ths_orm.THS_GNTC.select().dicts()
+    for it in q:
+        _ths_gntc_s[it['code']] = it
+
+_init()
 
 # return ths_orm.THS_GNTC dict
 def get_THS_GNTC(code):
     if type(code) == int:
         code = f'{code :06d}'
-    if not _ths_gntc_s:
-        q = ths_orm.THS_GNTC.select().dicts()
-        for it in q:
-            _ths_gntc_s[it['code']] = it
     return _ths_gntc_s.get(code, None)
 
+def getAllGNTC():
+    return _ths_gntc_s
 
 # day = int | str | date | datetime | float [ time.time() ]
 def formatDate(day, hasSplit = True):

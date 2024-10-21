@@ -1,6 +1,6 @@
 import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os, copy, pyautogui
-import os, sys, requests
+import os, sys, requests, traceback
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
@@ -61,11 +61,14 @@ def openInCurWindow_ZS(parent : base_win.BaseWindow, data):
     return win
 
 def openInCurWindow(parent : base_win.BaseWindow, data):
-    code = data['code']
-    if code[0] == '8':
-        return openInCurWindow_ZS(parent, data)
-    else:
-        return openInCurWindow_Code(parent, data)
+    try:
+        code = data['code']
+        if code[0] == '8':
+            return openInCurWindow_ZS(parent, data)
+        else:
+            return openInCurWindow_Code(parent, data)
+    except Exception as e:
+        traceback.print_exc()
 
 def openKlineMinutes_DDLR(evt, parent : base_win.BaseWindow):
     if evt.name != 'DbClick':
@@ -78,7 +81,7 @@ def openKlineMinutes_DDLR(evt, parent : base_win.BaseWindow):
 
 def openKlineMinutes_Simple(evt, parent : base_win.BaseWindow):
     if evt.name != 'DbClick':
-        return
+        return None
     win = timeline.TimelinePanKouWindow()
     rc = win32gui.GetWindowRect(parent.hwnd)
     #rc2 = (rc[0], rc[1], rc[2] - rc[0], rc[3] - rc[1])
