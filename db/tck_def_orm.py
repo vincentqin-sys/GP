@@ -76,5 +76,11 @@ class MyNote(pw.Model):
         database = db_tck_def
         table_name = '笔记'
 
-db_tck_def.create_tables([TCK_CiTiao, DailyFuPan, Mark, DrawLine, MyObserve, MyNote])
+class MyHotGn(pw.Model):
+    info = pw.CharField(null = True)
+    class Meta:
+        database = db_tck_def
+        table_name = '热点概念'
+
+db_tck_def.create_tables([TCK_CiTiao, DailyFuPan, Mark, DrawLine, MyObserve, MyNote, MyHotGn])
 

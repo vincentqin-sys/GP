@@ -8,7 +8,7 @@ sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from THS import hot_utils
 from Download import henxin, cls
-from Common import base_win, ext_win
+from Common import base_win, ext_win, dialog
 from db import tck_orm, ths_orm, tck_def_orm
 
 #-----------------------------------------------------------
@@ -1493,6 +1493,7 @@ class RecordWindow(base_win.MutiEditor):
 class BkGnWindow(base_win.BaseWindow):
     TITLE_HEIGHT = 15
     DEF_COLOR = 0x00ff00
+    HOT_COLOR = 0xFF33FF
 
     def __init__(self) -> None:
         super().__init__()
@@ -1503,9 +1504,9 @@ class BkGnWindow(base_win.BaseWindow):
         self.MIN_SIZE = (60, 30)
         self.maxMode = True
         self.curCode = None
-        self.data = None
-        MAX_LINE_NUM = 4
-        self.richRender = ext_win.RichTextRender(self.MAX_SIZE[1] // MAX_LINE_NUM)
+        self.hotGnObj = None
+        self.hotGns = []
+        self.richRender = ext_win.RichTextRender(int(self.MAX_SIZE[1] / 4))
 
     def createWindow(self, parentWnd, rect = None, style = win32con.WS_POPUP, className='STATIC', title=''):
         sz =  self.MAX_SIZE if self.maxMode else self.MIN_SIZE
@@ -1545,9 +1546,28 @@ class BkGnWindow(base_win.BaseWindow):
             #return True
             pass
         elif msg == win32con.WM_MBUTTONUP:
-            #self.showSettings()
+            self.showSettings()
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
+    
+    def showSettings(self):
+        model = [{'title': '设置热点概念', 'name': 'hot'}]
+        menu = base_win.PopupMenu.create(self.hwnd, model)
+        menu.addNamedListener('Select', self.onSettings)
+        menu.show(*win32gui.GetCursorPos())
+
+    def onSettings(self, evt, args):
+        if evt.item['name'] == 'hot':
+            dlg = dialog.InputDialog()
+            dlg.setText(self.hotGnObj.info or '')
+            prc = win32gui.GetWindowRect(self.hwnd)
+            def onInputEnd(evt, args):
+                self.saveHotGn(evt.text)
+                self.buildBkgn()
+                self.invalidWindow()
+            dlg.addNamedListener('InputEnd', onInputEnd)
+            dlg.createWindow(self.hwnd, (prc[0], prc[1], 400, 70))
+            dlg.showCenter()
     
     def onDraw(self, hdc):
         W, H = self.getClientSize()
@@ -1559,40 +1579,80 @@ class BkGnWindow(base_win.BaseWindow):
             return
         scode = f'{code :06d}' if type(code) == int else code
         self.curCode = scode
-        self.data = None
-        if len(scode) == 6 and (code[0] in ('0', '3', '6')):
-            # load code info
-            obj = ths_orm.THS_GNTC.get_or_none(code = scode)
-            self.buildBkgn(obj)
+        # load code info
+        self.buildBkgn()
         self.invalidWindow()
 
-    def buildBkgn(self, obj):
+    def saveHotGn(self, txt):
+        self.hotGnObj.info = txt or ''
+        self.hotGnObj.save()
+
+    def loadHotGn(self):
+        from db import tck_def_orm
+        qr = tck_def_orm.MyHotGn.select()
+        self.hotGnObj = None
+        self.hotGns = []
+        for obj in qr:
+            self.hotGnObj = obj
+            if obj.info:
+                sx = obj.info.split(' ')
+                for s in sx:
+                    if s.strip(): self.hotGns.append(s.strip())
+            break
+        if not self.hotGnObj:
+            self.hotGnObj = tck_def_orm.MyHotGn.create(info = '')
+
+    def buildBkgn(self):
+        self.loadHotGn()
         self.richRender.specs.clear()
-        self.data = None
+        obj = ths_orm.THS_GNTC.get_or_none(code = self.curCode)
         if not obj:
             return
-        self.data = obj.__data__
+        data = obj.__data__
         self.richRender.addText('【', self.DEF_COLOR)
-        self.richRender.addText(self.data['hy_2_name'], self.getColor(self.data['hy_2_name']))
-        self.richRender.addText('|', self.DEF_COLOR)
-        self.richRender.addText(self.data['hy_3_name'], self.getColor(self.data['hy_3_name']))
+        self.richRender.addText(data['hy_2_name'], self.getColor(data['hy_2_name']))
+        self.richRender.addText(' | ', self.DEF_COLOR)
+        self.richRender.addText(data['hy_3_name'], self.getColor(data['hy_3_name']))
         self.richRender.addText('】 ', self.DEF_COLOR)
-        gn = self.data['gn']
+        gn = data['gn']
         if not gn:
             return
         gns = gn.split(';')
+        hots = []
+        notHots = []
         for g in gns:
-            self.richRender.addText(g + ' ', self.getColor(g))
-            #self.richRender.addText(' | ', self.DEF_COLOR)
+            if self.isInHot(g):
+                hots.append(g)
+            else:
+                notHots.append(g)
+        for h in hots:
+            self.richRender.addText(h + ' ', self.HOT_COLOR)
+        for h in notHots:
+            self.richRender.addText(h + ' ', self.DEF_COLOR)
+
+        lastHotGns = self.hotGns[ : ]
+        for h in hots:
+            self.removeHotGn(lastHotGns, h)
+        self.removeHotGn(lastHotGns, data['hy_2_name'])
+        self.removeHotGn(lastHotGns, data['hy_3_name'])
+        for h in lastHotGns:
+            self.richRender.addText(h + ' ', 0x404040)
 
     def getColor(self, bk):
-        for k in self.getHotBkgn():
-            if bk in k:
-                return 0xffff00
-        return self.DEF_COLOR
+        return self.HOT_COLOR if self.isInHot(bk) else self.DEF_COLOR
 
-    def getHotBkgn(self):
-        return ('半导体', '鸿蒙')
+    def isInHot(self, bk):
+        for h in self.hotGns:
+            if h in bk:
+                return True
+        return False
+    
+    def removeHotGn(self, hotGns : list, gn):
+        for i, h in enumerate(hotGns):
+            if h in gn:
+                hotGns.pop(i)
+
+        #return ('半导体', '鸿蒙概念', '低空经济', '消费电子')
     
     def setVisible(self, visible : bool):
         if not win32gui.IsWindow(self.hwnd):
