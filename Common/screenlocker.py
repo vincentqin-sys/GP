@@ -78,11 +78,12 @@ class ScreenLocker(base_win.BaseWindow):
         self.drawer.fillRect(hdc, rc, color)
 
 class Main:
-    SKIP_IDLE_TIME_IDX = 0
-    LOCK_STATUS_IDX = 1
+    NO_LOCK_TIME_IDX = 0
+    LOCK_IDX = 1
+
     LOCK_STATUS_LOCK = 100
     LOCK_STATUS_UNLOCK = 200
-    MAX_IDLE_TIME = 3 * 60
+    MAX_IDLE_TIME = 3 * 60 * 1000
     
     def __init__(self, locker : ScreenLocker) -> None:
         self.locker = locker
@@ -131,20 +132,19 @@ class Main:
     def reset(self):
         if not self.shm:
             return
-        self.writeIntData(self.LOCK_STATUS_IDX, 0)
-        self.writeIntData(self.SKIP_IDLE_TIME_IDX, 0)
+        self.writeIntData(self.LOCK_IDX, 0)
+        self.writeIntData(self.NO_LOCK_TIME_IDX, 0)
     
-    # seconds
+    # mili seconds
     def getIdleTime(self):
         lit = win32api.GetLastInputInfo()
         lit = max(lit, self.lastInputTime)
-        idleTime = (win32api.GetTickCount() - lit) // 1000 # seconds
+        idleTime = win32api.GetTickCount()  - lit
         return idleTime
     
-    # seconds
+    # mili seconds
     def getOffMonitorTime(self):
         diff = win32api.GetTickCount() - self.lastOffMonitorTime
-        diff = diff // 1000
         return diff
     
     def offMonitor(self):
@@ -156,34 +156,28 @@ class Main:
         while True:
             time.sleep(1)
 
-            idleTime = self.getIdleTime()
+            noLockTime = self.readIntData(self.NO_LOCK_TIME_IDX)
+            if win32api.GetTickCount() < noLockTime:
+                if self.locker.isLocked():
+                    self.locker.unlock()
+                continue
+
             #if (idleTime >= 5 * 60) and (self.getOffMonitorTime() >= 10 * 60):
             #    self.offMonitor()
 
-            status = self.readIntData(self.LOCK_STATUS_IDX)
+            status = self.readIntData(self.LOCK_IDX)
             if status != 0:
-                self.writeIntData(self.LOCK_STATUS_IDX, 0)
-            if status == self.LOCK_STATUS_LOCK:
-                self.locker.lock()
+                self.writeIntData(self.LOCK_IDX, 0)
+                if status == self.LOCK_STATUS_LOCK:
+                    self.locker.lock()
+                elif status == self.LOCK_STATUS_UNLOCK:
+                    self.locker.unlock()
+                    self.lastInputTime = win32api.GetTickCount()
                 continue
-            if status == self.LOCK_STATUS_UNLOCK:
-                self.locker.unlock()
-                self.lastInputTime = win32api.GetTickCount()
-                continue
-
-            skipTime = self.readIntData(self.SKIP_IDLE_TIME_IDX)
-            now = datetime.datetime.now()
-            if now.hour >= 6 and now.hour < 18: # 工作时间不进入
-                if skipTime > 0:
-                    self.writeIntData(self.SKIP_IDLE_TIME_IDX, 0)
-            else:
-                if win32api.GetTickCount() <= skipTime:
-                    continue
-
-            #print('idleTime = ', idleTime)
+            
+            idleTime = self.getIdleTime()
             if idleTime >= self.MAX_IDLE_TIME:
                 self.locker.lock()
-                continue
 
 if __name__ == '__main__':
     locker = ScreenLocker()
