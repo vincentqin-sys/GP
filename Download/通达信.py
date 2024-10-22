@@ -177,10 +177,21 @@ def unlockScreen():
         buf = shm.buf.cast('q')
         ts = win32api.GetTickCount() + 60 * 1000 * 60
         buf[0] = ts
-        buf[1] = 200
         buf.release()
         shm.close()
         time.sleep(10)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        pass
+
+def resetLockScreen():
+    try:
+        shm = shared_memory.SharedMemory('PY_Screen_Locker', False)
+        buf = shm.buf.cast('q')
+        buf[0] = 0
+        buf.release()
+        shm.close()
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -204,6 +215,7 @@ def work():
     # 下载
     tdx = TdxDownloader()
     flag = tdx.run()
+    resetLockScreen()
     if flag:
         tm = datetime.datetime.now()
         ss = tm.strftime('%Y-%m-%d %H:%M')

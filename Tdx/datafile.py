@@ -1,4 +1,4 @@
-import os, struct, platform
+import os, struct, platform, traceback
 from collections import namedtuple
 
 VIPDOC_BASE_PATH = r'D:\Program Files\new_tdx2\vipdoc'
@@ -395,13 +395,16 @@ class DataFileLoader:
             rs.pop(-1)
 
     def mergeAll(self):
-        codes = DataFileUtils.listAllCodes()
-        codes.append('999999')
-        codes.append('399001')
-        codes.append('399006')
-        for c in codes:
-            self.mergeDayFile(c)
-            self.mergeMinlineFile(c)
+        try:
+            codes = DataFileUtils.listAllCodes()
+            codes.append('999999')
+            codes.append('399001')
+            codes.append('399006')
+            for c in codes:
+                self.mergeDayFile(c)
+                self.mergeMinlineFile(c)
+        except Exception as e:
+            traceback.print_exc()
 
     def mergeDayFile(self, code):
         tag = 'sh' if code[0] == '6' or code[0] == '8' or code[0] == '9' else 'sz'
