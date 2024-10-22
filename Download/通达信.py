@@ -194,6 +194,8 @@ def tryWork():
     return False
 
 def work():
+    time.sleep(5)
+    print('---work--start---')
     unlockScreen()
     time.sleep(10)
     tm = datetime.datetime.now()

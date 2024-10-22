@@ -98,8 +98,8 @@ class Main:
             self.shm = shared_memory.SharedMemory(self._name, True, size = SZ)
         except:
             self.shm = shared_memory.SharedMemory(self._name, False, size = SZ)
-        buf = self.shm.buf.cast('i')
-        for i in range(SZ // 4):
+        buf = self.shm.buf.cast('q')
+        for i in range(SZ // 8):
             buf[i] = 0
 
         self.thread.addTask(1, self.loop)

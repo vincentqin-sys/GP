@@ -1492,8 +1492,8 @@ class RecordWindow(base_win.MutiEditor):
 
 class BkGnWindow(base_win.BaseWindow):
     TITLE_HEIGHT = 15
-    DEF_COLOR = 0x00ff00
-    HOT_COLOR = 0xFF33FF
+    DEF_COLOR = 0xa0a0a0
+    GN_HOT_COLOR = 0x22dddd
 
     def __init__(self) -> None:
         super().__init__()
@@ -1549,7 +1549,7 @@ class BkGnWindow(base_win.BaseWindow):
             self.showSettings()
             return True
         return super().winProc(hwnd, msg, wParam, lParam)
-    
+
     def showSettings(self):
         model = [{'title': '设置热点概念', 'name': 'hot'}]
         menu = base_win.PopupMenu.create(self.hwnd, model)
@@ -1562,6 +1562,8 @@ class BkGnWindow(base_win.BaseWindow):
             dlg.setText(self.hotGnObj.info or '')
             prc = win32gui.GetWindowRect(self.hwnd)
             def onInputEnd(evt, args):
+                if not evt.ok:
+                    return
                 self.saveHotGn(evt.text)
                 self.buildBkgn()
                 self.invalidWindow()
@@ -1571,8 +1573,8 @@ class BkGnWindow(base_win.BaseWindow):
     
     def onDraw(self, hdc):
         W, H = self.getClientSize()
-        self.drawer.fillRect(hdc, (2, 2, W - 2, self.TITLE_HEIGHT), 0x101010)
-        self.richRender.draw(hdc, self.drawer, (0, 0, W, H))
+        self.drawer.fillRect(hdc, (2, 2, W - 2, self.TITLE_HEIGHT), 0x0A0A0A)
+        self.richRender.draw(hdc, self.drawer, (3, 2, W - 3, H))
 
     def changeCode(self, code):
         if (self.curCode == code) or (not code):
@@ -1610,9 +1612,9 @@ class BkGnWindow(base_win.BaseWindow):
             return
         data = obj.__data__
         self.richRender.addText('【', self.DEF_COLOR)
-        self.richRender.addText(data['hy_2_name'], self.getColor(data['hy_2_name']))
+        self.richRender.addText(data['hy_2_name'], self.getBkColor(data['hy_2_name']))
         self.richRender.addText(' | ', self.DEF_COLOR)
-        self.richRender.addText(data['hy_3_name'], self.getColor(data['hy_3_name']))
+        self.richRender.addText(data['hy_3_name'], self.getBkColor(data['hy_3_name']))
         self.richRender.addText('】 ', self.DEF_COLOR)
         gn = data['gn']
         if not gn:
@@ -1626,9 +1628,11 @@ class BkGnWindow(base_win.BaseWindow):
             else:
                 notHots.append(g)
         for h in hots:
-            self.richRender.addText(h + ' ', self.HOT_COLOR)
+            self.richRender.addText(h, self.GN_HOT_COLOR)
+            self.richRender.addText(' | ', self.DEF_COLOR)
         for h in notHots:
-            self.richRender.addText(h + ' ', self.DEF_COLOR)
+            self.richRender.addText(h, self.DEF_COLOR)
+            self.richRender.addText(' | ', self.DEF_COLOR)
 
         lastHotGns = self.hotGns[ : ]
         for h in hots:
@@ -1638,8 +1642,8 @@ class BkGnWindow(base_win.BaseWindow):
         for h in lastHotGns:
             self.richRender.addText(h + ' ', 0x404040)
 
-    def getColor(self, bk):
-        return self.HOT_COLOR if self.isInHot(bk) else self.DEF_COLOR
+    def getBkColor(self, bk):
+        return self.GN_HOT_COLOR if self.isInHot(bk) else self.DEF_COLOR
 
     def isInHot(self, bk):
         for h in self.hotGns:

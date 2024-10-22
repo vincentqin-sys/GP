@@ -140,7 +140,7 @@ def _workThread(thsWin : ths_win.ThsWindow, fileName):
             thsShareMem.writeSelDay(selDay)
         rs = wbOcr.runOcr_InHomePage(thsWin.mainHwnd)
         codeBasicWindow.updateWeiBi(rs)
-        thsSelDayWin.onTryMove(thsWin, nowCode)
+        #thsSelDayWin.onTryMove(thsWin, nowCode)
 
 def onListen(evt, args):
     if args == 'ListenHotWindow' and evt.name == 'mode.change':

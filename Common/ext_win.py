@@ -289,17 +289,18 @@ class RichTextRender:
         return val
 
     def _calcSpecsRect(self, hdc, drawer : base_win.Drawer, rect):
-        x, y = 0, 0
-        W, H = rect[2] - rect[0], rect[3] - rect[1]
+        SX, SY = rect[0], rect[1]
+        EX, EY = rect[2], rect[3]
+        x, y = SX, SY
         for item in self.specs:
             text = self._getAttr(item, 'text')
             fnt = drawer.getFont(fontSize = item['fontSize'])
             drawer.use(hdc, fnt)
             sw, *_ = win32gui.GetTextExtentPoint32(hdc, text)
-            if sw + x <= W:
+            if sw + x <= EX:
                 item['rect'] = (x, y, x + sw, y + self.lineHeight)
             else:
-                x = 0
+                x = SX
                 y += self.lineHeight
                 item['rect'] = (x, y, x + sw, y + self.lineHeight)
             x += sw
@@ -314,6 +315,9 @@ class RichTextRender:
                 continue
             fnt = drawer.getFont(fontSize = self._getAttr(item, 'fontSize'))
             drawer.use(hdc, fnt)
+            bg = self._getAttr(item, 'bgColor')
+            if type(bg) == int:
+                drawer.fillRect(hdc, rc, bg)
             drawer.drawText(hdc, self._getAttr(item, 'text'), rc, color = self._getAttr(item, 'color'), align = win32con.DT_LEFT | win32con.DT_SINGLELINE | win32con.DT_VCENTER)
         win32gui.RestoreDC(hdc, sdc)
             
