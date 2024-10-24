@@ -109,6 +109,8 @@ class ThsWindow(base_win.BaseWindow):
         return win32gui.IsWindow(self.level2CodeHwnd) and win32gui.IsWindowVisible(self.level2CodeHwnd)
 
     def getSelectDay(self):
+        if not self.selDayHwnd:
+            self.selDayHwnd = self.findSelectDayWnd()
         if not win32gui.IsWindowVisible(self.selDayHwnd):
             return None
         rc = win32gui.GetWindowRect(self.selDayHwnd)
@@ -166,7 +168,7 @@ class ThsWindow(base_win.BaseWindow):
         self.mainHwnd =  win32gui.FindWindowEx(self.topHwnd, None, 'AfxFrameOrView140s', None)
         self.selDayHwnd = self.findSelectDayWnd()
 
-        if (not self.mainHwnd) or (not self.topHwnd) or (not self.selDayHwnd):
+        if (not self.mainHwnd) or (not self.topHwnd): # or (not self.selDayHwnd):
             return False
         #print('ThsWindow.topHwnd = %#X' % self.topHwnd)
         #print('ThsWindow.mainHwnd = %#X' % self.mainHwnd)

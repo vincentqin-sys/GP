@@ -123,7 +123,7 @@ def modify_hygn(obj : ths_orm.THS_GNTC, zsInfos):
 def download_hygn():
     # 下载所有的 个股行业概念（含当日涨跌信息）
     # code 市盈率(pe)[20240708],  总股本[20240708]  所属概念  所属同花顺行业  最新涨跌幅  最新价 股票简称  总市值[20240717] a股市值(不含限售股)[20240717]
-    rs = iwencai_load_list(question = '个股及行业板块,总市值,流通市值')
+    rs = iwencai_load_list(question = '个股及行业板块,总市值,流通市值,pe,ttm')
     zsInfos = {}
     qr = ths_orm.THS_ZS.select()
     for q in qr:

@@ -165,7 +165,7 @@ class ClsUrl:
 
     # K线数据
     # limit : K线数量
-    def loadKline(self, code, limit = 100):
+    def loadKline(self, code, limit = 1200):
         params = {
             'secu_code': self._getTagCode(code),
             'app': 'CailianpressWeb',
@@ -310,7 +310,7 @@ class ClsDataFile(datafile.DataFile):
             self._loadDataFile_FS()
 
     def _loadDataFile_KLine(self):
-        datas = ClsUrl().loadKline(self.code, 500)
+        datas = ClsUrl().loadKline(self.code, 1200)
         for ds in datas:
             it = datafile.ItemData()
             it.day = ds['date']

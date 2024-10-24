@@ -308,10 +308,11 @@ class RichTextRender:
     def draw(self, hdc, drawer : base_win.Drawer, rect):
         sdc = win32gui.SaveDC(hdc)
         W, H = rect[2] - rect[0], rect[3] - rect[1]
+        EY = rect[3]
         self._calcSpecsRect(hdc, drawer, rect)
         for item in self.specs:
             rc = item['rect']
-            if rc[1] >= H or rc[3] > H:
+            if rc[1] >= EY: #or rc[3] > EY
                 continue
             fnt = drawer.getFont(fontSize = self._getAttr(item, 'fontSize'))
             drawer.use(hdc, fnt)

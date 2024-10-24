@@ -1,4 +1,4 @@
-import os, sys, functools, copy, datetime, json, time
+import os, sys, functools, copy, datetime, json, time, traceback
 from win32.lib.win32con import WS_CAPTION, WS_POPUP, WS_SYSMENU
 import win32gui, win32con
 import requests, peewee as pw
@@ -30,9 +30,9 @@ def getTypeByCode(code):
         code = f'{code :06d}'
     if type(code) != str:
         return None
-    if code[0] in ('0', '3', '6', '8'):
-        return 'ths'
-    return 'cls'
+    if code[0] in ('0', '3', '6'): # , '8'
+        return 'cls'
+    return 'ths'
 
 class KLineModel_DateType(datafile.DataFile):
     # typeName is 'ths' | 'cls'
@@ -2372,7 +2372,8 @@ class KLineWindow(base_win.BaseWindow):
             if self.selIdx >= 0:
                 self.makeVisible(self.selIdx)
                 x = self.klineIndicator.getCenterX(self.selIdx)
-                self.mouseXY = (x, self.mouseXY[1])
+                if self.mouseXY:
+                    self.mouseXY = (x, self.mouseXY[1])
             win32gui.InvalidateRect(self.hwnd, None, True)
         elif keyCode == 80: # down arrow key
             self.klineWidth = max(self.klineWidth - 2, 1)
@@ -2935,13 +2936,16 @@ class KLineCodeWindow(base_win.BaseWindow):
         base_win.ThreadPool.instance().addTask(f'K-{code}', self.changeCode_R, code)
 
     def changeCode_R(self, code):
-        self.code = code
-        self.codeWin.changeCode(code)
-        model = KLineModel_DateType(code)
-        model.loadDataFile()
-        self.klineWin.setModel(model)
-        self.klineWin.makeVisible(-1)
-        self.klineWin.invalidWindow()
+        try:
+            self.code = code
+            self.codeWin.changeCode(code)
+            model = KLineModel_DateType(code)
+            model.loadDataFile()
+            self.klineWin.setModel(model)
+            self.klineWin.makeVisible(-1)
+            self.klineWin.invalidWindow()
+        except Exception as e:
+            traceback.print_exc()
     
     def updateCodeIdxView(self):
         if not self.codeList:

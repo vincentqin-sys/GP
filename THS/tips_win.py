@@ -1493,7 +1493,7 @@ class RecordWindow(base_win.MutiEditor):
 class BkGnWindow(base_win.BaseWindow):
     TITLE_HEIGHT = 15
     DEF_COLOR = 0xa0a0a0
-    GN_HOT_COLOR = 0x22dddd
+    HOT_COLOR = 0xff3399
 
     def __init__(self) -> None:
         super().__init__()
@@ -1506,12 +1506,14 @@ class BkGnWindow(base_win.BaseWindow):
         self.curCode = None
         self.hotGnObj = None
         self.hotGns = []
-        self.richRender = ext_win.RichTextRender(int(self.MAX_SIZE[1] / 4))
+        self.richRender = None
 
     def createWindow(self, parentWnd, rect = None, style = win32con.WS_POPUP, className='STATIC', title=''):
         sz =  self.MAX_SIZE if self.maxMode else self.MIN_SIZE
         rect = (0, 0, *sz)
         super().createWindow(parentWnd, rect, style, className, title)
+        cs = self.getClientSize()
+        self.richRender = ext_win.RichTextRender((cs[1] - 2) // 4)
 
     def getWindowState(self):
         rc = win32gui.GetWindowRect(self.hwnd)
@@ -1628,7 +1630,7 @@ class BkGnWindow(base_win.BaseWindow):
             else:
                 notHots.append(g)
         for h in hots:
-            self.richRender.addText(h, self.GN_HOT_COLOR)
+            self.richRender.addText(h, self.HOT_COLOR)
             self.richRender.addText(' | ', self.DEF_COLOR)
         for h in notHots:
             self.richRender.addText(h, self.DEF_COLOR)
@@ -1643,7 +1645,7 @@ class BkGnWindow(base_win.BaseWindow):
             self.richRender.addText(h + ' ', 0x404040)
 
     def getBkColor(self, bk):
-        return self.GN_HOT_COLOR if self.isInHot(bk) else self.DEF_COLOR
+        return self.HOT_COLOR if self.isInHot(bk) else self.DEF_COLOR
 
     def isInHot(self, bk):
         for h in self.hotGns:
