@@ -20,9 +20,9 @@ thsShareMem = base_win.ThsShareMemory()
 simpleHotZHWindow = tips_win.SimpleHotZHWindow()
 codeBasicWindow = tips_win.CodeBasicWindow()
 thsSelDayWin = ths_win.ThsSelDayWindow()
-recordWin = tips_win.RecordWindow()
+toolbarWin = tips_win.ToolBarWindow()
 bkGnWin = tips_win.BkGnWindow()
-tipWins = [simpleWindow, simpleWindow2, simpleHotZHWindow, codeBasicWindow, recordWin, bkGnWin]
+tipWins = [simpleWindow, simpleWindow2, simpleHotZHWindow, codeBasicWindow, toolbarWin, bkGnWin]
 
 def updateCode(nowCode):
     global curCode, thsShareMem
@@ -90,7 +90,7 @@ def updateWindowInfo(thsWin, stateMgr : WinStateMgr):
         simpleWindow2.setWindowState(cp.get('s3', None))
         simpleHotZHWindow.setWindowState(cp.get('s2', None))
         codeBasicWindow.setWindowState(cp.get('s4', None))
-        recordWin.setWindowState(cp.get('s5', None))
+        toolbarWin.setWindowState(cp.get('s5', None))
         bkGnWin.setWindowState(cp.get('s6', None))
         if curPageName == '技术分析':
             ths_win.ThsSmallF10Window.adjustPos()
@@ -103,7 +103,7 @@ def updateWindowInfo(thsWin, stateMgr : WinStateMgr):
         cp2['s2'] = simpleHotZHWindow.getWindowState()
         cp2['s3'] = simpleWindow2.getWindowState()
         cp2['s4'] = codeBasicWindow.getWindowState()
-        cp2['s5'] = recordWin.getWindowState()
+        cp2['s5'] = toolbarWin.getWindowState()
         cp2['s6'] = bkGnWin.getWindowState()
         if cp != cp2:
             cp.update(cp2)
@@ -158,7 +158,7 @@ def subprocess_main():
     simpleWindow2.createWindow(thsWindow.topHwnd)
     simpleHotZHWindow.createWindow(thsWindow.topHwnd)
     codeBasicWindow.createWindow(thsWindow.topHwnd)
-    recordWin.createWindow(thsWindow.topHwnd)
+    toolbarWin.createWindow(thsWindow.topHwnd)
     bkGnWin.createWindow(thsWindow.topHwnd)
     #hotWindow.addListener(onListen, 'ListenHotWindow')
     threading.Thread(target = _workThread, args=(thsWindow, 'hot-win32.json')).start()

@@ -1386,35 +1386,19 @@ class CodeBasicWindow(base_win.NoActivePopupWindow):
 class RecordWindow(base_win.MutiEditor):
     def __init__(self) -> None:
         super().__init__()
-        self.css['bgColor'] = 0xffffff
-        self.MIN_SIZE = (80, 30)
-        self.MAX_SIZE = (900, 500)
-        self.minModeXY = None
-        self.maxMode = False
+        self.css['bgColor'] = 0xf3fef4
+        self.DEF_SIZE = (900, 500)
         self.noteObj = None
 
-    def setVisible(self, visible : bool):
-        if not win32gui.IsWindow(self.hwnd):
-            return
-        if visible:
-            win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
-        else:
-            win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+    def show(self):
+        win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
 
     def createWindow(self, parentWnd, rect = None, style = None, className = 'STATIC', title='记'):
-        style = win32con.WS_POPUP | win32con.WS_CAPTION | win32con.WS_VISIBLE
-        prc = win32gui.GetWindowRect(parentWnd)
-        PH = prc[3] - prc[1]
-        PW = prc[2] - prc[0]
-        W, H = self.MIN_SIZE
-        sy = (PH - H) // 2
-        sx = (PW - W) // 2 - 30
-        self.minModeXY = (sx, sy)
-        rect = (*self.minModeXY, W, H)
+        style = win32con.WS_POPUP | win32con.WS_CAPTION | win32con.WS_VISIBLE | win32con.WS_SYSMENU
+        SW, SH = win32api.GetSystemMetrics(win32con.SM_CXSCREEN), win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+        W, H = self.DEF_SIZE
+        rect = ((SW - W) // 2, (SH - H) // 2, *self.DEF_SIZE)
         super().createWindow(parentWnd, rect, style, className, title)
-        #exstyle = win32gui.GetWindowLong(self.hwnd, win32con.GWL_EXSTYLE)
-        #exstyle = exstyle & ~win32con.WS_EX_WINDOWEDGE
-        #win32gui.SetWindowLong(self.hwnd, win32con.GWL_EXSTYLE, exstyle)
         self.enableLineNo()
         self.initText()
 
@@ -1441,54 +1425,17 @@ class RecordWindow(base_win.MutiEditor):
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_NCLBUTTONDBLCLK:
-            self.maxMode = not self.maxMode
-            if self.maxMode:
-                rc = win32gui.GetWindowRect(self.hwnd)
-                self.minModeXY = (rc[0], rc[1])
-                W, H = self.MAX_SIZE
-                SW, SH = win32api.GetSystemMetrics(win32con.SM_CXSCREEN), win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
-                sx = (SW - W) // 2
-                sy = SH - H - 40
-                win32gui.SetWindowPos(self.hwnd, 0, sx, sy, *self.MAX_SIZE, win32con.SWP_NOZORDER) # win32con.HWND_TOP
-            else:
-                win32gui.SetWindowPos(self.hwnd, 0, *self.minModeXY, *self.MIN_SIZE, win32con.SWP_NOZORDER)
             return True
-        elif msg == win32con.WM_NCPAINT:
-            TH = win32api.GetSystemMetrics(win32con.SM_CYCAPTION)
-            #hdc = win32gui.GetWindowDC(self.hwnd)
-            #rc = win32gui.GetWindowRect(self.hwnd)
-            #mrc = (0, 0, rc[2] - rc[1], 30)
-            #self.drawer.fillRect(hdc, mrc, color = 0xff00ee)
-            #return True
-        elif msg == win32con.WM_NCHITTEST:
-            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            #TH = win32api.GetSystemMetrics(win32con.SM_CYCAPTION)
-            #if y <= 30:
-            #    return win32con.HTCAPTION
-            #win32gui.PlgBlt()
-            #return win32con.HTCLIENT
         elif msg == win32con.WM_KEYDOWN:
             if wParam == ord('S') and self.getKeyState(win32con.VK_CONTROL):
                 self.onSave()
-        elif msg == win32con.WM_MOVE:
-            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
-            if not self.maxMode:
-                self.minModeXY = (x, y)
+        elif msg == win32con.WM_CLOSE:
+            pp = win32gui.GetParent(self.hwnd)
+            pp2 = win32gui.GetParent(pp)
+            win32gui.SetForegroundWindow(pp2 or pp)
+            win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+            return 0
         return super().winProc(hwnd, msg, wParam, lParam)
-
-    def getWindowState(self):
-        return {'pos': self.minModeXY}
-        #rc = win32gui.GetWindowRect(self.hwnd)
-        #return {'pos': (rc[0], rc[1])}
-
-    def setWindowState(self, state):
-        if not state:
-            return
-        self.minModeXY = state['pos']
-        if self.maxMode:
-            return
-        x, y = state['pos']
-        win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
 
 class BkGnWindow(base_win.BaseWindow):
     TITLE_HEIGHT = 15
@@ -1668,6 +1615,76 @@ class BkGnWindow(base_win.BaseWindow):
         else:
             win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
 
+class ToolBarWindow(base_win.BaseWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.css['borderColor'] = 0x00ffff
+        self.DEF_SIZE = (200, 30)
+        self.MOVE_BOX_WIDTH = 30
+        self.ITEM_WIDTH = 30
+        self.model = [
+            {'title': '记', 'class': RecordWindow, 'win': None},
+            #{'title': '比', 'class': None, 'win': None},
+        ]
+
+    def setVisible(self, visible : bool):
+        if not win32gui.IsWindow(self.hwnd):
+            return
+        if visible:
+            win32gui.ShowWindow(self.hwnd, win32con.SW_SHOW)
+        else:
+            win32gui.ShowWindow(self.hwnd, win32con.SW_HIDE)
+
+    def getWindowState(self):
+        rc = win32gui.GetWindowRect(self.hwnd)
+        return {'pos': (rc[0], rc[1])}
+
+    def setWindowState(self, state):
+        if not state:
+            return
+        x, y = state['pos']
+        win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
+
+    def onClick(self, x, y):
+        idx = x // self.ITEM_WIDTH
+        if idx >= 0 and idx < len(self.model):
+            item = self.model[idx]
+            if not item['win']:
+                win = item['win'] = item['class']()
+                win.createWindow(self.hwnd)
+            item['win'].show()
+
+    def winProc(self, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_NCHITTEST:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            cx, cy = win32gui.ScreenToClient(self.hwnd, (x, y))
+            W, H = self.getClientSize()
+            if cx >= W - self.MOVE_BOX_WIDTH:
+                return win32con.HTCAPTION
+            return win32con.HTCLIENT
+        elif msg == win32con.WM_LBUTTONUP:
+            x, y = lParam & 0xffff, (lParam >> 16) & 0xffff
+            self.onClick(x, y)
+            return True
+        return super().winProc(hwnd, msg, wParam, lParam)
+
+    def createWindow(self, parentWnd, rect = None, style = None, className = 'STATIC', title = ''):
+        style = win32con.WS_POPUP
+        rect = (0, 0, *self.DEF_SIZE)
+        super().createWindow(parentWnd, rect, style, className, title)
+
+    def onDraw(self, hdc):
+        W, H = self.getClientSize()
+        self.drawer.fillRect(hdc, (W - self.MOVE_BOX_WIDTH, 1, W - 1, H - 1), 0x202020)
+        sx = 1
+        for i in range(len(self.model)):
+            item = self.model[i]
+            color = 0x333333
+            isx = sx + i * self.ITEM_WIDTH
+            rc = [isx, 1, isx + self.ITEM_WIDTH, H - 1]
+            self.drawer.fillRect(hdc, rc, color)
+            self.drawer.drawRect(hdc, rc, 0x202020)
+            self.drawer.drawText(hdc, item['title'], rc, 0xAAAA2f, win32con.DT_SINGLELINE | win32con.DT_VCENTER | win32con.DT_CENTER)
 
 if __name__ == '__main__':
     import ths_win
