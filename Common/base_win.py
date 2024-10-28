@@ -3274,6 +3274,7 @@ class ThsShareMemory:
         self.listeners = []
         self.shm = None
         self._name = name
+        self.open()
 
     @classmethod
     def instance(cls):

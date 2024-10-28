@@ -79,6 +79,10 @@ class Bk_Window(base_win.BaseWindow):
         headerLayout.addContent(self.fsBtn)
         headerLayout.addContent(self.fsDatePicker)
         headerLayout.addContent(self.editorWin)
+        btn = base_win.Button({'title': '同步'})
+        btn.createWindow(self.hwnd, (0, 0, 60, 30))
+        btn.addNamedListener('Click', self.onSync)
+        headerLayout.addContent(btn)
         headerLayout.addContent(self.checkBox)
 
         self.layout.setContent(0, 0, headerLayout, {'horExpand': -1})
@@ -120,6 +124,18 @@ class Bk_Window(base_win.BaseWindow):
         self.tableWin.invalidWindow()
 
     def onRefresh(self, evt, args):
+        self.onQuery()
+
+    def onSync(self, evt, args):
+        ins = base_win.ThsShareMemory.instance()
+        code = ins.readCode()
+        if not code:
+            return
+        obj = ths_orm.THS_ZS.get_or_none(code = code)
+        if not obj:
+            return
+        self.editorWin.setText(obj.name)
+        self.editorWin.invalidWindow()
         self.onQuery()
 
     def onQuery(self):

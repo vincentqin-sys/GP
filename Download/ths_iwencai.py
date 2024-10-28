@@ -313,7 +313,7 @@ def download_zt_zb(day = None):
         day = f'{day}'
     else:
         day = day.replace('-', '')
-    qs = day + '涨停或曾涨停，非st'
+    qs = day + '涨停或曾涨停,非st,成交额'
     txt = iwencai_search_info(qs)
     js = json.loads(txt)
     answer = js['data']['answer'][0]
@@ -342,10 +342,13 @@ def download_zt_zb(day = None):
         obj['name'] = it['股票简称']
         obj['lastZtTime'] = it.get(f'最终涨停时间[{rday}]', '')
         obj['firstZtTime'] = it.get(f'首次涨停时间[{rday}]', '')
-        #obj['kbs'] = it.get(f'涨停开板次数[{rday}]', None)
+        obj['kbs'] = int(it.get(f'涨停开板次数[{rday}]', 0))
         obj['reason'] = it.get(f'涨停原因类别[{rday}]', '')
         m = it.get(f'涨停封单额[{rday}]', 0)
         obj['ztMoney'] = float(m) / 100000000
+        obj['ltsz'] = int(float(it.get(f'a股市值(不含限售股)[{rday}]', 0)) / 100000000) # 亿元
+        obj['amount'] = int(float(it.get(f'成交额[{rday}]', 0))) // 100000000 # 亿元
+        obj['vol'] = int(it.get(f'成交量[{rday}]', 0)) # 手
         rs.append(obj)
     return rs
 

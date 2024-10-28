@@ -1619,7 +1619,7 @@ class ToolBarWindow(base_win.BaseWindow):
     def __init__(self) -> None:
         super().__init__()
         self.css['borderColor'] = 0x00ffff
-        self.DEF_SIZE = (200, 30)
+        self.DEF_SIZE = (200, 25)
         self.MOVE_BOX_WIDTH = 30
         self.ITEM_WIDTH = 30
         self.model = [

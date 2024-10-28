@@ -55,6 +55,8 @@ class FuPanMgrWindow(base_win.BaseWindow):
             win.onShow()
 
 if __name__ == '__main__':
+    ins = base_win.ThsShareMemory.instance()
+    ins.open()
     base_win.ThreadPool.instance().start()
     fp = FuPanMgrWindow()
     SW = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)

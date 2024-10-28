@@ -61,6 +61,8 @@ class ZT_Window(base_win.BaseWindow):
                    {'title': '类别', 'width': 60, 'name': 'tag', 'sortable':True , 'fontSize' : 14},
                    {'title': '几天几板', 'width': 100, 'name': 'lbs', 'sortable':True , 'fontSize' : 14},
                    {'title': '热度', 'width': 60, 'name': 'zhHotOrder', 'sortable':True , 'fontSize' : 14, 'sorter': sortHot},
+                   {'title': '成交额', 'width': 100, 'name': 'amount', 'sortable':True , 'fontSize' : 14, 'formater': formateMoney},
+                   {'title': '流通市值', 'width': 100, 'name': 'ltsz', 'sortable':True , 'fontSize' : 14, 'formater': formateMoney},
                    {'title': '首封时', 'width': 100, 'name': 'firstZtTime', 'sortable':True , 'fontSize' : 14},
                    {'title': '未封时', 'width': 100, 'name': 'lastZtTime', 'sortable':True , 'fontSize' : 14},
                    {'title': '封单额', 'width': 100, 'name': 'ztMoney', 'sortable':True , 'fontSize' : 14, 'formater': formateMoney},
