@@ -4,6 +4,7 @@ import easyocr
 
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from THS import ths_win, number_ocr
+from Common import base_win
 
 #委比
 class ThsWbOcrUtils(number_ocr.DumpWindowUtils):
@@ -207,63 +208,138 @@ class ThsZhangShuOcrUtils(number_ocr.DumpWindowUtils):
     def __init__(self) -> None:
         super().__init__()
         self.ocr = easyocr.Reader(['en'], download_enabled = True) # ch_sim
+        self.today = None
+        self.datas = {}
+        self.thread = base_win.TimerThread()
+        self.thread.addIntervalTask('ZS-OCR', 10, self.run)
 
-    def dump(self, hwnd):
+    def start(self):
+        from db import zs_orm
+        today = datetime.date.today()
+        iday = today.year * 10000 + today.month * 100 + today.day
+        #q = zs_orm.RealZSModel.select().where(zs_orm.RealZSModel.day == iday).dicts()
+        #TODO:
+        #self.today = iday
+        self.thread.start()
+
+    def dumpZhangShu(self, hwnd):
         if (not hwnd) or (not win32gui.IsWindow(hwnd)) or (not win32gui.IsWindowVisible(hwnd)):
             return None
         rc = win32gui.GetWindowRect(hwnd)
         w, h = rc[2] - rc[0], rc[3] - rc[1]
         if w < 600 or h < 200:
             return None
-        ZHANG_SU_RECT = (257, 50, 522, 500) # 涨速区域
-        imgFull = self.dumpImg(hwnd, ZHANG_SU_RECT)
-        #imgFull.save('D:/a.bmp')
+        ZHANG_SU_MAX_RECT = (230, 50, 600, 500) # 涨速区域最大范围
+        imgFull = self.dumpImg(hwnd, ZHANG_SU_MAX_RECT)
+
+        beImg = number_ocr.BaseEImage(imgFull)
+        #beImg.bImg.save('D:/zs-full.bmp')
         #img_PIL.show()
-
-        #PRICE_LEFT_RIGHT = 30
-        #priceImg = imgFull.crop((PRICE_LEFT_RIGHT,  h // 2, w - PRICE_LEFT_RIGHT, h - 1))
-        #priceImg.save('D:/price.bmp')
-
-        #WB_TXT_WIDTH = 35
-        #r = max(srcSize[0] - 70, w * 0.6)
-        #wbImg = imgFull.crop((WB_TXT_WIDTH, srcSize[1] - WB_WIN_HEIGHT + 1, int(r), srcSize[1]))
-        #wbImg.save('D:/a.bmp')
-        return imgFull
-    
-    def runOcr(self, thsMainWnd):
-        img = self.dump(thsMainWnd)
-        if not img:
+        SEARCH_BOX_SIZE = (2, 50)
+        startSplitVerLineX = beImg.horSearchBoxColor(0, beImg.bImg.height // 2, *SEARCH_BOX_SIZE, 255)
+        if startSplitVerLineX < 0:
             return None
-        #img.save('D:/a.bmp')
-        codeImg = img.crop((0, 0, 62, img.height)) # 代码区，宽62
-        zfImg = img.crop((img.width - 65, 0, img.width, img.height)) # 涨幅区，宽65
-        #dstImg.save('D:/b.bmp')
+        startSplitVerLineX += 2
+        ZHANG_SU_MIN_WIDTH = 200
+        endSplitVerLineX = beImg.horSearchBoxColor(startSplitVerLineX + ZHANG_SU_MIN_WIDTH, beImg.bImg.height // 2, *SEARCH_BOX_SIZE, 255)
+        if endSplitVerLineX < 0:
+            return None
+        PRICE_AREA_WIDTH = 62 # 代码区，宽62
+        codeImg = imgFull.crop((startSplitVerLineX, 0, startSplitVerLineX + PRICE_AREA_WIDTH, beImg.bImg.height))
+        #codeImg.save('D:/code.bmp')
+
+        ZHANG_FU_AREA_WIDTH = 65 # 涨幅区，宽65
+        sx = endSplitVerLineX - ZHANG_FU_AREA_WIDTH
+        priceImg = imgFull.crop((sx, 0, endSplitVerLineX, beImg.bImg.height))
+        #priceImg.save('D:/price.bmp')
+        return codeImg, priceImg
+    
+    def runOcr(self, thsMainWnd, minZhangFu = 4):
+        imgs = self.dumpZhangShu(thsMainWnd)
+        if not imgs:
+            return None
+        codeImg, zfImg = imgs
         bits = self.imgToBmpBytes(codeImg)
         codes = self.ocr.readtext(bits, allowlist ='0123456789')
         bits = self.imgToBmpBytes(zfImg)
         zfs = self.ocr.readtext(bits, allowlist ='0123456789.+-%')
 
         arr = []
+        nowTime = time.time()
         now = datetime.datetime.now()
         day = now.year * 10000 + now.month * 100 + now.day
-        minuts = now.hour * 100 + now.minute
+        minuts = now.hour * 10000 + now.minute * 100 + now.second
         num = min(len(codes), len(zfs))
         for i in range(num):
             codeInfo = codes[i]
             zfInfo = zfs[i]
             if codeInfo[2] > 0.7 and len(codeInfo[1]) == 6:
                 zf = zfInfo[1]
-                if zf[0] == '+' or zf[0] == '-':
+                if zf[0] == '+':
                     zf = zf[1 : ]
+                elif zf[0] == '-':
+                    continue
                 if '%' in zf:
                     zf = zf[0 : zf.index('%')]
                 zf = float(zf)
-                if zf < 4: # skip < 4%
+                if zf < minZhangFu:
                     continue
-                item = {'code' : codeInfo[1], 'day' : day, 'minuts' : minuts, 'zf': zf, 'time': now}
-                print(item)
+                item = {'code' : codeInfo[1], 'day' : day, 'minuts' : minuts, 'zf': zf, 'time': int(nowTime)}
+                #print(item)
                 arr.append(item)
         return arr
+
+    def checkTime(self):
+        now = datetime.datetime.now()
+        wk = now.weekday()
+        if wk > 4: # week 6, 7
+            return False
+        st = now.strftime('%H:%M:%S')
+        if st >= '09:30:00' and st <= '11:30:00':
+            return True
+        if st >= '13:00:00' and st <= '15:00:00':
+            return True
+        return False
+    
+    def run(self):
+        try:
+            if not self.checkTime():
+                return
+            ths = ths_win.ThsWindow()
+            ths.init()
+            if not ths.mainHwnd:
+                return
+            rs = self.runOcr(ths.mainHwnd, 4)
+            self.saveOcrResult(rs)
+        except Exception as e:
+            pass
+
+    def saveOcrResult(self, rs):
+        if not rs:
+            return
+        from db import zs_orm
+        first = rs[0]
+        if first['day'] != self.today:
+            self.today = first['day']
+            self.datas.clear()
+        for r in  rs:
+            code = r['code']
+            if code not in self.datas:
+                self.datas[code] = [r]
+                obj = zs_orm.RealZSModel.create(code = r['code'], day = r['day'], minuts = r['minuts'], zf = r['zf'], time = r['time'])
+                r['obj'] = obj
+                continue
+            last = self.datas[code][-1]
+            if last['zf'] < r['zf']:
+                if last['time'] - r['time'] > 10 * 60:
+                    obj = zs_orm.RealZSModel.create(code = r['code'], day = r['day'], minuts = r['minuts'], zf = r['zf'], time = r['time'])
+                    r['obj'] = obj
+                    cl = self.datas[code]
+                    cl.append(r)
+                else:
+                    obj = last['obj']
+                    obj.zf = last['zf'] = r['zf']
+                    obj.save()
 
 def test_wb_main1():
     ths = ths_win.ThsWindow()
@@ -282,10 +358,12 @@ def test_zs_main2():
     zs = ThsZhangShuOcrUtils()
     dst = {}
     while True:
-        rs = zs.runOcr(thsWin.mainHwnd)
-        if not rs:
-            time.sleep(2)
+        #ts = time.time()
+        rs = zs.runOcr(thsWin.mainHwnd, 4)
+        #ts2 = time.time()
+        #print('use time:', ts2 - ts)
         time.sleep(10)
+        break
 
 if __name__ == '__main__':
     #test_wb_main1()

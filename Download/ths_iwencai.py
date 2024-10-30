@@ -313,7 +313,7 @@ def download_zt_zb(day = None):
         day = f'{day}'
     else:
         day = day.replace('-', '')
-    qs = day + '涨停或曾涨停,非st,成交额'
+    qs = day + '涨停或炸板,非st,成交额'
     txt = iwencai_search_info(qs)
     js = json.loads(txt)
     answer = js['data']['answer'][0]

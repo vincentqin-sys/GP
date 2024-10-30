@@ -2,6 +2,10 @@ top_zt_tips = [
     # {'title': ''}
 ]
 
+holidays = [
+    20250101,
+]
+
 top_hot_tips = [
     {'title': '[2024.10.12] | 跨境支付'},
     {'title': '[2024.09.20] | 鸿蒙'},
