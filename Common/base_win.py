@@ -50,7 +50,7 @@ class BaseWindow(Listener):
                     } # config css style
     
     # @param rect = (x, y, width, height)
-    def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''): #  0x00800000 | 
+    def createWindow(self, parentWnd, rect, style = win32con.WS_VISIBLE | win32con.WS_CHILD, className = 'STATIC', title = ''): #  0x00800000 |
         self.hwnd = win32gui.CreateWindow(className, title, style, *rect, parentWnd, None, None, None)
         BaseWindow.bindHwnds[self.hwnd] = self
         self.oldProc = win32gui.SetWindowLong(self.hwnd, win32con.GWL_WNDPROC, BaseWindow._WinProc)

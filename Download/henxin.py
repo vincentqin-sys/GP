@@ -487,111 +487,127 @@ class HexinUrl(Henxin):
         return rs
     
     def loadKLineData(self, code):
-        url = self.getKLineUrl(code)
-        klineRs = self.loadUrlData(url)
-        if not klineRs:
-            return None
-        data = klineRs['data']
-        if code[0 : 2] == '88' and '/01/last1800' in url: # 仅保存指数
-            _cache.saveKline(code, klineRs)
-        if (code[0 : 2] == '88') and (not data):
-            df = DataFile(code, DataFile.DT_DAY)
-            df.loadData(DataFile.FLAG_ALL)
-            data = df.data
-            pass
-        if data:
-            last = data[-1]
-        url = self.getTodayKLineUrl(code)
-        todayRs = self.loadUrlData(url)
-        if data and todayRs and todayRs['data'] and data[-1].day == todayRs['data'].day:
-            data.pop(-1)
-        if todayRs and todayRs['data']:
-            data.append(todayRs['data'])
-        return klineRs
+        try:
+            url = self.getKLineUrl(code)
+            klineRs = self.loadUrlData(url)
+            if not klineRs:
+                return None
+            data = klineRs['data']
+            if code[0 : 2] == '88' and '/01/last1800' in url: # 仅保存指数
+                _cache.saveKline(code, klineRs)
+            if (code[0 : 2] == '88') and (not data):
+                df = DataFile(code, DataFile.DT_DAY)
+                df.loadData(DataFile.FLAG_ALL)
+                data = df.data
+                pass
+            if data:
+                last = data[-1]
+            url = self.getTodayKLineUrl(code)
+            todayRs = self.loadUrlData(url)
+            if data and todayRs and todayRs['data'] and data[-1].day == todayRs['data'].day:
+                data.pop(-1)
+            if todayRs and todayRs['data']:
+                data.append(todayRs['data'])
+            return klineRs
+        except Exception as e:
+            traceback.print_exc()
+        return None
     
     def parseTodayData(self, txt : str):
-        js = json.loads(txt)
-        for k in js:
-            js = js[k]
-            break
-        item = HexinUrl.ItemData()
-        if js['1']:
-            setattr(item, 'day', int(js['1']))
-        if js['13']:
-            setattr(item, 'vol', int(js['13']))
-        if js['19']:
-            setattr(item, 'amount', int(float(js['19'])))
-        if js['1968584']:
-            setattr(item, 'rate', float(js['1968584']))
-        
-        keys = { 'open': '7', 'high':'8', 'low':'9', 'close':'11'} # vol: 单位股, amount:单位元 'amount':'19', 'rate':'1968584'  'vol':'13'  'day': '1',
-        for k in keys:
-            v = js[keys[k]]
-            if type(v) == str:
-                if not v:
-                    del item
-                    item = None
-                    break
-            setattr(item, k, float(v))
-        rs = {'name': js['name'], 'data': item}
-        return rs
+        try:
+            js = json.loads(txt)
+            for k in js:
+                js = js[k]
+                break
+            item = HexinUrl.ItemData()
+            if js['1']:
+                setattr(item, 'day', int(js['1']))
+            if js['13']:
+                setattr(item, 'vol', int(js['13']))
+            if js['19']:
+                setattr(item, 'amount', int(float(js['19'])))
+            if js['1968584']:
+                setattr(item, 'rate', float(js['1968584']))
+            
+            keys = { 'open': '7', 'high':'8', 'low':'9', 'close':'11'} # vol: 单位股, amount:单位元 'amount':'19', 'rate':'1968584'  'vol':'13'  'day': '1',
+            for k in keys:
+                v = js[keys[k]]
+                if type(v) == str:
+                    if not v:
+                        del item
+                        item = None
+                        break
+                setattr(item, k, float(v))
+            rs = {'name': js['name'], 'data': item}
+            return rs
+        except Exception as e:
+            traceback.print_exc()
+        return None
 
     # 解析日线数据
     def parseDaylyData(self, txt):
-        js = json.loads(txt)
-        name, today = js['name'], js['today']
-        ds = js['data'].split(';')
-        keys = ['day', 'open', 'high', 'low', 'close', 'vol', 'amount', 'rate']; # vol: 单位股, amount:单位元
-        rs = []
-        for m, d in enumerate(ds):
-            if not d:
-                continue
-            obj = HexinUrl.ItemData()
-            row = d.split(',')
-            #if m == len(ds) - 1: 
-            #    print('[henxin.parseDaylyData]', name, row) # last row
-            for i, k in enumerate(keys):
-                if row[i] == '':
-                    row[i] = '0' # fix bug
-                if i == 0 or i == 5:
-                    setattr(obj, keys[i], int(row[i]))
-                elif i >= 1 and i <= 4:
-                    if row[i] == '0':
-                        del obj
-                        obj = None
-                        break
-                    setattr(obj, keys[i], float(row[i]))
-                elif i == 6:
-                    setattr(obj, keys[i], int(float(row[i])))
-                elif i == 7:
-                    setattr(obj, keys[i], float(row[i]))
-            if obj:
-                rs.append(obj)
-        rv = {'name': name, 'today': today,  'data': rs}
-        #print('[henxin.parseDaylyData ] rs[-1]=', rs[-1].__dict__)
-        return rv
+        try:
+            js = json.loads(txt)
+            name, today = js['name'], js['today']
+            ds = js['data'].split(';')
+            keys = ['day', 'open', 'high', 'low', 'close', 'vol', 'amount', 'rate']; # vol: 单位股, amount:单位元
+            rs = []
+            for m, d in enumerate(ds):
+                if not d:
+                    continue
+                obj = HexinUrl.ItemData()
+                row = d.split(',')
+                #if m == len(ds) - 1: 
+                #    print('[henxin.parseDaylyData]', name, row) # last row
+                for i, k in enumerate(keys):
+                    if row[i] == '':
+                        row[i] = '0' # fix bug
+                    if i == 0 or i == 5:
+                        setattr(obj, keys[i], int(row[i]))
+                    elif i >= 1 and i <= 4:
+                        if row[i] == '0':
+                            del obj
+                            obj = None
+                            break
+                        setattr(obj, keys[i], float(row[i]))
+                    elif i == 6:
+                        setattr(obj, keys[i], int(float(row[i])))
+                    elif i == 7:
+                        setattr(obj, keys[i], float(row[i]))
+                if obj:
+                    rs.append(obj)
+            rv = {'name': name, 'today': today,  'data': rs}
+            #print('[henxin.parseDaylyData ] rs[-1]=', rs[-1].__dict__)
+            return rv
+        except Exception as e:
+            traceback.print_exc()
+        return None
 
     def parseFenShiData(self, txt):
-        js = json.loads(txt)
-        for k in js:
-            js = js[k]
-            break
-        js['pre'] = float(js['pre'])
-        js['dataArr'] = []
-        iv = js['data'].split(';')
-        for item in iv:
-            # 时间，价格，成交额（元），分时均价，成交量（手）
-            its = item.split(',')
-            row = {}
-            row['time'] = int(its[0])
-            if row['time'] > 1500:
+        try:
+            js = json.loads(txt)
+            for k in js:
+                js = js[k]
                 break
-            row['price'] = float(its[1])
-            row['money'] = float(its[2])
-            row['avgPrice'] = float(its[3])
-            row['vol'] = float(its[4] if its[4] else '0')
-            js['dataArr'].append(row)
-        return js
+            js['pre'] = float(js['pre'])
+            js['dataArr'] = []
+            iv = js['data'].split(';')
+            for item in iv:
+                # 时间，价格，成交额（元），分时均价，成交量（手）
+                its = item.split(',')
+                row = {}
+                row['time'] = int(its[0])
+                if row['time'] > 1500:
+                    break
+                row['price'] = float(its[1])
+                row['money'] = float(its[2])
+                row['avgPrice'] = float(its[3])
+                row['vol'] = float(its[4] if its[4] else '0')
+                js['dataArr'].append(row)
+            return js
+        except Exception as e:
+            traceback.print_exc()
+        return None
 
 class ThsDataFile(DataFile):
     def __init__(self, code, dataType):

@@ -3,7 +3,7 @@ import win32gui, win32con , win32api, win32ui # pip install pywin32
 import threading, time, datetime, sys, os, threading, copy
 import sys, pyautogui
 import peewee as pw
-
+import types
 sys.path.append(__file__[0 : __file__.upper().index('GP') + 2])
 from Tdx import datafile
 from THS import hot_utils
@@ -1622,9 +1622,11 @@ class ToolBarWindow(base_win.BaseWindow):
         self.DEF_SIZE = (200, 25)
         self.MOVE_BOX_WIDTH = 30
         self.ITEM_WIDTH = 30
+        from Tck import top_zt_net, top_bk
         self.model = [
-            {'title': '记', 'class': RecordWindow, 'win': None},
-            #{'title': '比', 'class': None, 'win': None},
+            {'title': '记', 'name': 'Record', 'class': RecordWindow, 'win': None, 'win-title': '笔记'},
+            {'title': '停', 'name': 'ZT', 'class': top_zt_net.ZT_Window, 'win': None, 'win-title': '涨停'},
+            {'title': '概', 'name': 'BK', 'class': top_bk.Bk_Window, 'win': None, 'win-title': '板块概念'},
         ]
 
     def setVisible(self, visible : bool):
@@ -1645,14 +1647,44 @@ class ToolBarWindow(base_win.BaseWindow):
         x, y = state['pos']
         win32gui.SetWindowPos(self.hwnd, 0, x, y, 0, 0, win32con.SWP_NOZORDER | win32con.SWP_NOSIZE)
 
+    @staticmethod
+    def _wp(winObj, hwnd, msg, wParam, lParam):
+        if msg == win32con.WM_CLOSE:
+            win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
+            return True
+        old = winObj.old_win_proc
+        return old(hwnd, msg, wParam, lParam)
+    
+    def rebindWinProc(self, win):
+        win.old_win_proc = win.winProc
+        win.winProc = types.MethodType(ToolBarWindow._wp, win)
+
+    def newWindow(self, item):
+        if item['win']:
+            return item['win']
+        item['win'] = win = item['class']()
+        if item['name'] == 'Record':
+            win.createWindow(self.hwnd)
+        elif item['name'] in ('ZT', 'BK'):
+            win.css['paddings'] = (4, 4, 4, 4)
+            sw = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+            sh = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+            W, H = sw, 600
+            rc = (0, sh - H - 35, W, H)
+            win.createWindow(self.hwnd, rc, style = win32con.WS_POPUPWINDOW | win32con.WS_CAPTION | win32con.WS_MAXIMIZEBOX | win32con.WS_MINIMIZEBOX | win32con.WS_THICKFRAME, title = item['win-title'])
+            self.rebindWinProc(win)
+            win32gui.PostMessage(win.hwnd, win32con.WM_SIZE, 0, 0)
+        return win
+
     def onClick(self, x, y):
         idx = x // self.ITEM_WIDTH
         if idx >= 0 and idx < len(self.model):
             item = self.model[idx]
-            if not item['win']:
-                win = item['win'] = item['class']()
-                win.createWindow(self.hwnd)
-            item['win'].show()
+            win = self.newWindow(item)
+            if hasattr(win, 'show'):
+                win.show()
+            else:
+                win32gui.ShowWindow(win.hwnd, win32con.SW_SHOW)
 
     def winProc(self, hwnd, msg, wParam, lParam):
         if msg == win32con.WM_NCHITTEST:
@@ -1690,6 +1722,7 @@ if __name__ == '__main__':
     import ths_win
     thsWin = ths_win.ThsWindow()
     thsWin.init()
-    rwin = BkGnWindow()
+    rwin = ToolBarWindow()
     rwin.createWindow(thsWin.topHwnd)
+    win32gui.ShowWindow(rwin.hwnd, win32con.SW_SHOW)
     win32gui.PumpMessages()

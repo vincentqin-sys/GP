@@ -258,14 +258,6 @@ class Bk_Window(base_win.BaseWindow):
         rs.sort(key = lambda x : x.get('zhHotOrder', 1000))
         self.searchData = rs
 
-    def winProc(self, hwnd, msg, wParam, lParam):
-        if msg == win32con.WM_SIZE:
-            size = self.getClientSize()
-            self.layout.resize(0, 0, size[0], size[1])
-            self.invalidWindow()
-            return True
-        return super().winProc(hwnd, msg, wParam, lParam)
-    
 if __name__ == '__main__':
     base_win.ThreadPool.instance().start()
     win = Bk_Window()
