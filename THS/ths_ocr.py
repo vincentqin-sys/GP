@@ -1,4 +1,4 @@
-import win32gui, win32ui, win32con, re, io, traceback, sys, datetime, time
+import win32gui, win32ui, win32con, re, io, traceback, sys, datetime, time, copy
 from PIL import Image
 import easyocr
 
@@ -209,7 +209,7 @@ class ThsZhangShuOcrUtils(number_ocr.DumpWindowUtils):
         super().__init__()
         self.ocr = easyocr.Reader(['en'], download_enabled = True) # ch_sim
         self.today = None
-        self.datas = {}
+        self.datas = {} # code : []
         self.thread = base_win.TimerThread()
         self.thread.addIntervalTask('ZS-OCR', 10, self.run)
 
@@ -217,9 +217,14 @@ class ThsZhangShuOcrUtils(number_ocr.DumpWindowUtils):
         from db import zs_orm
         today = datetime.date.today()
         iday = today.year * 10000 + today.month * 100 + today.day
-        #q = zs_orm.RealZSModel.select().where(zs_orm.RealZSModel.day == iday).dicts()
-        #TODO:
-        #self.today = iday
+        qr = zs_orm.RealZSModel.select().where(zs_orm.RealZSModel.day == iday)
+        for it in qr:
+            v = copy.copy(it.__data__)
+            v['obj'] = it
+            if it.code not in self.datas:
+                self.datas[it.code] = []
+            self.datas[it.code].append(v)
+        self.today = iday
         self.thread.start()
 
     def dumpZhangShu(self, hwnd):

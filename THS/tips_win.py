@@ -1622,11 +1622,12 @@ class ToolBarWindow(base_win.BaseWindow):
         self.DEF_SIZE = (200, 25)
         self.MOVE_BOX_WIDTH = 30
         self.ITEM_WIDTH = 30
-        from Tck import top_zt_net, top_bk
+        from Tck import top_zt_net, top_bk, top_real_zs
         self.model = [
             {'title': '记', 'name': 'Record', 'class': RecordWindow, 'win': None, 'win-title': '笔记'},
             {'title': '停', 'name': 'ZT', 'class': top_zt_net.ZT_Window, 'win': None, 'win-title': '涨停'},
             {'title': '概', 'name': 'BK', 'class': top_bk.Bk_Window, 'win': None, 'win-title': '板块概念'},
+            #{'title': '速', 'name': 'SU', 'class': top_real_zs.ZS_Window, 'win': None, 'win-title': '涨速联动'},
         ]
 
     def setVisible(self, visible : bool):
@@ -1718,7 +1719,12 @@ class ToolBarWindow(base_win.BaseWindow):
             self.drawer.drawRect(hdc, rc, 0x202020)
             self.drawer.drawText(hdc, item['title'], rc, 0xAAAA2f, win32con.DT_SINGLELINE | win32con.DT_VCENTER | win32con.DT_CENTER)
 
+def test():
+    pass
+
 if __name__ == '__main__':
+    test()
+
     import ths_win
     thsWin = ths_win.ThsWindow()
     thsWin.init()

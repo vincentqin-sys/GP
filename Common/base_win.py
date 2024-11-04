@@ -1007,6 +1007,7 @@ class TableWindow(BaseWindow):
         #    { name:xxx,   '#idx' is index row column 
         #      title:xx,
         #      sortable:True | False (default is False),
+        #      default: None | any | function('ASC' | 'DSC')
         #      width : int, fix width
         #      stretch: int, how stretch less width, is part of all stretchs
         #      formater: function(colName, val, rowData) -> return format str data
@@ -1325,7 +1326,18 @@ class TableWindow(BaseWindow):
                     return header['sorter'](hdn, rowData.get(hdn, None), rowData, self.data, state == 'ASC')
                 self.sortData = sorted(self.data, key = keyn, reverse = reverse)
             else:
-                self.sortData = sorted(self.data, key = lambda d: d.get(header['name'], '') if isinstance(d, dict) else getattr(d, header['name'], None), reverse = reverse)
+                df = header.get('default', None)
+                if callable(df):
+                    df = df(state)
+                def getKey(d):
+                    if isinstance(d, dict):
+                        val = d.get(header['name'], None) 
+                    else:
+                        val = getattr(d, header['name'], None)
+                    if val is None:
+                        val = df
+                    return val
+                self.sortData = sorted(self.data, key = getKey, reverse = reverse)
         else:
             self.sortData = None
         self._notifyVisibleRangeChanged()

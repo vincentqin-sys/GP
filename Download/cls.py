@@ -337,8 +337,11 @@ class ClsDataFile(datafile.DataFile):
             it.vol = int(ds['business_amount'])
             self.data.append(it)
 
-
-#signByStr('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012')
-#signByStr('app=CailianpressWeb&fields=date,minute,last_px,business_balance,business_amount,open_px,preclose_px,av_px&os=web&secu_code=sz301488&sv=7.7.5')
-#ClsUrl().loadHistory5FenShi('cls80133') #cls80133
-ClsUrl().loadDegree()
+if __name__ == '__main__':
+    #signByStr('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012')
+    #signByStr('app=CailianpressWeb&fields=date,minute,last_px,business_balance,business_amount,open_px,preclose_px,av_px&os=web&secu_code=sz301488&sv=7.7.5')
+    #ClsUrl().loadHistory5FenShi('cls80133') #cls80133
+    #ClsUrl().loadDegree()
+    pass
+    u = ClsUrl()
+    u.loadHotTC(20241104)

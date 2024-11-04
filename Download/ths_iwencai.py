@@ -309,16 +309,15 @@ def download_one_dde(code):
 def download_zt_zb(day = None):
     if not day:
         day = ''
-    if isinstance(day, int):
-        day = f'{day}'
-    else:
+    if isinstance(day, str):
         day = day.replace('-', '')
-    qs = day + '涨停或炸板,非st,成交额'
-    txt = iwencai_search_info(qs)
-    js = json.loads(txt)
-    answer = js['data']['answer'][0]
-    components = answer['txt'][0]['content']['components']
-    datas = components[-1]['data']['datas']
+        day = int(day)
+    qs = ''
+    if day:
+        y, m, d = day // 10000, day // 100 % 100, day % 100
+        qs = f'{y}年{m}月{d}日'
+    qs += '涨停或者曾涨停,非st,成交额'
+    datas = iwencai_load_list(qs)
     if not datas:
         return None
     # find day
@@ -333,22 +332,25 @@ def download_zt_zb(day = None):
     rs = []
     fday = rday[0 : 4] + '-' + rday[4 : 6] + '-' +  rday[6 : 8]
     for it in datas:
+        code = it['code']
+        if code[0] not in ('0', '3', '6'):
+            continue
         obj = {}
+        obj['code'] = it['code']
         obj['day'] = fday
         a = it.get(f'曾涨停[{rday}]', None)
         obj['tag'] = '炸板' if a else '涨停'
         obj['lbs'] = it.get(f'几天几板[{rday}]', '')
-        obj['code'] = it['code']
         obj['name'] = it['股票简称']
         obj['lastZtTime'] = it.get(f'最终涨停时间[{rday}]', '')
         obj['firstZtTime'] = it.get(f'首次涨停时间[{rday}]', '')
         obj['kbs'] = int(it.get(f'涨停开板次数[{rday}]', 0))
         obj['reason'] = it.get(f'涨停原因类别[{rday}]', '')
-        m = it.get(f'涨停封单额[{rday}]', 0)
-        obj['ztMoney'] = float(m) / 100000000
+        m = it.get(f'涨停封单额[{rday}]', None)
+        obj['ztMoney'] = float(m) / 100000000 if m else None
         obj['ltsz'] = int(float(it.get(f'a股市值(不含限售股)[{rday}]', 0)) / 100000000) # 亿元
         obj['amount'] = int(float(it.get(f'成交额[{rday}]', 0))) // 100000000 # 亿元
-        obj['vol'] = int(it.get(f'成交量[{rday}]', 0)) # 手
+        obj['vol'] = int(float(it.get(f'成交量[{rday}]', 0))) # 手
         rs.append(obj)
     return rs
 
@@ -361,11 +363,11 @@ if __name__ == '__main__':
     
     #u, i = download_hygn()
     #save_hygn(u, i)
-    rs = download_hot()
+    #rs = download_hot()
     #rs = download_zs_zd()
     #save_zs_zd(rs)
 
-    #rs = download_zt_zb(20240909)
+    rs = download_zt_zb(20241101)
     for r in rs:
         print(r)
     pass

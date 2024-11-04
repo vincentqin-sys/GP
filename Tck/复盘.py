@@ -23,12 +23,12 @@ class FuPanMgrWindow(base_win.BaseWindow):
             #{'name': 'DDE', 'title': 'DDE',  'class': top_dde.DdeWindow},
             {'name': 'ZT', 'title': '涨停',  'class': top_zt_net.ZT_Window},
             {'name': 'HOTS', 'title': '热度',  'class': top_hots.Hots_Window},
-            {'name': 'HOTS', 'title': '板块',  'class': top_bk.Bk_Window},
+            #{'name': 'HOTS', 'title': '板块',  'class': top_bk.Bk_Window},
             {'name': 'LHB', 'title': '龙虎榜',  'class': top_lhb.LHB_Window},
             #{'name': 'TCGN', 'title': '题材梳理',  'class': tcgn2.TCGN_Window},
             #{'name': 'CLS_BK', 'title': '财联社板块',  'class': top_cls_bk.ClsBkWindow},
-            {'name': 'MY', 'title': '自选',  'class': top_observe.MyWindow},
-            {'name': 'HOTS_TC', 'title': '热度题材',  'class': top_hot_tc.HotTCWindow},
+            #{'name': 'MY', 'title': '自选',  'class': top_observe.MyWindow},
+            #{'name': 'HOTS_TC', 'title': '热度题材',  'class': top_hot_tc.HotTCWindow},
             #{'name': 'DIALY', 'title': '日记',  'class': top_diary.DailyWindow},
         ]
         gp = base_win.GroupButton(gpInfos)
